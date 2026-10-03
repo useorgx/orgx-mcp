@@ -1145,7 +1145,9 @@
         counts[label] = (counts[label] || 0) + 1;
       });
       var tasks = sections.reduce((n, s) => n + countTasks(s), 0);
-      var mixLine = Object.keys(counts).map((k) => counts[k] + ' ' + k).join(' · ');
+      var kinds = Object.keys(counts);
+      // "3 workstreams ready" when they agree; "2 active · 1 ready" when they differ.
+      var mixLine = kinds.length === 1 ? plural(counts[kinds[0]], 'workstream') + ' ' + kinds[0] : kinds.map((k) => counts[k] + ' ' + k).join(' · ');
       return `<div class="mix">
           <div class="mix-head"><span>${pct > 0 ? '<b>' + pct + '%</b> done' : '<b>Not started</b>'}</span><span>${escapeHtml(mixLine + ' · ' + plural(tasks, 'task'))}</span></div>
           <div class="bar" role="img" aria-label="${escapeHtml(pct + '% done')}"><span style="width:${pct}%"></span></div>
@@ -1163,7 +1165,7 @@
 
     var renderEmptyCard = (mode) => {
       var errored = mode === 'error';
-      return `<article class="wcard ox-card ox-surface" data-scaffold-card data-edge="${errored ? 'red' : 'mute'}">
+      return `<article class="wcard ox-card ox-surface ox-enter" data-scaffold-card data-edge="${errored ? 'red' : 'mute'}">
           <div class="hd"${errored ? ' data-tone="red"' : ''}>${window.OrgXIcons.icon(errored ? 'failed' : 'initiative', 18)}<span class="kind">${errored ? 'Couldn’t load' : 'Initiative'}</span></div>
           <div class="bd" style="padding-bottom:16px">
             <h2 class="pk-q">${errored ? 'The scaffold could not load' : 'Nothing scaffolded yet'}</h2>
@@ -1199,7 +1201,7 @@
       var milestoneTotal = sections.reduce((n, s) => n + ((s.milestones || []).length), 0);
 
       injectHtml(`
-        <article class="wcard ox-card ox-surface" data-scaffold-card data-edge="${view.edge}" data-scaffold-header>
+        <article class="wcard ox-card ox-surface ox-enter" data-scaffold-card data-edge="${view.edge}" data-scaffold-header>
           <div class="hd" data-scaffold-glyph${view.edge !== 'mute' ? ' data-tone="' + view.edge + '"' : ''}>
             ${window.OrgXIcons.icon('initiative', 18)}
             <span class="kind" data-scaffold-kicker>${escapeHtml(view.kind)}</span>

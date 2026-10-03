@@ -8,7 +8,9 @@
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/components/domain-accent.css" />
-  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/kit/ox-elements-core.js"></script>
+  <script src="shared/kit/ox-elements-footer.js"></script>
+  <script src="shared/kit/ox-elements-avatar.js"></script>
   <script src="shared/agent-identity.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/orgx-icons.js"></script>
@@ -189,7 +191,12 @@
       .pulse-list-trailing { display: flex; align-items: center; gap: 10px; color: var(--ox-text-muted); }
       .pulse-list-trailing > svg { width: 14px; height: 14px; }
       .pulse-meta-separator { padding: 0 5px; }
-      .pulse-meta-pct { display: none; font-variant-numeric: tabular-nums; }
+      .pulse-meta-pct, .pulse-meta-status { display: none; font-variant-numeric: tabular-nums; }
+      .pulse-meta-status { font-weight: 600; color: var(--ox-text-2); }
+      .pulse-meta-status .pulse-meta-separator { font-weight: 400; color: var(--ox-text-muted); }
+      .pulse-meta-status[data-tone="good"] { color: var(--ox-teal); }
+      .pulse-meta-status[data-tone="warning"] { color: var(--ox-warning); }
+      .pulse-meta-status[data-tone="danger"] { color: var(--ox-danger); }
       .pulse-bar { width: 64px; height: 6px; border-radius: 3px; background: var(--ox-skeleton, rgba(127,127,127,0.14)); overflow: hidden; flex: none; }
       .pulse-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--ox-text-2); }
       .pulse-bar[data-tone="danger"] > span { background: var(--ox-danger); }
@@ -239,7 +246,9 @@
         .pulse-tile { width: 34px; height: 34px; }
         .pulse-calm { grid-template-columns: 34px minmax(0, 1fr); padding: 16px 16px 6px; }
         .pulse-bar, .pulse-pct { display: none; }
-        .pulse-meta-pct { display: inline; }
+        .pulse-meta-pct, .pulse-meta-status { display: inline; }
+        .has-chip .pulse-list-trailing ox-state-chip { display: none; }
+        .has-chip { grid-template-columns: 32px minmax(0, 1fr); }
         .pulse-list-row { gap: 10px; }
         .pulse-rail { gap: 0; margin: 0 -6px; }
         .pulse-rail-button { padding: 0 6px; gap: 5px; font-size: 12.5px; }
@@ -930,6 +939,11 @@
           .replace(TOOL_TAIL, "")
           .replace(TOOL_LEAD, function (_, tool) { return "Check " + toolWords(tool); })
           .replace(TOOL_ID, toolWords);
+        // Raw ids are not words: "initiative 0f6c…" reads "this initiative".
+        var uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+        text = text
+          .replace(new RegExp("\\b(initiative|workstream|task|milestone|decision|artifact|run)\\s+" + uuid + "\\b", "gi"), function (_, type) { return "this " + type.toLowerCase(); })
+          .replace(new RegExp("(?<![/=?&#-])\\b" + uuid + "\\b", "gi"), "a linked record");
         return text.replace(/\s{2,}/g, " ").replace(/\s+([.,;:!?])/g, "$1").trim();
       };
 
@@ -1114,6 +1128,13 @@
         else if (key === "ready" || key === "planned" || key === "pending" || key === "not_started") { state = "queued"; label = key === "ready" ? "Ready" : "Planned"; }
         else if (key === "paused") { state = "handed_off"; label = "Paused"; }
         return { state: state, label: label };
+      };
+      // At phone width the chip column costs the title half its line; the
+      // status moves into the meta line as one coloured word instead.
+      var statusWord = function (status, blockerCount, kind) {
+        var spec = chipSpec(status, blockerCount, kind);
+        var tone = spec.state === "blocked" || spec.state === "failed_step" ? "danger" : spec.state === "needs_you" || spec.state === "stale" ? "warning" : spec.state === "running" || spec.state === "succeeded" ? "good" : "";
+        return '<span class="pulse-meta-status"' + (tone ? ' data-tone="' + tone + '"' : "") + ">" + escapeHtml(spec.label || titleCase(status || "")) + '<span class="pulse-meta-separator">·</span></span>';
       };
       var chipFor = function (status, blockerCount, kind) {
         var spec = chipSpec(status, blockerCount, kind);
@@ -1306,7 +1327,7 @@
             .map(function (stream) {
               var tone = toneForStatus(stream.status, stream.progress_pct, stream.blocker_count);
               var pct = Math.max(0, Math.min(100, Math.round(Number(stream.progress_pct) || 0)));
-              var meta = '<span class="pulse-meta-pct">' + pct + '%<span class="pulse-meta-separator">·</span></span>' + joinMeta([
+              var meta = statusWord(stream.status, stream.blocker_count, "stream") + '<span class="pulse-meta-pct">' + pct + '%<span class="pulse-meta-separator">·</span></span>' + joinMeta([
                 stream.agent_name ? "<b>" + escapeHtml(stream.agent_name) + "</b>" : "",
                 stream.blocker_count ? '<span class="tone-danger">' + escapeHtml(plural(stream.blocker_count, "blocker")) + "</span>" : "",
                 stream.summary ? escapeHtml(stream.summary) : "",
@@ -1317,7 +1338,8 @@
                 "",
                 stream.title,
                 meta,
-                renderProgressBar(pct, tone) + chipFor(stream.status, stream.blocker_count, "stream")
+                renderProgressBar(pct, tone) + chipFor(stream.status, stream.blocker_count, "stream"),
+                "has-chip"
               );
             })
             .join("") +
@@ -1434,9 +1456,9 @@
                 icon("artifact"),
                 tone,
                 artifact.title,
-                meta,
+                statusWord(artifact.status, 0, "artifact") + meta,
                 chipFor(artifact.status, 0, "artifact"),
-                "pulse-artifact-row" + (key === "in_review" || key === "draft" ? " is-review" : "")
+                "has-chip pulse-artifact-row" + (key === "in_review" || key === "draft" ? " is-review" : "")
               );
             })
             .join("") +
@@ -1773,7 +1795,7 @@
               "</div>" +
               '<div class="pulse-shell">' +
                 '<div class="pulse-hero">' +
-                  '<span class="pulse-tile" data-tone="' + tileTone + '"><ox-glyph kind="initiative"></ox-glyph></span>' +
+                  '<span class="pulse-tile" data-tone="' + tileTone + '">' + window.OrgXIcons.icon("initiative", 20) + "</span>" +
                   '<div class="pulse-copy">' +
                     '<span class="pulse-kicker">Initiative · <b' + (statusTone ? ' data-tone="' + statusTone + '"' : "") + ">" + escapeHtml(titleCase(pulse.status || "active")) + "</b></span>" +
                     '<h1 class="pulse-title">' + escapeHtml(pulse.name) + "</h1>" +

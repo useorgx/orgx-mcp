@@ -687,7 +687,7 @@
         var edge = isComplete ? 'teal' : guidance.phase === 'failed' ? 'red' : 'amber';
 
         content.innerHTML =
-          '<article class="wcard ox-surface" data-plan-status="' + plan.status + '" data-edge="' + edge + '">' +
+          '<article class="wcard ox-surface' + (state.entered ? '' : ' ox-enter') + '" data-plan-status="' + plan.status + '" data-edge="' + edge + '">' +
             '<div class="hd" data-tone="' + (isComplete ? 'teal' : 'amber') + '">' +
               window.OrgXIcons.icon('plan', 18) +
               '<span class="kind">Plan</span>' +
@@ -728,6 +728,7 @@
             renderFooter(plan) +
           '</article>';
 
+        state.entered = true;
         bindInteractions();
         window.OrgXWidgetRuntime.reportSize();
       }
