@@ -24,9 +24,41 @@ export interface EntityLink {
 }
 
 /**
- * Entity type to URL path mapping
+ * Agent desks live at /command/agents/:slug, keyed by the agent's short name.
+ * Accepts the key itself, a display name, or the agent's domain.
  */
-function getEntityPath(
+const AGENT_SLUGS = ['pace', 'eli', 'mark', 'sage', 'orion', 'dana', 'xandy'] as const;
+const AGENT_SLUG_BY_DOMAIN: Readonly<Record<string, string>> = {
+  product: 'pace',
+  engineering: 'eli',
+  marketing: 'mark',
+  sales: 'sage',
+  operations: 'orion',
+  design: 'dana',
+  orchestrator: 'xandy',
+};
+
+export function resolveAgentSlug(agentId: string): string | null {
+  const key = agentId
+    .trim()
+    .toLowerCase()
+    .replace(/^orgx[-_]/, '')
+    .replace(/[-_]agent$/, '');
+  if ((AGENT_SLUGS as readonly string[]).includes(key)) return key;
+  return AGENT_SLUG_BY_DOMAIN[key] ?? null;
+}
+
+const enc = encodeURIComponent;
+
+/**
+ * Entity type to URL path mapping.
+ *
+ * Every path here must resolve to a real page in the OrgX app (not a redirect)
+ * and only carry query params that page reads; tests/deepLinksRoutes.spec.ts
+ * checks this against tests/fixtures/orgx-app-routes.json. The widget runtime
+ * (OrgXWidgetRuntime.links) uses the same mapping.
+ */
+export function getEntityPath(
   entityType: string,
   entityId: string,
   opts: EntityLinkOptions = {}
@@ -34,68 +66,63 @@ function getEntityPath(
   const type =
     normalizeDeeplinkEntityType(entityType) ??
     entityType.toLowerCase().replace(/-/g, '_');
+  const id = enc(entityId);
+  const initiativeId = opts.initiativeId ? enc(opts.initiativeId) : null;
 
   switch (type) {
     case 'initiative':
-      // Canonical initiative live route (server redirects to mission control query view).
-      return `/live/${entityId}`;
+      return `/initiatives/${id}`;
     case 'project':
-      return `/projects/${entityId}`;
-    case 'task':
-      return opts.initiativeId
-        ? `/live/${opts.initiativeId}?task=${entityId}`
-        : `/live?view=mission-control&task=${entityId}`;
-    case 'milestone':
-      return opts.initiativeId
-        ? `/live/${opts.initiativeId}?milestone=${entityId}`
-        : `/live?view=mission-control&milestone=${entityId}`;
+      return `/projects/${id}`;
     case 'workstream':
-      return opts.initiativeId
-        ? `/live/${opts.initiativeId}?workstream=${entityId}`
-        : `/live?view=mission-control&workstream=${entityId}`;
-    case 'objective':
-      return `/settings/goals?objective=${entityId}`;
+      return initiativeId
+        ? `/live/${initiativeId}?workstream=${id}`
+        : `/workstreams/${id}`;
+    case 'task':
+      return initiativeId ? `/live/${initiativeId}?task=${id}` : `/tasks/${id}`;
+    case 'milestone':
+      return `/milestones/${id}`;
+    case 'decision':
+      return `/decisions/${id}`;
+    case 'artifact':
+      return `/artifacts/${id}`;
     case 'run':
     case 'agent_run':
-      return `/agents/runs/${entityId}`;
+      return `/runs/${id}`;
     case 'session':
-      return `/agents/sessions/${entityId}`;
-    case 'decision':
-      return opts.initiativeId
-        ? `/initiatives/${opts.initiativeId}?focus=decisions&decision=${entityId}`
-        : `/decisions/${entityId}`;
-    case 'artifact':
-      return `/artifacts/${entityId}`;
-    case 'workflow':
-      return `/workflows/${entityId}`;
-    case 'playbook':
-      return `/playbooks/${entityId}`;
-    case 'skill':
-      return `/settings/skills?skill=${entityId}`;
+      return initiativeId
+        ? `/live/${initiativeId}?session=${id}`
+        : `/live?view=mission-control&session=${id}`;
+    case 'blocker':
+      // Blockers have no page of their own; open the run they block.
+      return opts.runId ? `/runs/${enc(opts.runId)}` : '/command';
+    case 'agent': {
+      const slug = resolveAgentSlug(entityId);
+      return slug ? `/command/agents/${slug}` : '/command/agents';
+    }
     case 'plan_session':
-      return `/planning/sessions/${entityId}`;
+      return initiativeId
+        ? `/initiatives/${initiativeId}`
+        : `/live?view=mission-control&session=${id}`;
+    case 'objective':
+      return `/goals?objective=${id}`;
     case 'command_center':
     case 'workspace':
-      return `/command?center=${entityId}`;
-    case 'blocker':
-      return opts.runId
-        ? `/agents/runs/${opts.runId}?blocker=${entityId}`
-        : `/blockers/${entityId}`;
-    case 'agent':
-      return `/settings/agents?agent=${entityId}`;
+      return `/command?center=${id}`;
     case 'live':
     case 'live_ops':
     case 'live_operations':
       // Live operations view with optional initiative/session context
-      if (opts.initiativeId) {
-        return `/live/${opts.initiativeId}`;
+      if (initiativeId) {
+        return `/live/${initiativeId}`;
       }
       if (entityId && entityId !== 'default') {
-        return `/live/${entityId}`;
+        return `/live/${id}`;
       }
       return '/live?view=mission-control';
     default:
-      return `/${type}s/${entityId}`;
+      // workflow, playbook, skill and anything else have no page in the app.
+      return '/command';
   }
 }
 
@@ -112,7 +139,8 @@ export function buildLiveUrl(
   if (sessionId) params.set('session', sessionId);
   for (const [key, value] of Object.entries(query)) {
     if (typeof value === 'string' && value.length > 0) {
-      params.set(key, value);
+      // The live view scopes by `center`; it does not read `workspace`.
+      params.set(key === 'workspace' ? 'center' : key, value);
     }
   }
 
@@ -120,8 +148,8 @@ export function buildLiveUrl(
   if (initiativeId) {
     const queryString = params.toString();
     path = queryString
-      ? `/live/${initiativeId}?${queryString}`
-      : `/live/${initiativeId}`;
+      ? `/live/${enc(initiativeId)}?${queryString}`
+      : `/live/${enc(initiativeId)}`;
   } else {
     params.set('view', 'mission-control');
     const queryString = params.toString();

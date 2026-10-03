@@ -37,6 +37,7 @@
     "pretype-check": "pnpm widget:build && pnpm widget:theme && pnpm widget:version",
     "pretest": "pnpm widget:build && pnpm widget:theme && pnpm widget:version",
     "type-check": "tsc --noEmit",
+    "app:routes": "node scripts/generate-app-routes.mjs",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:openai-review": "vitest run tests/openaiSubmissionReadiness.spec.ts tests/openaiOutputSchemas.spec.ts tests/submissionProfileLocalSideEffects.spec.ts tests/toolCatalogContractParity.spec.ts tests/openaiAppsChallenge.spec.ts tests/standardOutputSchema.spec.ts tests/widgetConfig.spec.ts tests/reviewerDeploymentConfig.spec.ts tests/mcpOriginValidation.spec.ts tests/requestToolProfile.spec.ts tests/profileDiscoveryPolicy.spec.ts tests/surfaceContract.spec.ts",

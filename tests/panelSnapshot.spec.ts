@@ -157,7 +157,7 @@ describe('buildPanelSnapshot', () => {
     expect(snapshot.queue.map((item) => item.id)).toEqual([D2, D3, D1]);
     expect(snapshot.attention).toEqual({ pending: 4, oldest_at: '2026-09-20T10:00:00.000Z', blocking: false });
     expect(snapshot.focus?.id).toBe(D2);
-    expect(snapshot.focus?.url).toBe(`https://useorgx.com/initiatives/${INIT}?focus=decisions&decision=${D2}`);
+    expect(snapshot.focus?.url).toBe(`https://useorgx.com/decisions/${D2}`);
     expect(snapshot.selection).toEqual({ requested_id: null, status: 'default' });
   });
 
@@ -298,7 +298,7 @@ describe('buildPanelSnapshot', () => {
     });
     expect(snapshot.queue.map((item) => [item.title, item.kind, item.url])).toEqual([
       ['send_email (gmail.send)', 'action', 'https://useorgx.com/decisions?status=pending'],
-      ['Resume the import run?', 'approval', `https://useorgx.com/agents/runs/${RUN}`],
+      ['Resume the import run?', 'approval', `https://useorgx.com/runs/${RUN}`],
     ]);
     expect(snapshot.focus).toMatchObject({ id: ACTION, kind: 'action', question: 'send_email (gmail.send)' });
     expect(snapshot.focus!.widget_actions!.labels.reject).toBe('Deny');
