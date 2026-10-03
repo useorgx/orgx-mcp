@@ -8,7 +8,10 @@
   <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
-  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/kit/ox-elements-core.js"></script>
+  <script src="shared/kit/ox-elements-footer.js"></script>
+  <script src="shared/kit/ox-elements-avatar.js"></script>
+  <script src="shared/orgx-icons.js"></script>
   <script src="shared/agent-identity.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
@@ -126,22 +129,16 @@
       color: var(--ox-text-muted);
     }
 
-    .ec-hd ox-glyph { --ox-glyph-size: 16px; flex: none; }
+    .ec-hd .ox-icon { flex: none; color: var(--ox-text-muted); }
+    .ec-hd[data-tone='amber'] .ox-icon { color: var(--ox-warning); }
 
     .ec-kind {
       flex: none;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      font-size: var(--ox-type-label-size);
+      font-weight: 500;
     }
 
-    .ec-asof {
-      margin-left: auto;
-      flex: none;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
+    .ec-hd ox-state-chip { margin-left: auto; }
 
     .ec-bd {
       display: flex;
@@ -223,14 +220,38 @@
 
     .ec-lbl {
       margin: 0;
-      font-family: var(--ox-mono);
-      font-size: 10.5px;
-      font-weight: 600;
-      line-height: 1.2;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
+      font-size: var(--ox-type-label-size);
+      font-weight: 500;
+      line-height: 1.3;
       color: var(--ox-text-muted);
     }
+
+    /* Proof counts: what the record holds, one line, each with its icon. */
+    .ec-counts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 18px;
+      margin: 2px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .ec-counts li {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      font-size: 13.5px;
+      color: var(--ox-text-muted);
+    }
+
+    .ec-counts b {
+      color: var(--ox-text);
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ec-counts .ox-icon { color: var(--ox-text-muted); }
 
     .ec-linked {
       margin: 0;
@@ -250,7 +271,8 @@
 
     .ec-linked li:first-child { border-top: 0; }
 
-    .ec-linked ox-glyph { --ox-glyph-size: 16px; justify-self: center; }
+    .ec-linked .ox-icon { justify-self: center; color: var(--ox-text-muted); }
+    .ec-linked [data-icon='decision'] { color: var(--ox-warning); }
 
     .ec-linked .t {
       overflow: hidden;
@@ -302,6 +324,11 @@
       color: var(--ox-text);
     }
 
+    .ec-empty .ox-icon {
+      margin-bottom: 4px;
+      color: var(--ox-text-muted);
+    }
+
     .ec-sk {
       display: block;
       height: 12px;
@@ -325,9 +352,13 @@
     <article class="ec ox-surface" aria-busy="true" aria-label="Loading">
       <div class="ec-hd"><span class="ec-sk" style="width:90px"></span></div>
       <div class="ec-bd">
-        <span class="ec-sk" style="height:20px;width:70%"></span>
+        <span class="ec-sk" style="height:22px;width:70%"></span>
         <span class="ec-sk" style="width:92%"></span>
-        <span class="ec-sk" style="width:60%"></span>
+        <span class="ec-sk" style="width:46%"></span>
+        <span class="ec-sk" style="height:36px;width:80%;margin-top:10px"></span>
+        <span class="ec-sk" style="width:30%;margin-top:6px"></span>
+        <span class="ec-sk" style="width:64%"></span>
+        <span class="ec-sk" style="width:52%"></span>
       </div>
       <ox-footer variant="reads" state="loading"></ox-footer>
     </article>
@@ -468,11 +499,6 @@
     var hhmm = function (date) {
       return date ? window.OrgXTime.when(date) : '';
     };
-    // The header has less room: the clock today, else just the date ("Sep 30").
-    var shortAsOf = function (date) {
-      if (!date) return '';
-      return new Date().toDateString() === new Date(date).toDateString() ? window.OrgXTime.clock(date) : window.OrgXTime.day(date);
-    };
 
     var humanize = function (value) {
       return String(value || '').replace(/_/g, ' ');
@@ -483,12 +509,24 @@
       return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
     };
 
-    var GLYPHS = ['goal', 'initiative', 'workstream', 'milestone', 'task', 'run', 'decision', 'question', 'artifact', 'receipt'];
-    var glyphKind = function (type) {
-      var t = String(type || '').toLowerCase();
-      if (t === 'objective') return 'goal';
-      if (t === 'agent_run') return 'run';
-      return GLYPHS.indexOf(t) === -1 ? 'artifact' : t;
+    // One icon family (OrgXIcons) for entity types; unknown types read as artifacts.
+    var iconFor = function (type, size) {
+      var icons = window.OrgXIcons;
+      return icons ? icons.icon(icons.forEntity(type) || 'artifact', size || 16) : '';
+    };
+
+    // ISO dates in facts ("2026-10-03") read in the viewer's words: Today,
+    // Tomorrow, Yesterday, else "Oct 3". Parsed as a local calendar day.
+    var factValue = function (value) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').trim());
+      if (!m) return value;
+      var date = new Date(+m[1], +m[2] - 1, +m[3]);
+      var today = new Date();
+      var days = Math.round((date - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 864e5);
+      if (days === 0) return 'Today';
+      if (days === 1) return 'Tomorrow';
+      if (days === -1) return 'Yesterday';
+      return window.OrgXTime.day(date);
     };
 
     var isUuid = function (value) {
@@ -564,6 +602,21 @@
       return 'unverified';
     };
 
+    // A proof row whose value is a count ("5") reads as a count, not a verdict.
+    var isCount = function (row) {
+      return row && row.label !== 'Evaluation' && /^\d+$/.test(String(row.value || '').trim());
+    };
+    var COUNT_ICON = { decision: 'decision', artifact: 'artifact', check: 'done', task: 'task', run: 'run' };
+    var countsHtml = function (rows) {
+      if (!rows.length) return '';
+      return '<ul class="ec-counts">' + rows.map(function (row) {
+        var icon = window.OrgXIcons ? window.OrgXIcons.icon(COUNT_ICON[row.kind] || 'artifact', 15) : '';
+        var label = String(row.label || '');
+        if (row.value === '1') label = label.replace(/s$/, '');
+        return '<li data-kind="' + escapeHtml(row.kind || 'neutral') + '">' + icon + '<b>' + escapeHtml(row.value) + '</b> ' + escapeHtml(label.toLowerCase()) + '</li>';
+      }).join('') + '</ul>';
+    };
+
     var attrs = function (map) {
       return Object.keys(map).map(function (key) {
         var value = map[key];
@@ -612,9 +665,11 @@
         return '<ox-footer variant="confirms-in-orgx" state="needs-you" heading="Needs your ruling"' +
           ' detail="approve or reject" primary-label="Decide in OrgX' + link + '"></ox-footer>';
       }
+      // Relative age first ("Updated 3d ago"), the exact local time under it.
       var asOf = view.liveAsOf || view.chatAsOf;
-      return '<ox-footer variant="reads" state="fresh" heading="' + escapeHtml(asOf ? 'As of ' + hhmm(asOf) : 'From this request') + '"' +
-        ' detail="' + escapeHtml(titleCase(card.type)) + '"' +
+      return '<ox-footer variant="reads" state="fresh" heading="' +
+        escapeHtml(asOf ? 'Updated ' + window.OrgXTime.relative(asOf, { inline: true }) : 'From this request') + '"' +
+        ' detail="' + escapeHtml(asOf ? hhmm(asOf) : '') + '"' +
         (url ? ' action-label="Open in OrgX' + link + '"' : ' action-label=""') + '></ox-footer>';
     };
 
@@ -636,7 +691,7 @@
       if (!card) {
         content.innerHTML =
           '<article class="ec ox-surface" aria-label="OrgX">' +
-          '<div class="ec-empty">' +
+          '<div class="ec-empty">' + (window.OrgXIcons ? window.OrgXIcons.icon('search', 22) : '') +
           '<b>Nothing to show here</b>' +
           '<span>This result did not carry an entity to display. Search for the ' +
           'initiative, task, or artifact you meant and open it again.</span>' +
@@ -659,7 +714,7 @@
             var owner = fact.label === 'Owner'
               ? window.OrgXAgentIdentity.agentCard({ agent: agentFor(fact.value) || fact.value, name: fact.value, size: 'inline', state: chip ? chip.state : '', task: card.title })
               : '';
-            return '<div><dt>' + escapeHtml(fact.label) + '</dt><dd>' + owner + escapeHtml(fact.value) + '</dd></div>';
+            return '<div><dt>' + escapeHtml(fact.label) + '</dt><dd>' + owner + escapeHtml(factValue(fact.value)) + '</dd></div>';
           }).join('') + '</dl>'
         : '';
 
@@ -669,8 +724,9 @@
           // The verdict chip only speaks when it says something the status does not.
           (chip && chip.state === VERDICT[verdict].state ? '<span class="ec-verdict" data-verdict="' + escapeHtml(verdict) + '" hidden></span>' : '<ox-state-chip class="ec-verdict" data-verdict="' + escapeHtml(verdict) + '"' +
           attrs({ state: VERDICT[verdict].state, label: VERDICT[verdict].label, reserve: 'verifying needs_you succeeded' }) + '></ox-state-chip>') + '</div>' +
-          '<div role="list">' +
-          asArray(proof.rows).map(function (row) {
+          countsHtml(asArray(proof.rows).filter(isCount)) +
+          (asArray(proof.rows).some(function (row) { return !isCount(row); }) ? '<div role="list">' : '<div>') +
+          asArray(proof.rows).filter(function (row) { return !isCount(row); }).map(function (row) {
             return '<ox-receipt-row' + attrs({
               'data-kind': row.kind || 'neutral',
               status: proofStatus(row, verdict),
@@ -685,7 +741,7 @@
         ? '<section class="ec-section ec-related" aria-label="Linked"><div class="ec-section__hd"><p class="ec-lbl">Linked</p></div>' +
           '<ul class="ec-linked">' +
           related.map(function (item) {
-            return '<li><ox-glyph kind="' + glyphKind(item.type) + '"></ox-glyph>' +
+            return '<li>' + iconFor(item.type) +
               '<span class="t">' + escapeHtml(item.title) + '</span>' +
               '<span class="k">' + escapeHtml(titleCase(item.type)) + '</span></li>';
           }).join('') +
@@ -695,12 +751,11 @@
       content.innerHTML =
         '<article class="ec ox-surface" data-edge="' + edge + '" data-waiting="' + (view.ruling === 'waiting') + '" aria-label="OrgX ' + escapeHtml(humanize(card.type)) + '">' +
         stripHtml() +
-        '<div class="ec-hd"><ox-glyph kind="' + glyphKind(card.type) + '"' + (chip && chip.edge === 'amber' ? ' tone="amber"' : '') + '></ox-glyph>' +
-        '<span class="ec-kind">' + escapeHtml(humanize(card.type)) + '</span>' +
+        '<div class="ec-hd"' + (chip && chip.edge === 'amber' ? ' data-tone="amber"' : '') + '>' + iconFor(card.type) +
+        '<span class="ec-kind">' + escapeHtml(titleCase(card.type)) + '</span>' +
         (chip
           ? '<ox-state-chip class="ec-status"' + attrs({ state: chip.state, label: chip.label, reserve: card.type === 'decision' ? 'needs_you handed_off' : '' }) + '></ox-state-chip>'
           : '') +
-        (asOf ? '<span class="ec-asof">' + (view.strip === 'degraded' ? 'snapshot ' : 'as of ') + escapeHtml(shortAsOf(asOf)) + '</span>' : '') +
         '</div>' +
         '<div class="ec-bd"><div class="ec-dim-wrap ec-body-dim">' +
         '<h1 class="ec-title">' + escapeHtml(card.title) + '</h1>' +
