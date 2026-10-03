@@ -447,19 +447,22 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 55404,
-      "hash": "51073468a3dc",
+      "bytes": 58304,
+      "hash": "a7f524672c8b",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-avatar.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
         "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
         "shared/widget-state.js",
@@ -470,11 +473,12 @@
         "ox-state-chip",
         "ox-receipt-row",
         "ox-footer",
-        "ox-glyph",
         "ox-avatar"
       ],
       "kitBundles": [
-        "shared/kit/ox-elements.js"
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-avatar.js"
       ],
       "demoOnly": false
     },

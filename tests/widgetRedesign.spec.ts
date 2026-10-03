@@ -38,8 +38,8 @@ describe("OrgX compact widget redesign", () => {
     expect(html).toContain("variant: 'queues-work'");
     expect(html).toContain("<ox-receipt-row");
     expect(html).toContain("<ox-state-chip");
-    expect(html).toContain("Receipt");
-    expect(html).toContain("The execution link remains the proof boundary.");
+    expect(html).toContain("label: 'Run ' + shortId");
+    expect(html).toContain('class="ts-link"');
     expect(html).toContain("Execution complete");
     expect(html).toContain("replacement itself must be atomic");
     expect(html).not.toContain("skeleton.style.opacity = '0'");
