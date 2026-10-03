@@ -154,8 +154,8 @@
     },
     "entity-card": {
       "file": "public/widgets/entity-card.html",
-      "bytes": 34667,
-      "hash": "cc8bf6151cad",
+      "bytes": 34958,
+      "hash": "211229fb2c64",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",

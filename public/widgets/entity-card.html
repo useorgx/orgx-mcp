@@ -468,6 +468,11 @@
     var hhmm = function (date) {
       return date ? window.OrgXTime.when(date) : '';
     };
+    // The header has less room: the clock today, else just the date ("Sep 30").
+    var shortAsOf = function (date) {
+      if (!date) return '';
+      return new Date().toDateString() === new Date(date).toDateString() ? window.OrgXTime.clock(date) : window.OrgXTime.day(date);
+    };
 
     var humanize = function (value) {
       return String(value || '').replace(/_/g, ' ');
@@ -695,7 +700,7 @@
         (chip
           ? '<ox-state-chip class="ec-status"' + attrs({ state: chip.state, label: chip.label, reserve: card.type === 'decision' ? 'needs_you handed_off' : '' }) + '></ox-state-chip>'
           : '') +
-        (asOf ? '<span class="ec-asof">' + (view.strip === 'degraded' ? 'snapshot ' : 'as of ') + escapeHtml(hhmm(asOf)) + '</span>' : '') +
+        (asOf ? '<span class="ec-asof">' + (view.strip === 'degraded' ? 'snapshot ' : 'as of ') + escapeHtml(shortAsOf(asOf)) + '</span>' : '') +
         '</div>' +
         '<div class="ec-bd"><div class="ec-dim-wrap ec-body-dim">' +
         '<h1 class="ec-title">' + escapeHtml(card.title) + '</h1>' +
