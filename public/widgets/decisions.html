@@ -116,6 +116,7 @@
     .dq-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 8px 0 20px; }
     /* OrgX links are the shared .ox-open (44px, text colour, open-external icon). */
     .dq-head-link { margin-right: 8px; }
+    .dq-head-link .short, .dq-narrow { display: none; }
     .dq-head [slot="meta"] { font: 500 12px/1.3 var(--ox-font); font-variant-numeric: tabular-nums; }
 
     .dq-body { padding: 20px 24px 22px; display: flex; flex-direction: column; gap: 18px; }
@@ -356,8 +357,10 @@
       .dq-cons { grid-template-columns: minmax(0, 1fr); gap: 10px; }
       .dq-head { --ox-attention-padding: 0 4px 0 16px; }
       .dq-status .ctx-wrap { display: none; }
-      .dq-row .long, .dq-head-link .long { display: none; }
-      /* Phone: the header link is its icon in a 44px target. */
+      .dq-row .long, .dq-head-link .long, .dq-wide { display: none; }
+      /* Phone: the header link keeps a short visible label, "OrgX ↗" (44px target),
+         and the scope phrase shortens so the line stays one line at 375. */
+      .dq-head-link .short, .dq-narrow { display: inline; }
       .dq-head-link { min-width: 44px; justify-content: center; }
       .dq-row { padding: 10px 12px; }
     }
@@ -2466,8 +2469,8 @@
       const sentence = label || scopeLabel(pendingCount) || (pendingCount ? `${pendingCount} need${pendingCount === 1 ? 's' : ''} your decision` : '');
       return `<div class="dq-head">
         <ox-attention-line id="dqAttention" tone="${tone || (pendingCount ? 'needs-you' : 'calm')}" count="${tone && !pendingCount ? 1 : pendingCount}">${
-          sentence ? `<span>${escapeHtml(sentence)}</span>` : ''}${
-          syncedAt ? `<span slot="meta">${window.OrgXTime.html(syncedAt, 'synced')}</span>` : ''}<a slot="action" id="queueDecisionsLink" class="dq-head-link ox-open" ${linkAttrs(decisionsUrl)} aria-label="All decisions in OrgX"><span class="long">All in OrgX</span></a></ox-attention-line>
+          sentence ? `<span>${escapeHtml(sentence).replace(/ across the workspace$/, '<span class="dq-wide"> across the workspace</span><span class="dq-narrow"> in workspace</span>')}</span>` : ''}${
+          syncedAt ? `<span slot="meta">${window.OrgXTime.html(syncedAt, 'synced')}</span>` : ''}<a slot="action" id="queueDecisionsLink" class="dq-head-link ox-open" ${linkAttrs(decisionsUrl)} aria-label="All decisions in OrgX" title="All decisions in OrgX"><span class="long">All in OrgX</span><span class="short">OrgX</span></a></ox-attention-line>
       </div>`;
     };
 

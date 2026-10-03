@@ -318,7 +318,15 @@ describe('B4 · short headlines', () => {
       callTool: vi.fn(() => Promise.resolve({})),
     });
     await vi.waitFor(() => expect(document.querySelector('#dqAttention')).not.toBeNull());
-    expect(document.querySelector('#dqAttention > span:not([slot])')!.textContent).toBe('1 here · 25 across the workspace');
+    // The wide sentence, and its phone form (one line at 375 next to the "OrgX ↗" link).
+    const sentence = document.querySelector('#dqAttention > span:not([slot])')!;
+    const variant = (hide: string) => {
+      const copy = sentence.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll(hide).forEach((el) => el.remove());
+      return copy.textContent;
+    };
+    expect(variant('.dq-narrow')).toBe('1 here · 25 across the workspace');
+    expect(variant('.dq-wide')).toBe('1 here · 25 in workspace');
     expect(document.querySelector('.dq-more')!.textContent).toContain('24 more across the workspace in OrgX');
   });
 

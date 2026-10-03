@@ -973,23 +973,23 @@ button[data-oxhref]:not(.foot-link){background:none;border:none;padding:0;font:i
   /* ── Demo mode: simulate scaffold stream without SSE ── */
   function runDemo() {
     var DEMO = [
-      {type:'session.start', title:'Operation Prism: Real-Time MCP Widgets'},
-      {type:'entity.created', entityType:'initiative', total:18, entity:{title:'Operation Prism: Real-Time MCP Widgets'}},
-      {type:'entity.created', entityType:'workstream', total:18, entity:{title:'SSE Infrastructure', domain:'engineering'}},
-      {type:'entity.created', entityType:'milestone',  total:18, entity:{title:'LiveFeedDO shipped'}},
-      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Alarm-based polling (10s cycle)'}},
-      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Secure stream tokens (HMAC-SHA256)'}},
-      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Fan-out to EventSource clients'}},
-      {type:'entity.created', entityType:'workstream', total:18, entity:{title:'Widget Polish', domain:'design'}},
-      {type:'entity.created', entityType:'milestone',  total:18, entity:{title:'Production visual parity'}},
-      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Card layout + WBS badges'}},
-      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Radial progress rings'}},
-      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Domain avatar images'}},
+      {type:'session.start', title:'Spring launch: live progress in chat'},
+      {type:'entity.created', entityType:'initiative', total:18, entity:{title:'Spring launch: live progress in chat'}},
+      {type:'entity.created', entityType:'workstream', total:18, entity:{title:'Live updates', domain:'engineering'}},
+      {type:'entity.created', entityType:'milestone',  total:18, entity:{title:'Changes show up within seconds'}},
+      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Check for changes every 10 seconds'}},
+      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Keep each live link private to its owner'}},
+      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Send updates to every open view'}},
+      {type:'entity.created', entityType:'workstream', total:18, entity:{title:'Card polish', domain:'design'}},
+      {type:'entity.created', entityType:'milestone',  total:18, entity:{title:'Cards match the OrgX app'}},
+      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Lay out cards and labels'}},
+      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Show progress at a glance'}},
+      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Add agent headshots'}},
       {type:'entity.created', entityType:'workstream', total:18, entity:{title:'Go-to-Market', domain:'marketing'}},
       {type:'entity.created', entityType:'milestone',  total:18, entity:{title:'Product Hunt launch'}},
-      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Tweet thread'}},
-      {type:'entity.created', entityType:'task',       total:18, entity:{title:'LinkedIn announcement'}},
-      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Product Hunt submission'}},
+      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Write the launch thread'}},
+      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Post the LinkedIn announcement'}},
+      {type:'entity.created', entityType:'task',       total:18, entity:{title:'Submit to Product Hunt'}},
       {type:'scaffold.complete', totalEntities:18, liveUrl:'https://useorgx.com/live/07f49477-6807-449c-b46c-5bc71a1219da'}
     ];
     var DELAYS = [500,200,450,380,360,360,360,500,420,360,360,360,500,420,360,360,360,900];

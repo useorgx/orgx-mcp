@@ -122,6 +122,7 @@
       font-size: 12px; font-weight: 600; color: var(--ox-text-muted); margin: 0 0 2px;
     }
     .ev-list { list-style: none; margin: 0; padding: 0; }
+    .ev-list[data-ox-clamped="true"] { overflow: hidden; }
     .ev-item {
       display: flex; align-items: flex-start; gap: 8px; min-height: 32px; padding: 6px 0;
       border-top: 1px solid var(--ox-border); font-size: 13.5px; overflow-wrap: anywhere;
@@ -175,13 +176,16 @@
     /* Other items in the queue. */
     .queue-head { margin: 16px 0 0; font-size: 12px; font-weight: 600; color: var(--ox-text-muted); }
     .queue { list-style: none; margin: 4px 0 0; padding: 0; }
+    /* Queue rows: the title and meta on the left, a quiet pair of decisions on
+       the right, one row tall even at 375. Both decisions stay a click here. */
     .row {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px;
       border-top: 1px solid var(--ox-border); padding: 4px 0;
     }
+    .row > :not(.row-main):not(.row-acts) { grid-column: 1 / -1; }
     .row-main {
       appearance: none; border: 0; background: none; color: inherit; font: inherit; text-align: left;
-      display: grid; gap: 1px; flex: 1 1 180px; min-width: 0; min-height: 48px; padding: 4px 8px;
+      display: grid; gap: 1px; min-width: 0; min-height: 48px; padding: 4px 8px;
       margin-left: -8px; border-radius: 10px; cursor: pointer;
     }
     .row-main:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); }
@@ -190,15 +194,21 @@
       display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
     }
     .row-meta { font-size: 12px; color: var(--ox-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .row-acts { display: flex; gap: 6px; flex: none; margin-left: auto; align-items: center; }
+    .row-acts { display: flex; gap: 2px; flex: none; align-items: center; }
+    /* 44 px targets drawn as 34 px pills: the button is the target, ::before the pill. */
     .mini {
-      appearance: none; min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 10px;
-      border: 1px solid var(--ox-border-strong); background: transparent; color: var(--ox-text);
-      font: inherit; font-size: 13px; font-weight: 650; cursor: pointer;
+      appearance: none; position: relative; isolation: isolate; min-height: 44px; min-width: 44px; padding: 0 10px;
+      border: 0; background: none; color: var(--ox-text-2, var(--ox-text));
+      font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer;
     }
-    .mini:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); }
-    .mini.approve { background: var(--ox-action); color: var(--ox-action-fg); border-color: var(--ox-action-border, transparent); }
-    .mini.approve:hover { background: var(--ox-action); filter: brightness(0.97); }
+    .mini::before { content: ""; position: absolute; inset: 5px 0; z-index: -1; border-radius: 9px; border: 1px solid transparent; transition: background-color 160ms ease; }
+    .mini:hover { color: var(--ox-text); }
+    .mini:hover::before { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); }
+    .mini.approve { color: var(--ox-text); }
+    .mini.approve::before { background: rgba(var(--ox-action-rgb, 132, 204, 22), 0.16); border-color: rgba(var(--ox-action-rgb, 132, 204, 22), 0.55); }
+    .mini.approve:hover::before { background: rgba(var(--ox-action-rgb, 132, 204, 22), 0.26); }
+    .mini:focus-visible { outline: none; }
+    .mini:focus-visible::before { outline: 2px solid var(--ox-focus, currentColor); outline-offset: 1px; }
 
     /* Options the server sent: one click records a choice; several are toggles plus Confirm. */
     .opts { display: grid; gap: 6px; margin-bottom: 10px; }
@@ -259,7 +269,11 @@
 
     @media (max-width: 420px) {
       .fact { grid-template-columns: minmax(0, 1fr); }
-      .row-acts { flex: 1 1 100%; justify-content: flex-start; margin-left: 0; }
+    }
+    /* Only when the pair can't sit beside a readable title do they drop below it. */
+    @media (max-width: 339px) {
+      .row { grid-template-columns: minmax(0, 1fr); }
+      .row-acts { justify-content: flex-start; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
@@ -337,8 +351,9 @@
     function clock(date) {
       return window.OrgXTime.clock(date);
     }
+    // One urgency vocabulary across widgets (decisions says the same): Critical, High, Normal, Low.
     function urgencyLabel(u) {
-      return u === 'critical' ? 'Urgent' : u === 'high' ? 'High' : u === 'low' ? 'Low' : 'Normal';
+      return u === 'critical' ? 'Critical' : u === 'high' ? 'High' : u === 'low' ? 'Low' : 'Normal';
     }
     function announce(text) {
       var kit = window.OrgXInteractionKit;
@@ -690,21 +705,50 @@
 
     function evidenceHtml(f) {
       if (!f.evidence.length) return '';
-      var shown = ui.evidenceOpen ? f.evidence : f.evidence.slice(0, EVIDENCE_VISIBLE);
-      var more = f.evidence.length > EVIDENCE_VISIBLE
-        ? '<button type="button" class="text-btn" data-action="evidence" aria-expanded="' + (ui.evidenceOpen ? 'true' : 'false') + '" aria-controls="ev-list">' +
-          (ui.evidenceOpen ? 'Show fewer' : 'All evidence (' + f.evidence_total + ')') + '</button>'
+      // Every row is rendered; past the first two they sit under a clamp that
+      // "All evidence" opens with a height animation (applyEvidenceClamp).
+      var clampable = f.evidence.length > EVIDENCE_VISIBLE;
+      var shown = clampable && !ui.evidenceOpen ? f.evidence.slice(0, EVIDENCE_VISIBLE) : f.evidence;
+      var more = clampable
+        ? '<button type="button" class="text-btn" data-action="evidence" data-total="' + esc(f.evidence_total) + '" aria-expanded="' + (ui.evidenceOpen ? 'true' : 'false') + '" aria-controls="ev-list">' +
+          evidenceToggleLabel(ui.evidenceOpen, f.evidence_total) + '</button>'
         : (f.evidence_total > f.evidence.length
           ? '<button type="button" class="text-btn" data-action="open" data-url="' + esc(f.url) + '">All evidence (' + f.evidence_total + ') ↗</button>'
           : '');
-      var items = shown.map(function evidenceItem(e) {
+      var items = f.evidence.map(function evidenceItem(e) {
         return '<li class="ev-item">' + ICON.doc + '<span class="ev-title">' + esc(e.title) + '</span>' +
           (e.source_url ? '<button type="button" class="ev-open" data-action="open" data-url="' + esc(e.source_url) + '" aria-label="Open ' + esc(e.title) + ' (opens in a new tab)">' + ICON.ext + '</button>' : '') + '</li>';
       }).join('');
-      var count = ui.evidenceOpen || f.evidence_total <= EVIDENCE_VISIBLE
-        ? 'Evidence (' + f.evidence_total + ')'
-        : 'Evidence (' + shown.length + ' of ' + f.evidence_total + ')';
-      return '<div class="evidence"><p class="evidence-head"><span>' + count + '</span>' + more + '</p><ul class="ev-list" id="ev-list">' + items + '</ul></div>';
+      var count = evidenceCountLabel(shown.length, f.evidence_total);
+      return '<div class="evidence"><p class="evidence-head"><span data-evidence-count>' + count + '</span>' + more + '</p><ul class="ev-list" id="ev-list">' + items + '</ul></div>';
+    }
+
+    function evidenceToggleLabel(open, total) {
+      return open ? 'Show fewer' : 'All evidence (' + total + ')';
+    }
+    function evidenceCountLabel(shown, total) {
+      return shown >= total ? 'Evidence (' + total + ')' : 'Evidence (' + shown + ' of ' + total + ')';
+    }
+    // Clamp the evidence list to its first rows, or open it, animating the height
+    // (instant on render and under reduced motion). Rows past the clamp are inert.
+    function applyEvidenceClamp(animate) {
+      var list = root.querySelector('#ev-list');
+      var toggle = root.querySelector('[data-action="evidence"]');
+      if (!list || !toggle) return;
+      var items = Array.prototype.slice.call(list.querySelectorAll('.ev-item'));
+      var clamped = !ui.evidenceOpen;
+      var total = Number(toggle.getAttribute('data-total')) || items.length;
+      var last = items[EVIDENCE_VISIBLE - 1];
+      var max = last ? Math.ceil(last.getBoundingClientRect().bottom - list.getBoundingClientRect().top) : 0;
+      toggle.textContent = evidenceToggleLabel(!clamped, total);
+      var count = root.querySelector('[data-evidence-count]');
+      if (count) count.textContent = evidenceCountLabel(clamped ? Math.min(EVIDENCE_VISIBLE, items.length) : items.length, total);
+      var options = { max: max, beyond: items.slice(EVIDENCE_VISIBLE), instant: !animate };
+      if (R && R.motion && R.motion.setClamped) R.motion.setClamped(list, clamped, toggle, options);
+    }
+    function toggleEvidence(open) {
+      ui.evidenceOpen = open;
+      applyEvidenceClamp(true);
     }
 
     function fieldErrorHtml(id, field, action) {
@@ -1063,6 +1107,7 @@
         root.innerHTML = ui.mode === 'thread' ? threadHtml(ui.snapshot) : globalHtml(ui.snapshot);
       }
       root.setAttribute('aria-busy', ui.snapshot || ui.auth ? 'false' : 'true');
+      applyEvidenceClamp(false);
       if (focusKey && focusKey !== 'null||') {
         var parts = focusKey.split('|');
         var selector = '[data-action="' + parts[0] + '"]' + (parts[1] ? '[data-id="' + parts[1] + '"]' : '') +
@@ -1505,7 +1550,7 @@
           rule(id, 'reject');
           break;
         }
-        case 'evidence': ui.evidenceOpen = !ui.evidenceOpen; render(); break;
+        case 'evidence': toggleEvidence(!ui.evidenceOpen); break;
         case 'whole-q': ui.wholeQ = id; render(); focusFirst('#pk-q'); break;
         case 'choose': ui.listOpen = true; render(); focusFirst('.row-main'); break;
         case 'back':
@@ -1611,8 +1656,7 @@
       if (ui.composer) { event.preventDefault(); closeComposer(); return; }
       if (ui.evidenceOpen) {
         event.preventDefault();
-        ui.evidenceOpen = false;
-        render();
+        toggleEvidence(false);
         focusFirst('[data-action="evidence"]');
         return;
       }

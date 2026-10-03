@@ -132,7 +132,7 @@
     .plan-section__body p { margin: 0 0 8px; }
     .plan-section__body ul, .plan-section__body ol { margin: 0 0 8px; padding-left: 20px; }
     .plan-section__body li { margin: 2px 0; }
-    .plan-section__body code { font-family: var(--ox-mono); font-size: .9em; }
+    .plan-section__body code { font-family: var(--ox-font-code); font-size: .9em; }
     .plan-expand {
       display: none; min-height: 44px; padding: 0; border: 0; background: none;
       color: var(--ox-text-2); font-family: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
@@ -142,8 +142,11 @@
     .plan-activity { display: flex; flex-direction: column; }
     .plan-activity__item { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--ox-border); }
     .plan-activity__item:first-child { border-top: 0; }
-    /* Guidance comes from people: their initials, not a question-mark glyph. */
+    /* Who wrote the guidance, by the shared fallback rule (OrgXAgentIdentity):
+       a named person gets their initials; you (or an unnamed person) the
+       person glyph; guidance with no author the note glyph. Never a "?". */
     .plan-author { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ox-well-bg); box-shadow: inset 0 0 0 1px var(--ox-border-strong); font-size: 11.5px; font-weight: 700; color: var(--ox-text-2); }
+    .plan-author > svg { color: var(--ox-text-muted); }
     .plan-activity__note { font-size: 13.5px; line-height: 1.45; color: var(--ox-text); margin-bottom: 2px; }
 
     .plan-composer { display: flex; flex-direction: column; gap: 8px; }
@@ -594,10 +597,16 @@
         return parts.length ? parts.slice(0, 2).map(function (part) { return part[0].toUpperCase(); }).join('') : 'O';
       }
 
+      function authorMark(author) {
+        if (!author || author === 'Plan guidance') return window.OrgXIcons.icon('note', 16);
+        if (author === 'You' || author === 'Preview') return window.OrgXIcons.icon('person', 16);
+        return escapeHtml(initials(author));
+      }
+
       function renderActivity(plan) {
         if (!plan.edits.length) {
           return (
-            '<div class="plan-quiet" role="status">' + window.OrgXIcons.icon('plan', 18) +
+            '<div class="plan-quiet" role="status">' + window.OrgXIcons.icon('note', 18) +
               '<b>No guidance yet</b>' +
               '<span>Corrections and constraints you add appear here, and OrgX folds them into the next version.</span>' +
             '</div>'
@@ -607,7 +616,7 @@
           var author = edit.author === 'Plan guidance' ? 'OrgX' : edit.author;
           return (
             '<div class="plan-activity__item" role="listitem">' +
-              '<span class="plan-author" aria-hidden="true">' + escapeHtml(initials(author)) + '</span>' +
+              '<span class="plan-author" aria-hidden="true">' + authorMark(edit.author) + '</span>' +
               '<div>' +
                 '<div class="plan-activity__note">' + escapeHtml(edit.note) + '</div>' +
                 '<div class="meta">' + escapeHtml(author) + ' · ' + escapeHtml(formatRelative(edit.at).replace(/^updated /, '')) + '</div>' +
@@ -923,10 +932,9 @@
           expand.addEventListener('click', function toggleSection() {
             var wrap = document.querySelector('[data-section-body-wrap]');
             var expanded = expand.getAttribute('aria-expanded') === 'true';
-            wrap.classList.toggle('is-expanded', !expanded);
-            expand.setAttribute('aria-expanded', String(!expanded));
             expand.textContent = expanded ? 'Show full section' : 'Collapse section';
-            window.OrgXWidgetRuntime.reportSize();
+            // Height animates between the preview and the whole section (instant under reduced motion).
+            window.OrgXWidgetRuntime.motion.setClamped(wrap, expanded, expand, { expandedClass: 'is-expanded' });
           });
         }
 
