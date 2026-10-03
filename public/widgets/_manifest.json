@@ -476,8 +476,8 @@
     },
     "work-ledger": {
       "file": "public/widgets/work-ledger.html",
-      "bytes": 45244,
-      "hash": "08cfa549f7a0",
+      "bytes": 49140,
+      "hash": "5d574bf86d8b",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -496,7 +496,6 @@
       ],
       "protocolBridge": "official-sdk",
       "kitElements": [
-        "ox-attention-line",
         "ox-receipt-row",
         "ox-footer",
         "ox-glyph"

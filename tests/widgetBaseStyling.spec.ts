@@ -102,7 +102,8 @@ describe('work-ledger survives untidy production data', () => {
     const entries = Array.from(document.querySelectorAll('ox-receipt-row.wl-entry')).map(
       (el) => el.getAttribute('label') ?? ''
     );
-    const reporting = entries.filter((t) => t.includes('Reporting'));
+    // "Reporting · codex" reads as a progress report; the client is on the detail line.
+    const reporting = entries.filter((t) => t.includes('Progress report'));
     expect(reporting).toHaveLength(1);
     expect(reporting[0]).toContain('×4');
   });
@@ -112,7 +113,7 @@ describe('work-ledger survives untidy production data', () => {
     // metrics are what happened in the window. Unlabelled and adjacent, "57"
     // over "Decisions 2" reads as a contradiction.
     mountWidget('work-ledger', { payload: MESSY });
-    expect(document.body.textContent).toContain('Produced in this window');
+    expect(document.body.textContent).toContain('Produced in the last 7 days');
   });
 
   it('marks a verified client differently from an observed one', () => {
