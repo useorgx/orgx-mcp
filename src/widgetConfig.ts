@@ -376,6 +376,17 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   'shared/openai-extensions.js',
 ];
 
+/**
+ * Where the worker reads a shared file's body for inlining: the minified
+ * copy `pnpm widget:build` writes to public/widgets/inline/<path> (see
+ * scripts/lib/inlineAssets.mjs). Relative to the widget base URL. The
+ * readable source at <path> stays what standalone previews load.
+ */
+export const MCP_APPS_INLINE_ASSET_DIR = 'inline/';
+export function mcpAppsInlineAssetPath(path: string): string {
+  return MCP_APPS_INLINE_ASSET_DIR + path.replace(/^\.?\//, '');
+}
+
 function inlineSharedAsset(
   html: string,
   path: string,

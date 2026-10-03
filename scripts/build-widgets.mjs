@@ -40,6 +40,8 @@ import { join, relative } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
+import { INLINE_DIR, INTERACTION_KIT_PATHS, writeInlineAssets } from './lib/inlineAssets.mjs';
+
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
 const WIDGETS_DIR = join(REPO_ROOT, 'public', 'widgets');
@@ -475,6 +477,16 @@ function main() {
   };
 
   writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + '\n');
+
+  // Minified copies of every shared file the worker inlines (see
+  // scripts/lib/inlineAssets.mjs); the readable sources stay as they are.
+  const inlined = writeInlineAssets(WIDGETS_DIR, [...RUNTIME_INLINED_PATHS, ...INTERACTION_KIT_PATHS]);
+  const before = inlined.reduce((n, f) => n + f.source, 0);
+  const after = inlined.reduce((n, f) => n + f.minified, 0);
+  console.log(
+    `✓ inlined assets minified — ${inlined.length} files, ${(before / 1024).toFixed(1)} KB -> ${(after / 1024).toFixed(1)} KB in ${relative(REPO_ROOT, join(WIDGETS_DIR, INLINE_DIR))}/`
+  );
+
   const summary = Object.keys(entries).length + ' widgets';
   console.log(
     `✓ widget build OK — ${summary}, manifest at ${relative(REPO_ROOT, MANIFEST_PATH)}`

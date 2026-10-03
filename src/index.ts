@@ -372,6 +372,7 @@ import {
   buildMcpAppsMeta,
   widgetCspNeedsForUri,
   MCP_APPS_SHARED_COMPONENT_PATHS,
+  mcpAppsInlineAssetPath,
   buildWidgetMeta,
   parseWidgetResourceUri,
   rewriteWidgetHtmlAssetUrls,
@@ -14414,13 +14415,19 @@ export class OrgXMcp extends McpAgent<
       if (mimeType === RESOURCE_MIME_TYPE) {
         let interactionKitCss: string | null = null;
         let interactionKitJs: string | null = null;
+        // Inline the minified copy (public/widgets/inline/<path>, written by
+        // widget:build); fall back to the readable source if it is missing.
+        const fetchInlineAsset = async (path: string, accept: string): Promise<string | null> => {
+          for (const candidate of [mcpAppsInlineAssetPath(path), path]) {
+            const response = await fetch(new URL(candidate, widgetBaseUrl).toString(), { headers: { accept } });
+            if (response.ok) return response.text();
+          }
+          return null;
+        };
 
         if (responseHtml.includes('interaction-kit.css')) {
           try {
-            interactionKitCss = await fetch(
-              new URL('shared/interaction-kit.css', widgetBaseUrl).toString(),
-              { headers: { accept: 'text/css,*/*' } }
-            ).then(async (response) => (response.ok ? response.text() : null));
+            interactionKitCss = await fetchInlineAsset('shared/interaction-kit.css', 'text/css,*/*');
           } catch {
             interactionKitCss = null;
           }
@@ -14428,10 +14435,7 @@ export class OrgXMcp extends McpAgent<
 
         if (responseHtml.includes('interaction-kit.js')) {
           try {
-            interactionKitJs = await fetch(
-              new URL('shared/interaction-kit.js', widgetBaseUrl).toString(),
-              { headers: { accept: 'text/javascript,application/javascript,*/*' } }
-            ).then(async (response) => (response.ok ? response.text() : null));
+            interactionKitJs = await fetchInlineAsset('shared/interaction-kit.js', 'text/javascript,application/javascript,*/*');
           } catch {
             interactionKitJs = null;
           }
@@ -14449,13 +14453,7 @@ export class OrgXMcp extends McpAgent<
             const accept = path.endsWith('.css')
               ? 'text/css,*/*'
               : 'text/javascript,application/javascript,*/*';
-            const assetResponse = await fetch(
-              new URL(path, widgetBaseUrl).toString(),
-              { headers: { accept } }
-            );
-            sharedComponents[path] = assetResponse.ok
-              ? await assetResponse.text()
-              : null;
+            sharedComponents[path] = await fetchInlineAsset(path, accept);
           } catch {
             sharedComponents[path] = null;
           }

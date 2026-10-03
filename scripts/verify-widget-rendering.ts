@@ -11,6 +11,7 @@ import {
 import { WIDGET_RESOURCES } from "../src/toolDefinitions";
 import {
   MCP_APPS_SHARED_COMPONENT_PATHS,
+  mcpAppsInlineAssetPath,
   parseWidgetResourceUri,
   rewriteWidgetHtmlAssetUrls,
   sanitizeMcpAppsHtml,
@@ -31,20 +32,14 @@ const mimeTypes: Record<string, string> = {
   ".woff2": "font/woff2",
 };
 
+// The worker inlines the minified copies widget:build writes (inline/<path>).
+const readInline = (path: string) =>
+  readFileSync(resolve(widgetDir, mcpAppsInlineAssetPath(path)), "utf8");
 const sharedComponents = Object.fromEntries(
-  MCP_APPS_SHARED_COMPONENT_PATHS.map((path) => [
-    path,
-    readFileSync(resolve(widgetDir, path), "utf8"),
-  ]),
+  MCP_APPS_SHARED_COMPONENT_PATHS.map((path) => [path, readInline(path)]),
 );
-const interactionKitCss = readFileSync(
-  resolve(widgetDir, "shared/interaction-kit.css"),
-  "utf8",
-);
-const interactionKitJs = readFileSync(
-  resolve(widgetDir, "shared/interaction-kit.js"),
-  "utf8",
-);
+const interactionKitCss = readInline("shared/interaction-kit.css");
+const interactionKitJs = readInline("shared/interaction-kit.js");
 
 type RuntimeVariant =
   | "standalone-demo"

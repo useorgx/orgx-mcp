@@ -25,7 +25,14 @@ import { join, relative, resolve } from 'node:path';
  */
 export const DERIVED_WIDGET_FILES = new Set(['_manifest.json']);
 
-export function collectWidgetFiles(dir) {
+/**
+ * Directories under public/widgets that hold derived files. `inline/` is the
+ * minified copy of the shared files (scripts/lib/inlineAssets.mjs), a pure
+ * function of sources this hash already covers.
+ */
+export const DERIVED_WIDGET_DIRS = new Set(['inline']);
+
+export function collectWidgetFiles(dir, root = dir) {
   const entries = readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.name !== '.DS_Store')
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -34,7 +41,8 @@ export function collectWidgetFiles(dir) {
   for (const entry of entries) {
     const absolutePath = join(dir, entry.name);
     if (entry.isDirectory()) {
-      files.push(...collectWidgetFiles(absolutePath));
+      if (dir === root && DERIVED_WIDGET_DIRS.has(entry.name)) continue;
+      files.push(...collectWidgetFiles(absolutePath, root));
       continue;
     }
     if (entry.isFile() && !DERIVED_WIDGET_FILES.has(entry.name)) {
