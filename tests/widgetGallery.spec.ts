@@ -18,7 +18,8 @@ describe('widget gallery state contract', () => {
     expect(gallerySource).toContain('value="completed">Completed');
     expect(gallerySource).toContain('value="blocked">Blocked');
     expect(gallerySource).toContain('value="stale">Needs refresh');
-    expect(gallerySource).toContain('State contract');
+    // Every widget is in the catalog, the OrgX panel included.
+    expect(gallerySource).toContain("id: 'orgx-panel'");
   });
 
   it('maps the task card to an honest state-specific headline and action', () => {

@@ -45,6 +45,9 @@
       line-height: 1.5;
     }
     .gallery-theme {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       min-width: 44px;
       min-height: 44px;
       border: 1px solid var(--ox-border);
@@ -76,26 +79,6 @@
       padding: 14px 16px;
       border-bottom: 1px solid var(--ox-border);
     }
-    .state-key {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px 14px;
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--ox-border);
-      background: color-mix(in srgb, var(--ox-well-bg) 46%, transparent);
-      color: var(--ox-text-muted);
-      font: 600 .62rem var(--ox-mono);
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
-    .state-key__label { color: var(--ox-text-dim); }
-    .state-key__item { display: inline-flex; align-items: center; gap: 6px; }
-    .state-key__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-    .state-key__item[data-state="loading"] { color: var(--ox-text-muted); }
-    .state-key__item[data-state="progress"] { color: var(--ox-teal); }
-    .state-key__item[data-state="complete"] { color: var(--ox-success, #22c55e); }
-    .state-key__item[data-state="attention"] { color: var(--ox-warning, #fbbf24); }
     .field {
       display: flex;
       flex-direction: column;
@@ -104,9 +87,7 @@
     }
     .field label {
       color: var(--ox-text-muted);
-      font: 700 .56rem var(--ox-mono);
-      letter-spacing: .1em;
-      text-transform: uppercase;
+      font: 500 12px/1.3 var(--ox-font);
     }
     .field input,
     .field select {
@@ -171,9 +152,7 @@
       gap: 10px;
       margin-top: 9px;
       color: var(--ox-text-muted);
-      font: 700 .56rem var(--ox-mono);
-      letter-spacing: .08em;
-      text-transform: uppercase;
+      font: 500 12px/1.3 var(--ox-font);
     }
     .catalog-list {
       max-height: 620px;
@@ -223,9 +202,7 @@
     }
     .catalog-item__mode {
       color: var(--ox-text-muted);
-      font: 700 .54rem var(--ox-mono);
-      letter-spacing: .06em;
-      text-transform: uppercase;
+      font: 500 11.5px/1.2 var(--ox-font);
     }
     .preview {
       min-width: 0;
@@ -259,10 +236,8 @@
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      color: var(--ox-teal);
-      font: 700 .58rem var(--ox-mono);
-      letter-spacing: .08em;
-      text-transform: uppercase;
+      color: var(--ox-text-muted);
+      font: 500 12.5px/1.2 var(--ox-font);
       white-space: nowrap;
     }
     .preview-status::before {
@@ -270,7 +245,7 @@
       width: 7px;
       height: 7px;
       border-radius: 999px;
-      background: currentColor;
+      background: var(--ox-teal);
     }
     .preview-stage {
       flex: 1;
@@ -320,22 +295,8 @@
       .gallery-head p { display: none; }
       .workbench-bar { grid-template-columns: 1fr 1fr; padding: 12px; }
       .workbench-body { display: flex; min-height: 0; flex-direction: column; }
-      .catalog { border-right: 0; border-bottom: 1px solid var(--ox-border); }
-      .catalog-list {
-        display: flex;
-        max-height: none;
-        overflow-x: auto;
-        padding: 6px;
-      }
-      .catalog-item {
-        min-width: 168px;
-        border-bottom: 3px solid transparent;
-        border-radius: 8px;
-      }
-      .catalog-item::before { display: none; }
-      .catalog-item[aria-selected="true"] { border-bottom-color: var(--ox-primary); }
-      .catalog-head { padding: 10px; }
-      .catalog-meta { display: none; }
+      /* On a phone the Widget picker above is the catalog. */
+      .catalog { display: none; }
       .preview-stage { padding: 10px; }
       .frame-shell,
       .frame-shell[data-viewport] { width: 100%; min-height: 540px; }
@@ -358,14 +319,14 @@
   <main class="gallery">
     <header class="gallery-head">
       <div class="gallery-head__copy">
-        <div class="widget-kicker">OrgX widget systems</div>
+        <div class="widget-kicker">OrgX widgets</div>
         <h1>Widget gallery</h1>
         <p>Find one widget, put it in a real operating state, and inspect the exact production HTML at the viewport and theme that matter.</p>
       </div>
-      <button class="gallery-theme" type="button" id="galleryTheme" aria-label="Toggle gallery theme" title="Toggle gallery theme">◐</button>
+      <button class="gallery-theme" type="button" id="galleryTheme" aria-label="Switch light or dark" title="Switch light or dark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></svg></button>
     </header>
 
-    <section class="workbench" aria-label="Widget QA workbench">
+    <section class="workbench ox-surface" aria-label="Widget QA workbench">
       <div class="workbench-bar">
         <div class="field">
           <label for="widgetSelect">Widget</label>
@@ -406,19 +367,11 @@
         <a class="open-preview" id="openPreview" href="#" target="_blank" rel="noreferrer">Open preview ↗</a>
       </div>
 
-      <div class="state-key" aria-label="Widget state legend">
-        <span class="state-key__label">State contract</span>
-        <span class="state-key__item" data-state="loading"><span class="state-key__dot"></span>Loading</span>
-        <span class="state-key__item" data-state="progress"><span class="state-key__dot"></span>In progress</span>
-        <span class="state-key__item" data-state="complete"><span class="state-key__dot"></span>Completed</span>
-        <span class="state-key__item" data-state="attention"><span class="state-key__dot"></span>Blocked / needs refresh</span>
-      </div>
-
       <div class="workbench-body">
         <aside class="catalog" aria-label="Widget catalog">
           <div class="catalog-head">
             <input class="catalog-search" id="catalogSearch" type="search" placeholder="Find a widget or job…" aria-label="Search widgets" />
-            <div class="catalog-meta"><span id="catalogCount">0 widgets</span><span>↑↓ to move</span></div>
+            <div class="catalog-meta"><span id="catalogCount">0 widgets</span></div>
           </div>
           <div class="catalog-list" id="catalogList" role="listbox" aria-label="Available widgets"></div>
         </aside>
@@ -457,7 +410,8 @@
         { id: 'work-ledger', name: 'Work Ledger', file: 'work-ledger.html', mode: 'Readout', job: 'Read what agent work the record holds, by client, and explore every entry worst first.', supportsStates: ['populated', 'loading', 'empty', 'long', 'resolved'] },
         { id: 'proof-receipt', name: 'Receipt', file: 'proof-receipt.html', mode: 'Readout', job: 'See the proof a receipt claims, the gap, and the next move.', supportsStates: ['populated', 'loading', 'blocked', 'empty', 'long', 'error', 'stale', 'resolved'] },
         { id: 'scaffolded-initiative', name: 'Scaffolded Initiative', file: 'scaffolded-initiative.html', mode: 'Creation', job: 'Inspect the hierarchy created from a goal.', supportsStates: ['populated', 'loading', 'empty', 'error', 'completed', 'blocked', 'resolved'] },
-        { id: 'scaffold-streaming', name: 'Scaffold Streaming', file: 'scaffold-streaming.html', mode: 'Creation', job: 'Demo: observe entity creation as the scaffold builds.', supportsStates: ['populated', 'loading', 'empty', 'error', 'blocked', 'stale', 'resolved', 'completed', 'progressing'] }
+        { id: 'scaffold-streaming', name: 'Scaffold Streaming', file: 'scaffold-streaming.html', mode: 'Creation', job: 'Demo: watch an initiative plan arrive, workstream by workstream.', supportsStates: ['populated', 'loading', 'empty', 'error', 'blocked', 'stale', 'resolved', 'completed', 'progressing'] },
+        { id: 'orgx-panel', name: 'OrgX Panel', file: 'orgx-panel.html', mode: 'Command', job: 'Everything that needs you, answered without leaving the chat.', supportsStates: ['populated', 'loading', 'empty', 'long', 'blocked', 'error', 'stale', 'resolved'] }
       ];
       const byId = new Map(widgets.map(widget => [widget.id, widget]));
       const params = new URLSearchParams(location.search);
@@ -484,8 +438,12 @@
       elements.theme.value = params.get('previewTheme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       elements.viewport.value = params.get('viewport') || 'desktop';
 
+      // The panel names its own gallery fixtures.
+      const PANEL_STATES = { populated: 'needs-you', loading: 'loading', empty: 'first-use', long: 'long', blocked: 'blocking', error: 'degraded', stale: 'stale', resolved: 'calm', completed: 'calm' };
+
       function stateQuery(widget, state) {
         const stateForWidget = state === 'completed' ? 'resolved' : state;
+        if (widget.id === 'orgx-panel') return 'state=' + encodeURIComponent(PANEL_STATES[state] || 'needs-you');
         if (widget.id === 'agent-status') {
           if (state === 'loading') return 'loading=true';
           return 'demo=true&state=' + encodeURIComponent(stateForWidget);
@@ -558,7 +516,7 @@
         elements.title.textContent = widget.name;
         elements.question.textContent = widget.job;
         const selectedOption = elements.state.options[elements.state.selectedIndex];
-        elements.status.textContent = (selectedOption ? selectedOption.text : elements.state.value.replace(/[-_]/g, ' ')) + ' ready';
+        elements.status.textContent = selectedOption ? selectedOption.text : elements.state.value.replace(/[-_]/g, ' ');
         elements.shell.dataset.viewport = elements.viewport.value;
         elements.frame.title = widget.name + ' — ' + elements.state.value + ' — ' + elements.theme.value;
         elements.frame.src = url;

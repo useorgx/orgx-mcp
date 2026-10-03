@@ -4,18 +4,18 @@
     "agent-status": 541696,
     "artifact-review": 566272,
     "decisions": 608256,
-    "entity-card": 491520,
+    "entity-card": 495616,
     "index": 65536,
     "initiative-pulse": 552960,
     "morning-brief": 544768,
     "orgx-panel": 519168,
     "plan-session-live": 493568,
     "proof-receipt": 436224,
-    "scaffold-streaming": 408576,
+    "scaffold-streaming": 430080,
     "scaffolded-initiative": 527360,
     "search-results": 462848,
     "task-spawned": 515072,
     "work-ledger": 489472,
-    "workspace-map": 463872
+    "workspace-map": 469504
   }
 }
