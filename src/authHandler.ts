@@ -2366,8 +2366,10 @@ async function handleConsentCallback(
         userId: identity.userId,
         ...(identity.orgxUserId ? { orgxUserId: identity.orgxUserId } : {}),
         scope: scope.join(' '),
-        oauthJourneyId: telemetryState.journeyId,
-        oauthClient: telemetryState.clientPresentation?.identityTrust === 'verified_redirect' ? telemetryState.clientPresentation.icon : 'unknown',
+        ...(telemetryState.journeyId ? {
+          oauthJourneyId: telemetryState.journeyId,
+          oauthClient: telemetryState.clientPresentation?.identityTrust === 'verified_redirect' ? telemetryState.clientPresentation.icon : 'unknown',
+        } : {}),
         email: identity.userEmail,
       },
     });
