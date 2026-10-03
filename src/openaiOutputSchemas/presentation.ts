@@ -82,12 +82,20 @@ export const reviewContractSchema = z.object({
   schemaVersion: z.string(),
   purpose: z
     .object({
-      kind: z.string().optional(),
+      kind: z
+        .string()
+        .describe(
+          'Artifact purpose. Known values: deliverable, evidence, blocker, receipt, process, reference, template, session_bundle, other.'
+        )
+        .optional(),
       label: z.string().optional(),
       reviewRequired: z.boolean().optional(),
       // What a reviewer is asked to do: `sign` a current deliverable,
       // `resolve` a blocker (never sign it), `inspect` evidence and records.
-      reviewAction: z.enum(['sign', 'resolve', 'inspect']).optional(),
+      reviewAction: z
+        .string()
+        .describe('What a reviewer is asked to do. Known values: sign, resolve, inspect.')
+        .optional(),
     })
     .optional(),
   quality: z.object({

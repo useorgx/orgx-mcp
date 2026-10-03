@@ -2,7 +2,7 @@
 
 exports[`listed tool surfaces > profile "chatgpt" lists byte-identical tool descriptors 1`] = `
 {
-  "approve_agent_work": "b248a1a0369b8fc2",
+  "approve_agent_work": "824cdcf465992d0c",
   "approve_decision": "e9413cc4b36c009e",
   "check_execution_readiness": "8654b94408726684",
   "get_agent_status": "eba1f783b17f3c16",
@@ -128,7 +128,7 @@ exports[`listed tool surfaces > profile "executor" lists byte-identical tool des
 
 exports[`listed tool surfaces > profile "full" lists byte-identical tool descriptors 1`] = `
 {
-  "approve_agent_work": "b248a1a0369b8fc2",
+  "approve_agent_work": "824cdcf465992d0c",
   "approve_decision": "e9413cc4b36c009e",
   "check_execution_readiness": "8654b94408726684",
   "check_spawn_guard": "e5224687a58937f5",
@@ -280,7 +280,7 @@ exports[`listed tool surfaces > profile "read-only" lists byte-identical tool de
 
 exports[`listed tool surfaces > profile "v2" lists byte-identical tool descriptors 1`] = `
 {
-  "approve_agent_work": "b248a1a0369b8fc2",
+  "approve_agent_work": "824cdcf465992d0c",
   "approve_decision": "e9413cc4b36c009e",
   "check_execution_readiness": "8654b94408726684",
   "consolidate_pr": "6abba9a7b56106c6",

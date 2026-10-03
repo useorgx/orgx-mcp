@@ -462,14 +462,18 @@ export const approvalListProofSchema = z
  * `total` is the whole scope, never the page; `kinds` gains `action` when the
  * widget channel adds Action Gateway items to the list.
  */
+// Known values are described, not enumerated: an output schema must never fail
+// a whole response because the app added a value.
 export const pendingDecisionsScopeSchema = z.object({
-  level: z.enum(['workspace', 'initiative']),
+  level: z.string().describe('Scope level. Known values: workspace, initiative.'),
   workspace_id: nullableString,
   initiative_id: nullableString,
-  kinds: z.array(z.enum(['decision', 'approval', 'action'])),
-  urgency: z.enum(['all', 'critical', 'high']),
+  kinds: z.array(
+    z.string().describe('Counted kind. Known values: decision, approval, action.')
+  ),
+  urgency: z.string().describe('Urgency filter. Known values: all, critical, high.'),
   includes_system: z.boolean(),
-  unit: z.literal('review_packet'),
+  unit: z.string().describe('What one unit of total is. Known value: review_packet.'),
   total: z.number(),
   capped: z.boolean(),
 });
@@ -481,7 +485,9 @@ export const pendingDecisionsScopeSchema = z.object({
 export const briefSourceGapSchema = z.object({
   source: z.string(),
   label: z.string(),
-  reason: z.enum(['query_failed', 'timeout', 'unavailable']),
+  reason: z
+    .string()
+    .describe('Why it failed. Known values: query_failed, timeout, unavailable.'),
 });
 
 /**

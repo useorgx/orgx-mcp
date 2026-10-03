@@ -287,12 +287,29 @@ describe('pending decision scope on every decision list', () => {
     expect(result.structuredContent).toEqual(pendingList);
   });
 
-  it('rejects a scope that breaks the app type', () => {
+  it('accepts a scope value the app adds later', async () => {
+    const payload = {
+      ...pendingList,
+      pending_decisions_scope: {
+        ...workspaceScope, level: 'team', kinds: ['decision', 'meeting'],
+        urgency: 'medium', unit: 'decision_row',
+      },
+    };
+    const result = await callThroughRegistration('orgx_decide', payload);
+    expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+    expect(result.structuredContent).toEqual(payload);
+  });
+
+  it('rejects a scope whose structure breaks the app type', () => {
     const schema = getToolOutputSchema('orgx_decide')!;
+    const { capped: _capped, ...withoutCapped } = workspaceScope;
     for (const scope of [
-      { ...workspaceScope, kinds: ['meeting'] },
       { ...workspaceScope, total: '26' },
-      { ...workspaceScope, unit: 'row' },
+      { ...workspaceScope, kinds: 'decision' },
+      { ...workspaceScope, kinds: [7] },
+      { ...workspaceScope, includes_system: 'no' },
+      withoutCapped,
+      null,
     ]) {
       expect(
         schema.safeParse({ ...pendingList, pending_decisions_scope: scope }).success,
@@ -313,12 +330,26 @@ describe('morning brief count and source health', () => {
     expect(result.structuredContent).toEqual(payload);
   });
 
-  it('rejects a source gap with an unknown reason', () => {
-    const schema = getToolOutputSchema('get_morning_brief')!;
-    expect(schema.safeParse({
+  it('accepts a failure reason the app adds later', async () => {
+    const payload = {
       ...degradedBrief,
-      degraded_sources: [{ source: 'x', label: 'X', reason: 'flaky' }],
-    }).success).toBe(false);
+      degraded_sources: [{ source: 'pr_receipts', label: 'PR receipts', reason: 'rate_limited' }],
+    };
+    const result = await callThroughRegistration('get_morning_brief', payload);
+    expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+    expect(result.structuredContent).toEqual(payload);
+  });
+
+  it('rejects a source gap or count whose structure breaks the app type', () => {
+    const schema = getToolOutputSchema('get_morning_brief')!;
+    for (const change of [
+      { degraded_sources: [{ source: 'x', label: 'X' }] },
+      { degraded_sources: [{ source: 'x', label: 'X', reason: 3 }] },
+      { degraded_sources: { source: 'x', label: 'X', reason: 'timeout' } },
+      { pending_decisions: '26' },
+    ]) {
+      expect(schema.safeParse({ ...degradedBrief, ...change }).success, JSON.stringify(change)).toBe(false);
+    }
   });
 });
 
@@ -390,11 +421,24 @@ describe('artifact review contract purpose', () => {
     expect(result.structuredContent).toEqual(payload);
   });
 
-  it('rejects a reviewAction the app does not define', () => {
+  it('accepts a purpose kind and reviewAction the app adds later', async () => {
+    const payload = reviewEnvelope({
+      kind: 'checklist', label: 'Checklist', reviewRequired: true, reviewAction: 'countersign',
+    });
+    const result = await callThroughRegistration('review_artifact', payload);
+    expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+    expect(result.structuredContent).toEqual(payload);
+  });
+
+  it('rejects a purpose whose structure breaks the app type', () => {
     const schema = getToolOutputSchema('review_artifact')!;
-    expect(schema.safeParse(reviewEnvelope({
-      kind: 'deliverable', label: 'Deliverable', reviewRequired: true, reviewAction: 'approve',
-    })).success).toBe(false);
+    for (const purpose of [
+      { kind: 'deliverable', reviewAction: true },
+      { kind: 'deliverable', reviewRequired: 'yes' },
+      { kind: 7 },
+    ]) {
+      expect(schema.safeParse(reviewEnvelope(purpose)).success, JSON.stringify(purpose)).toBe(false);
+    }
   });
 });
 
