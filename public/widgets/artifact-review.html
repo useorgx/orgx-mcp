@@ -195,8 +195,6 @@
     .version-row__state { font-size: 12px; color: var(--ox-text-muted); }
 
     /* A held approval reads as one line, not a banner. */
-    .verification-block { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); }
-    .verification-block strong { color: var(--ox-warning); font-weight: 650; margin-right: 6px; }
     .decision-row { display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.45; }
     .decision-row strong { color: var(--ox-text); font-weight: 650; }
     .decision-row span { color: var(--ox-text-muted); }
@@ -625,21 +623,6 @@
       function evidenceRecordScore(item) {
         const record = asRecord(item);
         return normalizeRatio(firstNumber([record.score, record.value, record.rating]));
-      }
-
-      function topEvidenceLabels(items, fallback, includeScores) {
-        const seen = new Set();
-        const labels = [];
-        items.forEach(function (item) {
-          if (labels.length >= 2) return;
-          const label = evidenceRecordLabel(item, '');
-          const key = label.toLowerCase();
-          if (!label || seen.has(key)) return;
-          seen.add(key);
-          const score = includeScores ? evidenceRecordScore(item) : null;
-          labels.push(label + (score === null ? '' : ' ' + Math.round(score * 100)));
-        });
-        return labels.length ? labels.join(' · ') : fallback;
       }
 
       function hasAllowedHttpsOrigin(value, allowedOrigins) {
@@ -1272,20 +1255,6 @@
             evalData.observed_count,
           ])) || 0
         );
-        const evidenceRefs = nonNegativeInteger(firstNumber([
-          contractCounts.evidenceRefs,
-          contractCounts.evidence_refs,
-          snapshotInput.evidenceRefs,
-          snapshotInput.evidence_refs,
-          evalData.evidenceRefs,
-          evalData.evidence_refs,
-        ]));
-        const version = nonNegativeInteger(firstNumber([
-          snapshotInput.artifactVersion,
-          snapshotInput.artifact_version,
-          contractLineage.version,
-          artifact.version,
-        ])) || 1;
         const criteriaByPriority = criteria.slice().sort(function (left, right) {
           const leftVerdict = evidenceRecordVerdict(left, evidence.threshold);
           const rightVerdict = evidenceRecordVerdict(right, evidence.threshold);
@@ -1296,45 +1265,11 @@
           if (leftScore === null || rightScore === null) return 0;
           return leftScore - rightScore;
         });
-        const criteriaHeld = criteria.filter(function (item) {
-          return evidenceRecordVerdict(item, evidence.threshold) === false;
-        }).length;
-        let measuredClear = 0;
-        let measuredHeld = 0;
-        let measuredUnknown = 0;
-        measured.forEach(function (item) {
-          const verdict = evidenceRecordVerdict(item, null);
-          if (verdict === true) measuredClear += 1;
-          else if (verdict === false) measuredHeld += 1;
-          else measuredUnknown += 1;
-        });
         const inputCount = 1 + linkedReferenceCount;
         const evidenceIsCurrent = evidence.state === 'cleared' || evidence.state === 'held';
         const scoreLabel = !evidenceIsCurrent || evidence.score === null
           ? 'No current score'
           : Math.round(evidence.score * 100);
-        const thresholdLabel = evidence.threshold === null ? 'No bar' : Math.round(evidence.threshold * 100);
-        const decisionLabel = evidence.state === 'cleared'
-          ? 'cleared'
-          : evidence.state === 'held'
-            ? 'held'
-            : evidence.state.replace(/_/g, ' ');
-        const summaryTitle = evidence.score !== null && evidence.state === 'held'
-          ? 'How ' + Math.round(evidence.score * 100) + ' became held'
-          : evidence.score !== null && evidence.state === 'cleared'
-            ? 'How ' + Math.round(evidence.score * 100) + ' cleared the bar'
-            : evidence.state === 'pending'
-              ? 'How this check will decide'
-              : evidence.state === 'stale'
-                ? 'Why this evidence is stale'
-                : evidence.state === 'error'
-                  ? 'Why verification has no current score'
-                  : 'What will be evaluated';
-        const measuredValue = measured.length === 0
-          ? 'No measured checks'
-          : measured.length + ' checks · ' + measuredClear + ' clear' +
-            (measuredHeld ? ' · ' + measuredHeld + ' held' : '') +
-            (measuredUnknown ? ' · ' + measuredUnknown + ' unreported' : '');
         const aggregation = asRecord(snapshot.aggregation);
         const aggregationMethod = firstString([aggregation.method]);
         const criterionScores = criteria.map(evidenceRecordScore);
@@ -1371,51 +1306,8 @@
           measuredCount: measured.length,
           observedCount: observedCount,
           evidenceIsCurrent: evidenceIsCurrent,
-          summaryTitle: summaryTitle,
           calculation: calculation,
           hasScoredCriteria: criteria.length > 0,
-          equation: [
-            'v' + version + ' + ' + linkedReferenceCount + ' refs',
-            judgedCount + ' criteria',
-            scoreLabel + ' vs ' + thresholdLabel,
-            decisionLabel,
-          ],
-          stages: [
-            {
-              lens: 'inputs',
-              label: 'Inputs',
-              value: '1 artifact · ' + linkedReferenceCount + ' linked ref' + (linkedReferenceCount === 1 ? '' : 's'),
-              detail: 'Current v' + version + (evidenceRefs === null ? '' : ' · ' + evidenceRefs + ' evidence record' + (evidenceRefs === 1 ? '' : 's')) + ' · ' + topEvidenceLabels(relationships, 'No linked inputs returned', false),
-            },
-            {
-              lens: 'judged',
-              label: 'Judged',
-              value: judgedCount === 0
-                ? supportingLayers.length
-                  ? 'No scored inputs · ' + supportingLayers.length + ' supporting layer' + (supportingLayers.length === 1 ? '' : 's')
-                  : 'No judged criteria'
-                : judgedCount + ' criteria' + (criteriaHeld ? ' · ' + criteriaHeld + ' below bar' : ''),
-              detail: judgedCount
-                ? topEvidenceLabels(criteriaByPriority, 'Criterion labels not returned', true)
-                : supportingLayers.length
-                  ? topEvidenceLabels(supportingLayers, 'Supporting layers returned', true) + ' · not score formula'
-                  : 'No qualitative judgments returned',
-            },
-            {
-              lens: 'measured',
-              label: 'Measured',
-              value: measuredValue,
-              detail: topEvidenceLabels(measured, 'No deterministic check records returned', false),
-            },
-            {
-              lens: 'observed',
-              label: 'Observed',
-              value: observedCount === 0
-                ? 'No direct observations'
-                : observedCount + ' inspection' + (observedCount === 1 ? '' : 's'),
-              detail: topEvidenceLabels(observations, 'No direct observation records returned', false),
-            },
-          ],
         };
       }
 

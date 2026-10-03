@@ -334,7 +334,9 @@ describe('B4 · short headlines', () => {
     mountPanel();
     await vi.waitFor(() => expect(document.querySelector('#pk-q')).not.toBeNull());
     expect(document.querySelector('#pk-q')!.textContent).toBe('The OrgX floor stopped a merge action in an agent-cli session and is waiting for you.');
-    expect(document.querySelector('.q-body')!.textContent).toMatch(/^Agent’s reason/);
+    // The rest is structured: the labelled reason is a fact, the remainder a short lede.
+    expect(document.querySelector('.fact dt')!.textContent).toBe('Agent’s reason');
+    expect(document.querySelector('.q-body')!.textContent).toMatch(/^Required GitHub CI did not start/);
     // B2 in the panel: a recommendation OrgX couldn't make is said quietly.
     expect(document.querySelector('.fact dd.quiet')!.textContent).toBe('No recommendation yet');
     expect(document.body.textContent).not.toMatch(/status:\s*unavailable/i);
