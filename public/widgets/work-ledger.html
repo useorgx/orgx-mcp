@@ -932,7 +932,7 @@
         return '<section class="kx-grp" aria-label="' + escapeHtml(group.name) + '">' +
           '<div class="kx-grp-h"><b>' + escapeHtml(group.name) + '</b><span>' + group.tally.met + ' of ' + group.items.length + ' verified</span>' +
           (group.tally.fail ? '<span class="kx-note">' + plural(group.tally.fail, 'failure', 'failures') + ' here</span>' : '') + '</div>' +
-          '<div class="wl-rows" role="list">' + rows.map(function (entry) { return entryRow(entry.event, 'kx-entry'); }).join('') + '</div>' +
+          '<div class="wl-rows" role="list">' + rows.map(function (entry, i) { return entryRow(entry.event, i >= visible.length ? 'kx-entry ox-enter' : 'kx-entry'); }).join('') + '</div>' +
           (folded.length
             ? '<button type="button" class="kx-more" data-fold="' + escapeHtml(group.name) + '" aria-expanded="' + open + '">' +
               (open ? 'Hide ' + folded.length + ' verified' : folded.length + ' verified · show') + '</button>'
@@ -1178,6 +1178,18 @@
       event.preventDefault();
       openLink(event.detail && event.detail.href);
     });
+
+    // Loading -> loaded: the arrived card cross-fades in (reduced motion: at once).
+    render = (function (draw) {
+      return function () {
+        var root = document.getElementById('content');
+        var wasLoading = !!(root && root.querySelector('[aria-busy="true"]'));
+        var result = draw.apply(this, arguments);
+        var motion = window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.motion;
+        if (wasLoading && motion && !root.querySelector('[aria-busy="true"]')) motion.enter(root.firstElementChild);
+        return result;
+      };
+    })(render);
 
     if (state === 'loading') {
       // Keep the skeleton.

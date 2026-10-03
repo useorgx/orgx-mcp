@@ -975,6 +975,18 @@
       render();
     };
 
+    // Loading -> loaded: the arrived card cross-fades in (reduced motion: at once).
+    render = (function (draw) {
+      return function () {
+        var root = document.getElementById('content');
+        var wasLoading = !!(root && root.querySelector('[aria-busy="true"]'));
+        var result = draw.apply(this, arguments);
+        var motion = window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.motion;
+        if (wasLoading && motion && !root.querySelector('[aria-busy="true"]')) motion.enter(root.firstElementChild);
+        return result;
+      };
+    })(render);
+
     if (state === 'loading') {
       // Keep the skeleton.
     } else if (data) {

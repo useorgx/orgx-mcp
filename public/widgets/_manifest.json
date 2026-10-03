@@ -154,8 +154,8 @@
     },
     "entity-card": {
       "file": "public/widgets/entity-card.html",
-      "bytes": 37357,
-      "hash": "a8a0c740da39",
+      "bytes": 37933,
+      "hash": "c938908aeaac",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -340,8 +340,8 @@
     },
     "proof-receipt": {
       "file": "public/widgets/proof-receipt.html",
-      "bytes": 29036,
-      "hash": "8e0016f0e4f1",
+      "bytes": 29612,
+      "hash": "57c0751516f5",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -486,8 +486,8 @@
     },
     "work-ledger": {
       "file": "public/widgets/work-ledger.html",
-      "bytes": 49140,
-      "hash": "5d574bf86d8b",
+      "bytes": 49763,
+      "hash": "a8ed685a5153",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -519,8 +519,8 @@
     },
     "workspace-map": {
       "file": "public/widgets/workspace-map.html",
-      "bytes": 24894,
-      "hash": "128571ffebec",
+      "bytes": 25470,
+      "hash": "ce151542aec8",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",
