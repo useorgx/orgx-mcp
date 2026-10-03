@@ -387,10 +387,12 @@
 
     var evidenceRows = function (view) {
       var items = view.evidence.filter(function (item) { return item && item.kind !== 'note'; });
-      return (showAllEvidence ? items : items.slice(0, INLINE_EVIDENCE)).map(function (item) {
+      return (showAllEvidence ? items : items.slice(0, INLINE_EVIDENCE)).map(function (item, index) {
         var url = str(item.url);
         var canOpen = url && linkable(url);
         return row({
+          // Rows revealed by "Show more" fade in (reduced motion: instantly).
+          class: index >= INLINE_EVIDENCE ? 'ox-enter' : '',
           status: 'met',
           label: str(item.label),
           value: str(item.value),

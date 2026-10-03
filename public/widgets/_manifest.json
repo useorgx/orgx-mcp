@@ -340,8 +340,8 @@
     },
     "proof-receipt": {
       "file": "public/widgets/proof-receipt.html",
-      "bytes": 28889,
-      "hash": "521d0e0e201c",
+      "bytes": 29036,
+      "hash": "8e0016f0e4f1",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -366,17 +366,27 @@
     },
     "scaffold-streaming": {
       "file": "public/widgets/scaffold-streaming.html",
-      "bytes": 42719,
-      "hash": "c8ffe00c03f4",
+      "bytes": 27260,
+      "hash": "1a9ccf812c42",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
+        "shared/agent-identity.js",
+        "shared/kit/ox-elements-avatar.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-tokens.css",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/widget-runtime.js",
         "shared/widget-theme.css"
       ],
       "protocolBridge": "official-sdk",
-      "kitElements": [],
-      "kitBundles": [],
+      "kitElements": [
+        "ox-avatar"
+      ],
+      "kitBundles": [
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-avatar.js"
+      ],
       "demoOnly": true
     },
     "scaffolded-initiative": {
