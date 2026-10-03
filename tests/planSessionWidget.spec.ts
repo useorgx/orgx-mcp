@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
+import { installSharedFoundations } from './fixtures/sharedFoundations';
 
 const widgetPath = join(
   process.cwd(),
@@ -34,6 +35,7 @@ function createWidget(url = 'https://example.test/widgets/plan-session-live.html
     runScripts: 'outside-only',
     pretendToBeVisual: true,
   });
+  installSharedFoundations(dom.window);
   Object.defineProperty(dom.window, 'OrgXWidgetRuntime', {
     configurable: true,
     value: {
@@ -125,7 +127,8 @@ describe('plan session widget', () => {
     expect(widgetHtml).toContain("action: 'record_edit'");
     expect(widgetHtml).toContain('edit_summary: summary');
     expect(widgetHtml).toContain(
-      'https://useorgx.com/planning/sessions/'
+      // OrgX has no plan-session page (/planning/sessions/:id was a 404); the shared builder decides.
+      'window.OrgXLinks.planSession('
     );
   });
 
@@ -137,6 +140,7 @@ describe('plan session widget', () => {
     });
     const calls: Array<[string, unknown]> = [];
     let fail = true;
+    installSharedFoundations(dom.window);
     Object.defineProperty(dom.window, 'OrgXWidgetRuntime', {
       configurable: true,
       value: {
@@ -164,7 +168,7 @@ describe('plan session widget', () => {
 
     expect(footer().getAttribute('primary-label')).toBe('Guide this plan');
     expect(doc.querySelector('[data-open-plan]')?.getAttribute('href')).toBe(
-      'https://useorgx.com/planning/sessions/plan-1'
+      'https://useorgx.com/live?view=mission-control&session=plan-1'
     );
     press();
     const input = doc.querySelector('[data-guidance-input]') as HTMLTextAreaElement;

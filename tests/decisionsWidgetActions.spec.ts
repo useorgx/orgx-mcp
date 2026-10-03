@@ -490,7 +490,7 @@ describe('decisions widget: the per-item contract', () => {
     );
     await vi.waitFor(() => expect(footer()?.getAttribute('state')).toBe('needs-you'));
     expect(document.querySelector('.dq-status')!.textContent).toContain('Agent run approval');
-    expect(document.querySelector('.dq-q a')!.getAttribute('href')).toBe(`https://useorgx.com/agents/runs/${D2}`);
+    expect(document.querySelector('.dq-q a')!.getAttribute('href')).toBe(`https://useorgx.com/runs/${D2}`);
     expect(document.body.textContent).not.toContain('Run id');
     press();
     await vi.waitFor(() => expect(footer()?.getAttribute('state')).toBe('done'));

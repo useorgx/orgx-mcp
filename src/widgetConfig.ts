@@ -367,12 +367,25 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   'shared/live-store.js',
   'shared/live-panel.js',
   'shared/icons.js',
+  // OrgX icon set (entity types, statuses, actions): OrgXIcons.icon(name).
+  'shared/orgx-icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',
   // OpenAI MCP Apps extensions shim (deep link, model context); used by the
   // OrgX panel only. See the file header for its package source.
   'shared/openai-extensions.js',
 ];
+
+/**
+ * Where the worker reads a shared file's body for inlining: the minified
+ * copy `pnpm widget:build` writes to public/widgets/inline/<path> (see
+ * scripts/lib/inlineAssets.mjs). Relative to the widget base URL. The
+ * readable source at <path> stays what standalone previews load.
+ */
+export const MCP_APPS_INLINE_ASSET_DIR = 'inline/';
+export function mcpAppsInlineAssetPath(path: string): string {
+  return MCP_APPS_INLINE_ASSET_DIR + path.replace(/^\.?\//, '');
+}
 
 function inlineSharedAsset(
   html: string,

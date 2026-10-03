@@ -150,8 +150,6 @@
 
     .agent-avatar { display: inline-flex; flex: none; line-height: 0; }
     /* OrgX's own items carry the OrgX mark, drawn inline so a host that blocks images never shows an empty circle. */
-    .agent-avatar--system { width: 22px; height: 22px; border-radius: 50%; overflow: hidden; background: var(--ox-surface-subtle, rgba(127, 127, 127, 0.1)); align-items: center; justify-content: center; }
-    .agent-avatar--system svg { display: block; width: 78%; height: 78%; }
 
     .dq-evidence { display: flex; flex-direction: column; }
     .dq-all {
@@ -352,7 +350,7 @@
     <div id="content">
       <!-- Skeleton mirrors the decision card: attention line, question, recommendation, footer -->
       <div class="skeleton-wrapper" aria-busy="true">
-        <div class="ox-card">
+        <div class="ox-card ox-surface">
           <div class="sk-head"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:38%;height:12px"></span></div>
           <div class="dq-body">
             <span class="sk" style="width:34%;height:11px"></span>
@@ -398,7 +396,6 @@
       div.textContent = String(str);
       return div.innerHTML;
     };
-    var ORGX_BASE_URL = 'https://useorgx.com';
     var hasKit = () => Boolean(window.customElements && window.customElements.get && window.customElements.get('ox-footer'));
     var rt = () => window.OrgXWidgetRuntime || null;
 
@@ -779,8 +776,9 @@
       ]);
     };
 
-    var buildAgentStatusUrl = () => ORGX_BASE_URL + '/settings/agents';
-    var buildDecisionsUrl = () => ORGX_BASE_URL + '/decisions?status=pending';
+    // Every OrgX URL comes from the shared link builder (real app routes only).
+    var buildAgentStatusUrl = () => window.OrgXLinks.agent('');
+    var buildDecisionsUrl = () => window.OrgXLinks.decisions({ status: 'pending' });
     // Approval tokens arrive in widget-only result metadata. A decision without
     // one is decided in OrgX: the widget never pretends it can settle it.
     var getApprovalToken = (decisionId) => {
@@ -823,20 +821,18 @@
       (chatCannotDecide ? DECIDE_IN_ORGX_COPY.chat_unavailable : 'Open it in OrgX to decide.');
 
     var buildDecisionSurfaceUrl = (decision) => {
-      if (!decision || !decision.id) return ORGX_BASE_URL + '/decisions';
-      if (typeof decision.review_url === 'string' && /^https:\/\//.test(decision.review_url.trim())) return decision.review_url.trim();
-      if (typeof decision.url === 'string' && decision.url.trim()) return decision.url.trim();
-      if (typeof decision.link === 'string' && decision.link.trim()) return decision.link.trim();
+      const links = window.OrgXLinks;
+      if (!decision || !decision.id) return links.decisions();
+      for (const candidate of [decision.review_url, decision.url, decision.link]) {
+        const url = typeof candidate === 'string' ? links.normalize(candidate) : '';
+        if (url) return url;
+      }
       const refs = decision.context_refs || {};
       const kind = kindFromType(decision);
       // Agent-run approvals open their run; actions waiting on approval open the decision queue.
-      if (kind === 'approval' && UUID_RE.test(firstString(refs.run_id))) return ORGX_BASE_URL + '/agents/runs/' + encodeURIComponent(refs.run_id);
+      if (kind === 'approval' && UUID_RE.test(firstString(refs.run_id))) return links.run(refs.run_id);
       if (kind === 'action') return buildDecisionsUrl();
-      const initiativeId = firstString(decision.initiative_id, refs.initiative_id);
-      if (initiativeId) {
-        return ORGX_BASE_URL + '/initiatives/' + encodeURIComponent(initiativeId) + '?focus=decisions&decision=' + encodeURIComponent(decision.id);
-      }
-      return ORGX_BASE_URL + '/decisions/' + encodeURIComponent(decision.id);
+      return links.decision(decision.id);
     };
 
     // Links leave through the host; standalone previews open a tab.
@@ -1430,20 +1426,23 @@
       return { label, name, role, isSystem: false };
     };
 
-    var renderAvatar = (name, sizePx, isSystem) => {
-      if (isSystem) {
-        return `<span class="agent-avatar agent-avatar--system" style="width:${sizePx}px;height:${sizePx}px">${ORGX_MARK_SVG}</span>`;
-      }
-      const agentKey = window.OrgXAgentIdentity ? window.OrgXAgentIdentity.resolveAgentKey(name) : null;
-      const form = window.OrgXAgentIdentity && window.OrgXAgentIdentity.formForState ? window.OrgXAgentIdentity.formForState('needs_you') : 'asking';
-      if (agentKey) {
-        return `<span class="agent-avatar"><ox-avatar agent="${agentKey}" form="${form}" size="${sizePx}" name="${escapeHtml(getDecisionOwner({ agent_name: name }).name)}"></ox-avatar></span>`;
-      }
-      return '';
+    /* The owner's avatar: an agent's headshot inside the hover card (name, role,
+       state, the decision it is waiting on, Open in OrgX); the OrgX mark for
+       system owners; initials for a person. Never an empty circle. */
+    var renderAvatar = (name, sizePx, isSystem, decision) => {
+      const identity = window.OrgXAgentIdentity;
+      if (isSystem) return `<span class="agent-avatar agent-avatar--system">${identity.avatar({ agent: 'system', size: sizePx })}</span>`;
+      const who = identity.profile(name);
+      if (!who) return `<span class="agent-avatar">${identity.avatar({ name: getDecisionOwner({ agent_name: name }).name, size: sizePx })}</span>`;
+      return `<span class="agent-avatar">${identity.agentCard({
+        agent: who.key,
+        size: sizePx,
+        state: 'needs_you',
+        statusLabel: 'Waiting on you',
+        task: decision ? firstString(decision.title, decision.question, decision.summary) : '',
+      })}</span>`;
     };
 
-    // The OrgX mark: two crossed loops, lime to teal. Inline, so it renders in every host sandbox.
-    var ORGX_MARK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><defs><linearGradient id="oxMarkGrad" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#facc15"/><stop offset=".5" stop-color="#4ade80"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs><g fill="none" stroke="url(#oxMarkGrad)" stroke-width="2.4"><rect x="2.6" y="8.4" width="18.8" height="7.2" rx="3.6" transform="rotate(45 12 12)"/><rect x="2.6" y="8.4" width="18.8" height="7.2" rx="3.6" transform="rotate(-45 12 12)"/></g></svg>';
 
     var formatUsd = v => Number.isFinite(Number(v)) ? '$'+Number(v).toFixed(2) : null;
     // "5h", "2d": the canvas status-line age.
@@ -1458,7 +1457,6 @@
       return Math.floor(h / 24) + 'd';
     };
     var timeAgo = d => { const a = shortAge(d); return !a ? '' : a === 'now' ? 'just now' : a + ' ago'; };
-    var clock = (date) => date ? String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0') : '';
 
     /* ---------------------------------------------------------------- footer -- */
     // SM3 finishes-here: one click approves (or picks an option), the outcome lands in the same row.
@@ -2305,7 +2303,7 @@
     });
 
     /* ---------------------------------------------------------------- render -- */
-    var linkAttrs = (url) => `href="${escapeHtml(url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(url || ''))}, event)'`;
+    var linkAttrs = (url) => window.OrgXLinks.attrs(url) || `href="${escapeHtml(url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(url || ''))}, event)'`;
 
     // orgx_decide / approve_agent_work approve|reject from a model: nothing was settled and
     // a person decides in OrgX. Never render this as an empty (“All caught up”) queue.
@@ -2330,7 +2328,7 @@
       return `<div class="dq-head">
         <ox-attention-line id="dqAttention" tone="${tone || (pendingCount ? 'needs-you' : 'calm')}" count="${tone && !pendingCount ? 1 : pendingCount}"${oldest ? ` oldest="${escapeHtml(oldest)}"` : ''}>${
           label ? `<span>${escapeHtml(label)}</span>` : ''}${
-          syncedAt ? `<span slot="meta">synced ${clock(syncedAt)}</span>` : ''}<a slot="action" id="queueDecisionsLink" class="dq-head-link" ${linkAttrs(decisionsUrl)} aria-label="View all decisions in OrgX"><span class="long">All in </span>OrgX ${icons.ext(12)}</a></ox-attention-line>
+          syncedAt ? `<span slot="meta">${window.OrgXTime.html(syncedAt, 'synced')}</span>` : ''}<a slot="action" id="queueDecisionsLink" class="dq-head-link" ${linkAttrs(decisionsUrl)} aria-label="View all decisions in OrgX"><span class="long">All in </span>OrgX ${icons.ext(12)}</a></ox-attention-line>
       </div>`;
     };
 
@@ -2347,17 +2345,17 @@
       const hasCons = Boolean(d.if_approved || d.if_rejected);
       let recLine = d.recommendation
         ? `<div>
-            <div class="dq-rec">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 22, owner.isSystem)}<span>${escapeHtml(owner.name)} recommends</span>${owner.role ? `<span class="role">· ${escapeHtml(owner.role)} agent</span>` : ''}${d.recommendation_unverified ? '<span class="role">· unverified</span>' : ''}</div>
+            <div class="dq-rec">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 'inline', owner.isSystem, d)}<span>${escapeHtml(owner.name)} recommends</span>${owner.role ? `<span class="role">· ${escapeHtml(owner.role)} agent</span>` : ''}${d.recommendation_unverified ? '<span class="role">· unverified</span>' : ''}</div>
             <div class="dq-why">${escapeHtml(d.recommendation)}</div>
           </div>`
         : d.recommendation_missing && kindFromType(d) === 'decision'
         // The app could not make one: say so once, quietly.
-        ? `<div class="dq-rec is-quiet">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 22, owner.isSystem)}<span>No recommendation yet</span></div>`
+        ? `<div class="dq-rec is-quiet">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 'inline', owner.isSystem)}<span>No recommendation yet</span></div>`
         : '';
       // Actions and run approvals carry no recommendation: say who is asking.
       const kind = kindFromType(d);
       if (!recLine && kind !== 'decision' && !owner.isSystem) {
-        recLine = `<div><div class="dq-rec">${renderAvatar(owner.label, 22, false)}<span>${escapeHtml(owner.name)}</span><span class="role">${kind === 'action' ? 'wants to run this action' : 'is paused until you approve'}</span></div></div>`;
+        recLine = `<div><div class="dq-rec">${renderAvatar(owner.label, 'inline', false, d)}<span>${escapeHtml(owner.name)}</span><span class="role">${kind === 'action' ? 'wants to run this action' : 'is paused until you approve'}</span></div></div>`;
       }
       const evidenceHtml = shownEvidence.length
         ? `<div class="dq-evidence" role="list">
@@ -2568,7 +2566,7 @@
       const decisionsUrl = buildDecisionsUrl();
       if (data && data.error) {
         var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error, 'The decision queue could not be refreshed.');
-        injectHtml(`<div class="decision-shell animate-in"><div class="decision-card"><article class="ox-card" data-edge="red">
+        injectHtml(`<div class="decision-shell animate-in"><div class="decision-card"><article class="ox-card ox-surface" data-edge="red">
           <div class="dq-calm" role="alert">
             <div class="dq-calm-title">Decision queue unavailable</div>
             <div class="dq-calm-copy">${escapeHtml(errorMessage)}</div>
@@ -2579,7 +2577,7 @@
       }
       const review = needsHumanReview(data);
       if (review) {
-        injectHtml(`<div class="decision-shell animate-in"><div class="decision-card"><article class="ox-card" data-edge="amber" data-needs-human>
+        injectHtml(`<div class="decision-shell animate-in"><div class="decision-card"><article class="ox-card ox-surface" data-edge="amber" data-needs-human>
           ${attentionHtml(0, '', 'A person decides this in OrgX', 'needs-you')}
           <div class="dq-calm" role="status">
             <div class="dq-calm-title">Decide in OrgX</div>
@@ -2614,7 +2612,7 @@
             ? `${lastResolution.summary} was ${lastResolution.verb || (lastResolution.action === 'approved' ? 'approved' : 'sent back')} by you. New decisions appear here when work needs you.`
             : 'New decisions appear here when work needs you.', line: '', tone: '' };
         })();
-        injectHtml(`<div class="decision-shell animate-in"><div class="decision-card"><article class="ox-card" data-edge="${calmCopy.edge}">
+        injectHtml(`<div class="decision-shell animate-in"><div class="decision-card"><article class="ox-card ox-surface" data-edge="${calmCopy.edge}">
           ${attentionHtml(0, '', calmCopy.line, calmCopy.tone)}
           <div class="dq-calm">
             <div class="dq-calm-title">${escapeHtml(calmCopy.title)}</div>
@@ -2641,7 +2639,7 @@
 
       const cardsHtml = paginated.map((d) => `
         <div class="decision-card urgency-${escapeHtml(d.urgency)}">
-          <article class="ox-card" data-card-for="${escapeHtml(d.id)}" data-edge="${edgeFor(d)}" aria-label="Decision: ${escapeHtml(d.headline || d.summary)}">
+          <article class="ox-card ox-surface" data-card-for="${escapeHtml(d.id)}" data-edge="${edgeFor(d)}" aria-label="Decision: ${escapeHtml(d.headline || d.summary)}">
             ${attentionHtml(pending.length, oldestAge(pending), '')}
             ${decisionBodyHtml(d)}
           </article>

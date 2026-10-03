@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import { JSDOM } from 'jsdom';
 import { describe, expect, it, vi } from 'vitest';
+import { installSharedFoundations } from './fixtures/sharedFoundations';
 
 const widgetHtml = readFileSync(join(process.cwd(), 'public', 'widgets', 'artifact-review.html'), 'utf8');
 const scriptSource =
@@ -17,6 +18,7 @@ function mount(query: string, callTool = vi.fn().mockResolvedValue({})) {
     runScripts: 'outside-only',
     pretendToBeVisual: true,
   });
+  installSharedFoundations(dom.window);
   Object.defineProperty(dom.window, 'OrgXWidgetRuntime', {
     configurable: true,
     value: {

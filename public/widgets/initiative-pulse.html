@@ -168,7 +168,7 @@
       }
       .pulse-list > .pulse-list-row:first-child { border-top: 0; }
       .pulse-list-row:hover .pulse-list-title { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ox-border-strong); }
-      .pulse-list-leading { display: grid; place-items: center; width: 28px; color: var(--ox-text-muted); --ox-glyph-size: 18px; }
+      .pulse-list-leading { display: grid; place-items: center; width: 32px; color: var(--ox-text-muted); --ox-glyph-size: 18px; }
       .pulse-list-leading[data-tone="amber"] { color: var(--ox-warning); }
       .pulse-list-leading[data-tone="red"] { color: var(--ox-danger); }
       .pulse-list-leading[data-tone="teal"] { color: var(--ox-teal); }
@@ -225,7 +225,7 @@
         .pulse-title { font-size: 19px; }
         .pulse-tile { width: 34px; height: 34px; }
         .pulse-bar, .pulse-pct { display: none; }
-        .pulse-list-row { gap: 10px; }
+        .pulse-list-row { gap: 8px; } /* 32 px avatars: two 2 px narrower gaps keep the text column as wide as before */
         .pulse-calm { padding: 16px; }
         .pulse-rail { gap: 0; margin: 0 -6px; }
         .pulse-rail-button { padding: 0 6px; gap: 5px; font-size: 12.5px; }
@@ -241,7 +241,7 @@
   <body>
     <div class="container" role="region" aria-label="Initiative Status">
       <div id="content" aria-live="polite">
-        <div class="pulse-shell-card"><div class="ox-card" role="status" aria-label="Loading initiative pulse">
+        <div class="pulse-shell-card"><div class="ox-card ox-surface" role="status" aria-label="Loading initiative pulse">
           <div class="pulse-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 20px"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:36%;height:12px"></span></div>
           <div class="pulse-shell"><span class="sk" style="width:62%;height:22px"></span><span class="sk" style="width:100%;height:10px"></span><span class="sk" style="width:100%;height:52px"></span></div>
           <ox-footer variant="reads" state="loading"></ox-footer>
@@ -268,13 +268,7 @@
           (rawPulse.id ||
             rawPulse.initiative_id ||
             (rawPulse.initiative && rawPulse.initiative.id));
-        if (initiativeId && String(initiativeId).trim()) {
-          return (
-            "https://useorgx.com/initiatives/" +
-            encodeURIComponent(String(initiativeId).trim())
-          );
-        }
-        return "https://useorgx.com/initiatives";
+        return window.OrgXLinks.initiative(initiativeId);
       }
 
       function buildRecoveryCta(rawPulse, label) {
@@ -693,17 +687,9 @@ external: function (size) {
         return (percent > 0 ? "+" : "") + percent + "%";
       };
 
+      // Shared formatter: "2m ago", "yesterday", then the date in the viewer's locale.
       var formatRelative = function (value) {
-        if (!value) return null;
-        var date = new Date(value);
-        if (Number.isNaN(date.getTime())) return null;
-        var delta = Date.now() - date.getTime();
-        var minutes = Math.max(1, Math.round(delta / 60000));
-        if (minutes < 60) return minutes + "m ago";
-        var hours = Math.round(minutes / 60);
-        if (hours < 24) return hours + "h ago";
-        var days = Math.round(hours / 24);
-        return days + "d ago";
+        return window.OrgXTime.relative(value, { inline: true }) || null;
       };
 
       var formatEta = function (seconds) {
@@ -714,13 +700,8 @@ external: function (size) {
       };
 
       var artifactUrl = function (artifact, fallbackUrl) {
-        if (artifact && typeof artifact.primary_url === "string" && artifact.primary_url) {
-          return artifact.primary_url;
-        }
-        if (artifact && typeof artifact.live_url === "string" && artifact.live_url) {
-          return artifact.live_url;
-        }
-        return fallbackUrl;
+        var links = window.OrgXLinks;
+        return (artifact && (links.normalize(artifact.primary_url) || links.normalize(artifact.live_url))) || fallbackUrl;
       };
 
       var artifactLabel = function (artifact) {
@@ -1084,14 +1065,14 @@ external: function (size) {
         return identity && identity.formForState ? identity.formForState(state) : "base";
       };
 
-      var renderPulseAvatar = function (name, domain, status, blockerCount) {
+      // Rows are links, so the avatar is the plain headshot here (no hover
+      // card inside an <a>): an agent's photo, the OrgX mark for system
+      // owners, initials for a person; nothing when no one owns the stream.
+      var renderPulseAvatar = function (name, domain) {
         var identity = window.OrgXAgentIdentity;
-        var key = identity ? identity.resolveAgentKey(name, domain) : null;
-        if (!key) return "";
-        return (
-          '<ox-avatar agent="' + escapeHtml(key) + '" form="' + escapeHtml(avatarFormFor(status, blockerCount)) +
-          '" size="24"' + (name ? ' name="' + escapeHtml(name) + '"' : "") + "></ox-avatar>"
-        );
+        var key = identity.resolveAgentKey(name, domain);
+        if (!key && !(name && String(name).trim())) return "";
+        return identity.avatar({ agent: key || name, name: name, size: 'row' });
       };
 
       var toneForStatus = function (status, fallbackProgress, blockerCount) {
@@ -1248,7 +1229,7 @@ external: function (size) {
       };
 
       var linkRow = function (url, leading, leadingTone, title, metaHtml, trailing, extraClass) {
-        var href = String(url || "");
+        var href = window.OrgXLinks.normalize(url) || window.OrgXLinks.live(currentPulseData && currentPulseData.id);
         return (
           '<a href="' + escapeHtml(href) + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' +
           escapeHtml(JSON.stringify(href)).replace(/'/g, "&#39;") + ', event)\' class="pulse-list-row' + (extraClass ? " " + extraClass : "") + '">' +
@@ -1616,7 +1597,7 @@ external: function (size) {
 
       var renderSkeleton = function () {
         injectHtml(
-          '<div class="pulse-shell-card"><div class="ox-card" role="status" aria-label="Loading initiative pulse">' +
+          '<div class="pulse-shell-card"><div class="ox-card ox-surface" role="status" aria-label="Loading initiative pulse">' +
             '<div class="pulse-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 20px"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:36%;height:12px"></span></div>' +
             '<div class="pulse-shell">' +
               '<div class="pulse-hero"><span class="sk" style="width:40px;height:40px;border-radius:11px"></span><span style="display:flex;flex-direction:column;gap:8px;flex:1"><span class="sk" style="width:30%;height:10px"></span><span class="sk" style="width:62%;height:22px"></span><span class="sk" style="width:48%;height:11px"></span></span></div>' +
@@ -1631,7 +1612,7 @@ external: function (size) {
 
       var calmCard = function (edge, title, desc, cta, role) {
         return (
-          '<div class="pulse-shell-card animate-in"><div class="ox-card" data-edge="' + edge + '">' +
+          '<div class="pulse-shell-card animate-in"><div class="ox-card ox-surface" data-edge="' + edge + '">' +
             '<div class="pulse-calm"' + (role ? ' role="' + role + '"' : "") + ">" +
               '<div class="empty-title">' + escapeHtml(title) + "</div>" +
               '<div class="empty-desc">' + escapeHtml(desc) + "</div>" +
@@ -1700,11 +1681,7 @@ external: function (size) {
 
         pulse = normalized;
 
-        var dashboardUrl =
-          pulse.live_url ||
-          (pulse.id
-            ? "https://useorgx.com/live/" + encodeURIComponent(pulse.id)
-            : "https://useorgx.com/live?view=mission-control");
+        var dashboardUrl = window.OrgXLinks.normalize(pulse.live_url) || window.OrgXLinks.live(pulse.id);
 
         var reviewCount = (pulse.recent_artifacts || []).filter(function (artifact) {
           return ["in_review", "draft", "changes_requested"].indexOf(toStatusKey(artifact.status)) >= 0;
@@ -1841,7 +1818,7 @@ external: function (size) {
 
         injectHtml(
           '<div class="widget-shell-card pulse-shell-card animate-in">' +
-            '<div class="ox-card" data-edge="' + edge + '">' +
+            '<div class="ox-card ox-surface" data-edge="' + edge + '">' +
               '<div class="pulse-head">' +
                 '<ox-attention-line tone="' + lineTone + '" count="' + waiting + '">' +
                   '<span>' + escapeHtml(lineSentence) + "</span>" +

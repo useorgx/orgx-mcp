@@ -1,151 +1,127 @@
+#!/usr/bin/env node
 /**
- * generate-app-routes.mjs
+ * Generate tests/fixtures/orgx-app-routes.json: the OrgX app's real page
+ * routes, its redirects, and the query parameters the pages that widgets link
+ * to actually read. tests/widgetLinks.spec.ts checks every URL the widget link
+ * builder (OrgXWidgetRuntime.links) produces against this fixture, so a link
+ * to a page that does not exist, or a query parameter no page reads, fails CI.
  *
- * Snapshots the OrgX app's page routes into tests/fixtures/orgx-app-routes.json
- * so link builders (src/deepLinks.ts, widget runtime) can be checked against
- * pages that actually exist.
+ *   ORGX_APP_DIR=../orgx/orgx node scripts/generate-app-routes.mjs
  *
- * For each `app/**\/page.tsx` it records:
- *   - the route pattern (route groups stripped; parallel slots skipped)
- *   - `redirect`: the target when the page only redirects
- *   - `params`: query params the page (or a module it imports from its own
- *     route folder) reads from searchParams
- * It also records the static `redirects()` entries from next.config.mjs.
- *
- * Usage:
- *   ORGX_APP_DIR=../orgx/orgx pnpm app:routes
+ * Routes come from every page.tsx under app/ (route groups "(x)" dropped,
+ * parallel-route slots "@x" skipped; dynamic segments kept as written, e.g. [initiativeId]).
+ * Redirects come from next.config.mjs `redirects()` sources. Query parameters
+ * are listed by hand below with the file that reads each one; the script
+ * fails if a listed file no longer reads the parameter, so the list cannot
+ * drift silently from the app.
  */
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, '..');
-const appRoot = path.resolve(repoRoot, process.env.ORGX_APP_DIR ?? '../orgx/orgx');
-const appDir = path.join(appRoot, 'app');
-const outFile = path.join(repoRoot, 'tests/fixtures/orgx-app-routes.json');
-
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const appRoot = resolve(root, process.env.ORGX_APP_DIR ?? '../orgx/orgx');
+const appDir = join(appRoot, 'app');
+const out = join(root, 'tests/fixtures/orgx-app-routes.json');
 if (!existsSync(appDir)) {
-  console.error(`OrgX app directory not found: ${appDir} (set ORGX_APP_DIR)`);
+  console.error(`No app directory at ${appDir}. Set ORGX_APP_DIR to the OrgX Next.js app (the folder holding app/).`);
   process.exit(1);
 }
 
-const SOURCE_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'];
-const NON_PARAM_KEYS = new Set([
-  'get', 'getAll', 'set', 'has', 'append', 'delete', 'toString', 'entries',
-  'keys', 'values', 'forEach', 'size', 'then', 'length',
-]);
-
-function walkPages(dir, out = []) {
-  for (const name of readdirSync(dir)) {
-    // Parallel-route slots (@x) only fill a layout; they never create a URL on their own.
-    if (name === 'node_modules' || name.startsWith('_') || name.startsWith('@') || name === 'api') continue;
-    const full = path.join(dir, name);
-    if (statSync(full).isDirectory()) walkPages(full, out);
-    else if (name === 'page.tsx' || name === 'page.ts' || name === 'page.jsx') out.push(full);
-  }
-  return out;
-}
-
-function routePattern(pageFile) {
-  const segments = path
-    .relative(appDir, path.dirname(pageFile))
-    .split(path.sep)
-    .filter(Boolean)
-    .filter((s) => !(s.startsWith('(') && s.endsWith(')')));
-  return `/${segments.join('/')}`;
-}
-
-function isRouteDir(dir) {
-  return ['page.tsx', 'page.ts', 'page.jsx'].some((f) => existsSync(path.join(dir, f)));
-}
-
-function resolveImport(fromFile, spec) {
-  let base;
-  if (spec.startsWith('./') || spec.startsWith('../')) base = path.resolve(path.dirname(fromFile), spec);
-  else if (spec.startsWith('@/app/')) base = path.join(appDir, spec.slice('@/app/'.length));
-  else return null;
-  const candidates = [base, ...SOURCE_EXTENSIONS.map((e) => base + e), ...SOURCE_EXTENSIONS.map((e) => path.join(base, 'index' + e))];
-  return candidates.find((c) => existsSync(c) && statSync(c).isFile()) ?? null;
-}
-
-/** Files the page owns: itself plus local modules it imports that live in its route folder (not in a child route). */
-function ownedFiles(pageFile) {
-  const routeDir = path.dirname(pageFile);
-  const seen = new Set();
-  const queue = [pageFile];
-  while (queue.length) {
-    const file = queue.pop();
-    if (seen.has(file)) continue;
-    seen.add(file);
-    const src = readFileSync(file, 'utf8');
-    for (const m of src.matchAll(/(?:from\s+|import\s*\(\s*)['"]([^'"]+)['"]/g)) {
-      const resolved = resolveImport(file, m[1]);
-      if (!resolved || !resolved.startsWith(routeDir + path.sep)) continue;
-      // Stop at child routes: they are their own pages.
-      let dir = path.dirname(resolved);
-      let crossesRoute = false;
-      while (dir !== routeDir) {
-        if (isRouteDir(dir)) crossesRoute = true;
-        dir = path.dirname(dir);
-      }
-      if (!crossesRoute) queue.push(resolved);
-    }
-  }
-  return [...seen];
-}
-
-function readParams(files) {
-  const params = new Set();
-  for (const file of files) {
-    const src = readFileSync(file, 'utf8');
-    for (const m of src.matchAll(/\b\w*[sS]earch[pP]arams\??\.(\w+)/g)) params.add(m[1]);
-    for (const m of src.matchAll(/\b\w*[sS]earch[pP]arams\??\.?\[\s*['"](\w+)['"]\s*\]/g)) params.add(m[1]);
-    if (/[sS]earch[pP]arams/.test(src)) {
-      for (const m of src.matchAll(/\.get\(\s*['"]([\w-]+)['"]\s*\)/g)) params.add(m[1]);
-    }
-  }
-  return [...params].filter((p) => !NON_PARAM_KEYS.has(p)).sort();
-}
-
-/** A page that renders nothing and only calls redirect(...). */
-function pageRedirect(pageFile) {
-  const src = readFileSync(pageFile, 'utf8');
-  if (!/\bredirect\(/.test(src)) return null;
-  if (/(?:return|=>)\s*\(?\s*<[A-Za-z>]/.test(src)) return null;
-  // Keep the static prefix of the target (`/live?run=${id}` -> `/live?run=`).
-  const m = src.match(/\bredirect\(\s*([`'"])([^`'"\n]*)/);
-  const target = m ? m[2].split('${')[0] : '';
-  return target || 'dynamic';
-}
-
-function configRedirects() {
-  const configFile = ['next.config.mjs', 'next.config.js', 'next.config.ts']
-    .map((f) => path.join(appRoot, f))
-    .find((f) => existsSync(f));
-  if (!configFile) return [];
-  const src = readFileSync(configFile, 'utf8');
-  const block = src.slice(src.indexOf('redirects()'));
-  const out = [];
-  for (const m of block.matchAll(/source:\s*'([^']+)',\s*destination:\s*'([^']+)'/g)) {
-    out.push({ source: m[1], destination: m[2] });
-  }
-  return out;
-}
-
-const routes = walkPages(appDir)
-  .map((pageFile) => ({
-    pattern: routePattern(pageFile),
-    redirect: pageRedirect(pageFile),
-    params: readParams(ownedFiles(pageFile)),
-  }))
-  .sort((a, b) => a.pattern.localeCompare(b.pattern));
-
-const fixture = {
-  $comment: 'Generated by scripts/generate-app-routes.mjs from the OrgX app (orgx/app/**/page.tsx). Do not edit by hand.',
-  routes,
-  redirects: configRedirects(),
+/** route -> { file: [param, ...] }: the files (under app/) that read each param. */
+const QUERY_PARAMS = {
+  '/live': {
+    'live/page.client.tsx': ['view', 'center', 'initiative', 'workstream', 'milestone', 'task', 'session', 'run'],
+  },
+  '/live/[initiativeId]': {
+    'live/components/execution-room/ExecutionRoomView.tsx': ['workstream', 'artifact'],
+    'live/components/execution-room/states/TaskFocusPanel.tsx': ['task'],
+    'live/components/execution-room/states/useInitiativeActiveView.ts': ['decision'],
+    'live/components/execution-room/ExecutionRoomLayout.tsx': ['tab', 'view', 'review'],
+  },
+  '/initiatives/[id]': {
+    'initiatives/[id]/page.tsx': ['focus', 'milestone', 'task', 'center'],
+  },
+  '/decisions': {
+    'decisions/page.tsx': ['center', 'status', 'priority', 'page', 'sort', 'dir', 'search'],
+  },
+  '/artifacts/[artifactId]': {
+    'artifacts/[artifactId]/page.tsx': ['context', 'entityId', 'initiative'],
+  },
+  '/command': {
+    'command/page.tsx': ['center'],
+  },
+  '/goals': {
+    'goals/page.client.tsx': ['objective'],
+    'goals/page.tsx': ['center'],
+  },
+  '/work-ledger': {
+    'work-ledger/page.tsx': ['center'],
+  },
 };
 
-writeFileSync(outFile, JSON.stringify(fixture, null, 2) + '\n');
-console.log(`Wrote ${fixture.routes.length} routes and ${fixture.redirects.length} redirects to ${path.relative(repoRoot, outFile)}`);
+function walk(dir, files = []) {
+  for (const name of readdirSync(dir)) {
+    if (name === 'node_modules' || name.startsWith('.')) continue;
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) walk(path, files);
+    else if (/^page\.(tsx|ts|jsx|js)$/.test(name)) files.push(path);
+  }
+  return files;
+}
+
+const routes = new Set();
+for (const file of walk(appDir)) {
+  const parts = relative(appDir, dirname(file)).split('/');
+  // Parallel-route slots (@name) render inside another page; not routes of their own.
+  if (parts.some((s) => s.startsWith('@'))) continue;
+  const segments = parts.filter((s) => s && !/^\(.*\)$/.test(s));
+  if (segments[0] === 'api') continue;
+  routes.add('/' + segments.join('/'));
+}
+
+const redirects = [];
+const nextConfig = join(appRoot, 'next.config.mjs');
+if (existsSync(nextConfig)) {
+  const text = readFileSync(nextConfig, 'utf8');
+  const block = text.slice(text.indexOf('async redirects'));
+  for (const m of block.matchAll(/source:\s*'([^']+)',\s*destination:\s*'([^']+)'/g)) {
+    redirects.push({ source: m[1], destination: m[2] });
+  }
+}
+
+const query = {};
+const problems = [];
+for (const [route, files] of Object.entries(QUERY_PARAMS)) {
+  if (!routes.has(route)) problems.push(`${route}: no such route`);
+  query[route] = [];
+  for (const [file, params] of Object.entries(files)) {
+    const path = join(appDir, file);
+    if (!existsSync(path)) {
+      problems.push(`${route}: ${file} is missing`);
+      continue;
+    }
+    const text = readFileSync(path, 'utf8');
+    for (const param of params) {
+      const reads = new RegExp(`get\\(\\s*['"]${param}['"]\\s*\\)|[Pp]arams\\??\\.${param}\\b|readFirst\\([^)]*\\.${param}\\)`).test(text);
+      if (!reads) problems.push(`${route}: ${file} no longer reads ?${param}`);
+      else query[route].push(param);
+    }
+  }
+  query[route] = [...new Set(query[route])].sort();
+}
+if (problems.length) {
+  console.error(`Query parameter list is out of date:\n  ${problems.join('\n  ')}`);
+  process.exit(1);
+}
+
+mkdirSync(dirname(out), { recursive: true });
+const fixture = {
+  about:
+    'Generated by scripts/generate-app-routes.mjs from the OrgX app (app/**/page.tsx, next.config.mjs redirects, and the query parameters each linked page reads). Do not edit; regenerate.',
+  routes: [...routes].sort(),
+  redirects,
+  query,
+};
+writeFileSync(out, `${JSON.stringify(fixture, null, 2)}\n`);
+console.log(`wrote ${relative(root, out)}: ${fixture.routes.length} routes, ${redirects.length} redirects, ${Object.keys(query).length} routes with query params`);

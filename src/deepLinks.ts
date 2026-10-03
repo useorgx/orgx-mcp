@@ -25,27 +25,25 @@ export interface EntityLink {
 
 /**
  * Agent desks live at /command/agents/:slug, keyed by the agent's short name.
- * Accepts the key itself, a display name, or the agent's domain.
+ * Same word lists as OrgXAgentIdentity (public/widgets/shared/agent-identity.js):
+ * the key, display name, domain or agent id resolve to the key.
  */
-const AGENT_SLUGS = ['pace', 'eli', 'mark', 'sage', 'orion', 'dana', 'xandy'] as const;
-const AGENT_SLUG_BY_DOMAIN: Readonly<Record<string, string>> = {
-  product: 'pace',
-  engineering: 'eli',
-  marketing: 'mark',
-  sales: 'sage',
-  operations: 'orion',
-  design: 'dana',
-  orchestrator: 'xandy',
-};
+const AGENT_WORDS: ReadonlyArray<readonly [string, readonly string[]]> = [
+  ['pace', ['pace', 'product', 'product-agent', 'product_agent', 'product_orchestrator']],
+  ['eli', ['eli', 'engineering', 'engineering-agent', 'engineering_agent', 'engineering_autopilot']],
+  ['mark', ['mark', 'marketing', 'marketing-agent', 'marketing_agent', 'launch_captain']],
+  ['sage', ['sage', 'sales', 'sales-agent', 'sales_agent', 'pipeline_intelligence']],
+  ['orion', ['orion', 'operations', 'ops', 'operations-agent', 'operations_agent', 'control_tower']],
+  ['dana', ['dana', 'design', 'design-agent', 'design_agent', 'design_codex']],
+  ['xandy', ['xandy', 'orchestrator', 'orchestrator-agent', 'orchestrator_agent', 'xandy_orchestrator']],
+];
 
 export function resolveAgentSlug(agentId: string): string | null {
-  const key = agentId
-    .trim()
-    .toLowerCase()
-    .replace(/^orgx[-_]/, '')
-    .replace(/[-_]agent$/, '');
-  if ((AGENT_SLUGS as readonly string[]).includes(key)) return key;
-  return AGENT_SLUG_BY_DOMAIN[key] ?? null;
+  const tokens = agentId.toLowerCase().split(/[^a-z0-9_-]+/).filter(Boolean);
+  for (const [key, words] of AGENT_WORDS) {
+    if (tokens.some((token) => words.includes(token))) return key;
+  }
+  return null;
 }
 
 const enc = encodeURIComponent;
@@ -53,10 +51,10 @@ const enc = encodeURIComponent;
 /**
  * Entity type to URL path mapping.
  *
- * Every path here must resolve to a real page in the OrgX app (not a redirect)
- * and only carry query params that page reads; tests/deepLinksRoutes.spec.ts
- * checks this against tests/fixtures/orgx-app-routes.json. The widget runtime
- * (OrgXWidgetRuntime.links) uses the same mapping.
+ * Mirrors OrgXWidgetRuntime.links (public/widgets/shared/widget-runtime.js).
+ * Every path must resolve to a real page in the OrgX app (not a redirect) and
+ * only carry query params that page reads; tests/deepLinksRoutes.spec.ts
+ * checks this against tests/fixtures/orgx-app-routes.json.
  */
 export function getEntityPath(
   entityType: string,
@@ -90,21 +88,23 @@ export function getEntityPath(
     case 'agent_run':
       return `/runs/${id}`;
     case 'session':
-      return initiativeId
-        ? `/live/${initiativeId}?session=${id}`
-        : `/live?view=mission-control&session=${id}`;
+      // The execution room has no session focus; mission control does.
+      return `/live?view=mission-control&session=${id}`;
     case 'blocker':
       // Blockers have no page of their own; open the run they block.
-      return opts.runId ? `/runs/${enc(opts.runId)}` : '/command';
+      if (opts.runId) return `/runs/${enc(opts.runId)}`;
+      return initiativeId ? `/live/${initiativeId}` : '/command';
     case 'agent': {
       const slug = resolveAgentSlug(entityId);
       return slug ? `/command/agents/${slug}` : '/command/agents';
     }
+    case 'plan':
     case 'plan_session':
       return initiativeId
         ? `/initiatives/${initiativeId}`
         : `/live?view=mission-control&session=${id}`;
     case 'objective':
+    case 'goal':
       return `/goals?objective=${id}`;
     case 'command_center':
     case 'workspace':
@@ -122,7 +122,7 @@ export function getEntityPath(
       return '/live?view=mission-control';
     default:
       // workflow, playbook, skill and anything else have no page in the app.
-      return '/command';
+      return initiativeId ? `/live/${initiativeId}` : '/command';
   }
 }
 
@@ -145,7 +145,12 @@ export function buildLiveUrl(
   }
 
   let path: string;
-  if (initiativeId) {
+  if (initiativeId && sessionId) {
+    // The execution room has no session focus; mission control scopes by initiative.
+    params.set('initiative', initiativeId);
+    params.set('view', 'mission-control');
+    path = `/live?${params.toString()}`;
+  } else if (initiativeId) {
     const queryString = params.toString();
     path = queryString
       ? `/live/${enc(initiativeId)}?${queryString}`
