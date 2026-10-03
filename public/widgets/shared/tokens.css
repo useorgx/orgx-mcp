@@ -256,8 +256,6 @@ body {
   color: var(--app-color-text-tertiary);
   font-size: var(--app-font-size-xs);
   font-weight: var(--app-font-weight-medium);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .app-status-chip {
@@ -468,8 +466,6 @@ body {
   color: inherit;
   font-size: var(--app-font-size-xs);
   font-weight: var(--app-font-weight-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
