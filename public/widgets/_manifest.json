@@ -90,8 +90,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 111250,
-      "hash": "04c4a3a77ef8",
+      "bytes": 111160,
+      "hash": "d7c585d7624a",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -126,8 +126,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 165496,
-      "hash": "41ab6cdd5e65",
+      "bytes": 165378,
+      "hash": "8ece88d5f743",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -245,8 +245,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 62702,
-      "hash": "12a06d586f7c",
+      "bytes": 62720,
+      "hash": "de59bd9288bd",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -283,8 +283,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 108922,
-      "hash": "0c3a901c0b5a",
+      "bytes": 108828,
+      "hash": "687595817d93",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",

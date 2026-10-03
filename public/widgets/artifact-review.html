@@ -72,12 +72,11 @@
     /* Open in OrgX reads as a control: outlined, full-contrast, 44px hit area. */
     .hd-link {
       position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none;
-      min-height: 36px; margin: -6px 0; padding: 0 12px; border-radius: 12px;
+      min-height: 44px; margin: -10px 0; padding: 0 12px; border-radius: 12px;
       border: 1px solid var(--ox-border-strong); background: var(--ox-surface-subtle, transparent);
       color: var(--ox-text); font-size: 13px; font-weight: 650; text-decoration: none; white-space: nowrap;
       transition: background .16s, border-color .16s;
     }
-    .hd-link::after { content: ""; position: absolute; inset: -4px -2px; }
     .hd-link:hover { background: var(--ox-hover); border-color: var(--ox-text-muted); }
     .hd-link .ox-icon { color: var(--ox-text-2); }
     .bd { padding: 10px 18px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -253,8 +252,8 @@
       .qv-facts dd + dt { margin-top: 6px; }
       .who2 b { display: none; }
       .hd-link span { display: none; }
-      /* Phone: a 36px outlined icon button (44px hit area). */
-      .hd-link { width: 36px; padding: 0; }
+      /* Phone: a 44px outlined icon button. */
+      .hd-link { width: 44px; padding: 0; }
     }
     @media (max-width: 420px) {
       .ft-btn { padding: 0 8px; gap: 4px; font-size: 12px; }

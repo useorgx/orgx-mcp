@@ -96,14 +96,13 @@
     .urgency { font-weight: 650; flex: none; }
     .urgency[data-u="critical"], .urgency[data-u="high"] { color: var(--ox-warning); }
     .blocked-tag { color: var(--ox-danger); font-weight: 650; flex: none; }
-    /* Open in OrgX: an outlined control (36px, 44px hit area), never tiny muted text. */
+    /* Open in OrgX: an outlined 44px control, never tiny muted text. */
     .open-link {
       position: relative; flex: none; display: inline-flex; align-items: center; gap: 6px;
-      min-height: 36px; padding: 0 12px; border-radius: 12px; text-decoration: none;
+      min-height: 44px; padding: 0 12px; border-radius: 12px; text-decoration: none;
       border: 1px solid var(--ox-border-strong); background: var(--ox-surface-subtle, transparent);
       font-size: 13px; font-weight: 650; color: var(--ox-text);
     }
-    .open-link::after { content: ""; position: absolute; inset: -4px -2px; }
     .open-link:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); border-color: var(--ox-text-muted); }
     /* The headline is the item's first sentence, about three lines at most; the rest is body text. */
     .q {
