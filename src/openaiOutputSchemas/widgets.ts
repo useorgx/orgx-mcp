@@ -10,7 +10,9 @@ import {
   nullableNumber,
   nullableString,
   approvalListProofSchema,
+  briefSourceGapSchema,
   humanDecisionReviewShape,
+  pendingDecisionsScopeSchema,
   proofHandoffSchema,
   resourceSchema,
   scaffoldContractWarningSchema,
@@ -266,6 +268,9 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       // linked resource details. Preserve either representation on the wire.
       blockers: z.array(z.union([z.string().min(1), resourceSchema])),
       pending_decisions: z.number(),
+      // The canonical count's scope; null when that count failed to load and
+      // pending_decisions fell back to the pulse's own count.
+      pending_decisions_scope: pendingDecisionsScopeSchema.nullable().optional(),
       continuity: z
         .object({
           state: z.string().optional(),
@@ -447,7 +452,9 @@ export const WIDGET_OUTPUT_SCHEMAS = {
   approve_agent_work: z
     .object({
       decisions: z.array(decisionSchema).optional(),
+      // The whole scope's count, not the page's length.
       total_pending: z.number().optional(),
+      pending_decisions_scope: pendingDecisionsScopeSchema.optional(),
       summary: z
         .object({
           critical: z.number(),
@@ -527,8 +534,14 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       goals: z.array(resourceSchema).optional(),
       dataGaps: z.array(z.string()).optional(),
       brief_markdown: nullableString.optional(),
+      // The canonical workspace count (same as get_pending_decisions'
+      // total_pending for this scope); null when that count failed to load.
+      pending_decisions: nullableNumber.optional(),
+      pending_decisions_scope: pendingDecisionsScopeSchema.nullable().optional(),
+      // Set only when a named source failed; each one is listed here.
       degraded: z.union([z.boolean(), z.array(z.string())]).optional(),
       degraded_reason: nullableString.optional(),
+      degraded_sources: z.array(briefSourceGapSchema).optional(),
       value_dashboard: z.object({
         period: z.literal('30d'),
         value_delivered_usd: z.number(),

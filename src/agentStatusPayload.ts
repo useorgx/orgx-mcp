@@ -280,6 +280,11 @@ const ACTIVE_TASK_STATES = new Set([
 
 const QUEUED_TASK_STATES = new Set(['queued', 'pending', 'not_started', 'todo']);
 
+// Still the agent's current work, but not moving. The app reports a live task
+// this way while its agent's run is stalled or blocked
+// (lib/agents/tools/agentStatusTaskState.ts, CURRENT_TASK_STATUSES).
+const HELD_TASK_STATES = new Set(['blocked', 'stalled']);
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -583,10 +588,29 @@ export function enrichAgentStatusWithDurableEvidence(
       const existingTaskIds = new Set(
         existingTasks.map(durableTaskId).filter((id): id is string => Boolean(id))
       );
+      // A task the app reconciled with its agent's run (reported stalled or
+      // blocked, stored value kept in `stored_status`). The entity row for it
+      // still holds that stored value: the same observation before
+      // reconciliation, not newer evidence, so it must not put the task back
+      // to "running". An entity row that has moved on still applies.
+      const reconciledStoredStatus = new Map<string, string>();
+      for (const task of existingTasks) {
+        const id = durableTaskId(task);
+        if (id && typeof task.stored_status === 'string') {
+          reconciledStoredStatus.set(id, taskState(task.stored_status));
+        }
+      }
       const matchedTasks = uniqueByStableKey([
         ...existingTasks,
         ...tasks.filter((task) => {
           const id = durableTaskId(task);
+          if (
+            id &&
+            reconciledStoredStatus.get(id) ===
+              taskState(task.status ?? task.state ?? task.phase)
+          ) {
+            return false;
+          }
           return (
             (!!id && existingTaskIds.has(id)) ||
             intersects(identity, taskOwnerTokens(task))
@@ -604,6 +628,11 @@ export function enrichAgentStatusWithDurableEvidence(
       );
       const activeTasks = matchedTasks.filter((task) =>
         ACTIVE_TASK_STATES.has(
+          taskState(task.status ?? task.state ?? task.phase)
+        )
+      );
+      const heldTasks = matchedTasks.filter((task) =>
+        HELD_TASK_STATES.has(
           taskState(task.status ?? task.state ?? task.phase)
         )
       );
@@ -709,7 +738,8 @@ export function enrichAgentStatusWithDurableEvidence(
         artifact_attribution_state:
           matchedArtifacts.length > 0 ? 'matched' : 'not_observed',
         last_heartbeat_at: heartbeat,
-        current_tasks: activeTasks,
+        // Current work includes stalled and blocked tasks; active is moving work.
+        current_tasks: [...activeTasks, ...heldTasks],
         active_tasks: activeTasks,
         completed_tasks: terminalTasks,
         artifacts: matchedArtifacts,

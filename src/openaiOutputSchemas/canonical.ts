@@ -14,6 +14,7 @@ import {
   normalizationWarningSchema,
   nullableString,
   paginationSchema,
+  pendingDecisionsScopeSchema,
   planSessionSchema,
   recommendationSchema,
   resourceSchema,
@@ -549,7 +550,9 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       data: resourceSchema.optional(),
       normalization_warnings: z.array(normalizationWarningSchema).optional(),
       decisions: z.array(decisionSchema).optional(),
+      // list_pending: the whole scope's count, not the page's length.
       total_pending: z.number().optional(),
+      pending_decisions_scope: pendingDecisionsScopeSchema.optional(),
       summary: z
         .object({
           critical: z.number(),
