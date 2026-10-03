@@ -51,8 +51,11 @@
 
   --ox-shadow:
     0 18px 42px -24px rgba(15, 23, 42, 0.24), 0 2px 8px rgba(15, 23, 42, 0.05);
-  /* Card surface (.ox-surface): clean in light, just a soft fall-off. */
-  --ox-surface-layers: linear-gradient(180deg, rgba(255, 255, 255, 0) 55%, rgba(241, 245, 249, 0.5));
+  /* Card surface (.ox-surface): in light, a whisper of the homepage lime
+     from the top-right and a soft fall-off at the bottom. */
+  --ox-surface-layers:
+    radial-gradient(110% 64% at 100% 0%, rgba(132, 204, 22, 0.07), rgba(132, 204, 22, 0) 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0) 55%, rgba(241, 245, 249, 0.55));
   --ox-well-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.04);
   --ox-control-shadow:
     0 14px 30px -24px rgba(15, 23, 42, 0.35),
@@ -310,6 +313,139 @@
 }
 
 /*
+ * Type scale and rhythm: the kit's --ox-type-* scale (ox-tokens.css),
+ * declared here too so widgets that don't load the kit tokens share it.
+ *   label 12   eyebrows, section names     meta 11.5  timestamps, counts
+ *   small 12.5 secondary rows              body 14    copy
+ *   title-md 17 card titles                title-lg 22 hero lines
+ * Spacing is the kit's 4 px grid, --ox-space-1 (4) .. --ox-space-6 (24).
+ *
+ * Three voices: sans for what a person reads; sans medium muted for labels
+ * and meta (sentence case, no tracking); mono only for real code, ids and
+ * table numbers, opted in with <code>/<pre>/<kbd> or .ox-code. Widgets set
+ * their meta voice as `font: 500 11.5px/1.3 var(--ox-mono)`, so --ox-mono
+ * now resolves to sans and --ox-font-code is the true mono. This sheet
+ * loads after each widget's own <style>, so it wins on ties.
+ */
+:root:root {
+  --ox-font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --ox-font-code: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ox-mono: var(--ox-font-sans);
+  --ox-type-label-size: 12px;
+  --ox-type-label-line: 1.3;
+  --ox-type-label-weight: 500;
+  --ox-type-label-tracking: 0;
+  --ox-type-meta-size: 11.5px;
+  --ox-type-meta-line: 1.35;
+  --ox-type-small-size: 12.5px;
+  --ox-type-small-line: 1.45;
+  --ox-type-body-size: 14px;
+  --ox-type-body-line: 1.5;
+  --ox-type-title-md-size: 17px;
+  --ox-type-title-md-line: 1.3;
+  --ox-type-title-lg-size: 22px;
+  --ox-type-title-lg-line: 1.2;
+  --ox-space-1: 4px;
+  --ox-space-2: 8px;
+  --ox-space-3: 12px;
+  --ox-space-4: 16px;
+  --ox-space-5: 20px;
+  --ox-space-6: 24px;
+}
+
+code,
+kbd,
+samp,
+pre,
+.ox-code {
+  font-family: var(--ox-font-code) !important;
+  overflow-wrap: anywhere;
+}
+
+.ox-code {
+  font-size: 0.92em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Eyebrows: any shared label class, and any widget class named *kicker*,
+ * *eyebrow*, .kind or .sec-label, read as quiet sans in sentence case. */
+:is(.ox-eyebrow, .ox-meta, .widget-kicker, .widget-section-title, .widget-stat-label,
+  .widget-footer-meta, .widget-note-pill, .ox-badge, .kind, .sec-label,
+  [class*="kicker"], [class*="eyebrow"]) {
+  font-family: var(--ox-font-sans);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+:is(.ox-eyebrow, .widget-kicker, .widget-section-title, .widget-stat-label, .kind,
+  .sec-label, [class*="kicker"], [class*="eyebrow"]) {
+  font-size: var(--ox-type-label-size);
+  font-weight: var(--ox-type-label-weight);
+  line-height: var(--ox-type-label-line);
+  color: var(--ox-text-muted);
+}
+
+.ox-meta {
+  font-size: var(--ox-type-meta-size);
+  line-height: var(--ox-type-meta-line);
+  color: var(--ox-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ox-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Long ids, URLs and titles never push past the card. */
+.ox-wrap {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ox-truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "Open in OrgX": a clearly tappable link with the open-external icon.
+ * Works on <a> and <button>; 44 px target; text colour, not a muted grey. */
+.ox-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--ox-text);
+  font: 600 13px / 1.2 var(--ox-font-sans);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ox-open::after {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: var(--ox-primary, currentColor);
+  -webkit-mask: var(--ox-icon-ext) center / contain no-repeat;
+  mask: var(--ox-icon-ext) center / contain no-repeat;
+}
+
+.ox-open:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+:root {
+  --ox-icon-ext: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V14M14 4h6v6M20 4l-9 9'/%3E%3C/svg%3E");
+}
+
+/*
  * Base reset.
  *
  * This lived only in tokens.css, which three of the newer widgets never link —
@@ -353,6 +489,7 @@ body {
    */
   font-family: var(--ox-font, var(--app-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'Helvetica Neue', Arial, sans-serif));
   -webkit-font-smoothing: antialiased;
+  overflow-wrap: break-word;
 }
 
 input,
