@@ -366,8 +366,8 @@
     },
     "scaffold-streaming": {
       "file": "public/widgets/scaffold-streaming.html",
-      "bytes": 27260,
-      "hash": "1a9ccf812c42",
+      "bytes": 30623,
+      "hash": "1157d7e48312",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",

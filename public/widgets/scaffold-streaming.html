@@ -36,33 +36,39 @@ html body{padding:10px;max-width:640px;margin:0 auto}
 }
 .shell::after{
   content:'';position:absolute;top:0;left:16px;right:16px;height:1px;pointer-events:none;
-  background:linear-gradient(90deg,transparent,rgba(var(--ox-primary-rgb),.6),transparent);
+  background:linear-gradient(90deg,transparent,rgba(var(--ox-action-rgb),.6),transparent);
 }
 
 /* Hero: what is being built, how far it got. */
 .hero{padding:16px 18px 14px}
 .eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.eyebrow .ox-icon{color:var(--ox-iris)}
-.live-dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--ox-iris);box-shadow:0 0 0 3px rgba(var(--ox-primary-rgb),.16);animation:ldot 2.2s ease-in-out infinite}
+.live-dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--ox-action);box-shadow:0 0 0 3px rgba(var(--ox-action-rgb),.18);animation:ldot 2.2s ease-in-out infinite}
 .live-dot.done{animation:none;background:var(--ox-success);box-shadow:0 0 0 3px var(--ox-good-surface)}
-.live-dot.error{animation:none;background:var(--ox-warning);box-shadow:0 0 0 3px var(--ox-warning-surface)}
+.live-dot.warn{animation:none;background:var(--ox-warning);box-shadow:0 0 0 3px var(--ox-warning-surface)}
+.live-dot.error{animation:none;background:var(--ox-danger);box-shadow:0 0 0 3px var(--ox-danger-surface)}
+.live-dot.idle{animation:none;background:var(--ox-text-muted);box-shadow:none}
 @keyframes ldot{0%,100%{opacity:1}50%{opacity:.35}}
 .hero-title{font-size:19px;font-weight:700;line-height:1.25;letter-spacing:-.02em;text-wrap:balance;overflow-wrap:anywhere}
 .hero-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-top:10px}
 .status-pill{
   display:inline-flex;align-items:center;gap:6px;min-height:24px;padding:0 10px;border-radius:999px;
-  font-size:12px;font-weight:600;color:var(--ox-iris);
-  background:var(--ox-info-surface);border:1px solid rgba(var(--ox-primary-rgb),.24);
+  font-size:12px;font-weight:600;color:var(--ox-lime);
+  background:rgba(var(--ox-action-rgb),.12);border:1px solid rgba(var(--ox-action-rgb),.3);
 }
 .status-pill.done{color:var(--ox-success);background:var(--ox-good-surface);border-color:rgba(var(--ox-success-rgb),.28)}
-.status-pill.warn{color:var(--ox-warning);background:var(--ox-warning-surface);border-color:rgba(251,191,36,.3)}
+.status-pill.warn{color:var(--ox-warning);background:var(--ox-warning-surface);border-color:rgba(var(--ox-edge-amber-rgb),.3)}
+.status-pill.fail{color:var(--ox-danger);background:var(--ox-danger-surface);border-color:rgba(var(--ox-edge-red-rgb),.3)}
+.status-pill.mute{color:var(--ox-text-muted);background:var(--ox-surface-subtle);border-color:var(--ox-border)}
 .s-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
 .wbs-count{font-size:12.5px;color:var(--ox-text-muted);font-variant-numeric:tabular-nums}
 
 /* Progress: a real bar with a track, not a hairline. */
 .prog-wrap{height:6px;margin-top:12px;border-radius:999px;background:var(--ox-surface-subtle);box-shadow:inset 0 0 0 1px var(--ox-border);overflow:hidden}
-.prog-fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,rgba(var(--ox-primary-rgb),.75),rgb(var(--ox-primary-rgb)));transition:width var(--ox-dur-slow) var(--ox-ease-morph)}
+.prog-fill{height:100%;width:0%;border-radius:999px;background:var(--ox-action);transition:width var(--ox-dur-slow) var(--ox-ease-morph),background-color var(--ox-dur-base) var(--ox-ease-standard)}
 .prog-fill.done{background:var(--ox-success)}
+.prog-fill.warn{background:var(--ox-warning)}
+.prog-fill.fail{background:var(--ox-danger)}
+.prog-fill.mute{background:var(--ox-text-muted)}
 
 /* Workstreams: flat sections under one label. */
 .wbs-wrap{border-top:1px solid var(--ox-border)}
@@ -79,8 +85,10 @@ html body{padding:10px;max-width:640px;margin:0 auto}
 }
 .ws-card:first-child{border-top:0}
 .ws-card.show{opacity:1;transform:none}
-/* The workstream being written: a short accent on its left edge. */
-.ws-card-accent{position:absolute;left:-18px;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:rgb(var(--ws-rgb,var(--ox-primary-rgb)));opacity:0;transition:opacity var(--ox-dur-base) var(--ox-ease-standard)}
+/* Only the workstream being written right now gets a quiet lime mark on its
+   left edge, the same colour as the progress bar. Domain colour lives on the
+   avatar ring, so nothing else here is tinted. */
+.ws-card-accent{position:absolute;left:-18px;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--ox-action);opacity:0;transition:opacity var(--ox-dur-base) var(--ox-ease-standard)}
 .ws-card.active-receive .ws-card-accent{opacity:1;animation:accent-pulse 1.2s ease-in-out infinite}
 @keyframes accent-pulse{50%{opacity:.4}}
 .ws-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:10px}
@@ -97,7 +105,7 @@ html body{padding:10px;max-width:640px;margin:0 auto}
 .task-row{padding:3px 0 3px 22px}
 .task-icon{flex:none;margin-top:2px;color:var(--ox-text-muted)}
 .task-title{font-size:13px;line-height:1.4;color:var(--ox-text-2,var(--ox-text-muted));overflow-wrap:anywhere}
-@keyframes item-appear{0%{background:rgba(var(--ox-primary-rgb),.1)}100%{background:transparent}}
+@keyframes item-appear{0%{background:rgba(var(--ox-action-rgb),.12)}100%{background:transparent}}
 .ms-row.flash,.task-row.flash{animation:item-appear .65s ease-out;border-radius:6px}
 
 /* Done: one line that says what exists now, and the way to it. */
@@ -110,6 +118,14 @@ html body{padding:10px;max-width:640px;margin:0 auto}
 .err-banner{display:none;margin:0 18px 14px;padding:10px 12px;border-radius:12px;background:var(--ox-warning-surface);color:var(--ox-text);font-size:13px;line-height:1.45}
 .err-banner.show{display:block}
 .err-banner b{color:var(--ox-warning-text)}
+.err-banner[data-tone='fail']{background:var(--ox-danger-surface)}
+.err-banner[data-tone='fail'] b{color:var(--ox-danger-text)}
+.err-banner[data-tone='mute']{background:var(--ox-surface-subtle)}
+.err-banner[data-tone='mute'] b{color:var(--ox-text)}
+.err-actions{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:2px}
+.err-btn{min-height:44px}
+.err-btn[data-action='retry']::after{display:none}
+.err-btn .ox-icon{color:var(--ox-danger)}
 
 /* Footer: state on the left, the way into OrgX on the right. */
 .foot{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:56px;padding:4px 10px 4px 18px;border-top:1px solid var(--ox-border);background:var(--ox-surface-subtle)}
@@ -133,7 +149,7 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
   <!-- What is being built, and how far it got -->
   <div class="hero">
     <div class="eyebrow"><span class="live-dot" id="ldot"></span><span id="etext">Building initiative</span></div>
-    <div class="hero-title" id="heroTitle">Operation Prism: Real-Time MCP Widgets</div>
+    <div class="hero-title" id="heroTitle">Operation Prism: Real&#8209;Time MCP Widgets</div>
     <div class="hero-meta">
       <span class="status-pill" id="statusPill"><span class="s-dot"></span><span id="statusText">Building…</span></span>
       <span class="wbs-count" id="wbsCount"></span>
@@ -241,6 +257,31 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+  // Titles never break at their own hyphen ("Real- / Time"): U+2011 keeps the pair together.
+  function nbh(s) {
+    return String(s).replace(/(\w)-(?=\w)/g, '$1\u2011');
+  }
+  // One tone for the pill, the eyebrow dot and the bar: build (lime, the
+  // action colour), done, warn (paused, needs you), fail, mute (idle, stale).
+  function setTone(tone) {
+    ['done', 'warn', 'fail', 'mute'].forEach(function (t) {
+      statusPill.classList.toggle(t, t === tone);
+      prog.classList.toggle(t, t === tone);
+    });
+    ldot.className = 'live-dot' + (tone === 'fail' ? ' error' : tone === 'build' ? '' : tone === 'mute' ? ' idle' : ' ' + tone);
+  }
+  // The note under the title; actions are [label, attrs] pairs.
+  function showNote(tone, html, actions) {
+    errBanner.setAttribute('data-tone', tone);
+    errBanner.innerHTML = '<div>' + html + '</div>' + (actions && actions.length
+      ? '<div class="err-actions">' + actions.map(function (a) { return '<button type="button" class="err-btn ox-open" ' + a[1] + '>' + a[0] + '</button>'; }).join('') + '</div>'
+      : '');
+    errBanner.classList.add('show');
+  }
+  function hideNote() {
+    errBanner.classList.remove('show');
+    errBanner.innerHTML = '';
+  }
   function setProgress(pct) {
     prog.style.width = Math.min(100, Math.round(pct)) + '%';
   }
@@ -257,7 +298,6 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
     curWsBody = null;
     curMsRow = null;
     wbsCount.textContent = '';
-    prog.classList.remove('done');
     setProgress(2);
     showStack();
     if (shell) { shell.classList.remove('streaming'); shell.classList.remove('done'); }
@@ -291,7 +331,7 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
 
   /* ── Entity builders ── */
   function addInitiative(entity) {
-    heroTitle.textContent = entity.title || entity.name || 'Initiative';
+    heroTitle.textContent = nbh(entity.title || entity.name || 'Initiative');
   }
 
   function addWorkstream(entity) {
@@ -316,7 +356,7 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
     head.className = 'ws-head';
     head.innerHTML =
       (identity ? identity.agentCard({ agent: domain, name: who ? who.name : label, size: 'row', state: 'running', task: label }) : '<span></span>') +
-      '<span class="ws-copy"><span class="ws-title">' + esc(label) + '</span>' +
+      '<span class="ws-copy"><span class="ws-title">' + esc(nbh(label)) + '</span>' +
       (domain ? '<span class="ws-domain">' + esc((who ? who.name + ' · ' : '') + domain.charAt(0).toUpperCase() + domain.slice(1)) + '</span>' : '') +
       '</span>' +
       '<span class="ws-count"></span>';
@@ -348,7 +388,7 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
     row.className = 'ms-row';
     row.innerHTML =
       '<span class="ms-icon">' + milestoneIcon() + '</span>' +
-      '<span class="ms-title">' + esc(label) + '</span>';
+      '<span class="ms-title">' + esc(nbh(label)) + '</span>';
 
     target.appendChild(row);
     animateIn(row);
@@ -365,7 +405,7 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
     row.className = 'task-row';
     row.innerHTML =
       '<span class="task-icon">' + taskIcon() + '</span>' +
-      '<span class="task-title">' + esc(label) + '</span>';
+      '<span class="task-title">' + esc(nbh(label)) + '</span>';
 
     target.appendChild(row);
     animateIn(row);
@@ -385,12 +425,12 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
 
   /* ── Event handlers ── */
   function onSessionStart(data) {
-    if (data.title) heroTitle.textContent = data.title;
+    if (data.title) heroTitle.textContent = nbh(data.title);
     etext.textContent = 'Building initiative';
     statusText.textContent = 'Building…';
-    statusPill.classList.remove('done', 'warn');
     resetAll();
-    ldot.className = 'live-dot';
+    setTone('build');
+    hideNote();
   }
 
   function onEntityCreated(data) {
@@ -408,14 +448,13 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
     isDone = true;
     setProgress(100);
     if (curWsCard) curWsCard.classList.remove('active-receive');
-    prog.classList.add('done');
+
     /* Shell celebration: swap streaming pulse for success glow */
     if (shell) { shell.classList.remove('streaming'); shell.classList.add('done'); }
-    ldot.className = 'live-dot done';
+    setTone('done');
     etext.textContent = 'Initiative ready';
     var total = data.totalEntities || entityCount;
     statusText.textContent = 'Ready';
-    statusPill.classList.add('done');
     wbsCount.textContent = total + ' of ' + total + ' created';
     footMeta.textContent = 'Synced just now';
 
@@ -427,12 +466,20 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
     if (es) { try { es.close(); } catch(_){} }
   }
 
+  // Failed: say what failed, keep what arrived, offer Retry.
+  function showFailure(what, why) {
+    if (curWsCard) curWsCard.classList.remove('active-receive');
+    if (shell) shell.classList.remove('streaming');
+    setTone('fail');
+    etext.textContent = 'Build failed';
+    statusText.textContent = 'Failed';
+    footMeta.textContent = 'Stopped at ' + entityCount + (totalExpected ? ' of ' + totalExpected : '');
+    showNote('fail', '<b>' + esc(what) + '</b> ' + esc(why) + ' The ' + entityCount + ' items below are saved; Retry picks up from here.',
+      [[(ICONS ? ICONS.icon('retry', 15) : '') + 'Retry', 'data-action="retry"']]);
+  }
+
   function onError(data) {
-    ldot.className = 'live-dot error';
-    statusText.textContent = 'Stopped';
-    statusPill.classList.add('warn');
-    errBanner.textContent = 'The build stopped: ' + window.OrgXWidgetRuntime.getErrorMessage(data.error, 'the scaffold failed') + '. What arrived is kept below.';
-    errBanner.classList.add('show');
+    showFailure('The build stopped.', window.OrgXWidgetRuntime.getErrorMessage(data.error, 'OrgX could not finish the scaffold') + '.');
     if (es) { try { es.close(); } catch(_){} }
   }
 
@@ -463,7 +510,7 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
     es = new EventSource(url);
 
     es.onopen = function() {
-      ldot.className = 'live-dot';
+      setTone('build');
       statusText.textContent = entityCount > 0 ? 'Resuming…' : 'Building…';
       footMeta.textContent = 'Live';
       retryDelay = 1000;
@@ -479,6 +526,7 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
       if (isDone) return;
       try { es.close(); } catch(_) {}
       var wait = Math.round(retryDelay / 1000);
+      setTone('warn');
       statusText.textContent = 'Retrying in ' + wait + 's';
       footMeta.textContent = 'Connection dropped';
       setTimeout(connect, retryDelay);
@@ -507,31 +555,32 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
       {type:'entity.created', entityType:'task',       total:18, entity:{title:'Product Hunt submission'}},
       {type:'scaffold.complete', totalEntities:18, liveUrl:'https://useorgx.com/live/07f49477-6807-449c-b46c-5bc71a1219da'}
     ];
-  function runDemo() {
+  var demoIdx = 0;
+  function runDemo(start) {
     var DELAYS = [500,200,450,380,360,360,360,500,420,360,360,360,500,420,360,360,360,900];
-    var idx = 0;
-    ldot.className = 'live-dot';
+    var idx = start || 0;
+    setTone('build');
     statusText.textContent = 'Building…';
     footMeta.textContent = 'Live';
     function fireNext() {
       if (idx >= DEMO.length) return;
       handleEvent(DEMO[idx]);
+      demoIdx = idx + 1;
       var delay = DELAYS[idx] || 360;
       idx++;
       if (idx < DEMO.length) setTimeout(fireNext, delay);
     }
-    setTimeout(fireNext, 700);
+    setTimeout(fireNext, start ? 300 : 700);
   }
 
   function showIdleState() {
-    ldot.className = 'live-dot done';
+    setTone('mute');
     etext.textContent = 'Scaffold';
     heroTitle.textContent = 'No scaffold running';
     statusText.textContent = 'Idle';
-    statusPill.classList.remove('done', 'warn');
     footMeta.textContent = 'Not connected';
     // No session means no live view to open yet.
-    document.getElementById('footLink').hidden = true;
+    document.getElementById('footLink').style.display = 'none';
     skeleton.style.display = 'none';
     document.querySelector('.prog-wrap').style.display = 'none';
     document.querySelector('.wbs-header').style.display = 'none';
@@ -554,6 +603,7 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
     var done = mode === 'completed' || mode === 'resolved';
     var upto = done ? DEMO.length : 12;
     for (var i = 0; i < upto; i++) handleEvent(DEMO[i]);
+    demoIdx = upto;
     Array.prototype.forEach.call(document.querySelectorAll('.ws-card,.ms-row,.task-row'), function (el) {
       el.classList.add('show');
       el.classList.remove('flash');
@@ -561,21 +611,36 @@ button[data-oxhref]:not(.ox-open){background:none;border:0;font:inherit;cursor:p
     if (shell) shell.classList.remove('streaming');
     if (done) return;
     if (curWsCard) curWsCard.classList.remove('active-receive');
-    statusPill.classList.add('warn');
-    ldot.className = 'live-dot error';
-    if (mode === 'blocked' || mode === 'error') {
+    if (mode === 'error') {
+      // Failed: something broke while writing; Retry resumes.
+      showFailure('Creating \u201cGo\u2011to\u2011Market\u201d failed.', 'OrgX timed out saving the workstream.');
+    } else if (mode === 'blocked') {
+      // Blocked: nothing broke; it waits on a person.
+      setTone('warn');
       etext.textContent = 'Paused';
       statusText.textContent = 'Needs you';
       footMeta.textContent = 'Paused at ' + entityCount + ' of ' + totalExpected;
-      errBanner.innerHTML = '<b>Waiting on an approval.</b> The next workstream needs a decision before OrgX creates it. What exists so far is below.';
+      showNote('warn', '<b>Waiting on your approval.</b> Go\u2011to\u2011Market needs its launch budget approved before OrgX creates it.',
+        [['Review in OrgX', 'data-oxhref="' + esc(window.OrgXLinks.decisions()) + '"']]);
     } else {
+      setTone('mute');
       etext.textContent = 'Out of date';
       statusText.textContent = 'Last update 14m ago';
       footMeta.textContent = 'Live updates stopped';
-      errBanner.innerHTML = '<b>This may have moved on.</b> The last update is older than the live window; open the live view for the current plan.';
+      showNote('mute', '<b>This may have moved on.</b> The last update is older than the live window. Open the live view for the current plan.');
     }
-    errBanner.classList.add('show');
   }
+
+  // Retry after a failure: hide the note and pick the stream up where it stopped.
+  errBanner.addEventListener('click', function (e) {
+    var btn = e.target && e.target.closest ? e.target.closest('[data-action="retry"]') : null;
+    if (!btn) return;
+    hideNote();
+    etext.textContent = 'Building initiative';
+    statusText.textContent = 'Resuming…';
+    if (_demo) runDemo(demoIdx);
+    else { isDone = false; connect(); }
+  });
 
   var _params = new URLSearchParams(location.search);
   var _demo = _params.get('demo') === 'true';
