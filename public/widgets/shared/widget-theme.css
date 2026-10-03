@@ -330,6 +330,9 @@
 :root:root {
   --ox-font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
   --ox-font-code: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* --ox-mono now means META TEXT (sans), not monospace: widgets set their
+     meta/eyebrow voice with var(--ox-mono). For real monospace (code, ids,
+     table numbers) use var(--ox-font-code) or the .ox-code class. */
   --ox-mono: var(--ox-font-sans);
   --ox-type-label-size: 12px;
   --ox-type-label-line: 1.3;
