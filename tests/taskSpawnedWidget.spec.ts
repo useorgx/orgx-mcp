@@ -16,9 +16,13 @@ describe('task spawned widget', () => {
       "const dispatched = action === 'spawn' || action === 'handoff'"
     );
     expect(widgetSource).toContain(
-      'Routing and cost context only. No agent work was dispatched.'
+      'What this would cost and which model would run it. Nothing was started.'
     );
-    expect(widgetSource).toContain('Preflight only · no dispatch');
+    expect(widgetSource).toContain("heading: 'Nothing started'");
+    // Plain words, no routing jargon.
+    for (const jargon of ['Dispatch guard', 'Agent work preflight', 'Requested owner', 'Preflight only', 'no dispatch', 'awaiting receipt ID']) {
+      expect(widgetSource).not.toContain(jargon);
+    }
   });
 });
 

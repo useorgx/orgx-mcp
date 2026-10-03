@@ -105,43 +105,39 @@ function canonicalToolOutput(options: {
 }
 
 describe('artifact review quality anatomy', () => {
-  it('keeps the quality bar visible and the ready anatomy compact by default', () => {
+  const checks = (dom: JSDOM) =>
+    Array.from(dom.window.document.querySelectorAll('.qv-check')).map((row) => ({
+      status: row.getAttribute('data-status'),
+      text: row.textContent ?? '',
+    }));
+
+  it('says the verdict in one sentence, shows the bar it has to clear, and keeps details closed', () => {
     const dom = createWidget('state=ready&theme=dark');
     const gauge = dom.window.document.querySelector('[data-quality-gauge]');
-    const anatomy = dom.window.document.querySelector<HTMLDetailsElement>(
-      '[data-quality-anatomy]',
-    );
+    const toggle = dom.window.document.querySelector('[data-anatomy-toggle]');
 
-    expect(gauge?.getAttribute('aria-label')).toBe(
-      'Current quality score 94 out of 100. Quality bar 85.',
-    );
-    expect(gauge?.textContent).toContain('Current 94');
-    expect(gauge?.textContent).toContain('Enterprise launch package v4 · workspace');
-    expect(anatomy?.open).toBe(false);
-    expect(anatomy?.querySelector('summary')?.textContent).toContain(
-      'How 94 cleared the bar',
-    );
-    expect(anatomy?.querySelectorAll('.quality-anatomy__flow-step')).toHaveLength(4);
+    expect(gauge?.querySelector('.qv-title')?.textContent).toBe('Cleared · scored 94 of the 85 needed');
+    expect(gauge?.querySelector('.qv-meter')?.getAttribute('aria-label')).toBe('Scored 94 out of 100; 85 needed.');
+    expect(gauge?.querySelector('.qv-scale')?.textContent).toBe('Scored 9485 needed');
+    expect(checks(dom).map((c) => c.status)).toEqual(['passed', 'passed', 'passed', 'passed']);
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(gauge?.textContent).toContain('Enterprise launch package v4 (workspace policy)');
+    // No cryptic chain, no grid of empty lenses.
+    expect(gauge?.textContent).not.toMatch(/→ held|Inputs\s*1|No .* returned/);
   });
 
-  it('expands the failed score into inputs, judged criteria, measures, and observation', () => {
+  it('explains a held score as a checklist: what failed, what passed, and why', () => {
     const dom = createWidget('state=failed&anatomy=expanded&theme=dark');
-    const anatomy = dom.window.document.querySelector<HTMLDetailsElement>(
-      '[data-quality-anatomy]',
-    );
-    const stages = anatomy?.querySelectorAll('[role="listitem"]');
+    const toggle = dom.window.document.querySelector('[data-anatomy-toggle]');
+    const rows = checks(dom);
 
-    expect(anatomy?.open).toBe(true);
-    expect(anatomy?.querySelector('summary')?.getAttribute('aria-label')).toBe(
-      'How 74 became held: 3 inputs, 4 judged, 3 measured, and 1 observed.',
-    );
-    expect(stages).toHaveLength(4);
-    expect(stages?.[0]?.textContent).toContain('1 artifact · 2 linked refs');
-    expect(stages?.[1]?.textContent).toContain('4 criteria · 2 below bar');
-    expect(stages?.[1]?.textContent).toContain('Theoretical contribution 59');
-    expect(stages?.[2]?.textContent).toContain('3 checks · 2 clear · 1 held');
-    expect(stages?.[3]?.textContent).toContain('1 inspection');
-    expect(anatomy?.textContent).toContain('neither substitutes for the human ruling');
+    expect(dom.window.document.querySelector('.qv-title')?.textContent).toBe('Held · scored 74 of the 85 needed');
+    expect(rows[0]).toEqual({ status: 'failed', text: expect.stringContaining('2 of 4 below the bar: Theoretical contribution 59, Source support 63') });
+    expect(rows[1]).toEqual({ status: 'failed', text: expect.stringContaining('1 of 3 failed: Citation coverage') });
+    expect(rows[2]).toEqual({ status: 'passed', text: expect.stringContaining('1 inspection') });
+    expect(rows[3]).toEqual({ status: 'passed', text: expect.stringContaining('2 linked') });
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+    expect(dom.window.document.querySelector('.qv-more')?.textContent).toContain('your ruling stays separate');
     expect(
       dom.window.document.querySelector<HTMLButtonElement>('[data-action="approve"]')
         ?.disabled,
@@ -168,16 +164,13 @@ describe('artifact review quality anatomy', () => {
     const gauge = dom.window.document.querySelector('[data-quality-gauge]');
     const anatomy = dom.window.document.querySelector('[data-quality-anatomy]');
 
-    expect(gauge?.getAttribute('aria-label')).toBe(
-      'No current quality score. Historical score 91. Quality bar 85.',
-    );
+    expect(gauge?.querySelector('.qv-title')?.textContent).toBe('The check didn’t produce a score');
+    // An errored run shows no bar at all: neither the 99 nor the old 91 reads as current.
+    expect(gauge?.querySelector('.qv-meter')).toBeNull();
     expect(gauge?.innerHTML).not.toContain('width:99%');
-    expect(anatomy?.textContent).toContain('Context only');
-    expect(anatomy?.textContent).toContain('No current score');
-    expect(anatomy?.textContent).not.toContain('99 vs 85');
-    expect(anatomy?.textContent).toContain('No judged criteria');
-    expect(anatomy?.textContent).toContain('No measured checks');
-    expect(anatomy?.textContent).toContain('No direct observations');
+    expect(anatomy?.textContent).toContain('context only');
+    expect(checks(dom).map((c) => c.status)).toEqual(['not-run', 'not-run', 'not-run', 'not-run']);
+    expect(gauge?.textContent).not.toContain('NaN');
   });
 
   it('uses the canonical current-run anatomy over contradictory artifact metadata', () => {
@@ -260,12 +253,12 @@ describe('artifact review quality anatomy', () => {
     const gauge = dom.window.document.querySelector('[data-quality-gauge]');
     const anatomy = dom.window.document.querySelector('[data-quality-anatomy]');
 
-    expect(gauge?.textContent).toContain('Current 74');
+    expect(gauge?.querySelector('.qv-title')?.textContent).toBe('Held · scored 74 of the 85 needed');
     expect(gauge?.innerHTML).not.toContain('width:99%');
-    expect(anatomy?.textContent).toContain('(59 + 63 + 88 + 86) ÷ 4 = 74');
-    expect(anatomy?.textContent).toContain('4 criteria · 2 below bar');
-    expect(anatomy?.textContent).toContain('2 checks · 1 clear · 1 held');
-    expect(anatomy?.textContent).toContain('1 inspection');
+    expect(anatomy?.textContent).toContain('Average of 4 criteria: 59 + 63 + 88 + 86 → 74.');
+    expect(checks(dom)[0].text).toContain('2 of 4 below the bar');
+    expect(checks(dom)[1].text).toContain('1 of 2 failed: Citation coverage');
+    expect(checks(dom)[2].text).toContain('1 inspection');
     expect(
       dom.window.document.querySelector<HTMLButtonElement>('[data-action="approve"]')
         ?.disabled,
@@ -322,19 +315,13 @@ describe('artifact review quality anatomy', () => {
     });
     const anatomy = dom.window.document.querySelector('[data-quality-anatomy]');
 
-    expect(dom.window.document.querySelector('[data-quality-gauge]')?.textContent)
-      .toContain('No current score');
+    expect(dom.window.document.querySelector('.qv-title')?.textContent).toBe('Not scored yet');
+    expect(dom.window.document.querySelector('[data-quality-gauge] .qv-meter')).toBeNull();
     expect(dom.window.document.body.textContent).toContain('Ruling recorded');
-    expect(dom.window.document.body.textContent).toContain(
-      'accepted · Editorial owner',
-    );
-    expect(anatomy?.textContent).toContain(
-      'No scored inputs · 1 supporting layer',
-    );
-    expect(anatomy?.textContent).toContain('not score formula');
-    expect(anatomy?.textContent).toContain(
-      'Recorded score · formula unavailable',
-    );
+    expect(dom.window.document.querySelector('.widget-shell-card')?.textContent).not.toContain('NaN');
+    // A supporting layer is shown as such, never as the score's formula.
+    expect(checks(dom)[0].text).toContain('Visual composition 88');
+    expect(anatomy?.textContent).toContain('Nothing has been scored yet.');
     expect(
       dom.window.document.querySelector('[data-action="request-changes"]'),
     ).toBeNull();
@@ -351,7 +338,7 @@ describe('artifact review quality anatomy', () => {
       dom.window.document.querySelector('[data-action="request-changes"]'),
     ).toBeNull();
     expect(dom.window.document.body.textContent).toContain(
-      'Review controls unavailable',
+      'Your role can read this evidence; the ruling is recorded in OrgX.',
     );
     expect(
       (dom.window as unknown as {
@@ -392,6 +379,59 @@ describe('artifact review quality anatomy', () => {
     ).not.toBeNull();
   });
 
+  function withPurpose(purpose: Record<string, unknown>, extra: Record<string, unknown> = {}) {
+    const output = canonicalToolOutput({ reviewRequired: purpose.reviewRequired as boolean | undefined });
+    (output.reviewContract as Record<string, unknown>).purpose = purpose;
+    Object.assign(output.reviewContract as Record<string, unknown>, extra);
+    return output;
+  }
+
+  it('resolves a blocker in OrgX: no Approve, no "sign-off", one Resolve control', () => {
+    const dom = createWidget('theme=dark', withPurpose({ kind: 'blocker', reviewRequired: false, reviewAction: 'resolve' }));
+    const doc = dom.window.document;
+    expect(doc.querySelector('[data-action="approve"]')).toBeNull();
+    expect(doc.querySelector('[data-action="request-changes"]')).toBeNull();
+    expect(doc.querySelector('.widget-shell-card')?.innerHTML).not.toMatch(/sign-off|signature/i);
+    expect(doc.querySelector('ox-state-chip')?.getAttribute('label')).toBe('Blocking work');
+    expect(doc.querySelector('#handoffFooter')?.getAttribute('primary-label')).toBe('Resolve in OrgX ↗');
+    expect(doc.querySelector('.hd .kind')?.textContent).toBe('Blocker');
+  });
+
+  it('resolves even when an older contract still says the blocker needs review', () => {
+    const dom = createWidget('theme=dark', withPurpose({ kind: 'blocker', reviewRequired: true, reviewAction: 'resolve' }));
+    expect(dom.window.document.querySelector('[data-action="approve"]')).toBeNull();
+    expect(dom.window.document.querySelector('#handoffFooter')).not.toBeNull();
+  });
+
+  it('inspects a record read-only', () => {
+    const dom = createWidget('theme=dark', withPurpose({ kind: 'evidence', reviewRequired: false, reviewAction: 'inspect' }));
+    const doc = dom.window.document;
+    expect(doc.querySelector('[data-action="approve"]')).toBeNull();
+    expect(doc.querySelector('ox-state-chip')?.getAttribute('label')).toBe('Read only');
+    expect(doc.querySelector('#handoffFooter')?.getAttribute('action-label')).toBe('Open in OrgX ↗');
+  });
+
+  it('signs a deliverable with the same controls, and reads a null score and note honestly', () => {
+    const dom = createWidget('theme=dark', withPurpose(
+      { kind: 'deliverable', reviewRequired: true, reviewAction: 'sign' },
+      { ruling: { state: 'pending', note: null } },
+    ));
+    const doc = dom.window.document;
+    expect(doc.querySelector('[data-action="approve"]')).not.toBeNull();
+    expect(doc.querySelector('[data-action="request-changes"]')).not.toBeNull();
+    expect(doc.querySelector('.qv-title')?.textContent).toBe('Not scored yet');
+    expect(doc.querySelector('.ruling-note')).toBeNull();
+    expect(doc.querySelector('.widget-shell-card')?.textContent).not.toMatch(/NaN|undefined|null/);
+  });
+
+  it('shows the reviewer note when the ruling carries one', () => {
+    const dom = createWidget('theme=dark', withPurpose(
+      { kind: 'deliverable', reviewRequired: true, reviewAction: 'sign' },
+      { ruling: { state: 'changes_requested', note: 'Cite the pricing study.', actorKind: 'human', actorLabel: 'Hope' } },
+    ));
+    expect(dom.window.document.querySelector('.ruling-note')?.textContent).toBe('Reviewer note · Cite the pricing study.');
+  });
+
   it('preserves the shared theme architecture and responsive evidence geometry', () => {
     expect(widgetHtml).toContain('href="shared/widget-theme.css"');
     expect(widgetHtml.lastIndexOf('href="shared/widget-theme.css"')).toBeGreaterThan(
@@ -399,7 +439,7 @@ describe('artifact review quality anatomy', () => {
     );
     expect(widgetHtml).toContain('@media (max-width: 760px)');
     expect(widgetHtml).toContain('@media (max-width: 520px)');
-    expect(widgetHtml).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+    expect(widgetHtml).toContain('.qv-check { display: grid;');
     expect(widgetHtml).toContain('prefers-reduced-motion');
   });
 });

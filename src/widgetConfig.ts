@@ -366,7 +366,6 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   'shared/live-machine.js',
   'shared/live-store.js',
   'shared/live-panel.js',
-  'shared/icons.js',
   // OrgX icon set (entity types, statuses, actions): OrgXIcons.icon(name).
   'shared/orgx-icons.js',
   'shared/mcp-apps-sdk.umd.js',

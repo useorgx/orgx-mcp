@@ -13,7 +13,8 @@ describe('widget disclosure UX', () => {
 
     expect(source).toContain('function setActiveSection(section, options = {})');
     expect(source).toContain('aria-expanded="${');
-    expect(source).toContain('aria-controls="panel-priorities"');
+    expect(source).toContain('aria-controls="panel-${section}"');
+    expect(source).toContain('ox-collapse');
     expect(source).toContain('role="region"');
     expect(source).toContain(
       "setActiveSection(trigger.dataset.section || state.activeSection, { scroll: true });"
