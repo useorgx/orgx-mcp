@@ -101,6 +101,7 @@ const SHARED_ALLOWLIST = new Set([
   'shared/live-panel.js',
   'shared/utils.js',
   'shared/icons.js',
+  'shared/orgx-icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',
   'shared/openai-extensions.js',
@@ -130,6 +131,7 @@ const RUNTIME_INLINED_PATHS = new Set([
   'shared/live-store.js',
   'shared/live-panel.js',
   'shared/icons.js',
+  'shared/orgx-icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',
   'shared/openai-extensions.js',
@@ -203,10 +205,18 @@ function detectProtocolBridge(html, refs) {
   return 'standalone';
 }
 
-/** Kit elements the widget renders: `<ox-x` markup (HTML or JS strings) or createElement('ox-x'). */
+/**
+ * Kit elements the widget renders: `<ox-x` markup (HTML or JS strings) or
+ * createElement('ox-x'). The avatar add-on also defines <ox-agent-card>, and
+ * the shared identity helpers (OrgXAgentIdentity.avatar / .agentCard, see
+ * shared/agent-identity.js) render both, so either counts as <ox-avatar>.
+ */
+const AVATAR_HELPERS = /<ox-agent-card\b|\b(?:OrgXAgentIdentity|identity)\.(?:avatar|agentCard)\(/;
 function usedKitElements(html) {
-  return KIT_ELEMENTS.filter((el) =>
-    new RegExp(`<${el}\\b|createElement\\(\\s*['"\`]${el}['"\`]`).test(html)
+  return KIT_ELEMENTS.filter(
+    (el) =>
+      new RegExp(`<${el}\\b|createElement\\(\\s*['"\`]${el}['"\`]`).test(html) ||
+      (el === 'ox-avatar' && AVATAR_HELPERS.test(html))
   );
 }
 

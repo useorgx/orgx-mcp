@@ -4,12 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const html = readFileSync('public/widgets/search-results.html', 'utf8');
 const runtime = readFileSync('public/widgets/shared/widget-runtime.js', 'utf8');
+// The widget also loads the shared icon set for its result rows.
+const icons = readFileSync('public/widgets/shared/orgx-icons.js', 'utf8');
 const payload = { query: 'launch', results: [{ id: 'i-1', title: 'Launch plan', type: 'initiative' }] };
 let dom: JSDOM;
 function boot(toolOutput: unknown, metadata?: unknown, callTool = vi.fn()) {
   dom = new JSDOM(html, { url: 'https://mcp.useorgx.com/widgets/search-results.html', runScripts: 'outside-only' });
   Object.assign(dom.window, { openai: { toolOutput, toolResponseMetadata: metadata, callTool, setWidgetHeight: vi.fn() }, fetch: vi.fn().mockResolvedValue({ ok: true }) });
   dom.window.eval(runtime);
+    dom.window.eval(icons);
   for (const script of dom.window.document.querySelectorAll('script:not([src])')) dom.window.eval(script.textContent!);
   return dom.window as unknown as Window & { loadMoreResults(): Promise<void> };
 }
@@ -68,6 +71,7 @@ describe('search delivery through the real ChatGPT widget', () => {
       McpApps: { App: class { connect() { return new Promise(() => {}); } } },
     });
     dom.window.eval(runtime);
+    dom.window.eval(icons);
     for (const script of dom.window.document.querySelectorAll('script:not([src])')) dom.window.eval(script.textContent!);
     await vi.advanceTimersByTimeAsync(12_100);
     expect(text()).toContain('Launch plan');
@@ -86,6 +90,7 @@ describe('search delivery through the real ChatGPT widget', () => {
       } },
     });
     dom.window.eval(runtime);
+    dom.window.eval(icons);
     for (const script of dom.window.document.querySelectorAll('script:not([src])')) dom.window.eval(script.textContent!);
     app.ontoolresult({ structuredContent: { ok: true, data: payload } });
     await vi.advanceTimersByTimeAsync(250);
@@ -100,6 +105,7 @@ describe('search delivery through the real ChatGPT widget', () => {
       McpApps: { App: class { connect() { return new Promise(() => {}); } } },
     });
     dom.window.eval(runtime);
+    dom.window.eval(icons);
     for (const script of dom.window.document.querySelectorAll('script:not([src])')) dom.window.eval(script.textContent!);
     await vi.advanceTimersByTimeAsync(12_100);
     await (dom.window as any).retrySearch();

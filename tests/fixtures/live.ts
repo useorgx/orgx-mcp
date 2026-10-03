@@ -165,7 +165,7 @@ export function mountWidget(name: string, options: MountOptions = {}): void {
   )}</body>`;
 
   const scope = window as unknown as LiveGlobals;
-  for (const key of ['OrgXLiveMachine', 'OrgXLiveStore', 'OrgXLivePanel', 'OrgXWidgetRuntime']) {
+  for (const key of ['OrgXLiveMachine', 'OrgXLiveStore', 'OrgXLivePanel', 'OrgXWidgetRuntime', 'OrgXIcons']) {
     delete scope[key];
   }
   (window as unknown as { EventSource: unknown }).EventSource = FakeEventSource;
@@ -177,7 +177,9 @@ export function mountWidget(name: string, options: MountOptions = {}): void {
     setWidgetHeight() {},
   };
 
-  for (const file of ['widget-runtime.js', ...LIVE_SCRIPTS]) {
+  // agent-identity.js and orgx-icons.js are shared scripts the widgets load
+  // before their own (avatars, hover cards, icons).
+  for (const file of ['agent-identity.js', 'widget-runtime.js', 'orgx-icons.js', ...LIVE_SCRIPTS]) {
     window.eval(readSharedScript(file));
   }
   (scope.OrgXWidgetRuntime as { __resetForTests(): void }).__resetForTests();

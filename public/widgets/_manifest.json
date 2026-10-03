@@ -21,6 +21,7 @@
     "shared/live-store.js",
     "shared/mcp-apps-sdk.umd.js",
     "shared/openai-extensions.js",
+    "shared/orgx-icons.js",
     "shared/tokens.css",
     "shared/utils.js",
     "shared/widget-foundation.css",
@@ -49,8 +50,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 64209,
-      "hash": "12fd9acefc3f",
+      "bytes": 64661,
+      "hash": "6622a12bb7a9",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -121,8 +122,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 152742,
-      "hash": "90547401328e",
+      "bytes": 151606,
+      "hash": "7a81904115fc",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -373,8 +374,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 65220,
-      "hash": "14ca5cda1b19",
+      "bytes": 65708,
+      "hash": "d3788c562983",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -386,6 +387,7 @@
         "shared/live-panel.js",
         "shared/live-store.js",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
         "shared/widget-theme.css"
@@ -405,8 +407,8 @@
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 63702,
-      "hash": "a9cfe9ca6800",
+      "bytes": 61239,
+      "hash": "8032f7f66d99",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/kit/ox-elements-core.js",
@@ -414,6 +416,7 @@
         "shared/kit/ox-elements-glyph.js",
         "shared/kit/ox-tokens.css",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
         "shared/widget-theme.css"

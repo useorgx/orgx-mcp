@@ -203,9 +203,11 @@ describe('B2 · decisions: no "status: unavailable", and the OrgX mark renders',
     expect(rec.textContent).toContain('No recommendation yet');
     expect(visibleText()).not.toMatch(/status:\s*unavailable/i);
     expect(visibleText()).not.toContain('recommends');
-    const avatar = rec.querySelector('.agent-avatar--system')!;
-    expect(avatar.querySelector('svg')).not.toBeNull();
-    expect(avatar.querySelector('img')).toBeNull();
+    // The kit avatar draws the OrgX mark (never an empty circle) at the same 22px footprint.
+    const avatar = rec.querySelector('.agent-avatar--system ox-avatar')!;
+    expect(avatar.getAttribute('agent')).toBe('system');
+    expect(avatar.getAttribute('size')).toBe('22');
+    expect(rec.querySelector('img')).toBeNull();
   });
 
   it('keeps a real packet recommendation and marks an unverified one', async () => {

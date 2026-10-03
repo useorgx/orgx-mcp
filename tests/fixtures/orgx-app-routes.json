@@ -403,6 +403,13 @@
       "entityId",
       "initiative"
     ],
+    "/command": [
+      "center"
+    ],
+    "/goals": [
+      "center",
+      "objective"
+    ],
     "/work-ledger": [
       "center"
     ]

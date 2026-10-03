@@ -80,6 +80,8 @@ const CASES: Array<[string, string, string]> = [
   ['search', links.search('pricing'), '/command'],
   ['decision search', links.search('pricing', { type: 'decision' }), '/decisions'],
   ['command', links.command(), '/command'],
+  ['command in a workspace', links.command({ center: ID }), '/command'],
+  ['goal', links.goal(ID, { center: ID }), '/goals'],
   ['work ledger', links.workLedger(), '/work-ledger'],
 ];
 
@@ -103,7 +105,7 @@ describe('widget link builder', () => {
   });
 
   it('dispatches entity types to the same builders', () => {
-    for (const type of ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'run', 'agent_run', 'agent', 'plan_session', 'unknown']) {
+    for (const type of ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'run', 'agent_run', 'agent', 'plan_session', 'objective', 'workspace', 'unknown']) {
       const url = links.entity(type, ID);
       expect(resolveRoute(url).problem, `${type}: ${url}`).toBeUndefined();
     }

@@ -12,6 +12,7 @@
   <script src="shared/agent-identity.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
+  <script src="shared/orgx-icons.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <script src="shared/live-machine.js"></script>
   <script src="shared/live-store.js"></script>
@@ -140,6 +141,7 @@
     .ws-children[hidden] { display: none; }
     .node-item { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; min-height: 30px; font-size: 13px; color: var(--ox-text-2); }
     .node-item ox-glyph { --ox-glyph-size: 15px; }
+    .node-item .tk-icon { display: grid; place-items: center; color: var(--ox-text-muted); }
     .node-item.ms { color: var(--ox-text); font-weight: 600; }
     .node-item.tk { padding-left: 22px; grid-template-columns: 14px minmax(0, 1fr) auto; }
     .node-item.more { color: var(--ox-text-muted); }
@@ -185,7 +187,7 @@
 </head>
 <body>
   <div class="container" id="content">
-    <article class="wcard ox-card" aria-busy="true" aria-label="Loading initiative">
+    <article class="wcard ox-card ox-surface" aria-busy="true" aria-label="Loading initiative">
       <div class="hd"><span class="sk" style="width:36%"></span></div>
       <div class="bd">
         <span class="sk" style="width:70%;height:24px"></span>
@@ -794,9 +796,8 @@
       : (section.milestones || []).reduce((n, m) => n + (typeof m.task_count === 'number' ? m.task_count : (Array.isArray(m.tasks) ? m.tasks.length : 0)), 0);
     var plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
 
-    var liveUrlFor = (scaffold) => (data && data.live_url) || (scaffold && scaffold.initiative && scaffold.initiative.raw_id
-      ? 'https://useorgx.com/live/' + encodeURIComponent(scaffold.initiative.raw_id)
-      : 'https://useorgx.com/live?view=mission-control');
+    var liveUrlFor = (scaffold) => (data && window.OrgXLinks.normalize(data.live_url)) ||
+      window.OrgXLinks.live(scaffold && scaffold.initiative && scaffold.initiative.raw_id);
 
     /* ── Launch: the one move this card makes ─────────────────────────
        Hold to launch calls orgx_act launch, exactly as before. When the
@@ -1048,18 +1049,28 @@
       _scheduleSizeSync([24, 160, 320]);
     };
 
-    var renderAgent = (execution) => {
-      var name = execution && execution.agent_name ? execution.agent_name : 'Unassigned';
+    var renderAgent = (execution, workTitle) => {
+      var name = execution && execution.agent_name ? String(execution.agent_name).trim() : '';
       var identity = window.OrgXAgentIdentity;
-      var key = identity ? identity.resolveAgentKey(execution && execution.agent_id, name, execution && execution.domain) : null;
       var chip = chipFor(execution && execution.status);
-      var form = identity ? identity.formForState(chip.state) : 'base';
-      return '<span class="ws-agent">' + (key ? '<ox-avatar agent="' + key + '" form="' + form + '" size="24" name="' + escapeHtml(name) + '"></ox-avatar>' : '') + '<b>' + escapeHtml(name) + '</b></span>';
+      var who = identity.profile(execution && execution.agent_id, name, execution && execution.domain);
+      if (!who && (!name || /^unassigned$/i.test(name))) return '<span class="ws-agent"><b>Unassigned</b></span>';
+      // Known agents get their headshot and the hover card; people their initials.
+      return '<span class="ws-agent">' + identity.agentCard({
+        agent: who ? who.key : '',
+        name: who ? who.name : name,
+        size: 24,
+        state: chip.state,
+        statusLabel: chip.label,
+        task: (execution && (execution.current_task || execution.task_title)) || workTitle,
+        updatedAt: execution && execution.updated_at,
+        label: '<b>' + escapeHtml(who ? who.name : name) + '</b>',
+      }) + '</span>';
     };
 
     var renderTask = (task) => {
       return `<div class="node-item tk" data-tk-row>
-          <ox-glyph kind="task"></ox-glyph>
+          <span class="tk-icon">${window.OrgXIcons.icon('task', 14)}</span>
           <span class="tree-label">${escapeHtml(readLabel(task, 'Untitled'))}</span>
           ${renderIdBadge(task.display_id, task.raw_id)}
         </div>`;
@@ -1099,7 +1110,7 @@
               <span class="ws-title">${escapeHtml(title)}</span>
               <span class="ws-sub">${renderIdBadge(section.display_id, section.raw_id)}${summary ? '<span>' + escapeHtml(summary) + '</span>' : ''}</span>
             </div>
-            ${renderAgent(execution)}
+            ${renderAgent(execution, title)}
             <span class="ws-state">
               <ox-state-chip state="${chip.state}"${chip.label ? ' label="' + escapeHtml(chip.label) + '"' : ''} reserve="running queued succeeded blocked"></ox-state-chip>
               <span class="ws-pct" aria-label="${escapeHtml(String(progress))}% complete">${escapeHtml(String(progress))}%</span>
@@ -1142,7 +1153,7 @@
 
     var renderEmptyCard = (mode) => {
       var errored = mode === 'error';
-      return `<article class="wcard ox-card" data-scaffold-card data-edge="${errored ? 'red' : 'mute'}">
+      return `<article class="wcard ox-card ox-surface" data-scaffold-card data-edge="${errored ? 'red' : 'mute'}">
           <div class="hd"><ox-glyph kind="initiative"${errored ? ' tone="red"' : ''}></ox-glyph><span class="kind">Initiative</span></div>
           <div class="bd" style="padding-bottom:16px">
             <h2 class="pk-q">${errored ? 'The scaffold could not load' : 'Nothing scaffolded yet'}</h2>
@@ -1150,13 +1161,13 @@
               ? 'OrgX did not return the initiative. Nothing was created from this view.'
               : 'OrgX has not returned an initiative for this request. The hierarchy appears here once it does.'}</p>
           </div>
-          ${errored ? `<ox-footer variant="reads" state="failed" heading="Couldn’t load the scaffold" detail="nothing to show yet"><button type="button" slot="action" class="ft-link" data-open-live-view data-href="https://useorgx.com/live?view=mission-control" aria-label="Open OrgX, opens OrgX"><span data-open-label>${openLabelHtml('Open OrgX')}</span>${icons.external(12)}</button></ox-footer>` : ''}
+          ${errored ? `<ox-footer variant="reads" state="failed" heading="Couldn’t load the scaffold" detail="nothing to show yet"><button type="button" slot="action" class="ft-link" data-open-live-view data-href="${escapeHtml(window.OrgXLinks.live())}" aria-label="Open OrgX, opens OrgX"><span data-open-label>${openLabelHtml('Open OrgX')}</span>${icons.external(12)}</button></ox-footer>` : ''}
         </article>`;
     };
 
     var render = () => {
       if (isLoading) {
-        injectHtml(`<article class="wcard ox-card" aria-busy="true" aria-label="Loading initiative">
+        injectHtml(`<article class="wcard ox-card ox-surface" aria-busy="true" aria-label="Loading initiative">
             <div class="hd"><span class="sk" style="width:36%"></span></div>
             <div class="bd"><span class="sk" style="width:70%;height:24px"></span><span class="sk" style="width:100%"></span><span class="sk" style="width:100%;height:62px"></span><span class="sk" style="width:100%;height:62px"></span></div>
             <ox-footer variant="reads" state="loading"></ox-footer>
@@ -1178,7 +1189,7 @@
       var milestoneTotal = sections.reduce((n, s) => n + ((s.milestones || []).length), 0);
 
       injectHtml(`
-        <article class="wcard ox-card" data-scaffold-card data-edge="${view.edge}" data-scaffold-header>
+        <article class="wcard ox-card ox-surface" data-scaffold-card data-edge="${view.edge}" data-scaffold-header>
           <div class="hd">
             <ox-glyph kind="initiative" data-scaffold-glyph${view.edge !== 'mute' ? ' tone="' + view.edge + '"' : ''}></ox-glyph>
             <span class="kind" data-scaffold-kicker>${escapeHtml(view.kind)}</span>

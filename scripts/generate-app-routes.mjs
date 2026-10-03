@@ -48,6 +48,13 @@ const QUERY_PARAMS = {
   '/artifacts/[artifactId]': {
     'artifacts/[artifactId]/page.tsx': ['context', 'entityId', 'initiative'],
   },
+  '/command': {
+    'command/page.tsx': ['center'],
+  },
+  '/goals': {
+    'goals/page.client.tsx': ['objective'],
+    'goals/page.tsx': ['center'],
+  },
   '/work-ledger': {
     'work-ledger/page.tsx': ['center'],
   },

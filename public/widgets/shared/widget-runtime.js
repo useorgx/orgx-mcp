@@ -1364,9 +1364,13 @@
 
   var links = {
     origin: ORGX_ORIGIN,
-    /** Command: what needs you now. */
-    command: function () {
-      return orgxUrl('/command');
+    /** Command: what needs you now (optionally in a workspace). */
+    command: function (options) {
+      return orgxUrl('/command', { center: options && options.center });
+    },
+    /** A goal (objective) on the goals page. */
+    goal: function (id, options) {
+      return orgxUrl('/goals', { objective: id, center: options && options.center });
     },
     /** Initiative detail; no id -> the initiatives index. */
     initiative: function (id) {
@@ -1456,6 +1460,12 @@
       switch (kind) {
         case 'initiative':
           return links.initiative(id);
+        case 'objective':
+        case 'goal':
+          return links.goal(id, options);
+        case 'workspace':
+        case 'command_center':
+          return links.command({ center: id });
         case 'workstream':
           return links.workstream(id, options);
         case 'milestone':
@@ -1536,22 +1546,27 @@
   // Anchors marked data-ox-link (links.attrs) and <ox-agent-card> "Open in
   // OrgX" links open through the host: window.openai.openExternal in ChatGPT,
   // ui/open-link in MCP Apps hosts; the plain <a> is the standalone fallback.
+  // The installed runtime (one per page; tests may reinstall it).
+  function currentRuntime() {
+    return global.OrgXWidgetRuntime || { links: links, openWidgetLink: openWidgetLink };
+  }
   if (global.document && !global.document.__oxLinks) {
     global.document.__oxLinks = 1;
     global.document.addEventListener('click', function onLinkClick(event) {
       if (event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey) return;
       var anchor = event.target && event.target.closest ? event.target.closest('a[data-ox-link]') : null;
-      if (anchor) links.open(anchor.getAttribute('href'), event);
+      if (anchor) currentRuntime().links.open(anchor.getAttribute('href'), event);
     });
     global.document.addEventListener('ox-open', function onCardOpen(event) {
       var href = event.detail && event.detail.href;
       if (!href) return;
-      var target = normalizeLink(href);
+      var rt = currentRuntime();
+      var target = rt.links.normalize(href);
       if (!target) {
         event.preventDefault();
         return;
       }
-      if (openWidgetLink(target, event) === false) event.preventDefault();
+      if (rt.openWidgetLink(target, event) === false) event.preventDefault();
     });
   }
 

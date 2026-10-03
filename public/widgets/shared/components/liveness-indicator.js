@@ -82,8 +82,9 @@
     if (sec < 60) return sec + 's ago';
     const min = Math.round(sec / 60);
     if (min < 60) return min + 'm ago';
+    if (window.OrgXTime) return window.OrgXTime.relative(ts, { inline: true });
     const hr = Math.round(min / 60);
-    return hr + 'h ago';
+    return hr < 24 ? hr + 'h ago' : Math.round(hr / 24) + 'd ago';
   }
 
   function attach(hostEl, opts) {

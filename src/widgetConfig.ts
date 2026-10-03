@@ -367,6 +367,8 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   'shared/live-store.js',
   'shared/live-panel.js',
   'shared/icons.js',
+  // OrgX icon set (entity types, statuses, actions): OrgXIcons.icon(name).
+  'shared/orgx-icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',
   // OpenAI MCP Apps extensions shim (deep link, model context); used by the
