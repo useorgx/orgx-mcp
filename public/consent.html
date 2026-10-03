@@ -957,6 +957,14 @@
         renderResources();
         updatePresetState(preset === 'custom' && detectPreset() !== 'none' ? 'custom' : detectPreset());
       }
+      function recordJourney(event, properties = {}) {
+        if (navigator.doNotTrack === '1') return;
+        void fetch('/oauth/consent-events', {
+          method: 'POST', credentials: 'same-origin', keepalive: true,
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ state_key: state.stateKey, event, ...properties })
+        }).catch(() => {});
+      }
       function renderResources() {
         const visibleResources = resourceCatalog
           .filter((resource) => availableLevels(resource).length > 1);
@@ -1008,6 +1016,7 @@
           button.addEventListener('click', () => {
             const row = button.closest('.resource-row');
             state.selected[row.dataset.resource] = button.dataset.level;
+            recordJourney('mcp_consent_selection_changed', { consent_resource: row.dataset.resource, consent_level: button.dataset.level });
             configureError.textContent = '';
             renderResources();
             updatePresetState(detectPreset());
@@ -1066,6 +1075,7 @@
           : '';
       }
       function showStage(stage) {
+        recordJourney('mcp_consent_stage_viewed', { consent_stage: stage });
         const configure = stage === 'configure';
         state.stage = stage;
         const configureStage = document.getElementById('configure-stage');
@@ -1111,13 +1121,14 @@
           }
           window.location.assign(redirect.href);
         } catch (error) {
+          recordJourney('mcp_consent_submit_failed');
           const message = error instanceof Error ? error.message : String(error);
           document.getElementById('status-panel').innerHTML = `<div class="status-content"><div class="orgx-icon" style="margin:0 auto 18px">!</div><h2>Connection could not be completed</h2><p>${escapeHtml(message)}</p><p>Return to your MCP client and start the connection again.</p></div>`;
         }
       }
       function bindEvents() {
         document.querySelectorAll('[data-preset]').forEach((button) => {
-          button.addEventListener('click', () => setPreset(button.dataset.preset));
+          button.addEventListener('click', () => { setPreset(button.dataset.preset); recordJourney('mcp_consent_selection_changed', { consent_preset: button.dataset.preset }); });
         });
         document.getElementById('review-button').addEventListener('click', () => {
           if (buildScopeList().filter((scope) => scope !== 'offline_access').length === 0) {
@@ -1192,6 +1203,7 @@
         document.getElementById('offline-toggle').checked = state.requested.has('offline_access');
         renderScopeResolution();
         setPreset('read');
+        recordJourney('mcp_consent_viewed', { consent_stage: 'configure', consent_preset: 'read' });
         shell.classList.remove('loading');
         shell.setAttribute('aria-busy', 'false');
         shell.dataset.capabilityVersion = capabilityVersion;

@@ -1,3 +1,5 @@
+import { recordOAuthJourney, consentSelectionProperties } from './oauthJourneyTelemetry';
+import { handleConsentJourneyEvent } from './consentJourneyEvents';
 /**
  * Auth Handler for OAuthProvider's defaultHandler
  *
@@ -54,6 +56,8 @@ import { SMITHERY_TOOL_PROFILES } from './smitheryConfig';
 export type { OAuthHelpers };
 
 interface AuthHandlerEnv {
+  POSTHOG_KEY?: string;
+  POSTHOG_HOST?: string;
   ORGX_API_URL: string;
   ORGX_API_FALLBACK_URL?: string;
   ORGX_WEB_URL: string;
@@ -96,6 +100,7 @@ type OAuthCallbackIdentity = {
   // token-mint time. Optional — absent when the web app couldn't safely resolve
   // it; the gateway then forwards only the Clerk id + email as before.
   orgxUserId?: string;
+  analyticsJourney?: { session_id?: string; signup_attempt_id?: string };
 };
 
 const ORGX_UUID_RE =
@@ -171,6 +176,7 @@ type OAuthScopeSource = 'client_request' | 'server_read_default';
 type StoredAuthRequest = AuthRequest & {
   clientPresentation?: ClientPresentation;
   scopeSource?: OAuthScopeSource;
+  journeyId?: string;
 };
 
 function authStateKey(stateKey: string): string {
@@ -477,6 +483,7 @@ async function resolveOAuthCallbackIdentity(params: {
     return {
       userId: verified.payload.sub,
       userEmail: verified.payload.email,
+      analyticsJourney: verified.payload.analytics_journey,
       orgxUserId:
         typeof claimedOrgxUserId === 'string' &&
         ORGX_UUID_RE.test(claimedOrgxUserId)
@@ -1130,13 +1137,14 @@ export const authHandler = {
     // =========================================================================
 
     // Step 1: /authorize — parse OAuth request, store state in KV, redirect to Clerk
+    if (url.pathname === '/oauth/consent-events') return handleConsentJourneyEvent(request, env, ctx);
     if (url.pathname === '/authorize' && request.method === 'GET') {
-      return handleAuthorize(request, env, serverUrl, webUrl);
+      return handleAuthorize(request, env, serverUrl, webUrl, ctx);
     }
 
     // Step 2: /oauth/callback — Clerk returns user info, redirect to consent page
     if (url.pathname === '/oauth/callback' && request.method === 'GET') {
-      return handleOAuthCallback(request, env, serverUrl);
+      return handleOAuthCallback(request, env, serverUrl, ctx);
     }
 
     // Consent page display data is resolved from opaque server-side state.
@@ -1144,7 +1152,7 @@ export const authHandler = {
       url.pathname === '/oauth/consent-session' &&
       request.method === 'GET'
     ) {
-      return handleConsentSession(request, env);
+      return handleConsentSession(request, env, ctx);
     }
 
     // Step 3: /oauth/consent-callback — user approved scopes, complete authorization
@@ -1164,7 +1172,7 @@ export const authHandler = {
           }
         );
       }
-      return handleConsentCallback(request, env, serverUrl);
+      return handleConsentCallback(request, env, serverUrl, ctx);
     }
 
     // =========================================================================
@@ -1837,7 +1845,8 @@ async function handleAuthorize(
   request: Request,
   env: AuthHandlerEnv,
   serverUrl: string,
-  webUrl: string
+  webUrl: string,
+  ctx: ExecutionContext
 ): Promise<Response> {
   const url = new URL(request.url);
   const requestedClientId = url.searchParams.get('client_id');
@@ -1905,6 +1914,7 @@ async function handleAuthorize(
     requestedScope === null && (oauthReqInfo.scope?.length ?? 0) === 0;
   const storedAuthRequest: StoredAuthRequest = {
     ...oauthReqInfo,
+    journeyId: crypto.randomUUID(),
     // OAuth scope is optional. Claude Code and Cursor can omit it entirely.
     // When neither the URL nor the provider parser resolves client scopes,
     // treat omission as the documented server-side Read preset, while an
@@ -1953,6 +1963,7 @@ async function handleAuthorize(
     scopeSource: storedAuthRequest.scopeSource,
   });
 
+  await recordOAuthJourney({ env, ctx, state: storedAuthRequest, event: 'mcp_oauth_started' });
   return Response.redirect(signInUrl.toString(), 302);
 }
 
@@ -1971,7 +1982,8 @@ export function isOAuthAuthorizationServerMetadataPath(
 async function handleOAuthCallback(
   request: Request,
   env: AuthHandlerEnv,
-  serverUrl: string
+  serverUrl: string,
+  ctx: ExecutionContext
 ): Promise<Response> {
   const url = new URL(request.url);
 
@@ -2024,6 +2036,7 @@ async function handleOAuthCallback(
       JSON.stringify({
         userId: identity.userId,
         userEmail: identity.userEmail,
+        analyticsJourney: identity.analyticsJourney,
         ...(identity.orgxUserId ? { orgxUserId: identity.orgxUserId } : {}),
       } satisfies OAuthCallbackIdentity),
       { expirationTtl: OAUTH_STATE_TTL_SECONDS }
@@ -2042,6 +2055,7 @@ async function handleOAuthCallback(
       clientId: oauthReqInfo.clientId,
     });
 
+    await recordOAuthJourney({ env, ctx, state: oauthReqInfo as StoredAuthRequest, identity, event: 'mcp_oauth_callback_completed' });
     return Response.redirect(consentUrl.toString(), 302);
   } catch (error) {
     console.error('[auth] Failed to prepare OAuth consent:', error);
@@ -2062,7 +2076,8 @@ async function handleOAuthCallback(
  */
 async function handleConsentSession(
   request: Request,
-  env: AuthHandlerEnv
+  env: AuthHandlerEnv,
+  ctx: ExecutionContext
 ): Promise<Response> {
   const url = new URL(request.url);
   const stateKey = url.searchParams.get('state_key');
@@ -2119,6 +2134,7 @@ async function handleConsentSession(
     const clientPresentation =
       oauthReqInfo.clientPresentation ??
       resolveClientPresentation(oauthReqInfo.redirectUri);
+    await recordOAuthJourney({ env, ctx, state: oauthReqInfo, identity, event: 'mcp_consent_session_loaded' });
     return Response.json(
       {
         session: {
@@ -2175,7 +2191,8 @@ async function handleConsentSession(
 async function handleConsentCallback(
   request: Request,
   env: AuthHandlerEnv,
-  serverUrl: string
+  serverUrl: string,
+  ctx: ExecutionContext
 ): Promise<Response> {
   const wantsJson = request.headers.get('accept')
     ?.split(',')
@@ -2276,7 +2293,9 @@ async function handleConsentCallback(
     );
   }
 
+  const telemetryState = oauthReqInfo as StoredAuthRequest;
   if (action === 'deny') {
+    await recordOAuthJourney({ env, ctx, state: telemetryState, identity, event: 'mcp_consent_denied' });
     try {
       const redirectUrl = new URL(oauthReqInfo.redirectUri);
       redirectUrl.searchParams.set('error', 'access_denied');
@@ -2325,6 +2344,7 @@ async function handleConsentCallback(
     );
   }
 
+  await recordOAuthJourney({ env, ctx, state: telemetryState, identity, event: 'mcp_consent_submitted', properties: consentSelectionProperties(scope) });
   // Complete authorization via the OAuthProvider
   // This creates a grant, issues an auth code, and returns the redirect URL
   try {
@@ -2346,6 +2366,10 @@ async function handleConsentCallback(
         userId: identity.userId,
         ...(identity.orgxUserId ? { orgxUserId: identity.orgxUserId } : {}),
         scope: scope.join(' '),
+        ...(telemetryState.journeyId ? {
+          oauthJourneyId: telemetryState.journeyId,
+          oauthClient: telemetryState.clientPresentation?.identityTrust === 'verified_redirect' ? telemetryState.clientPresentation.icon : 'unknown',
+        } : {}),
         email: identity.userEmail,
       },
     });
@@ -2367,8 +2391,10 @@ async function handleConsentCallback(
     // page can navigate after a same-origin POST. This avoids Chromium applying
     // form-action to the POST redirect chain. Non-browser clients retain the
     // standard direct 302 response.
+    await recordOAuthJourney({ env, ctx, state: telemetryState, identity, event: 'mcp_oauth_grant_created', properties: consentSelectionProperties(scope) });
     return consentRedirect(redirectTo);
   } catch (error) {
+    await recordOAuthJourney({ env, ctx, state: telemetryState, identity, event: 'mcp_oauth_failed', properties: { failure_category: 'grant_creation' } });
     console.error('[auth] Failed to complete authorization:', error);
     return consentError(
       'server_error',
