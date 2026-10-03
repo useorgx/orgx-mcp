@@ -454,6 +454,43 @@ export const approvalListProofSchema = z
   .nullable();
 
 /**
+ * What a pending-decision count covers. Mirrors PendingDecisionScope in the
+ * app (lib/server/decisions/pendingDecisionScope.ts): every count of
+ * "decisions waiting on you" (get_pending_decisions, orgx_decide list_pending,
+ * approve_agent_work list, the morning brief, the initiative pulse) carries
+ * the scope it counted, so the same scope always gives the same number.
+ * `total` is the whole scope, never the page; `kinds` gains `action` when the
+ * widget channel adds Action Gateway items to the list.
+ */
+// Known values are described, not enumerated: an output schema must never fail
+// a whole response because the app added a value.
+export const pendingDecisionsScopeSchema = z.object({
+  level: z.string().describe('Scope level. Known values: workspace, initiative.'),
+  workspace_id: nullableString,
+  initiative_id: nullableString,
+  kinds: z.array(
+    z.string().describe('Counted kind. Known values: decision, approval, action.')
+  ),
+  urgency: z.string().describe('Urgency filter. Known values: all, critical, high.'),
+  includes_system: z.boolean(),
+  unit: z.string().describe('What one unit of total is. Known value: review_packet.'),
+  total: z.number(),
+  capped: z.boolean(),
+});
+
+/**
+ * A morning-brief source that failed to load (lib/server/briefSourceHealth.ts
+ * in the app). The brief sets `degraded` only when one of these exists.
+ */
+export const briefSourceGapSchema = z.object({
+  source: z.string(),
+  label: z.string(),
+  reason: z
+    .string()
+    .describe('Why it failed. Known values: query_failed, timeout, unavailable.'),
+});
+
+/**
  * A model's approve/reject request answered as a normal result: a person
  * must decide, here is where (src/directHumanDecisionAction.ts).
  */
@@ -503,6 +540,10 @@ export const agentTaskSchema = z.object({
   milestone_id: nullableString,
   updated_at: nullableString,
   blocker: nullableString,
+  // The app reports a live task as `stalled` or `blocked` while its agent's
+  // run is, and keeps the value workstream_tasks holds here
+  // (lib/agents/tools/agentStatusTaskState.ts). Absent when not reconciled.
+  stored_status: nullableString.optional(),
 });
 
 export const agentSchema = z.object({

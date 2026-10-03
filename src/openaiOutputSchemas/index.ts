@@ -67,6 +67,8 @@ const COMPACT_NESTED_OUTPUT_TOOLS = new Set<ChatGptPublicTool>([
   'orgx_search',
   'orgx_recommend',
   'orgx_decide',
+  // The artifact record and its canonical review contract are both app-owned.
+  'review_artifact',
 ]);
 
 const rawOutputSchemas = {
