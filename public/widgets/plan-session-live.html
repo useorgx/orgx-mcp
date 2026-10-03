@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <script src="shared/kit/ox-elements-core.js"></script>
   <script src="shared/kit/ox-elements-footer.js"></script>
-  <script src="shared/kit/ox-elements-glyph.js"></script>
 
   <script>
     (function syncPreviewContext() {
@@ -63,16 +62,16 @@
     .wcard[data-edge="teal"] { --edge-rgb: 0, 201, 167; }
     .wcard[data-edge="red"] { --edge-rgb: 244, 63, 94; }
     .hd { display: flex; align-items: center; gap: 10px; padding: 14px 18px 0; min-width: 0; }
-    .hd > ox-glyph { --ox-glyph-size: 18px; flex: none; }
-    .kind {
-      font-size: 11px; font-weight: 600; line-height: 1;
-      letter-spacing: .04em; text-transform: uppercase;
-      color: var(--ox-text-muted); white-space: nowrap;
-    }
-    .src { font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; }
-    .src b { color: var(--ox-text-2); font-weight: 600; }
+    .hd { min-height: 34px; }
+    .hd > svg { flex: none; color: var(--ox-text-muted); }
+    .hd[data-tone="amber"] > svg { color: var(--ox-warning); }
+    .hd[data-tone="teal"] > svg { color: var(--ox-teal); }
+    .hd[data-tone="red"] > svg { color: var(--ox-danger); }
+    /* Sans type scale; weight and colour carry the hierarchy. */
+    .kind { font-size: 13px; font-weight: 650; line-height: 1.2; color: var(--ox-text); white-space: nowrap; }
+    .src { font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
     .sp { flex: 1; }
-    .meta { font-size: 11.5px; line-height: 1.35; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .meta { font-size: 12.5px; line-height: 1.35; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
     .bd { padding: 10px 18px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
     .pk-q {
       margin: 0; font-size: 22px; font-weight: 700; line-height: 1.18;
@@ -99,6 +98,7 @@
     }
     .plan-lens[aria-selected="true"] { color: var(--ox-text); border-bottom-color: var(--ox-text); }
     .plan-lens:hover { color: var(--ox-text); }
+    .plan-lens .count { margin-left: 6px; font-weight: 500; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
 
     .plan-workbench { display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); gap: 14px; align-items: start; }
     .plan-map { display: flex; flex-direction: column; gap: 2px; }
@@ -109,10 +109,10 @@
     }
     .plan-map__button:hover { background: var(--ox-hover); color: var(--ox-text); }
     .plan-map__button[aria-current="true"] { background: var(--ox-well-bg); color: var(--ox-text); font-weight: 600; }
-    .plan-map__index { font: 500 11px/1 var(--ox-mono); color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .plan-map__index { font-size: 12px; font-weight: 600; line-height: 1; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
     .plan-map__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .plan-section-select-wrap { display: none; flex-direction: column; gap: 6px; }
-    .sec-label { font: 600 10.5px/1 var(--ox-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ox-text-muted); }
+    .sec-label { font-size: 12.5px; font-weight: 600; line-height: 1.2; color: var(--ox-text-muted); }
     .plan-section-select {
       min-height: 44px; width: 100%; padding: 0 10px; border-radius: 10px;
       border: 1px solid var(--ox-border-strong); background: var(--ox-panel); color: var(--ox-text);
@@ -140,9 +140,10 @@
     .plan-expand.is-visible { display: inline-flex; align-items: center; }
 
     .plan-activity { display: flex; flex-direction: column; }
-    .plan-activity__item { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--ox-border); }
+    .plan-activity__item { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--ox-border); }
     .plan-activity__item:first-child { border-top: 0; }
-    .plan-activity__item ox-glyph { --ox-glyph-size: 16px; margin-top: 2px; }
+    /* Guidance comes from people: their initials, not a question-mark glyph. */
+    .plan-author { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ox-well-bg); box-shadow: inset 0 0 0 1px var(--ox-border-strong); font-size: 11.5px; font-weight: 700; color: var(--ox-text-2); }
     .plan-activity__note { font-size: 13.5px; line-height: 1.45; color: var(--ox-text); margin-bottom: 2px; }
 
     .plan-composer { display: flex; flex-direction: column; gap: 8px; }
@@ -155,6 +156,26 @@
     .plan-textarea:focus { outline: 2px solid var(--ox-focus); outline-offset: 1px; }
     .plan-feedback { min-height: 18px; font-size: 12.5px; color: var(--ox-text-muted); }
     .plan-feedback[data-tone="error"] { color: var(--ox-danger); }
+
+    /* Empty: what a plan needs first, as starting points that open the composer. */
+    .plan-empty { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 4px 14px; align-items: start; padding: 16px; border-radius: 12px; background: var(--ox-well-bg); }
+    .plan-empty__icon { grid-row: span 2; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; color: var(--ox-primary); background: rgba(var(--ox-primary-rgb), .12); }
+    .plan-empty__title { margin: 0; font-size: 15px; font-weight: 650; line-height: 1.3; color: var(--ox-text); }
+    .plan-empty__text { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ox-text-2); }
+    .plan-starters { grid-column: 1 / -1; display: flex; flex-direction: column; margin-top: 8px; }
+    .plan-starter {
+      display: grid; grid-template-columns: minmax(0, 1fr) 16px; align-items: center; gap: 10px; min-height: 48px; padding: 6px 2px;
+      border: 0; border-top: 1px solid var(--ox-border); background: none; text-align: left; cursor: pointer;
+      font: inherit; color: var(--ox-text);
+    }
+    .plan-starter b { display: block; font-size: 13.5px; font-weight: 600; }
+    .plan-starter span { display: block; font-size: 12.5px; color: var(--ox-text-muted); }
+    .plan-starter svg { color: var(--ox-text-muted); }
+    .plan-starter:hover b { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ox-border-strong); }
+    .plan-quiet { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 10px; padding: 12px 0 4px; }
+    .plan-quiet > svg { grid-row: span 2; margin-top: 2px; color: var(--ox-text-muted); }
+    .plan-quiet b { font-size: 13.5px; font-weight: 600; color: var(--ox-text); }
+    .plan-quiet span { font-size: 13px; line-height: 1.45; color: var(--ox-text-muted); }
 
     .ft-link {
       min-height: 44px; margin: -4px 0; padding: 0 12px; border: 0; border-radius: 9px; background: none;
@@ -203,6 +224,7 @@
 
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
+  <script src="shared/orgx-icons.js"></script>
   <script src="shared/live-machine.js"></script>
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
@@ -254,10 +276,10 @@
 
       function parsePlanDocument(markdown, fallbackTitle) {
         var source = String(markdown || '').replace(/\r\n?/g, '\n').trim();
-        if (!source) return { title: fallbackTitle || 'Untitled plan', sections: [] };
+        if (!source) return { title: fallbackTitle || 'New plan', sections: [] };
 
         var lines = source.split('\n');
-        var title = fallbackTitle || 'Untitled plan';
+        var title = fallbackTitle || 'New plan';
         var sections = [];
         var current = null;
         var intro = [];
@@ -265,7 +287,7 @@
         lines.forEach(function parseLine(line) {
           var heading = line.match(/^(#{1,6})\s+(.+?)\s*$/);
           if (heading) {
-            if (heading[1].length === 1 && title === (fallbackTitle || 'Untitled plan')) {
+            if (heading[1].length === 1 && title === (fallbackTitle || 'New plan')) {
               title = heading[2].trim();
               return;
             }
@@ -366,7 +388,7 @@
           };
         }
 
-        var fallbackTitle = firstString([source.feature_name, source.title, source.name]) || 'Untitled plan';
+        var fallbackTitle = firstString([source.feature_name, source.title, source.name]) || 'New plan';
         var markdown = firstString([
           source.current_plan,
           source.currentPlan,
@@ -497,13 +519,13 @@
       function renderError(plan) {
         var content = showContent();
         content.innerHTML =
-          '<article class="wcard ox-surface" data-edge="red">' +
-            '<div class="hd"><ox-glyph kind="artifact" tone="red"></ox-glyph><span class="kind">Plan</span></div>' +
+          '<article class="wcard ox-surface ox-enter" data-edge="red">' +
+            '<div class="hd" data-tone="red">' + window.OrgXIcons.icon('plan', 18) + '<span class="kind">Plan</span></div>' +
             '<div class="bd">' +
-              '<h1 class="pk-q">' + escapeHtml(plan.title || 'Plan unavailable') + '</h1>' +
-              '<p class="note">' + escapeHtml(String(plan.error || 'The plan data could not be read').replace(/[.!?]*\s*$/, '.')) + ' Retry the current tool call.</p>' +
+              '<h1 class="pk-q">Couldn’t load this plan</h1>' +
+              '<p class="note">OrgX didn’t return the plan just now. No guidance was sent and nothing changed. Try again in a moment.</p>' +
             '</div>' +
-            '<ox-footer variant="reads" state="failed" heading="Couldn’t load the plan" detail="no edits were sent" action-label="Retry render" data-retry></ox-footer>' +
+            '<ox-footer variant="reads" state="failed" heading="Not loaded" detail="nothing changed" action-label="Try again" data-retry></ox-footer>' +
           '</article>';
         content.querySelector('[data-retry]').addEventListener('ox-action', function retry() {
           window.location.reload();
@@ -534,13 +556,25 @@
         );
       }
 
+      // What a first draft needs; each opens the composer with a starting phrase.
+      var STARTERS = [
+        { lead: 'Outcome: ', title: 'The outcome you want', hint: 'What is true when this plan is done' },
+        { lead: 'Constraint: ', title: 'A constraint to respect', hint: 'Budget, deadline, or a line not to cross' },
+        { lead: 'First move: ', title: 'The first move', hint: 'What should happen this week' },
+      ];
+      var CHEVRON_RIGHT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+
       function renderSelectedSection(plan) {
         var section = plan.sections[state.selectedSection] || plan.sections[0];
         if (!section) {
           return (
-            '<section class="plan-well">' +
-              '<h2 class="plan-section__title">Plan shell ready</h2>' +
-              '<div class="plan-section__body"><p>This session exists, but its plan content has not been written yet. Add one concrete outcome, constraint, or next move to shape the first iteration.</p></div>' +
+            '<section class="plan-empty" aria-labelledby="plan-empty-title">' +
+              '<span class="plan-empty__icon">' + window.OrgXIcons.icon('plan', 20) + '</span>' +
+              '<h2 class="plan-empty__title" id="plan-empty-title">Nothing written yet</h2>' +
+              '<p class="plan-empty__text">Start with one of these. OrgX writes the first draft from it.</p>' +
+              '<div class="plan-starters">' + STARTERS.map(function starter(item, index) {
+                return '<button type="button" class="plan-starter" data-starter="' + index + '"><span><b>' + escapeHtml(item.title) + '</b><span>' + escapeHtml(item.hint) + '</span></span>' + CHEVRON_RIGHT + '</button>';
+              }).join('') + '</div>' +
             '</section>'
           );
         }
@@ -555,17 +589,28 @@
         );
       }
 
+      function initials(name) {
+        var parts = String(name || '').replace(/[^\p{L}\p{N}\s'-]/gu, ' ').split(/[\s_-]+/).filter(Boolean);
+        return parts.length ? parts.slice(0, 2).map(function (part) { return part[0].toUpperCase(); }).join('') : 'O';
+      }
+
       function renderActivity(plan) {
         if (!plan.edits.length) {
-          return '<p class="note">No guidance recorded yet. The plan is still on its first visible pass.</p>';
+          return (
+            '<div class="plan-quiet" role="status">' + window.OrgXIcons.icon('plan', 18) +
+              '<b>No guidance yet</b>' +
+              '<span>Corrections and constraints you add appear here, and OrgX folds them into the next version.</span>' +
+            '</div>'
+          );
         }
         return '<div class="plan-activity" role="list">' + plan.edits.map(function activity(edit) {
+          var author = edit.author === 'Plan guidance' ? 'OrgX' : edit.author;
           return (
             '<div class="plan-activity__item" role="listitem">' +
-              '<ox-glyph kind="question"></ox-glyph>' +
+              '<span class="plan-author" aria-hidden="true">' + escapeHtml(initials(author)) + '</span>' +
               '<div>' +
                 '<div class="plan-activity__note">' + escapeHtml(edit.note) + '</div>' +
-                '<div class="meta">' + escapeHtml(edit.author) + ' · ' + escapeHtml(formatRelative(edit.at).replace(/^updated /, '')) + '</div>' +
+                '<div class="meta">' + escapeHtml(author) + ' · ' + escapeHtml(formatRelative(edit.at).replace(/^updated /, '')) + '</div>' +
               '</div>' +
             '</div>'
           );
@@ -600,16 +645,17 @@
         if (guidance.phase === 'failed') {
           return { variant: 'finishes-here', state: 'failed', heading: 'Not sent', detail: 'your note is still here', primary: 'Retry', action: 'cancel' };
         }
+        // Short heading and detail: at 375 the footer also holds Open and the primary.
         if (state.composerOpen) {
-          return { variant: 'finishes-here', state: 'needs-you', heading: 'Finishes here', detail: 'becomes context for the next iteration', primary: 'Send', action: 'cancel' };
+          return { variant: 'finishes-here', state: 'needs-you', heading: 'Your note', detail: 'shapes v' + (plan.version + 1), primary: 'Send', action: 'cancel' };
         }
         if (isComplete) {
-          return { variant: 'confirms-in-orgx', state: 'confirmed', heading: 'Accepted v' + plan.version, detail: 'ready for work · ' + plural(plan.sections.length, 'section') };
+          return { variant: 'confirms-in-orgx', state: 'confirmed', heading: 'Accepted v' + plan.version, detail: 'ready for work' };
         }
         if (guidance.phase === 'recorded') {
           return { variant: 'finishes-here', state: 'needs-you', heading: 'Guidance recorded', detail: guidance.message, primary: 'Guide this plan' };
         }
-        return { variant: 'finishes-here', state: 'needs-you', heading: 'Finishes here', detail: 'add a correction or constraint', primary: 'Guide this plan' };
+        return { variant: 'finishes-here', state: 'needs-you', heading: 'Draft v' + plan.version, detail: plan.sections.length ? 'add guidance' : 'start it', primary: 'Guide this plan' };
       }
 
       function renderFooter(plan) {
@@ -633,16 +679,19 @@
 
         var isComplete = plan.status === 'complete';
         var lastEdit = plan.edits[0] || null;
-        var meta = [plural(plan.sections.length, 'section')].concat(plan.domains.slice(0, 3)).join(' · ');
+        var meta = [plan.sections.length ? plural(plan.sections.length, 'section') : 'No sections yet'].concat(plan.domains.slice(0, 3).map(function (domain) {
+          return String(domain).charAt(0).toUpperCase() + String(domain).slice(1);
+        })).join(' · ');
+        var hasWork = plan.sections.length > 0 || plan.edits.length > 0;
         var showWorkbench = !isComplete || state.completeExpanded;
         var edge = isComplete ? 'teal' : guidance.phase === 'failed' ? 'red' : 'amber';
 
         content.innerHTML =
           '<article class="wcard ox-surface" data-plan-status="' + plan.status + '" data-edge="' + edge + '">' +
-            '<div class="hd">' +
-              '<ox-glyph kind="artifact"' + (isComplete ? ' tone="teal"' : ' tone="amber"') + '></ox-glyph>' +
+            '<div class="hd" data-tone="' + (isComplete ? 'teal' : 'amber') + '">' +
+              window.OrgXIcons.icon('plan', 18) +
               '<span class="kind">Plan</span>' +
-              '<span class="src"><b>v' + plan.version + '</b></span>' +
+              '<span class="src">v' + plan.version + (isComplete ? ' · accepted' : ' · draft') + '</span>' +
               '<span class="sp"></span>' +
               '<span class="meta">' + escapeHtml(formatRelative(plan.updatedAt)) + '</span>' +
             '</div>' +
@@ -658,10 +707,13 @@
                     '</button>'
                   : '') +
               '</div>' +
-              (showWorkbench
+              (showWorkbench && !hasWork
+                // Nothing written and no guidance: no tabs over nothing, just the starting points.
+                ? renderSelectedSection(plan)
+                : showWorkbench
                 ? '<div class="plan-lenses" role="tablist" aria-label="Plan views">' +
                     '<button type="button" class="plan-lens" role="tab" data-lens="plan" aria-selected="' + (state.lens === 'plan') + '">Plan</button>' +
-                    '<button type="button" class="plan-lens" role="tab" data-lens="activity" aria-selected="' + (state.lens === 'activity') + '">Guidance · ' + plan.edits.length + '</button>' +
+                    '<button type="button" class="plan-lens" role="tab" data-lens="activity" aria-selected="' + (state.lens === 'activity') + '">Guidance' + (plan.edits.length ? '<span class="count">' + plan.edits.length + '</span>' : '') + '</button>' +
                   '</div>' +
                   '<div class="plan-panel" role="tabpanel">' +
                     (state.lens === 'plan'
@@ -880,6 +932,14 @@
         var footer = document.getElementById('planFooter');
         if (footer) footer.addEventListener('ox-primary', onFooterPrimary);
 
+        document.querySelectorAll('[data-starter]').forEach(function bindStarter(button) {
+          button.addEventListener('click', function startWith() {
+            var starter = STARTERS[Number(button.dataset.starter) || 0];
+            if (!guidance.draft || !guidance.draft.trim()) guidance.draft = starter.lead;
+            openComposer(button);
+          });
+        });
+
         var cancel = document.querySelector('[data-cancel-guidance]');
         if (cancel) cancel.addEventListener('click', function () { closeComposer(); });
 
@@ -937,7 +997,7 @@
           plan = {
             ...state.plan,
             ...plan,
-            title: plan.title === 'Untitled plan' ? state.plan.title : plan.title,
+            title: plan.title === 'New plan' ? state.plan.title : plan.title,
             sections: state.plan.sections,
             domains: plan.domains.length ? plan.domains : state.plan.domains,
             edits: plan.edits.length ? plan.edits : state.plan.edits,
@@ -990,6 +1050,7 @@
         };
 
         if (name === 'not-sent') base.__send_fails = true;
+        if (name === 'no-guidance') base.edits = [];
         if (name === 'empty') {
           base.feature_name = 'New governed workflow';
           base.current_plan = '';
@@ -1033,7 +1094,7 @@
 
         if (protocol === 'standalone') {
           if (loading) renderLoading();
-          else if (demo || ['long', 'complete', 'resolved', 'error', 'degraded', 'not-sent'].indexOf(previewState) >= 0) {
+          else if (demo || ['long', 'complete', 'resolved', 'error', 'degraded', 'not-sent', 'no-guidance'].indexOf(previewState) >= 0) {
             renderPayload(fixture(previewState || 'populated'));
           } else {
             renderPayload(fixture('empty'));

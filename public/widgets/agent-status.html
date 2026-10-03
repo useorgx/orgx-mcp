@@ -67,73 +67,99 @@
 
     .agent-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 18px; }
 
-    /* One row per agent. The row is a tab; the selected one shows its focus below. */
-    .agent-switcher-list { display: flex; flex-direction: column; padding: 6px; }
+    /* One row per agent. The row's select button stretches over the row; the
+       avatar (the agent's hover card, its own button) sits above that layer,
+       so nothing interactive nests and both stay 44 px targets. */
+    .agent-switcher-list { display: flex; flex-direction: column; padding: 6px; list-style: none; }
     .agent-switcher-row {
-      display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px;
-      width: 100%; min-height: 56px; padding: 8px 10px; border-radius: 12px;
-      border: 1px solid transparent; background: transparent; color: var(--ox-text);
-      text-align: left; cursor: pointer; transition: background 160ms ease, border-color 160ms ease;
+      position: relative;
+      display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: center; gap: 12px;
+      min-height: 60px; padding: 8px 10px 8px 12px; border-radius: 12px; color: var(--ox-text);
+      transition: background 160ms ease;
     }
-    .agent-switcher-row:hover { background: var(--ox-hover); }
-    .agent-switcher-row[aria-selected="true"] { background: var(--ox-hover); border-color: var(--ox-border-strong); }
-    .agent-avatar { display: grid; place-items: center; width: 32px; height: 32px; line-height: 0; }
+    @media (hover: hover) { .agent-switcher-row:hover { background: color-mix(in srgb, var(--ox-hover) 60%, transparent); } }
+    .agent-switcher-row[data-selected="true"], .agent-switcher-row[data-selected="true"]:hover { background: var(--ox-hover); }
+    .agent-switcher-select {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px;
+      min-width: 0; min-height: 44px; margin: 0; padding: 0; border: 0; background: none;
+      font: inherit; color: inherit; text-align: left; cursor: pointer; outline: none;
+    }
+    .agent-switcher-select::after { content: ""; position: absolute; inset: 0; border-radius: 12px; }
+    .agent-switcher-row .agent-switcher-select:focus-visible { outline: none; }
+    .agent-switcher-select:focus-visible::after { outline: 2px solid var(--ox-focus); outline-offset: -2px; }
+    .agent-avatar { position: relative; z-index: 1; display: grid; place-items: center; width: 32px; height: 32px; line-height: 0; }
     .switcher-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .switcher-identity { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
     .switcher-name { font-size: 14px; font-weight: 650; }
     .switcher-role { font-size: 12.5px; color: var(--ox-text-muted); }
-    .switcher-focus { font-size: 12.5px; color: var(--ox-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .switcher-focus { font-size: 12.5px; line-height: 1.4; color: var(--ox-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .switcher-focus .is-stalled { color: var(--ox-warning); font-weight: 600; }
     .switcher-status { display: flex; justify-content: flex-end; }
 
     .idle-agent-toggle {
       display: flex; align-items: center; gap: 8px; width: calc(100% - 12px); min-height: 44px; margin: 0 6px 6px;
-      padding: 0 10px; border-radius: 10px; border: 0; background: transparent; cursor: pointer;
+      padding: 0 12px; border-radius: 10px; border: 0; background: transparent; cursor: pointer;
       font-size: 12.5px; font-weight: 600; color: var(--ox-text-muted);
     }
-    .idle-agent-toggle:hover { color: var(--ox-text); background: var(--ox-hover); }
+    .idle-agent-toggle:hover { color: var(--ox-text); }
     .idle-agent-toggle .chevron { width: 14px; height: 14px; transition: transform 160ms ease; }
     .idle-agent-toggle[aria-expanded="true"] .chevron { transform: rotate(180deg); }
 
     /* The selected agent's focus */
-    .agent-command-panel { border-top: 1px solid var(--ox-border); padding: 16px 20px 6px; display: flex; flex-direction: column; gap: 8px; }
-    .command-eyebrow { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); }
+    .agent-command-panel { border-top: 1px solid var(--ox-border); padding: 16px 20px 4px; display: flex; flex-direction: column; gap: 10px; }
+    .command-focus-header { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 28px; }
+    .command-who { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-size: 13px; color: var(--ox-text-muted); }
+    .command-who b { font-weight: 650; color: var(--ox-text); }
     .command-focus-title { font-size: 17px; font-weight: 650; line-height: 1.3; letter-spacing: -0.015em; text-wrap: balance; overflow-wrap: anywhere; }
-    .command-meta { font: 500 11.5px/1.5 var(--ox-mono); color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    /* Progress: one bar with its number, then the counts in plain words. */
+    .command-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; }
+    .command-progress-bar { height: 6px; border-radius: 999px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.14)); overflow: hidden; }
+    .command-progress-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--ox-teal); }
+    .command-progress-value { font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .command-progress-value b { font-weight: 650; color: var(--ox-text); }
+    .command-meta { font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .command-meta .tone-blocked { color: var(--ox-warning); font-weight: 600; }
 
-    .agent-attention { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; text-align: left; gap: 2px; padding: 10px 12px; border: 0; border-radius: 10px; background: rgba(var(--ox-warning-rgb, 251, 191, 36), 0.08); margin-top: 4px; }
+    .agent-attention { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 2px 10px; align-items: start; text-align: left; padding: 10px 12px; border: 0; border-radius: 10px; background: rgba(var(--ox-warning-rgb, 251, 191, 36), 0.08); }
+    .agent-attention > svg { grid-row: span 2; margin-top: 1px; color: var(--ox-warning); }
     .agent-attention .attention-title { font-size: 12.5px; font-weight: 650; color: var(--ox-warning); }
-    .agent-attention .attention-body { font-size: 13.5px; line-height: 1.45; color: var(--ox-text); }
+    .agent-attention .attention-body { font-size: 13.5px; line-height: 1.45; color: var(--ox-text); overflow-wrap: anywhere; }
 
     .command-state-note { font-size: 12.5px; color: var(--ox-text-muted); }
     .command-state-note strong { color: var(--ox-text-2); font-weight: 600; }
 
-    .command-panel-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px -8px 0; }
+    /* Work details: a section header across the panel, not a pill in a box. */
+    .command-panel-actions { display: flex; align-items: stretch; justify-content: space-between; gap: 8px; margin: 2px -20px 0; padding: 0 12px 0 20px; border-top: 1px solid var(--ox-border); }
     .command-disclosure, .command-live-link {
-      display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 8px; border-radius: 10px;
+      display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0; border-radius: 0;
       border: 0; background: transparent; cursor: pointer; text-decoration: none;
       font-size: 13px; font-weight: 600; color: var(--ox-text-2);
     }
-    .command-disclosure:hover, .command-live-link:hover { color: var(--ox-text); background: var(--ox-hover); }
-    .command-disclosure .count { font: 500 11.5px/1 var(--ox-mono); color: var(--ox-text-muted); }
-    .command-disclosure .chevron { width: 14px; height: 14px; transition: transform 160ms ease; }
+    .command-disclosure { flex: 1; min-width: 0; }
+    .command-live-link { padding: 0 8px; border-radius: 10px; }
+    .command-disclosure:hover, .command-live-link:hover { color: var(--ox-text); }
+    .command-disclosure .count { font-size: 12.5px; font-weight: 500; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .command-disclosure .chevron, .command-live-link svg { width: 14px; height: 14px; flex: none; }
+    .command-disclosure .chevron { color: var(--ox-text-muted); transition: transform 200ms var(--ox-ease-out, ease); }
     .command-disclosure[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+    .command-disclosure:focus-visible, .command-live-link:focus-visible { outline-offset: -2px; border-radius: 8px; }
 
-    .command-details { display: none; flex-direction: column; gap: 12px; padding: 4px 0 10px; }
-    .command-details.is-open { display: flex; }
-    .command-detail-label { font-size: 12px; color: var(--ox-text-muted); margin-bottom: 2px; }
+    .command-details { display: flex; flex-direction: column; gap: 12px; padding: 0 0 12px; }
+    .command-details[hidden] { display: none; }
+    .command-detail-label { font-size: 12.5px; font-weight: 600; color: var(--ox-text-muted); margin-bottom: 2px; }
     .command-detail-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 40px; padding: 7px 0; border-top: 1px solid var(--ox-border); }
     .command-detail-row:first-of-type { border-top: 0; }
     .command-detail-title { font-size: 13.5px; line-height: 1.4; color: var(--ox-text); overflow-wrap: anywhere; }
-    .command-detail-state { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); white-space: nowrap; }
+    .command-detail-copy { min-width: 0; }
+    .command-detail-why { display: block; font-size: 12.5px; color: var(--ox-warning); margin-top: 2px; }
+    .command-detail-state { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .command-detail-state .command-progress-bar { width: 64px; }
     .command-detail-state[data-tone='done'] { color: var(--ox-teal); }
-    .command-detail-state[data-tone='blocked'] { color: var(--ox-warning); }
-    .command-detail-state[data-tone='review'] { color: var(--ox-warning); }
-    .command-detail-state[data-tone='running'] { color: var(--ox-text-2); }
 
     .quiet-command-state { padding: 16px 20px 18px; font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); }
 
     .sk { display: block; border-radius: 6px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.12)); }
-    .sk-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 72px; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; }
+    .sk-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 72px; align-items: center; gap: 12px; min-height: 60px; padding: 8px 18px; }
 
     .focusable:focus-visible { outline: 2px solid var(--ox-focus, var(--ox-warning)); outline-offset: -2px; }
 
@@ -141,9 +167,10 @@
       body { padding: 12px; }
       .agent-head { --ox-attention-padding: 0 14px; }
       .agent-switcher-list { padding: 4px; }
-      .agent-switcher-row { gap: 10px; padding: 8px; }
+      .agent-switcher-row { gap: 10px; padding: 8px 8px 8px 10px; }
       .switcher-role { display: none; }
       .agent-command-panel { padding: 14px 16px 4px; }
+      .command-panel-actions { margin: 2px -16px 0; padding: 0 8px 0 16px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -159,6 +186,7 @@
         <div class="agent-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 18px"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:40%;height:12px"></span></div>
         <div class="sk-row"><span class="sk" style="width:32px;height:32px;border-radius:50%"></span><span style="display:flex;flex-direction:column;gap:6px"><span class="sk" style="width:30%;height:12px"></span><span class="sk" style="width:76%;height:11px"></span></span><span class="sk" style="height:22px;border-radius:999px"></span></div>
         <div class="sk-row"><span class="sk" style="width:32px;height:32px;border-radius:50%"></span><span style="display:flex;flex-direction:column;gap:6px"><span class="sk" style="width:26%;height:12px"></span><span class="sk" style="width:64%;height:11px"></span></span><span class="sk" style="height:22px;border-radius:999px"></span></div>
+        <div class="agent-command-panel" aria-hidden="true"><span style="display:flex;gap:10px;align-items:center"><span class="sk" style="width:28px;height:28px;border-radius:50%"></span><span class="sk" style="width:34%;height:12px"></span></span><span class="sk" style="width:86%;height:20px"></span><span class="sk" style="width:100%;height:6px;border-radius:999px"></span><span class="sk" style="width:52%;height:12px"></span><span class="sk" style="width:100%;height:44px;margin-bottom:4px"></span></div>
         <ox-footer variant="reads" state="loading"></ox-footer>
       </div>
     </div>
@@ -374,20 +402,20 @@
     }
 
     var AGENT_DIRECTORY = {
-      pace: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
-      product: { name: 'Pace', role: 'Product', avatarPath: 'product_orchestrator.png', accentRgb: '22, 163, 74' },
-      eli: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
-      engineering: { name: 'Eli', role: 'Engineering', avatarPath: 'engineering_autopilot.png', accentRgb: '6, 182, 212' },
-      mark: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
-      marketing: { name: 'Mark', role: 'Marketing', avatarPath: 'launch_captain.png', accentRgb: '249, 115, 22' },
-      sage: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
-      sales: { name: 'Sage', role: 'Sales', avatarPath: 'pipeline_intelligence.png', accentRgb: '168, 85, 247' },
-      orion: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
-      operations: { name: 'Orion', role: 'Operations', avatarPath: 'control_tower.png', accentRgb: '245, 158, 11' },
-      dana: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
-      design: { name: 'Dana', role: 'Design', avatarPath: 'design_codex.png', accentRgb: '236, 72, 153' },
-      xandy: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' },
-      orchestrator: { name: 'Xandy', role: 'Orchestrator', avatarPath: 'xandy_orchestrator.png', accentRgb: '20, 184, 166' }
+      pace: { name: 'Pace', role: 'Product', accentRgb: '22, 163, 74' },
+      product: { name: 'Pace', role: 'Product', accentRgb: '22, 163, 74' },
+      eli: { name: 'Eli', role: 'Engineering', accentRgb: '6, 182, 212' },
+      engineering: { name: 'Eli', role: 'Engineering', accentRgb: '6, 182, 212' },
+      mark: { name: 'Mark', role: 'Marketing', accentRgb: '249, 115, 22' },
+      marketing: { name: 'Mark', role: 'Marketing', accentRgb: '249, 115, 22' },
+      sage: { name: 'Sage', role: 'Sales', accentRgb: '168, 85, 247' },
+      sales: { name: 'Sage', role: 'Sales', accentRgb: '168, 85, 247' },
+      orion: { name: 'Orion', role: 'Operations', accentRgb: '245, 158, 11' },
+      operations: { name: 'Orion', role: 'Operations', accentRgb: '245, 158, 11' },
+      dana: { name: 'Dana', role: 'Design', accentRgb: '236, 72, 153' },
+      design: { name: 'Dana', role: 'Design', accentRgb: '236, 72, 153' },
+      xandy: { name: 'Xandy', role: 'Orchestrator', accentRgb: '20, 184, 166' },
+      orchestrator: { name: 'Xandy', role: 'Orchestrator', accentRgb: '20, 184, 166' }
     };
 
     function resolveAgentProfile(agent) {
@@ -396,11 +424,14 @@
       var agentType = firstString([agent.agent_type, agent.type, agent.domain, agent.agent_domain]).toLowerCase();
       var nameKey = directName.toLowerCase();
       var roleKey = directRole.toLowerCase();
-      var profile = AGENT_DIRECTORY[nameKey] || AGENT_DIRECTORY[agentType] || AGENT_DIRECTORY[roleKey] || null;
+      // A named agent is matched by its name ("engineering-agent" is Eli); the
+      // type or role names one only when the payload gives no name.
+      var identity = window.OrgXAgentIdentity;
+      var who = identity ? (directName ? identity.profile(directName) : identity.profile(agentType, roleKey)) : null;
+      var profile = (who && AGENT_DIRECTORY[who.key]) || AGENT_DIRECTORY[nameKey] || (!directName && (AGENT_DIRECTORY[agentType] || AGENT_DIRECTORY[roleKey])) || null;
       return {
-        name: directName || (profile && profile.name) || 'OrgX Agent',
+        name: (who && who.name) || directName || (profile && profile.name) || 'OrgX Agent',
         role: directRole || (profile && profile.role) || titleCase(agentType) || 'Agent',
-        avatarPath: (profile && profile.avatarPath) || null,
         accentRgb: (profile && profile.accentRgb) || '20, 184, 166'
       };
     }
@@ -413,14 +444,19 @@
     function normalizeTask(task, index) {
       if (!task) return null;
       if (typeof task === 'string') {
-        return { id: 'task-' + index, title: task, detail: '', status: 'queued' };
+        return { id: 'task-' + index, title: task, detail: '', status: 'queued', storedStatus: '', blocker: '', updatedAt: null };
       }
       if (typeof task !== 'object') return null;
+      // The app reports a live task as stalled or blocked while its agent's run
+      // is, and keeps what the task row holds in stored_status.
       return {
         id: firstString([task.id, task.task_id, task.taskId, task.entity_id, task.entityId]) || 'task-' + index,
         title: firstString([task.title, task.summary, task.name, task.description]) || 'Task ' + (index + 1),
         detail: firstString([task.detail, task.description]),
-        status: normalizeStatus(firstString([task.status, task.state, task.phase]))
+        status: normalizeStatus(firstString([task.status, task.state, task.phase])),
+        storedStatus: firstString([task.stored_status]),
+        blocker: firstString([task.blocker]),
+        updatedAt: firstString([task.updated_at, task.updatedAt]) || null
       };
     }
 
@@ -599,15 +635,6 @@
       return 4;
     }
 
-    function summarizeOverview(agent) {
-      var parts = [];
-      if (agent.blockedCount) parts.push(agent.blockedCount + ' blocked');
-      if (agent.reviewCount) parts.push(agent.reviewCount + ' review');
-      if (agent.taskCount) parts.push(agent.taskCount + (agent.taskCount === 1 ? ' task' : ' tasks') + ' in flight');
-      if (agent.completedCount) parts.push(agent.completedCount + ' completed');
-      if (!parts.length) parts.push('No agents need you right now');
-      return parts.join(' · ');
-    }
 
 
     var widgetState = {};
@@ -642,31 +669,43 @@
 
     /* The original headshot (kit photo mode); the OrgX mark or initials when
        the owner is not one of the seven agents. Never an empty circle. */
-    function renderAvatar(agent, size) {
-      var identity = window.OrgXAgentIdentity;
-      var key = identity.resolveAgentKey(agent.name, agent.role);
-      return identity.avatar({ agent: key || agent.name, name: agent.name, size: size || 'row' });
-    }
-
-    /* The selected agent's identity as a hover card: name, role, state, task, Open in OrgX. */
-    function renderAgentCard(agent) {
+    /* Every known agent is their headshot as a hover card (name, role, state,
+       current task, Open in OrgX); anyone else gets initials, OrgX its mark. */
+    function renderAgentCard(agent, size) {
       var identity = window.OrgXAgentIdentity;
       var who = identity.profile(agent.name, agent.role);
-      var label = '<span class="command-eyebrow">' + escapeHtml(agent.name) + ' · current focus</span>';
-      if (!who) return label;
+      if (!who) return identity.avatar({ agent: agent.name, name: agent.name, size: size || 'row' });
       var state = displayState(agent);
       return identity.agentCard({
         agent: who.key,
-        name: agent.name,
+        name: who.name,
         role: agent.role,
-        size: 'inline',
+        size: size || 'row',
         state: state,
         statusLabel: agent.status === 'review' ? 'Your review' : CHIP_LABELS[state],
-        task: agent.currentTask,
+        detail: agent.status === 'stalled' ? stallReason(agent) : '',
+        task: agent.status === 'done' || agent.status === 'idle' ? '' : agent.currentTask,
         updatedAt: agent.updatedAt,
-        label: label,
       });
     }
+
+    // Human time for a stall: "No heartbeat for 2h", "for 4d", never "106h".
+    function humanDuration(minutes) {
+      if (!(minutes >= 1)) return 'under a minute';
+      if (minutes < 60) return Math.round(minutes) + 'm';
+      var hours = minutes / 60;
+      if (hours < 24) return Math.round(hours) + 'h';
+      var days = Math.round(hours / 24);
+      return days < 14 ? days + 'd' : Math.round(days / 7) + 'w';
+    }
+    function stallReason(agent) {
+      var minutes = typeof agent.stalledMinutes === 'number' ? agent.stalledMinutes
+        : agent.lastHeartbeatAt ? (Date.now() - Date.parse(agent.lastHeartbeatAt)) / 60000 : NaN;
+      return isFinite(minutes) ? 'No heartbeat for ' + humanDuration(minutes) : 'No recent heartbeat';
+    }
+
+    var ATTENTION_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><circle cx="12" cy="16.4" r="1.1" fill="currentColor" stroke="none"/></svg>';
+    var STALL_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-dasharray="2.6 3.1"/><path d="M12 7.5V12l3 2"/></svg>';
 
     function renderAttention(agent) {
       if (agent.status !== 'blocked' && agent.status !== 'review' && agent.status !== 'stalled') return '';
@@ -675,30 +714,22 @@
       var tone = isBlocked ? 'blocked' : 'review';
       var body;
       if (isStalled) {
-        var stalledMin = typeof agent.stalledMinutes === 'number' ? agent.stalledMinutes : null;
-        body = stalledMin !== null
-          ? 'No heartbeat in ' + formatStalledDuration(stalledMin) + '. Auto-paused.'
-          : 'No heartbeat in 30+ min. Auto-paused.';
+        body = stallReason(agent) + (agent.runId
+          ? '. OrgX paused the run; resuming picks up where it stopped.'
+          : '. Its status here may be out of date; check the run in OrgX.');
       } else if (isBlocked) {
-        body = String(agent.blockers[0] || 'A founder-level decision is blocking progress.');
+        body = String(agent.blockers[0] || 'A decision is holding this work.');
       } else {
         body = String((agent.artifacts.find(function (artifact) { return artifact.status === 'review'; }) || {}).title || 'An artifact is ready for review.');
       }
       var title = isBlocked ? 'Waiting on you' : isStalled ? 'Stalled' : 'Ready for your review';
       return (
         '<div class="agent-attention app-attention-banner" data-tone="' + tone + '">' +
+          (isStalled ? STALL_ICON : ATTENTION_ICON) +
           '<span class="attention-title">' + title + '</span>' +
           '<span class="attention-body">' + escapeHtml(body) + '</span>' +
         '</div>'
       );
-    }
-
-    function formatStalledDuration(minutes) {
-      if (minutes < 60) return minutes + 'm';
-      var hours = Math.floor(minutes / 60);
-      if (hours < 24) return hours + 'h';
-      var days = Math.floor(hours / 24);
-      return days + 'd';
     }
 
     var selectedAgentId = null;
@@ -711,19 +742,22 @@
     }
 
     function renderSwitcherRow(agent, selected) {
-      var switcherMeta = [
-        agent.currentTask,
-        agent.completedCount ? agent.completedCount + ' completed' : ''
-      ].filter(Boolean).join(' · ');
+      var focus = agent.status === 'stalled'
+        ? '<span class="is-stalled">' + escapeHtml(stallReason(agent)) + '</span> · ' + escapeHtml(agent.currentTask)
+        : escapeHtml([agent.status === 'done' ? (agent.completedCount ? agent.completedCount + ' done' : '') : agent.currentTask,
+            agent.status !== 'done' && agent.currentMeta ? agent.currentMeta : ''].filter(Boolean).join(' · ') || agent.currentTask);
+      var attention = agent.status === 'blocked' || agent.status === 'review' || agent.status === 'stalled';
       return (
-        '<button type="button" class="agent-switcher-row focusable" role="tab" data-action="select-agent" data-agent-tab="' + escapeHtml(agent.id) + '" data-agent-row="' + escapeHtml(agent.runId || '') + '" aria-selected="' + String(selected) + '" tabindex="' + (selected ? '0' : '-1') + '">' +
-          '<span class="agent-avatar" aria-hidden="true">' + renderAvatar(agent, 'row') + '</span>' +
-          '<span class="switcher-copy">' +
-            '<span class="switcher-identity"><span class="switcher-name">' + escapeHtml(agent.name) + '</span><span class="switcher-role">' + escapeHtml(agent.role) + '</span></span>' +
-            '<span class="switcher-focus">' + escapeHtml(switcherMeta) + (agent.currentMeta ? ' · ' + escapeHtml(agent.currentMeta) : '') + '</span>' +
-          '</span>' +
-          '<span class="switcher-status">' + chipHtml(agent) + '</span>' +
-        '</button>'
+        '<li class="agent-switcher-row" data-agent-row="' + escapeHtml(agent.runId || '') + '" data-agent-id="' + escapeHtml(agent.id) + '" data-selected="' + String(selected) + '"' + (attention ? ' data-tone="attention"' : '') + '>' +
+          '<span class="agent-avatar">' + renderAgentCard(agent, 'row') + '</span>' +
+          '<button type="button" class="agent-switcher-select" data-action="select-agent" data-agent-tab="' + escapeHtml(agent.id) + '" aria-pressed="' + String(selected) + '" aria-controls="agent-command-panel" aria-label="' + escapeHtml(agent.name + ', ' + (attention ? (agent.status === 'stalled' ? 'stalled' : 'needs you') : agent.statusLabel.toLowerCase()) + ': show details') + '">' +
+            '<span class="switcher-copy">' +
+              '<span class="switcher-identity"><span class="switcher-name">' + escapeHtml(agent.name) + '</span><span class="switcher-role">' + escapeHtml(agent.role) + '</span></span>' +
+              '<span class="switcher-focus">' + focus + '</span>' +
+            '</span>' +
+            '<span class="switcher-status">' + chipHtml(agent) + '</span>' +
+          '</button>' +
+        '</li>'
       );
     }
 
@@ -743,9 +777,19 @@
     };
     var TASK_CHIP_RESERVE = 'running queued blocked stale succeeded';
 
+    // The backend reports a task stalled or blocked while its agent's run is;
+    // without that, a running task under a stalled agent is stalled too.
     function taskStatusUnder(agent, status) {
       if (agent.status === 'stalled' && (status === 'running' || status === 'verifying')) return 'stalled';
       return status;
+    }
+    function taskReason(agent, task, status) {
+      if (task.blocker) return task.blocker;
+      if (status === 'stalled') {
+        var was = task.storedStatus ? normalizeStatus(task.storedStatus) : '';
+        return stallReason(agent) + (was && was !== 'stalled' ? ' · was ' + (TASK_CHIPS[was] ? TASK_CHIPS[was].label.toLowerCase() : was.replace(/_/g, ' ')) : '');
+      }
+      return '';
     }
 
     function taskChipHtml(status, labelOverride) {
@@ -762,10 +806,10 @@
           rows.map(function (row) {
             return (
               '<div class="command-detail-row" data-status="' + escapeHtml(row.status || '') + '">' +
-                '<div class="command-detail-title">' + escapeHtml(row.title) + '</div>' +
+                '<div class="command-detail-copy"><div class="command-detail-title">' + escapeHtml(row.title) + '</div>' + (row.why ? '<span class="command-detail-why">' + escapeHtml(row.why) + '</span>' : '') + '</div>' +
                 (row.chip
                   ? '<div class="command-detail-chip">' + row.chip + '</div>'
-                  : '<div class="command-detail-state" data-tone="' + escapeHtml(row.tone) + '">' + escapeHtml(row.state) + '</div>') +
+                  : '<div class="command-detail-state" data-tone="' + escapeHtml(row.tone) + '">' + (row.bar || '') + escapeHtml(row.state) + '</div>') +
               '</div>'
             );
           }).join('') +
@@ -774,12 +818,13 @@
     }
 
     function renderCommandDetails(agent, isOpen) {
-      var blockerRows = agent.blockers.map(function (blocker) {
+      // The first blocker is already the attention box above; list the rest.
+      var blockerRows = agent.blockers.slice(agent.status === 'blocked' ? 1 : 0).map(function (blocker) {
         return { title: String(blocker), status: 'blocked', chip: taskChipHtml('blocked') };
       });
       var taskRows = agent.tasks.map(function (task) {
         var status = taskStatusUnder(agent, task.status);
-        return { title: task.title, status: status, chip: taskChipHtml(status) };
+        return { title: task.title, status: status, chip: taskChipHtml(status), why: taskReason(agent, task, status) };
       });
       var completedRows = agent.completedTasks.map(function (task) {
         return { title: task.title, status: 'done', chip: taskChipHtml('done') };
@@ -789,12 +834,15 @@
         return { title: artifact.title, status: status, chip: taskChipHtml(status) };
       });
       var streamRows = agent.streams.map(function (stream) {
-        return { title: stream.name, state: stream.progress + '%', tone: 'running' };
+        return {
+          title: stream.name, state: stream.progress + '%', tone: stream.progress >= 100 ? 'done' : 'running',
+          bar: '<span class="command-progress-bar" aria-hidden="true"><span style="width:' + stream.progress + '%"></span></span>'
+        };
       });
 
       return (
-        '<div class="command-details' + (isOpen ? ' is-open' : '') + '" id="agent-work-details" aria-hidden="' + String(!isOpen) + '">' +
-          renderCommandDetailGroup('Blockers', blockerRows) +
+        '<div class="command-details" id="agent-work-details"' + (isOpen ? '' : ' hidden') + '>' +
+          renderCommandDetailGroup('More blockers', blockerRows) +
           renderCommandDetailGroup('Tasks', taskRows) +
           renderCommandDetailGroup('Completed recently', completedRows) +
           renderCommandDetailGroup('Artifacts', artifactRows) +
@@ -832,9 +880,11 @@
       var age = agent.observedAt && window.OrgXWidgetState ? window.OrgXWidgetState.formatAge(agent.observedAt) : '';
       var stateMeta = window.OrgXWidgetState ? window.OrgXWidgetState.derive(agent) : null;
       if (stateMeta && stateMeta.state === 'stale') {
-        return Object.assign(spec, { state: 'stale', heading: 'Out of date', detail: age || stateMeta.description || 'Last execution needs a refresh' });
+        var last = agent.observedAt && window.OrgXTime ? window.OrgXTime.relative(agent.observedAt, { inline: true }) : '';
+        return Object.assign(spec, { state: 'stale', heading: 'Out of date', detail: last ? 'last heard from ' + last : 'Last execution needs a refresh' });
       }
-      return Object.assign(spec, { state: 'fresh', heading: age || 'Live in OrgX', detail: summarizeOverview(agent) });
+      // The counts are on the panel above; the footer says how fresh they are.
+      return Object.assign(spec, { state: 'fresh', heading: age || 'Live in OrgX', detail: agent.status === 'done' ? 'nothing left in flight' : 'live in OrgX' });
     }
 
     function footerAttrs(spec) {
@@ -868,8 +918,8 @@
         }
         var row = document.querySelector('[data-agent-tab="' + CSS.escape(agent.id) + '"] .switcher-status');
         if (row) row.innerHTML = chipHtml(agent);
-        var avatar = document.querySelector('[data-agent-tab="' + CSS.escape(agent.id) + '"] ox-avatar');
-        if (avatar && window.OrgXAgentIdentity) avatar.setAttribute('form', window.OrgXAgentIdentity.formForState(displayState(agent)));
+        var card = document.querySelector('[data-agent-id="' + CSS.escape(agent.id) + '"] ox-agent-card');
+        if (card) card.setAttribute('state', displayState(agent));
       });
     }
 
@@ -918,30 +968,38 @@
 
     function renderCommandPanel(agent) {
       var detailsOpen = widgetState[agent.id] === 'details';
-      var detailCount = agent.blockers.length + agent.tasks.length + agent.completedTasks.length + agent.artifacts.length + agent.streams.length;
-      var facts = [
-        agent.taskCount ? agent.taskCount + ' active' : '',
-        agent.completedCount ? agent.completedCount + ' completed' : '',
-        agent.blockedCount ? agent.blockedCount + ' blocked' : '',
-        agent.artifacts.length ? agent.artifacts.length + ' artifact' + (agent.artifacts.length === 1 ? '' : 's') : '',
-        agent.progress == null ? '' : agent.progress + '% through',
-        agent.currentMeta
-      ].filter(Boolean).join(' · ');
+      var detailCount = Math.max(0, agent.blockers.length - (agent.status === 'blocked' ? 1 : 0)) + agent.tasks.length + agent.completedTasks.length + agent.artifacts.length + agent.streams.length;
+      var isDone = agent.status === 'done';
+      var counts = [
+        !isDone && agent.taskCount ? agent.taskCount + (agent.taskCount === 1 ? ' task' : ' tasks') + ' in flight' : '',
+        agent.blockedCount ? '<span class="tone-blocked">' + agent.blockedCount + ' blocked</span>' : '',
+        agent.completedCount ? agent.completedCount + ' done' : '',
+        agent.artifacts.length ? agent.artifacts.length + (agent.artifacts.length === 1 ? ' artifact' : ' artifacts') : ''
+      ].filter(Boolean);
+      var progress = agent.progress == null || isDone ? '' :
+        '<div class="command-progress">' +
+          '<div class="command-progress-bar" role="img" aria-label="' + escapeHtml(agent.progress + '% through') + '"><span style="width:' + Math.max(0, Math.min(100, agent.progress)) + '%"></span></div>' +
+          '<span class="command-progress-value"><b>' + escapeHtml(String(agent.progress)) + '%</b>' + (agent.currentMeta ? ' · ' + escapeHtml(agent.currentMeta.replace(/ remaining$/, ' left')) : '') + '</span>' +
+        '</div>';
       var stateMeta = window.OrgXWidgetState ? window.OrgXWidgetState.derive(agent) : null;
       var stateNote = stateMeta && stateMeta.state !== 'in_progress' && stateMeta.state !== 'completed' && stateMeta.state !== 'stale' && agent.status !== 'blocked' && agent.status !== 'stalled'
         ? '<div class="command-state-note" data-state="' + escapeHtml(stateMeta.state) + '"><strong>' + escapeHtml(stateMeta.label) + '</strong> · ' + escapeHtml(stateMeta.description) + '</div>'
         : '';
+      var lastDone = agent.completedTasks[0] ? agent.completedTasks[0].title : '';
+      var title = isDone ? (lastDone ? 'Last finished: ' + lastDone : 'No active task right now') : agent.currentTask;
 
       return (
-        '<section class="agent-command-panel" role="tabpanel" aria-label="' + escapeHtml(agent.name) + ' agent details">' +
-          '<div class="command-focus-header">' + renderAgentCard(agent) + '</div>' +
-          '<div class="command-focus-title">' + escapeHtml(agent.currentTask) + '</div>' +
-          (facts ? '<div class="command-meta">' + escapeHtml(facts) + '</div>' : '') +
+        '<section class="agent-command-panel" id="agent-command-panel" aria-label="' + escapeHtml(agent.name) + ' agent details">' +
+          '<div class="command-focus-header">' + renderAgentCard(agent, 'inline') +
+            '<span class="command-who"><b>' + escapeHtml(agent.name) + '</b>' + escapeHtml(isDone ? 'is caught up' : agent.status === 'stalled' ? 'stopped on' : agent.status === 'blocked' ? 'is blocked on' : agent.status === 'review' ? 'needs your review on' : agent.status === 'queued' ? 'is up next on' : 'is working on') + '</span></div>' +
+          '<div class="command-focus-title">' + escapeHtml(title) + '</div>' +
+          progress +
+          (counts.length ? '<div class="command-meta">' + counts.join(' · ') + '</div>' : '') +
           renderAttention(agent) +
           stateNote +
           '<div class="command-panel-actions">' +
-            '<button type="button" class="command-disclosure focusable" data-action="toggle-details" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(detailsOpen) + '" aria-controls="agent-work-details">Work details <span class="count">' + escapeHtml(String(detailCount)) + '</span><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>' +
-            '<a class="command-live-link focusable" ' + window.OrgXLinks.attrs(agent.openUrl) + '>Open live <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg></a>' +
+            '<button type="button" class="command-disclosure focusable" data-action="toggle-details" data-agent="' + escapeHtml(agent.id) + '" aria-expanded="' + String(detailsOpen) + '" aria-controls="agent-work-details">Work details <span class="count">' + escapeHtml(detailCount + (detailCount === 1 ? ' item' : ' items')) + '</span><svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>' +
+            '<a class="command-live-link focusable" ' + window.OrgXLinks.attrs(agent.openUrl) + '>Open in OrgX <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V14"/><path d="M14 4h6v6M20 4l-9 9"/></svg></a>' +
           '</div>' +
           renderCommandDetails(agent, detailsOpen) +
         '</section>' +
@@ -997,7 +1055,7 @@
       var html = '<div class="agent-command-shell ox-surface animate-in" data-edge="' + (needsAttention ? 'amber' : 'teal') + '">';
       html += attentionLine(needsAttention, moving, completed, queuedCount);
       if (activeAgents.length) {
-        html += '<div class="agent-switcher-list" role="tablist" aria-label="Active agents" aria-orientation="vertical">';
+        html += '<ul class="agent-switcher-list" aria-label="Active agents">';
         activeAgents.forEach(function (agent) {
           html += renderSwitcherRow(agent, selectedAgentId === agent.id);
         });
@@ -1006,15 +1064,15 @@
             html += renderSwitcherRow(agent, selectedAgentId === agent.id);
           });
         }
-        html += '</div>';
+        html += '</ul>';
       } else if (!showIdleAgents) {
         html += '<div class="quiet-command-state">No active work. All agents are available.</div>';
       } else {
-        html += '<div class="agent-switcher-list" role="tablist" aria-label="Available agents" aria-orientation="vertical">';
+        html += '<ul class="agent-switcher-list" aria-label="Available agents">';
         idleAgents.forEach(function (agent) {
           html += renderSwitcherRow(agent, selectedAgentId === agent.id);
         });
-        html += '</div>';
+        html += '</ul>';
       }
 
       if (idleAgents.length) {
@@ -1054,6 +1112,7 @@
       if (action === 'select-agent') {
         selectedAgentId = trigger.getAttribute('data-agent-tab');
         renderCurrentBoard();
+        enterPanel();
         window.setTimeout(function () { focusAgentTab(selectedAgentId); }, 0);
       } else if (action === 'toggle-idle') {
         showIdleAgents = !showIdleAgents;
@@ -1065,6 +1124,13 @@
       } else if (action === 'toggle-details') {
         var agentId = trigger.getAttribute('data-agent');
         widgetState[agentId] = widgetState[agentId] === 'details' ? null : 'details';
+        // Open and close in place, height and opacity together (reduced motion: instantly).
+        var detailsPanel = document.getElementById('agent-work-details');
+        var motion = window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.motion;
+        if (detailsPanel && motion) {
+          motion.setExpanded(detailsPanel, widgetState[agentId] === 'details', trigger);
+          return;
+        }
         renderCurrentBoard();
         window.setTimeout(function () {
           var nextTrigger = document.querySelector(
@@ -1074,6 +1140,13 @@
         }, 0);
       }
     });
+
+    // A newly selected agent's panel fades in rather than snapping.
+    function enterPanel() {
+      var motion = window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.motion;
+      var panel = document.getElementById('agent-command-panel');
+      if (motion && panel) motion.enter(panel);
+    }
 
     document.addEventListener('keydown', function (event) {
       if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
@@ -1087,6 +1160,7 @@
       var next = tabs[(index + direction + tabs.length) % tabs.length];
       selectedAgentId = next.getAttribute('data-agent-tab');
       renderCurrentBoard();
+      enterPanel();
       window.setTimeout(function () { focusAgentTab(selectedAgentId); }, 0);
     });
 
@@ -1172,10 +1246,16 @@
     } else if (demoPayload && demoState === 'empty') {
       demoPayload.agents = [];
     } else if (demoPayload && demoState === 'stalled') {
+      // Pace is running, so the stalled agent leads the board.
+      demoPayload.agents[0].status = 'running';
+      demoPayload.agents[0].blockers = [];
+      demoPayload.agents[0].tasks = demoPayload.agents[0].tasks.map(function (task) { return task.status === 'blocked' ? Object.assign({}, task, { status: 'in_progress' }) : task; });
+      demoPayload.agents[0].artifacts = demoPayload.agents[0].artifacts.map(function (artifact) { return Object.assign({}, artifact, { status: 'approved' }); });
       demoPayload.agents[1].status = 'stalled';
       demoPayload.agents[1].run_id = '0f6c2a1e-5b7d-4c3e-9a8b-2d1e0f9c8b7a';
       demoPayload.agents[1].stalled_minutes = 135;
       demoPayload.agents[1].artifacts = [];
+      demoPayload.agents[1].tasks[0] = Object.assign({}, demoPayload.agents[1].tasks[0], { status: 'stalled', stored_status: 'in_progress' });
     } else if (demoPayload && (demoState === 'resolved' || demoState === 'completed')) {
       demoPayload.agents.forEach(function (agent) {
         agent.status = 'done';

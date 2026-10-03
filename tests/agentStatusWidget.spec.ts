@@ -19,15 +19,19 @@ describe('agent status widget', () => {
     expect(widgetSource).toMatch(/<link[^>]+href=("|')shared\/tokens\.css\1/);
     expect(widgetSource).not.toContain("@import url('./shared/tokens.css');");
     expect(widgetSource).toContain('class="agent-command-shell animate-in"');
-    expect(widgetSource).toContain('class="agent-switcher-row focusable"');
+    expect(widgetSource).toContain('class="agent-switcher-row"');
+    expect(widgetSource).toContain('class="agent-switcher-select"');
     expect(widgetSource).toContain('class="agent-attention app-attention-banner"');
     expect(widgetSource).toContain('class="command-disclosure focusable"');
     expect(widgetSource).toContain('min-height: 44px');
   });
 
   it('compresses the agent switcher and keeps detail behind one disclosure', () => {
-    expect(widgetSource).toContain('role="tablist"');
-    expect(widgetSource).toContain('role="tab"');
+    // A list of rows: each row's select button and the agent's hover card are
+    // siblings, so no interactive element nests inside another.
+    expect(widgetSource).toContain('<ul class="agent-switcher-list"');
+    expect(widgetSource).toContain('aria-pressed="');
+    expect(widgetSource).not.toContain('role="tab"');
     expect(widgetSource).toContain('data-action="select-agent"');
     expect(widgetSource).toContain('data-action="toggle-details"');
     expect(widgetSource).toContain('data-action="toggle-idle"');

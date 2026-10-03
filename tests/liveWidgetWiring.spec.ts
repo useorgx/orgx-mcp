@@ -403,10 +403,10 @@ describe('empty states defer to the live panel', () => {
     expect(document.body.textContent).not.toContain('Awaiting telemetry');
   });
 
-  it('still says "Awaiting telemetry" when there is genuinely nothing', async () => {
+  it('still says "No pulse yet" when there is genuinely nothing', async () => {
     mountWidget('initiative-pulse', {});
     await vi.waitFor(() => {
-      expect(document.body.textContent).toContain('Awaiting telemetry');
+      expect(document.body.textContent).toContain('No pulse yet');
     });
     expect(document.body.textContent).not.toContain('Live work only');
   });

@@ -16,13 +16,13 @@ describe('scaffolded initiative display IDs', () => {
     expect(source).toContain("display_id: taskRef || makeDisplayId('task'");
   });
 
-  it('renders badges from display IDs rather than raw ids', () => {
-    expect(source).toContain('renderIdBadge(task.display_id, task.raw_id)');
-    expect(source).toContain('renderIdBadge(milestone.display_id, milestone.raw_id)');
-    expect(source).toContain('renderIdBadge(section.display_id, section.raw_id)');
-    expect(source).toContain(
-      'renderIdBadge(scaffold.initiative.display_id, scaffold.initiative.raw_id)'
-    );
+  it('keeps ids as data for joins, never as chips in the person-facing view', () => {
+    expect(source).toContain('idAttr(task.display_id, task.raw_id)');
+    expect(source).toContain('idAttr(milestone.display_id, milestone.raw_id)');
+    expect(source).toContain('idAttr(section.display_id, section.raw_id)');
+    expect(source).toContain('idAttr(scaffold.initiative.display_id, scaffold.initiative.raw_id)');
+    expect(source).not.toContain('renderIdBadge');
+    expect(source).not.toContain('class="badge-id"');
   });
 
   it('prefers scaffold refs for display badges before falling back to generated labels', () => {

@@ -11,6 +11,7 @@
   <script src="shared/kit/ox-elements.js"></script>
   <script src="shared/agent-identity.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/orgx-icons.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <script src="shared/components/domain-accent.js"></script>
@@ -80,7 +81,7 @@
 
       .pulse-shell { padding: 18px 22px 8px; display: flex; flex-direction: column; gap: 14px; }
 
-      /* The initiative itself: name, where it stands, and its population. */
+      /* The initiative itself: name, where it stands, and how far through it is. */
       .pulse-hero { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
       .pulse-tile {
         width: 40px; height: 40px; border-radius: 11px; flex: none; display: grid; place-items: center;
@@ -89,18 +90,21 @@
       .pulse-tile[data-tone="amber"] { color: var(--ox-warning); border-color: rgba(var(--ox-edge-amber-rgb), 0.45); }
       .pulse-tile[data-tone="red"] { color: var(--ox-danger); border-color: rgba(var(--ox-edge-red-rgb), 0.45); }
       .pulse-tile[data-tone="teal"] { color: var(--ox-teal); border-color: rgba(var(--ox-edge-teal-rgb), 0.45); }
-      .pulse-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
-      .pulse-kicker { font: 600 10.5px/1.2 var(--ox-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ox-text-muted); }
+      .pulse-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+      /* Sans type scale: weight and colour carry the hierarchy, mono is for ids. */
+      .pulse-kicker { font-size: 12.5px; font-weight: 500; line-height: 1.3; color: var(--ox-text-muted); }
+      .pulse-kicker b { font-weight: 600; color: var(--ox-text-2); }
+      .pulse-kicker b[data-tone="good"] { color: var(--ox-teal); }
+      .pulse-kicker b[data-tone="warning"] { color: var(--ox-warning); }
+      .pulse-kicker b[data-tone="danger"] { color: var(--ox-danger); }
       .pulse-title { font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -0.025em; overflow-wrap: anywhere; text-wrap: balance; }
-      .pulse-meta-line { font: 500 11.5px/1.5 var(--ox-mono); color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
-      .pulse-meta-line .tone-good { color: var(--ox-teal); }
-      .pulse-meta-line .tone-warning { color: var(--ox-warning); }
-      .pulse-meta-line .tone-danger { color: var(--ox-danger); }
-      .pulse-meta-divider { padding: 0 6px; opacity: 0.6; }
+      .tone-good { color: var(--ox-teal); }
+      .tone-warning { color: var(--ox-warning); }
+      .tone-danger { color: var(--ox-danger); }
       /* Health: one chip style in every render. */
       .pulse-health {
-        display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px;
-        vertical-align: 1px; font: 600 11px/1 var(--ox-mono); letter-spacing: 0.01em; white-space: nowrap;
+        display: inline-flex; align-items: center; flex: none; height: 22px; padding: 0 8px; border-radius: 999px;
+        font-size: 12px; font-weight: 650; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums;
         --tone-rgb: var(--ox-mute-rgb, 100, 116, 139); color: var(--ox-text-muted);
         background: rgba(var(--tone-rgb), 0.08); box-shadow: inset 0 0 0 1px rgba(var(--tone-rgb), 0.32);
       }
@@ -108,37 +112,30 @@
       .pulse-health[data-tone="warning"] { --tone-rgb: var(--ox-warning-rgb); color: var(--ox-warning); }
       .pulse-health[data-tone="danger"] { --tone-rgb: var(--ox-danger-rgb); color: var(--ox-danger); }
 
-      /* Q6 population bar: one segment per workstream, each opens the list. */
-      .pulse-population { display: flex; flex-direction: column; gap: 6px; }
-      /* Each segment is a 44px-tall button that paints only its 10px bar;
-         the strip's negative margins keep the 10px footprint in the layout. */
-      .pulse-signal-strip { display: flex; gap: 2px; height: 44px; margin: -17px 0; }
-      .pulse-signal {
-        flex: 1 1 0; min-width: 6px; height: 44px; border-radius: 2px; border: 0; padding: 0; cursor: pointer;
-        position: relative; background: transparent; opacity: 0.85;
-      }
-      .pulse-signal::before {
-        content: ""; position: absolute; left: 0; right: 0; top: 17px; height: 10px; border-radius: 2px;
-        background: var(--ox-mute);
-      }
-      .pulse-signal:hover { opacity: 1; }
-      .pulse-signal.seg-accepted::before { background: var(--ox-teal); }
-      .pulse-signal.seg-judgment::before { background: repeating-linear-gradient(135deg, var(--ox-warning) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--ox-warning); }
-      /* Active work fills only its done share: 0% is an empty track, not "complete". */
-      .pulse-signal.seg-active::before {
-        background: linear-gradient(90deg, color-mix(in srgb, var(--ox-mute) 70%, var(--ox-text) 30%) calc(var(--p, 0) * 1%), transparent 0);
-        box-shadow: inset 0 0 0 1px var(--ox-border-strong);
-      }
-      .pulse-signal.seg-blocked::before { background: var(--ox-danger); }
-      .pulse-signal.seg-planned::before { background: transparent; box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
-      .pulse-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 500 11.5px/1.4 var(--ox-mono); color: var(--ox-text-muted); }
-      .pulse-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
-      .pulse-legend .seg-accepted { background: var(--ox-teal); }
-      .pulse-legend .seg-judgment { background: var(--ox-warning); }
-      .pulse-legend .seg-active { background: color-mix(in srgb, var(--ox-mute) 70%, var(--ox-text) 30%); }
-      .pulse-legend .seg-active.is-empty { background: transparent; box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
-      .pulse-legend .seg-blocked { background: var(--ox-danger); }
-      .pulse-legend .seg-planned { box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
+      /* Progress: one number, one bar, and what the workstreams are doing. */
+      .pulse-progress { display: flex; flex-direction: column; gap: 8px; }
+      .pulse-progress-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+      .pulse-progress-value { font-size: 13px; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .pulse-progress-value b { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--ox-text); margin-right: 4px; }
+      .pulse-progress-bar { position: relative; height: 8px; border-radius: 999px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.14)); overflow: hidden; }
+      .pulse-progress-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--ox-teal); min-width: 0; transition: width var(--ox-dur-medium, 220ms) var(--ox-ease-out, ease-out); }
+      .pulse-progress-bar[data-tone="warning"] > span { background: var(--ox-warning); }
+      .pulse-progress-bar[data-tone="danger"] > span { background: var(--ox-danger); }
+      .pulse-facts { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+      .pulse-facts span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+      .pulse-facts i { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--ox-text-muted); }
+      .pulse-facts .f-done i { background: var(--ox-teal); }
+      .pulse-facts .f-active i { background: var(--ox-text-2); }
+      .pulse-facts .f-review i { background: var(--ox-warning); }
+      .pulse-facts .f-blocked { color: var(--ox-danger); font-weight: 600; }
+      .pulse-facts .f-blocked i { background: var(--ox-danger); }
+      .pulse-facts .f-planned i { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ox-border-strong); }
+      .pulse-facts .f-total { color: var(--ox-text-2); font-weight: 600; }
+      /* The reason work is blocked, said once, under the numbers. */
+      .pulse-blocker { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 13px; line-height: 1.45; color: var(--ox-text); }
+      .pulse-blocker svg { margin-top: 2px; color: var(--ox-danger); }
+      .pulse-blocker span { overflow-wrap: anywhere; }
+      .pulse-blocker em { font-style: normal; color: var(--ox-text-muted); }
 
       /* Drill-down: the rail picks a list, the list opens items in OrgX. */
       .pulse-rail { display: flex; flex-wrap: wrap; gap: 0 4px; margin: 0 -8px; border-bottom: 1px solid var(--ox-border); }
@@ -152,38 +149,53 @@
       .pulse-rail-button.is-alert .pulse-rail-value { color: var(--ox-warning); }
       .pulse-rail-button.is-alert.is-active { border-bottom-color: var(--ox-warning); }
       .pulse-rail-button.is-warn .pulse-rail-value { color: var(--ox-warning); }
-      .pulse-rail-icon { display: none; }
-      .pulse-rail-value { order: 2; font: 600 12px/1 var(--ox-mono); color: var(--ox-text-2); font-variant-numeric: tabular-nums; }
+      .pulse-rail-value { order: 2; font-size: 12.5px; font-weight: 600; line-height: 1; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
 
       .pulse-panel-host { transition: height 220ms var(--ox-ease-out, ease), opacity 160ms ease; }
       .pulse-panel { display: flex; flex-direction: column; }
       .pulse-panel-header { display: none; }
       .pulse-subsection + .pulse-subsection { margin-top: 10px; }
-      .pulse-subsection-label { font-size: 12px; color: var(--ox-text-muted); padding: 8px 0 2px; }
+      .pulse-subsection-label { font-size: 12.5px; font-weight: 600; color: var(--ox-text-muted); padding: 10px 0 2px; }
       .pulse-list { display: flex; flex-direction: column; }
+      /* A row is not a link: its title link stretches over the row, and the
+         avatar (its own button, the agent's hover card) sits above that layer,
+         so nothing interactive nests and both stay 44 px targets. */
       .pulse-list-row {
-        display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
-        min-height: 52px; padding: 9px 2px; border-top: 1px solid var(--ox-border);
-        text-decoration: none; color: var(--ox-text);
+        position: relative;
+        display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+        min-height: 56px; padding: 10px 2px; border-top: 1px solid var(--ox-border);
+        color: var(--ox-text);
       }
       .pulse-list > .pulse-list-row:first-child { border-top: 0; }
-      .pulse-list-row:hover .pulse-list-title { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ox-border-strong); }
-      .pulse-list-leading { display: grid; place-items: center; width: 32px; color: var(--ox-text-muted); --ox-glyph-size: 18px; }
+      .pulse-row-link { color: inherit; text-decoration: none; outline: none; }
+      .pulse-row-link::after { content: ""; position: absolute; inset: 0; border-radius: 10px; }
+      .pulse-list-row .pulse-row-link:focus-visible { outline: none; }
+      .pulse-row-link:focus-visible::after { outline: 2px solid var(--ox-focus, var(--ox-teal)); outline-offset: -2px; }
+      @media (hover: hover) {
+        .pulse-list-row:hover { background: linear-gradient(90deg, transparent, var(--ox-hover) 8%, var(--ox-hover) 92%, transparent); }
+        .pulse-list-row:hover .pulse-list-title { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ox-border-strong); }
+      }
+      .pulse-list-leading { position: relative; z-index: 1; display: grid; place-items: center; width: 32px; min-height: 32px; color: var(--ox-text-muted); --ox-glyph-size: 18px; }
       .pulse-list-leading[data-tone="amber"] { color: var(--ox-warning); }
       .pulse-list-leading[data-tone="red"] { color: var(--ox-danger); }
       .pulse-list-leading[data-tone="teal"] { color: var(--ox-teal); }
-      .pulse-list-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+      .pulse-list-copy { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; min-height: 44px; }
       .pulse-list-title { font-size: 14px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
-      .pulse-list-meta { font: 500 11.5px/1.4 var(--ox-mono); color: var(--ox-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .pulse-list-meta {
+        font-size: 12.5px; line-height: 1.4; color: var(--ox-text-muted); overflow-wrap: anywhere;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      }
+      .pulse-list-meta b { font-weight: 600; color: var(--ox-text-2); }
       .pulse-list-trailing { display: flex; align-items: center; gap: 10px; color: var(--ox-text-muted); }
-      .pulse-list-trailing svg { width: 14px; height: 14px; }
+      .pulse-list-trailing > svg { width: 14px; height: 14px; }
       .pulse-meta-separator { padding: 0 5px; }
+      .pulse-meta-pct { display: none; font-variant-numeric: tabular-nums; }
       .pulse-bar { width: 64px; height: 6px; border-radius: 3px; background: var(--ox-skeleton, rgba(127,127,127,0.14)); overflow: hidden; flex: none; }
       .pulse-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--ox-text-2); }
       .pulse-bar[data-tone="danger"] > span { background: var(--ox-danger); }
       .pulse-bar[data-tone="warning"] > span { background: var(--ox-warning); }
       .pulse-bar[data-tone="good"] > span { background: var(--ox-teal); }
-      .pulse-pct { font: 500 11.5px/1 var(--ox-mono); color: var(--ox-text-muted); min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
+      .pulse-pct { font-size: 12px; font-weight: 500; line-height: 1; color: var(--ox-text-muted); min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
 
       /* K3: output quality in one strip. */
       .pulse-quality { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 10px; }
@@ -193,47 +205,49 @@
       .pulse-quality-strip .q-you { background: var(--ox-warning); }
       .pulse-quality-strip .q-fail { background: var(--ox-danger); }
       .pulse-quality-strip .q-unv { background: repeating-linear-gradient(135deg, var(--ox-text-muted) 0 2px, transparent 2px 4px); }
+      .pulse-quality .pulse-facts { gap: 2px 12px; }
 
       .pulse-empty { font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); padding: 10px 0 12px; }
 
-      /* Empty, error and recovery */
-      .pulse-calm { padding: 18px 22px 20px; display: flex; flex-direction: column; gap: 4px; }
-      .empty-title { font-size: 17px; font-weight: 650; letter-spacing: -0.015em; }
-      .empty-desc { font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); }
-      .empty-actions { margin-top: 8px; }
+      /* Empty, error and recovery: the same head as a loaded card, a plain sentence, a way on. */
+      .pulse-calm { padding: 18px 22px 8px; display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 12px; align-items: start; }
+      .pulse-calm .pulse-tile { grid-row: span 3; }
+      .empty-title { font-size: 17px; font-weight: 650; line-height: 1.3; letter-spacing: -0.015em; padding-top: 2px; }
+      .empty-desc { font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); margin-top: 4px; }
+      .empty-actions { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 8px 0 0 -8px; }
       .deep-link {
         display: inline-flex; align-items: center; gap: 8px;
-        min-height: 44px;
-        padding: 0 4px; font-size: 13px; font-weight: 600; color: var(--ox-text-2); text-decoration: none;
+        min-height: 44px; border: 0; border-radius: 10px; background: none; cursor: pointer;
+        padding: 0 8px; font: inherit; font-size: 13px; font-weight: 600; color: var(--ox-text-2); text-decoration: none;
       }
-      .deep-link:hover { color: var(--ox-text); }
+      .deep-link:hover { color: var(--ox-text); background: var(--ox-hover); }
       .deep-link svg { width: 14px; height: 14px; }
+      .deep-link.is-primary { color: var(--ox-text); box-shadow: inset 0 0 0 1px var(--ox-border-strong); }
 
       .sk { display: block; border-radius: 6px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.12)); }
 
-      .pulse-attention:focus-visible, .pulse-rail-button:focus-visible, .pulse-list-row:focus-visible, .pulse-signal:focus-visible, .deep-link:focus-visible {
+      .pulse-attention:focus-visible, .pulse-rail-button:focus-visible, .deep-link:focus-visible {
         outline: 2px solid var(--ox-focus, var(--ox-teal)); outline-offset: 2px; border-radius: 8px;
       }
-      /* The ring hugs the painted bar, not the taller hit area. */
-      .pulse-signal:focus-visible { outline: none; }
-      .pulse-signal:focus-visible::before { outline: 2px solid var(--ox-focus, var(--ox-teal)); outline-offset: 2px; }
 
       @media (max-width: 480px) {
         body { padding: 12px; }
         .pulse-shell { padding: 14px 16px 6px; }
         .pulse-head { --ox-attention-padding: 0 6px 0 16px; }
+        .pulse-line-extra { display: none; }
         .pulse-title { font-size: 19px; }
         .pulse-tile { width: 34px; height: 34px; }
+        .pulse-calm { grid-template-columns: 34px minmax(0, 1fr); padding: 16px 16px 6px; }
         .pulse-bar, .pulse-pct { display: none; }
-        .pulse-list-row { gap: 8px; } /* 32 px avatars: two 2 px narrower gaps keep the text column as wide as before */
-        .pulse-calm { padding: 16px; }
+        .pulse-meta-pct { display: inline; }
+        .pulse-list-row { gap: 10px; }
         .pulse-rail { gap: 0; margin: 0 -6px; }
         .pulse-rail-button { padding: 0 6px; gap: 5px; font-size: 12.5px; }
       }
 
       @media (prefers-reduced-motion: reduce) {
         .animate-in { animation: none; }
-        .pulse-panel-host { transition: none; }
+        .pulse-panel-host, .pulse-progress-bar > span { transition: none; }
       }
     </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
@@ -243,7 +257,13 @@
       <div id="content" aria-live="polite">
         <div class="pulse-shell-card"><div class="ox-card ox-surface" role="status" aria-label="Loading initiative pulse">
           <div class="pulse-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 20px"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:36%;height:12px"></span></div>
-          <div class="pulse-shell"><span class="sk" style="width:62%;height:22px"></span><span class="sk" style="width:100%;height:10px"></span><span class="sk" style="width:100%;height:52px"></span></div>
+          <div class="pulse-shell">
+            <div class="pulse-hero"><span class="sk pulse-tile" style="border:0"></span><span style="display:flex;flex-direction:column;gap:8px;flex:1"><span class="sk" style="width:30%;height:11px"></span><span class="sk" style="width:62%;height:22px"></span></span></div>
+            <span style="display:flex;flex-direction:column;gap:8px"><span style="display:flex;justify-content:space-between"><span class="sk" style="width:96px;height:20px"></span><span class="sk" style="width:76px;height:22px;border-radius:999px"></span></span><span class="sk" style="width:100%;height:8px;border-radius:999px"></span><span class="sk" style="width:58%;height:12px"></span></span>
+            <span class="sk" style="width:100%;height:44px"></span>
+            <span class="sk" style="width:100%;height:56px"></span>
+            <span class="sk" style="width:100%;height:56px"></span>
+          </div>
           <ox-footer variant="reads" state="loading"></ox-footer>
         </div></div>
       </div>
@@ -306,69 +326,11 @@
       };
 
       var icons = {
-external: function (size) {
+        external: function (size) {
           return _svg(
             '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',
             size
           );
-        },
-        initiative: function (size) {
-          return _svg('<circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>', size);
-        },
-        task: function(s){return _svg('<rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" fill-opacity="0.12"></rect><path d="M9 12.2 11 14.2 15.2 10"></path>',s);},
-        workstream: function (size) {
-          return _svg('<rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor" fill-opacity="0.1" stroke="none"></rect><path d="M6 6c3 0 5 6 8 6"></path><path d="M6 18c3 0 5-6 8-6"></path><path d="M6 12h12"></path><path d="m14 8 4 4-4 4"></path><circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none"></circle>', size);
-        },
-        layers: function (size) {
-          return _svg(
-            '<polygon points="12 2 22 8 12 14 2 8 12 2"></polygon><polyline points="2 12 12 18 22 12"></polyline><polyline points="2 16 12 22 22 16"></polyline>',
-            size
-          );
-        },
-        warning: function (size) {
-          return _svg(
-            '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',
-            size
-          );
-        },
-        check: function (size) {
-          return _svg('<polyline points="20 6 9 17 4 12"></polyline>', size);
-        },
-        document: function (size) {
-          return _svg(
-            '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline>',
-            size
-          );
-        },
-        clipboard: function (size) {
-          return _svg(
-            '<rect x="9" y="2" width="6" height="4" rx="1"></rect><path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line>',
-            size
-          );
-        },
-        flag: function (size) {
-          return _svg('<path d="M5 3v18"></path><path d="m5 4 12 1-2 4 2 4-12-1z"></path>', size);
-        },
-        clock: function (size) {
-          return _svg(
-            '<circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline>',
-            size
-          );
-        },
-        play: function (size) {
-          return _svg(
-            '<circle cx="12" cy="12" r="9"></circle><polygon points="10 9 16 12 10 15 10 9"></polygon>',
-            size
-          );
-        },
-        pause: function (size) {
-          return _svg(
-            '<circle cx="12" cy="12" r="9"></circle><line x1="10" y1="9" x2="10" y2="15"></line><line x1="14" y1="9" x2="14" y2="15"></line>',
-            size
-          );
-        },
-        pulse: function (size) {
-          return _svg('<polyline points="2 12 6 12 9 5 15 19 18 12 22 12"></polyline>', size);
         },
         chevronDown: function (size) {
           return _svg('<polyline points="6 9 12 15 18 9"></polyline>', size);
@@ -424,6 +386,7 @@ external: function (size) {
               "One glance tells you if the launch is drifting, what needs your input, and which streams are carrying the load.",
             progress_pct: 64,
             pending_decisions: 3,
+            pending_decisions_scope: { level: "initiative", workspace_id: null, initiative_id: "INI-402", kinds: ["decision"], urgency: "all", includes_system: false, unit: "review_packet", total: 3, capped: false },
             active_workstreams: 4,
             total_workstreams: 4,
             blocked_workstreams: 1,
@@ -452,7 +415,7 @@ external: function (size) {
                 title: "Search + Memory Proof",
                 progress_pct: 58,
                 status: "blocked",
-                agent_name: "Nova",
+                agent_name: "Eli",
                 agent_domain: "engineering",
                 blocker_count: 1,
                 summary: "Pricing approval is holding the proof chain open.",
@@ -471,8 +434,8 @@ external: function (size) {
                 title: "Registry Submission",
                 progress_pct: 91,
                 status: "active",
-                agent_name: "Eli",
-                agent_domain: "engineering",
+                agent_name: "Orion",
+                agent_domain: "operations",
                 summary: "Manifest and DNS proofs are in place.",
               },
             ],
@@ -549,6 +512,7 @@ external: function (size) {
           var blockedState = demoState === "blocked";
           var staleState = demoState === "stale" || demoState === "degraded";
           var runningState = demoState === "progressing" || demoState === "running";
+          var longState = demoState === "long";
           var variantWorkstreams = (pulse.workstreams || []).map(function (stream, index) {
             var next = Object.assign({}, stream);
             if (completeState) {
@@ -568,10 +532,17 @@ external: function (size) {
             } else if (staleState) {
               next.status = "stale";
               next.summary = "Last update is outside the live window.";
+            } else if (longState && index === 0) {
+              next.title = "Product narrative lock for the founder continuity launch, the pricing page and the onboarding emails";
+              next.summary = "Waiting on https://useorgx.com/live/0f6c2a1e-5b7d-4c3e-9a8b-2d1e0f9c8b7a?workstream=ws_01J9ZK7Q4M2N8P3R5T7V9X1Y3Z before the CTA copy can lock.";
             }
             return next;
           });
-          pulse = Object.assign({}, pulse, {
+          pulse = Object.assign({}, pulse, longState ? {
+            name: "Founder continuity launch across ChatGPT, Claude and Cursor with proof-backed answers for every buyer question",
+            blockers: ["Pricing approval from the founders is holding initiative 0f6c2a1e-5b7d-4c3e-9a8b-2d1e0f9c8b7a and its proof chain open until the CTA is locked."],
+            workstreams: variantWorkstreams,
+          } : {
             status: completeState ? "completed" : blockedState ? "blocked" : staleState ? "stale" : runningState ? "running" : pulse.status,
             health_score: completeState ? 100 : blockedState ? 42 : staleState ? pulse.health_score : runningState ? 86 : pulse.health_score,
             progress_pct: completeState ? 100 : blockedState ? 53 : staleState ? pulse.progress_pct : runningState ? 72 : pulse.progress_pct,
@@ -889,7 +860,13 @@ external: function (size) {
           message: plainCopy(readString(record, ["message", "summary"])),
           progress_pct: typeof record.progress_pct === "number" ? record.progress_pct : 0,
           pending_decisions:
-            typeof record.pending_decisions === "number" ? record.pending_decisions : 0,
+            typeof record.pending_decisions === "number"
+              ? record.pending_decisions
+              : asObject(record.pending_decisions_scope) && typeof record.pending_decisions_scope.total === "number"
+              ? record.pending_decisions_scope.total
+              : 0,
+          // Optional: what the decision count covers ("in this initiative").
+          pending_decisions_scope: asObject(record.pending_decisions_scope),
           active_workstreams:
             typeof record.active_workstreams === "number"
               ? record.active_workstreams
@@ -981,6 +958,24 @@ external: function (size) {
         );
       };
 
+      // "3 decisions in this initiative": the count says what it covers when the
+      // app sends pending_decisions_scope; without it the plain count stands.
+      var plural = function (count, word, many) {
+        return count + " " + (count === 1 ? word : many || word + "s");
+      };
+      var decisionScopePhrase = function (scope) {
+        var level = scope && typeof scope.level === "string" ? scope.level.toLowerCase() : "";
+        if (level === "initiative") return "in this initiative";
+        if (level === "workspace") return "across the workspace";
+        return "";
+      };
+      var decisionCountLabel = function (pulseData) {
+        var count = Math.max(0, Number(pulseData.pending_decisions) || 0);
+        var scope = pulseData.pending_decisions_scope;
+        var capped = scope && scope.capped === true && typeof scope.total === "number" && scope.total <= count;
+        return (capped ? count + "+" : String(count)) + " " + (count === 1 ? "decision" : "decisions");
+      };
+
       var buildAttentionItems = function (pulseData, dashboardUrl) {
         var items = [];
         (pulseData.blockers || []).forEach(function (text, index) {
@@ -988,21 +983,18 @@ external: function (size) {
             id: "blocker-" + index,
             kind: "blocker",
             label: text,
-            meta: "Blocked work",
+            meta: "Blocking work",
             url: dashboardUrl,
           });
         });
 
         if (pulseData.pending_decisions > 0) {
+          var scopePhrase = decisionScopePhrase(pulseData.pending_decisions_scope);
           items.push({
             id: "decision-summary",
             kind: "decision",
-            label:
-              pulseData.pending_decisions +
-              " decision" +
-              (pulseData.pending_decisions === 1 ? " is" : "s are") +
-              " waiting on you.",
-            meta: "Pending decision" + (pulseData.pending_decisions === 1 ? "" : "s"),
+            label: decisionCountLabel(pulseData) + " waiting on you",
+            meta: scopePhrase ? "Pending " + scopePhrase : "Pending decisions",
             url: dashboardUrl,
           });
         }
@@ -1011,8 +1003,8 @@ external: function (size) {
           items.push({
             id: "artifact-review-" + index,
             kind: "review",
-            label: artifact.title + " is waiting for your review.",
-            meta: "Artifact review",
+            label: artifact.title,
+            meta: "Waiting for your review" + (artifact.created_by_name ? " · from " + artifact.created_by_name : ""),
             url: artifact.primary_url || artifact.live_url || dashboardUrl,
           });
         });
@@ -1053,26 +1045,26 @@ external: function (size) {
         };
       };
 
-      // Agents render as kit avatars whose form follows the work's state.
-      var avatarFormFor = function (status, blockerCount) {
-        var key = toStatusKey(status);
+      /* Who owns a stream. A named owner is matched by name only, so "Nova"
+         never wears Eli's face because the domain says engineering; the domain
+         names the agent only when the payload names no one. Known agents get
+         their headshot as a hover card (name, role, state, task, Open in
+         OrgX); a person gets initials, OrgX itself its mark. */
+      var renderPulseAvatar = function (stream) {
         var identity = window.OrgXAgentIdentity;
-        var state =
-          blockerCount > 0 || key === "blocked" ? "needs_you"
-          : key === "active" || key === "running" || key === "in_progress" ? "running"
-          : key === "in_review" || key === "verifying" ? "verifying"
-          : "base";
-        return identity && identity.formForState ? identity.formForState(state) : "base";
-      };
-
-      // Rows are links, so the avatar is the plain headshot here (no hover
-      // card inside an <a>): an agent's photo, the OrgX mark for system
-      // owners, initials for a person; nothing when no one owns the stream.
-      var renderPulseAvatar = function (name, domain) {
-        var identity = window.OrgXAgentIdentity;
-        var key = identity.resolveAgentKey(name, domain);
-        if (!key && !(name && String(name).trim())) return "";
-        return identity.avatar({ agent: key || name, name: name, size: 'row' });
+        var name = stream.agent_name && String(stream.agent_name).trim();
+        var key = name ? identity.resolveAgentKey(name) : identity.resolveAgentKey(stream.agent_domain);
+        if (!key) return name ? identity.avatar({ agent: name, name: name, size: "row" }) : "";
+        var chip = chipSpec(stream.status, stream.blocker_count, "stream");
+        var pct = Math.max(0, Math.min(100, Math.round(Number(stream.progress_pct) || 0)));
+        return identity.agentCard({
+          agent: key,
+          size: "row",
+          state: chip.state,
+          statusLabel: chip.label || undefined,
+          detail: pct + "% through",
+          task: stream.title,
+        });
       };
 
       var toneForStatus = function (status, fallbackProgress, blockerCount) {
@@ -1106,8 +1098,8 @@ external: function (size) {
       };
 
       // Status words become kit chips; the chip reserves the widest label so rows hold still.
-      var CHIP_RESERVE = "needs_you running succeeded queued blocked stale draft";
-      var chipFor = function (status, blockerCount, kind) {
+      var CHIP_RESERVE = "running succeeded queued blocked stale draft";
+      var chipSpec = function (status, blockerCount, kind) {
         var key = toStatusKey(status);
         var state = "queued";
         var label = "";
@@ -1121,14 +1113,15 @@ external: function (size) {
         else if (key === "stale") { state = "stale"; }
         else if (key === "ready" || key === "planned" || key === "pending" || key === "not_started") { state = "queued"; label = key === "ready" ? "Ready" : "Planned"; }
         else if (key === "paused") { state = "handed_off"; label = "Paused"; }
-        return (
-          '<ox-state-chip state="' + state + '"' + (label ? ' label="' + escapeHtml(label) + '"' : "") +
-          ' reserve="' + CHIP_RESERVE + '">' + escapeHtml(label || titleCase(status || "")) + "</ox-state-chip>"
-        );
+        return { state: state, label: label };
       };
-
-      var renderStatusPill = function (status, tone) {
-        return chipFor(status || (tone === "danger" ? "blocked" : "active"), tone === "danger" ? 1 : 0, "stream");
+      var chipFor = function (status, blockerCount, kind) {
+        var spec = chipSpec(status, blockerCount, kind);
+        var reserve = kind === "artifact" ? CHIP_RESERVE + " needs_you" : CHIP_RESERVE;
+        return (
+          '<ox-state-chip state="' + spec.state + '"' + (spec.label ? ' label="' + escapeHtml(spec.label) + '"' : "") +
+          ' reserve="' + reserve + '">' + escapeHtml(spec.label || titleCase(status || "")) + "</ox-state-chip>"
+        );
       };
 
       var renderProgressBar = function (progress, tone) {
@@ -1139,54 +1132,54 @@ external: function (size) {
         );
       };
 
-      // Q6 segment kinds: accepted, awaiting judgment, active, blocked, planned.
+      // Where each workstream stands, in the words of the progress line.
       var segmentFor = function (status, blockerCount) {
         var key = toStatusKey(status);
         if (blockerCount > 0 || key === "blocked" || key === "at_risk" || key === "failed") return "blocked";
-        if (key === "completed" || key === "approved" || key === "done") return "accepted";
-        if (key === "in_review" || key === "review" || key === "needs_review") return "judgment";
+        if (key === "completed" || key === "approved" || key === "done") return "done";
+        if (key === "in_review" || key === "review" || key === "needs_review") return "review";
         if (key === "active" || key === "running" || key === "in_progress" || key === "stale") return "active";
         return "planned";
       };
-      var SEGMENT_LABELS = { accepted: "accepted", judgment: "awaiting judgment", active: "active", blocked: "blocked", planned: "planned" };
+      var SEGMENT_WORDS = { done: "done", review: "in review", active: "active", blocked: "blocked", planned: "not started" };
 
-      var renderSignalStrip = function (pulseData) {
-        var source = pulseData.workstreams.length
-          ? pulseData.workstreams
-          : pulseData.milestones;
-        if (!source.length) return "";
+      /* One number ("64% through"), one bar, the health chip, then what the
+         workstreams are doing: "4 workstreams · 2 active · 1 blocked · 1 not started".
+         The blocker reason, when there is one, is said once underneath. */
+      var renderProgress = function (pulseData, healthHtml) {
+        var pct = Math.max(0, Math.min(100, Math.round(Number(pulseData.progress_pct) || 0)));
+        var source = pulseData.workstreams.length ? pulseData.workstreams : [];
         var counts = {};
-        var activeProgress = 0;
-        var segments = source
-          .slice(0, 24)
-          .map(function (item) {
-            var progress =
-              typeof item.progress_pct === "number" ? item.progress_pct : item.progress;
-            var segment = segmentFor(item.status, item.blocker_count || 0);
-            counts[segment] = (counts[segment] || 0) + 1;
-            var pct = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
-            if (segment === "active") activeProgress += pct;
-            return (
-              '<button class="pulse-signal seg-' + segment + '" type="button"' +
-              (segment === "active" ? ' style="--p:' + pct + '"' : "") + ' title="' +
-              escapeHtml(item.title + ": " + SEGMENT_LABELS[segment] + ", " + Math.round(progress || 0) + "%") +
-              '" aria-label="' +
-              escapeHtml("View " + item.title + ", " + SEGMENT_LABELS[segment] + ", " + Math.round(progress || 0) + "% complete") +
-              '" onclick="togglePulsePanel(\'streams\', this)"></button>'
-            );
-          })
-          .join("");
-        var legend = ["accepted", "judgment", "active", "blocked", "planned"]
-          .filter(function (segment) { return counts[segment]; })
-          .map(function (segment) {
-            var emptySwatch = segment === "active" && activeProgress === 0 ? " is-empty" : "";
-            return '<span><i class="seg-' + segment + emptySwatch + '"></i>' + counts[segment] + " " + SEGMENT_LABELS[segment] + "</span>";
-          })
-          .join("");
+        source.forEach(function (item) {
+          var segment = segmentFor(item.status, item.blocker_count || 0);
+          counts[segment] = (counts[segment] || 0) + 1;
+        });
+        var total = pulseData.total_workstreams || source.length || pulseData.active_workstreams || 0;
+        if (!source.length) {
+          if (pulseData.active_workstreams) counts.active = pulseData.active_workstreams;
+          if (pulseData.blocked_workstreams) counts.blocked = pulseData.blocked_workstreams;
+        }
+        var facts = [];
+        if (total) facts.push('<span class="f-total">' + escapeHtml(plural(total, "workstream")) + "</span>");
+        ["blocked", "review", "active", "done", "planned"].forEach(function (segment) {
+          if (!counts[segment]) return;
+          if (segment === "done" && counts.done === total) return;
+          facts.push('<span class="f-' + segment + '"><i aria-hidden="true"></i>' + counts[segment] + " " + SEGMENT_WORDS[segment] + "</span>");
+        });
+        if (total && counts.done === total) facts.push('<span class="f-done"><i aria-hidden="true"></i>all done</span>');
+        var blockers = pulseData.blockers || [];
         return (
-          '<div class="pulse-population">' +
-            '<div class="pulse-signal-strip">' + segments + "</div>" +
-            '<div class="pulse-legend">' + legend + "</div>" +
+          '<div class="pulse-progress">' +
+            '<div class="pulse-progress-head">' +
+              '<span class="pulse-progress-value"><b>' + pct + "%</b>" + (pct >= 100 ? "complete" : "through") + "</span>" +
+              healthHtml +
+            "</div>" +
+            '<div class="pulse-progress-bar" role="img" aria-label="' + escapeHtml(pct + "% through" + (counts.blocked ? ", " + counts.blocked + " blocked" : "")) + '"><span style="width:' + pct + '%"></span></div>' +
+            (facts.length ? '<div class="pulse-facts">' + facts.join("") + "</div>" : "") +
+            (blockers.length
+              ? '<div class="pulse-blocker">' + window.OrgXIcons.icon("blocked", 16) + "<span>" + escapeHtml(blockers[0]) +
+                (blockers.length > 1 ? " <em>and " + escapeHtml(plural(blockers.length - 1, "more blocker")) + "</em>" : "") + "</span></div>"
+              : "") +
           "</div>"
         );
       };
@@ -1211,9 +1204,6 @@ external: function (size) {
                 '" aria-pressed="' +
                 escapeHtml(String(activePanel === section.key)) +
                 '">' +
-                '<span class="pulse-rail-icon">' +
-                section.icon +
-                "</span>" +
                 '<span class="pulse-rail-value">' +
                 escapeHtml(String(section.value)) +
                 "</span>" +
@@ -1228,19 +1218,29 @@ external: function (size) {
         );
       };
 
+      /* A list row. The title is the row's one link, stretched over the row;
+         the leading slot (an agent's hover card, or an icon) sits above it. */
       var linkRow = function (url, leading, leadingTone, title, metaHtml, trailing, extraClass) {
         var href = window.OrgXLinks.normalize(url) || window.OrgXLinks.live(currentPulseData && currentPulseData.id);
         return (
-          '<a href="' + escapeHtml(href) + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' +
-          escapeHtml(JSON.stringify(href)).replace(/'/g, "&#39;") + ', event)\' class="pulse-list-row' + (extraClass ? " " + extraClass : "") + '">' +
+          '<div class="pulse-list-row' + (extraClass ? " " + extraClass : "") + '">' +
             '<span class="pulse-list-leading"' + (leadingTone ? ' data-tone="' + leadingTone + '"' : "") + ">" + leading + "</span>" +
-            '<span class="pulse-list-copy">' +
+            '<a class="pulse-list-copy pulse-row-link" href="' + escapeHtml(href) + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' +
+              escapeHtml(JSON.stringify(href)).replace(/'/g, "&#39;") + ', event)\'>' +
               '<span class="pulse-list-title">' + escapeHtml(title) + "</span>" +
               (metaHtml ? '<span class="pulse-list-meta">' + metaHtml + "</span>" : "") +
-            "</span>" +
+            "</a>" +
             '<span class="pulse-list-trailing">' + trailing + "</span>" +
-          "</a>"
+          "</div>"
         );
+      };
+      var icon = function (name, tone) {
+        return window.OrgXIcons.icon(name, 20) || "";
+      };
+      var joinMeta = function (parts) {
+        return parts.filter(Boolean).map(function (part, index) {
+          return (index ? '<span class="pulse-meta-separator">·</span>' : "") + part;
+        }).join("");
       };
 
       var renderActionsPanel = function (items) {
@@ -1249,15 +1249,15 @@ external: function (size) {
           '<div class="pulse-list">' +
           items
             .map(function (item) {
-              var glyph = item.kind === "review" ? "artifact" : item.kind === "blocker" ? "task" : "decision";
+              var glyph = item.kind === "review" ? "artifact" : item.kind === "blocker" ? "blocked" : "decision";
               var tone = item.kind === "blocker" ? "red" : "amber";
               return linkRow(
                 item.url,
-                '<ox-glyph kind="' + glyph + '" tone="' + tone + '"></ox-glyph>',
+                icon(glyph),
                 tone,
                 item.label,
-                escapeHtml(item.meta) + '<span class="pulse-meta-separator">·</span>opens in OrgX',
-                icons.external(14),
+                escapeHtml(item.meta),
+                window.OrgXIcons.icon("open-external", 14),
                 "pulse-action-row" + (item.kind === "blocker" ? " is-danger" : "")
               );
             })
@@ -1268,47 +1268,29 @@ external: function (size) {
 
       var renderWorkstreamFallback = function (pulseData, dashboardUrl) {
         var rows = [];
-        if (pulseData.total_workstreams || pulseData.active_workstreams) {
+        var inMotion = pulseData.active_workstreams || pulseData.total_workstreams || 0;
+        if (inMotion) {
           rows.push({
-            title:
-              (pulseData.active_workstreams || pulseData.total_workstreams || 0) +
-              " workstreams are currently in motion.",
-            meta:
-              (pulseData.total_workstreams || pulseData.active_workstreams || 0) +
-              " total workstreams",
+            title: plural(inMotion, "workstream") + (inMotion === 1 ? " is" : " are") + " in motion",
+            meta: plural(pulseData.total_workstreams || inMotion, "workstream") + " in total",
             status: "active",
           });
         }
         if (pulseData.blocked_workstreams) {
           rows.push({
-            title:
-              pulseData.blocked_workstreams +
-              " stream" +
-              (pulseData.blocked_workstreams === 1 ? " is" : "s are") +
-              " blocked.",
-            meta: "Needs intervention",
+            title: plural(pulseData.blocked_workstreams, "workstream") + (pulseData.blocked_workstreams === 1 ? " is" : " are") + " blocked",
+            meta: "Needs someone to clear it",
             status: "blocked",
           });
         }
-        if (pulseData.pending_decisions) {
-          rows.push({
-            title:
-              pulseData.pending_decisions +
-              " decision" +
-              (pulseData.pending_decisions === 1 ? " is" : "s are") +
-              " waiting.",
-            meta: "Pending decisions",
-            status: "in_review",
-          });
-        }
         if (!rows.length) {
-          return '<div class="pulse-empty">Stream detail will appear here when the pulse payload includes live stream rows.</div>';
+          return '<div class="pulse-empty">Workstreams appear here once OrgX sends them with the pulse.</div>';
         }
         return (
           '<div class="pulse-list">' +
           rows
             .map(function (row) {
-              return linkRow(dashboardUrl, '<ox-glyph kind="workstream"></ox-glyph>', "", row.title, escapeHtml(row.meta), chipFor(row.status, 0, "stream"));
+              return linkRow(dashboardUrl, icon("workstream"), "", row.title, escapeHtml(row.meta), chipFor(row.status, 0, "stream"));
             })
             .join("") +
           "</div>"
@@ -1323,24 +1305,19 @@ external: function (size) {
             .slice(0, 8)
             .map(function (stream) {
               var tone = toneForStatus(stream.status, stream.progress_pct, stream.blocker_count);
-              var metaParts = [];
-              if (stream.agent_name) metaParts.push(stream.agent_name);
-              if (stream.summary) metaParts.push(stream.summary);
-              if (stream.blocker_count) {
-                metaParts.push(stream.blocker_count + " blocker" + (stream.blocker_count === 1 ? "" : "s"));
-              }
-              var avatar = renderPulseAvatar(stream.agent_name, stream.agent_domain, stream.status, stream.blocker_count);
+              var pct = Math.max(0, Math.min(100, Math.round(Number(stream.progress_pct) || 0)));
+              var meta = '<span class="pulse-meta-pct">' + pct + '%<span class="pulse-meta-separator">·</span></span>' + joinMeta([
+                stream.agent_name ? "<b>" + escapeHtml(stream.agent_name) + "</b>" : "",
+                stream.blocker_count ? '<span class="tone-danger">' + escapeHtml(plural(stream.blocker_count, "blocker")) + "</span>" : "",
+                stream.summary ? escapeHtml(stream.summary) : "",
+              ]);
               return linkRow(
                 dashboardUrl,
-                avatar || '<ox-glyph kind="workstream"></ox-glyph>',
+                renderPulseAvatar(stream) || icon("workstream"),
                 "",
                 stream.title,
-                metaParts
-                  .map(function (part, index) {
-                    return (index ? '<span class="pulse-meta-separator">·</span>' : "") + escapeHtml(part);
-                  })
-                  .join(""),
-                renderProgressBar(stream.progress_pct, tone) + chipFor(stream.status, stream.blocker_count, "stream")
+                meta,
+                renderProgressBar(pct, tone) + chipFor(stream.status, stream.blocker_count, "stream")
               );
             })
             .join("") +
@@ -1359,7 +1336,7 @@ external: function (size) {
                 pulseData.next_steps
                   .slice(0, 4)
                   .map(function (step) {
-                    return linkRow(dashboardUrl, '<ox-glyph kind="task"></ox-glyph>', "", step, "resolve or delegate in the live view", icons.external(14));
+                    return linkRow(dashboardUrl, icon("run"), "", step, "Pick it up or hand it off in the live view", window.OrgXIcons.icon("open-external", 14));
                   })
                   .join("") +
               "</div>" +
@@ -1378,7 +1355,7 @@ external: function (size) {
                     var tone = toneForStatus(milestone.status, milestone.progress, 0);
                     return linkRow(
                       dashboardUrl,
-                      '<ox-glyph kind="milestone"></ox-glyph>',
+                      icon("milestone"),
                       "",
                       milestone.title,
                       escapeHtml(titleCase(milestone.status || "planned")),
@@ -1392,7 +1369,7 @@ external: function (size) {
         }
 
         if (!parts.length) {
-          return '<div class="pulse-empty">No prescribed next steps are visible in this pulse yet.</div>';
+          return '<div class="pulse-empty">No next moves are set for this initiative yet.</div>';
         }
 
         return parts.join("");
@@ -1401,7 +1378,7 @@ external: function (size) {
       // K3 in miniature: every output item, worst first, with one quality strip on top.
       var renderArtifactsPanel = function (pulseData, dashboardUrl) {
         if (!pulseData.recent_artifacts.length) {
-          return '<div class="pulse-empty">No recent output was attached to this initiative pulse.</div>';
+          return '<div class="pulse-empty">Nothing has been delivered for this initiative yet.</div>';
         }
         var rank = function (artifact) {
           var key = toStatusKey(artifact.status);
@@ -1424,11 +1401,11 @@ external: function (size) {
               (counts.unv ? '<i class="q-unv" style="flex:' + counts.unv + ' 0 0"></i>' : "") +
               (counts.met ? '<i class="q-met" style="flex:' + counts.met + ' 0 0"></i>' : "") +
             "</div>" +
-            '<div class="pulse-legend">' +
-              (counts.fail ? "<span>" + counts.fail + " changes requested</span>" : "") +
-              (counts.you ? "<span>" + counts.you + " your review</span>" : "") +
-              (counts.unv ? "<span>" + counts.unv + " draft</span>" : "") +
-              (counts.met ? "<span>" + counts.met + " accepted</span>" : "") +
+            '<div class="pulse-facts">' +
+              (counts.fail ? '<span class="f-blocked"><i></i>' + counts.fail + " changes requested</span>" : "") +
+              (counts.you ? '<span class="f-review"><i></i>' + counts.you + " waiting for your review</span>" : "") +
+              (counts.unv ? '<span class="f-planned"><i></i>' + counts.unv + " draft</span>" : "") +
+              (counts.met ? '<span class="f-done"><i></i>' + counts.met + " accepted</span>" : "") +
               (typeof summary.total === "number" && summary.total > pulseData.recent_artifacts.length
                 ? "<span>" + (summary.total - pulseData.recent_artifacts.length) + " more in OrgX</span>"
                 : "") +
@@ -1446,14 +1423,15 @@ external: function (size) {
               var key = toStatusKey(artifact.status);
               var age = formatRelative(artifact.created_at);
               var url = artifact.primary_url || artifact.live_url || dashboardUrl || "";
-              var meta = [artifact.artifact_type ? titleCase(String(artifact.artifact_type).split(".").pop()) : "", artifact.created_by_name || "", age || ""]
-                .filter(Boolean)
-                .map(escapeHtml)
-                .join('<span class="pulse-meta-separator">·</span>');
+              var meta = joinMeta([
+                artifact.artifact_type ? escapeHtml(titleCase(String(artifact.artifact_type).split(".").pop())) : "",
+                artifact.created_by_name ? "<b>" + escapeHtml(artifact.created_by_name) + "</b>" : "",
+                age ? escapeHtml(age) : "",
+              ]);
               var tone = key === "changes_requested" ? "red" : key === "in_review" || artifact.needs_review ? "amber" : key === "approved" ? "teal" : "";
               return linkRow(
                 url,
-                '<ox-glyph kind="artifact"' + (tone ? ' tone="' + tone + '"' : "") + "></ox-glyph>",
+                icon("artifact"),
                 tone,
                 artifact.title,
                 meta,
@@ -1467,37 +1445,12 @@ external: function (size) {
       };
 
       var renderPanel = function (panel, pulseData, dashboardUrl, attentionItems) {
-        var icon = icons.workstream(15);
-        var title = "Workstreams";
-        var body = renderStreamsPanel(pulseData, dashboardUrl);
-
-        if (panel === "actions") {
-          icon = icons.warning(15);
-          title = "Needs you";
-          body = renderActionsPanel(attentionItems);
-        } else if (panel === "focus") {
-          icon = icons.flag(15);
-          title = "Focus";
-          body = renderFocusPanel(pulseData, dashboardUrl);
-        } else if (panel === "artifacts") {
-          icon = icons.document(15);
-          title = "Output";
-          body = renderArtifactsPanel(pulseData, dashboardUrl);
-        }
-
-        return (
-          '<div class="pulse-panel is-active">' +
-          '<div class="pulse-panel-header">' +
-          '<span class="pulse-panel-icon">' +
-          icon +
-          "</span>" +
-          '<span class="pulse-panel-title">' +
-          escapeHtml(title) +
-          "</span>" +
-          "</div>" +
-          body +
-          "</div>"
-        );
+        var body =
+          panel === "actions" ? renderActionsPanel(attentionItems)
+          : panel === "focus" ? renderFocusPanel(pulseData, dashboardUrl)
+          : panel === "artifacts" ? renderArtifactsPanel(pulseData, dashboardUrl)
+          : renderStreamsPanel(pulseData, dashboardUrl);
+        return '<div class="pulse-panel is-active">' + body + "</div>";
       };
 
       var animatePanelHost = function (panelHost, html) {
@@ -1596,30 +1549,34 @@ external: function (size) {
       };
 
       var renderSkeleton = function () {
-        injectHtml(
-          '<div class="pulse-shell-card"><div class="ox-card ox-surface" role="status" aria-label="Loading initiative pulse">' +
-            '<div class="pulse-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 20px"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:36%;height:12px"></span></div>' +
-            '<div class="pulse-shell">' +
-              '<div class="pulse-hero"><span class="sk" style="width:40px;height:40px;border-radius:11px"></span><span style="display:flex;flex-direction:column;gap:8px;flex:1"><span class="sk" style="width:30%;height:10px"></span><span class="sk" style="width:62%;height:22px"></span><span class="sk" style="width:48%;height:11px"></span></span></div>' +
-              '<span class="sk" style="width:100%;height:10px"></span>' +
-              '<span class="sk" style="width:100%;height:44px"></span>' +
-              '<span class="sk" style="width:100%;height:52px"></span>' +
-            "</div>" +
-            '<ox-footer variant="reads" state="loading"></ox-footer>' +
-          "</div></div>"
-        );
+        injectHtml('<div class="pulse-shell-card"><div class="ox-card ox-surface" role="status" aria-label="Loading initiative pulse"><div class="pulse-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 20px"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:36%;height:12px"></span></div><div class="pulse-shell">  <div class="pulse-hero"><span class="sk pulse-tile" style="border:0"></span><span style="display:flex;flex-direction:column;gap:8px;flex:1"><span class="sk" style="width:30%;height:11px"></span><span class="sk" style="width:62%;height:22px"></span></span></div>  <span style="display:flex;flex-direction:column;gap:8px"><span style="display:flex;justify-content:space-between"><span class="sk" style="width:96px;height:20px"></span><span class="sk" style="width:76px;height:22px;border-radius:999px"></span></span><span class="sk" style="width:100%;height:8px;border-radius:999px"></span><span class="sk" style="width:58%;height:12px"></span></span>  <span class="sk" style="width:100%;height:44px"></span>  <span class="sk" style="width:100%;height:56px"></span>  <span class="sk" style="width:100%;height:56px"></span></div><ox-footer variant="reads" state="loading"></ox-footer>        </div></div>');
       };
 
+      /* Empty and error keep the loaded card's head (tile, title) so the card
+         changes content, not shape, and say in plain words what to do next. */
       var calmCard = function (edge, title, desc, cta, role) {
+        var tone = edge === "red" ? "red" : edge === "amber" ? "amber" : "";
         return (
           '<div class="pulse-shell-card animate-in"><div class="ox-card ox-surface" data-edge="' + edge + '">' +
             '<div class="pulse-calm"' + (role ? ' role="' + role + '"' : "") + ">" +
+              '<span class="pulse-tile"' + (tone ? ' data-tone="' + tone + '"' : "") + ">" + window.OrgXIcons.icon(edge === "red" ? "failed" : "initiative", 20) + "</span>" +
               '<div class="empty-title">' + escapeHtml(title) + "</div>" +
               '<div class="empty-desc">' + escapeHtml(desc) + "</div>" +
               cta +
             "</div>" +
           "</div></div>"
         );
+      };
+
+      // Retry asks the host to run the pulse again; the card cannot call it itself.
+      window.retryPulse = function (button) {
+        if (button) { button.disabled = true; button.textContent = "Asking again…"; }
+        Promise.resolve(window.OrgXWidgetRuntime.sendFollowUpMessage("Show the initiative pulse again.")).catch(function () {
+          if (button) { button.disabled = false; button.textContent = "Ask ChatGPT to retry"; }
+        });
+      };
+      var retryButton = function () {
+        return '<button type="button" class="deep-link is-primary" onclick="retryPulse(this)">' + window.OrgXIcons.icon("retry", 14) + "Try again</button>";
       };
 
       var render = function () {
@@ -1629,20 +1586,18 @@ external: function (size) {
         }
 
         if (pulse && pulse.error) {
-          var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(pulse.error, 'The initiative pulse could not be loaded.');
-          var errorTitle = /multiple initiatives match/i.test(errorMessage)
-            ? "Multiple initiatives matched"
-            : /not found/i.test(errorMessage)
-            ? "Initiative not found"
-            : "Initiative pulse unavailable";
-          var errorDesc = /multiple initiatives match/i.test(errorMessage)
-            ? errorMessage + " Retry with the specific initiative UUID via initiative_id to load a stable pulse view."
-            : /not found/i.test(errorMessage)
-            ? errorMessage + " If you know the initiative UUID, retry with initiative_id for a direct lookup."
-            : errorMessage;
-          var errorCta = /multiple initiatives match/i.test(errorMessage)
+          var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(pulse.error, "");
+          var ambiguous = /multiple initiatives match/i.test(errorMessage);
+          var missing = !ambiguous && /not found/i.test(errorMessage);
+          var errorTitle = ambiguous ? "More than one initiative matches" : missing ? "Initiative not found" : "Couldn’t load this initiative";
+          var errorDesc = ambiguous
+            ? "Several initiatives have that name. Ask again with its full name, or pick it in OrgX."
+            : missing
+            ? "OrgX has no initiative by that name in this workspace. Check the name, or browse your initiatives in OrgX."
+            : "OrgX didn’t return the pulse just now. Nothing was changed. Try again in a moment.";
+          var errorCta = ambiguous || missing
             ? buildRecoveryCta(null, "Browse initiatives in OrgX")
-            : buildRecoveryCta(pulse, /not found/i.test(errorMessage) ? "Browse initiatives in OrgX" : "Open initiative in OrgX");
+            : '<div class="empty-actions">' + retryButton() + buildRecoveryCta(pulse, "Open in OrgX").replace('<div class="empty-actions">', "").replace(/<\/div>$/, "") + "</div>";
           injectHtml(calmCard("red", errorTitle, errorDesc, errorCta, "alert"));
           return;
         }
@@ -1656,10 +1611,10 @@ external: function (size) {
             window.OrgXLiveStore && window.OrgXLiveStore.liveRowCount
               ? window.OrgXLiveStore.liveRowCount()
               : 0;
-          var title = liveRows ? "Live work only" : "Awaiting telemetry";
+          var title = liveRows ? "Live work only" : "No pulse yet";
           var desc = liveRows
-            ? "Current workstreams are shown above. The pulse snapshot for this initiative has not been recorded yet."
-            : "No recent pulse data was found for this initiative.";
+            ? "Current workstreams are shown above. OrgX hasn’t recorded a pulse for this initiative yet."
+            : "OrgX hasn’t recorded progress for this initiative yet. It appears here once work starts reporting in.";
           return calmCard(
             "mute",
             title,
@@ -1715,29 +1670,18 @@ external: function (size) {
         }
 
         var streamCount = pulse.total_workstreams || pulse.active_workstreams || pulse.workstreams.length;
-        var blockedCount = pulse.blocked_workstreams || (pulse.blockers || []).length;
-        var metaTokens = [];
-        if (pulse.progress_pct) metaTokens.push(escapeHtml(Math.round(pulse.progress_pct) + "% through"));
+        var healthHtml = "";
         if (typeof pulse.health_score === "number") {
           var healthTone = pulse.health_score >= 85 ? "good" : pulse.health_score >= 70 ? "warning" : "danger";
-          metaTokens.push('<span class="pulse-health" data-tone="' + healthTone + '">Health ' + escapeHtml(String(Math.round(pulse.health_score))) + "</span>");
+          healthHtml = '<span class="pulse-health" data-tone="' + healthTone + '" title="Health score out of 100">Health ' + escapeHtml(String(Math.round(pulse.health_score))) + "</span>";
         }
-        if (streamCount) metaTokens.push(escapeHtml(String(streamCount)) + " workstreams");
-        if (blockedCount) metaTokens.push('<span class="tone-danger">' + escapeHtml(String(blockedCount)) + " blocked</span>");
-        if (pulse.pending_decisions) metaTokens.push(escapeHtml(String(pulse.pending_decisions) + " decisions pending"));
-        if (pulse.recent_artifacts.length) {
-          metaTokens.push(
-            escapeHtml(
-              String((pulse.artifact_summary && pulse.artifact_summary.total) || pulse.recent_artifacts.length) + " output items"
-            )
-          );
-        }
+        var statusKey = toStatusKey(pulse.status || "active");
+        var statusTone = statusKey === "blocked" || statusKey === "at_risk" ? "danger" : statusKey === "stale" || statusKey === "paused" ? "warning" : statusKey === "completed" || statusKey === "active" || statusKey === "running" ? "good" : "";
 
         var sections = [];
         if (streamCount || pulse.workstreams.length || pulse.milestones.length) {
           sections.push({
             key: "streams",
-            icon: icons.workstream(15),
             value: streamCount || pulse.workstreams.length || pulse.milestones.length,
             label: "Streams",
             // The blocked child is already loud in the attention line and the
@@ -1748,7 +1692,6 @@ external: function (size) {
         if (attentionItems.length) {
           sections.push({
             key: "actions",
-            icon: icons.warning(15),
             value: needsCount,
             label: "Needs you",
             alert: true,
@@ -1757,7 +1700,6 @@ external: function (size) {
         if ((pulse.next_steps || []).length || pulse.milestones.length) {
           sections.push({
             key: "focus",
-            icon: icons.flag(15),
             value: (pulse.next_steps || []).length || pulse.milestones.length,
             label: (pulse.next_steps || []).length ? "Next" : "Milestones",
             alert: false,
@@ -1766,7 +1708,6 @@ external: function (size) {
         if (pulse.recent_artifacts.length) {
           sections.push({
             key: "artifacts",
-            icon: icons.document(15),
             value:
               (pulse.artifact_summary && pulse.artifact_summary.total) ||
               pulse.recent_artifacts.length,
@@ -1802,9 +1743,10 @@ external: function (size) {
         var waiting = needsCount;
         var lineTone = !waiting ? "calm" : (pulse.blockers || []).length ? "blocking" : "needs-you";
         var blockerTotal = (pulse.blockers || []).length;
-        var lineSentence = waiting
-          ? waiting + (waiting === 1 ? " needs" : " need") + " you" + (blockerTotal ? " · " + blockerTotal + " blocking" : "")
-          : toStatusKey(pulse.status) === "completed"
+        var lineHtml = waiting
+          ? escapeHtml(waiting + (waiting === 1 ? " needs" : " need") + " you") +
+            (blockerTotal ? '<span class="pulse-line-extra"> · ' + escapeHtml(blockerTotal + " blocking") + "</span>" : "")
+          : statusKey === "completed"
           ? "Complete · nothing needs you"
           : "Nothing needs you";
         var edge = !waiting ? "teal" : lineTone === "blocking" ? "red" : "amber";
@@ -1814,15 +1756,14 @@ external: function (size) {
         var footerState = isStale ? "stale" : "fresh";
         var footerHeading = isStale ? "Out of date" : "Synced " + syncLabel;
         var footerDetail = isStale ? "as of " + syncLabel + " · refresh before deciding" : economics || "up to date";
-        var footerAction = (attentionItems.length ? "Resolve in live view" : "Open live view") + " ↗";
+        var footerAction = "Open live view ↗";
 
         injectHtml(
           '<div class="widget-shell-card pulse-shell-card animate-in">' +
             '<div class="ox-card ox-surface" data-edge="' + edge + '">' +
               '<div class="pulse-head">' +
                 '<ox-attention-line tone="' + lineTone + '" count="' + waiting + '">' +
-                  '<span>' + escapeHtml(lineSentence) + "</span>" +
-                  '<span slot="meta">synced ' + escapeHtml(syncLabel) + "</span>" +
+                  "<span>" + lineHtml + "</span>" +
                   (attentionBanner
                     ? '<button slot="action" type="button" class="pulse-attention' + (actionsOpen ? " is-open" : "") +
                       '" onclick="togglePulsePanel(\'actions\', this)" aria-controls="pulse-panel-host" aria-expanded="' + String(actionsOpen) +
@@ -1834,20 +1775,11 @@ external: function (size) {
                 '<div class="pulse-hero">' +
                   '<span class="pulse-tile" data-tone="' + tileTone + '"><ox-glyph kind="initiative"></ox-glyph></span>' +
                   '<div class="pulse-copy">' +
-                    '<span class="pulse-kicker">Initiative · ' + escapeHtml(titleCase(pulse.status || "active")) + "</span>" +
+                    '<span class="pulse-kicker">Initiative · <b' + (statusTone ? ' data-tone="' + statusTone + '"' : "") + ">" + escapeHtml(titleCase(pulse.status || "active")) + "</b></span>" +
                     '<h1 class="pulse-title">' + escapeHtml(pulse.name) + "</h1>" +
-                    (metaTokens.length
-                      ? '<div class="pulse-meta-line">' +
-                        metaTokens
-                          .map(function (token, index) {
-                            return (index ? '<span class="pulse-meta-divider">·</span>' : "") + token;
-                          })
-                          .join("") +
-                        "</div>"
-                      : "") +
                   "</div>" +
                 "</div>" +
-                renderSignalStrip(pulse) +
+                renderProgress(pulse, healthHtml) +
                 renderMetrics(sections, uiState.panel) +
                 '<div class="pulse-panel-host" id="pulse-panel-host">' +
                   (uiState.panel ? renderPanel(uiState.panel, pulse, dashboardUrl, attentionItems) : "") +

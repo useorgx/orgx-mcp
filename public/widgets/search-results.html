@@ -9,7 +9,6 @@
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <script src="shared/kit/ox-elements-core.js"></script>
   <script src="shared/kit/ox-elements-footer.js"></script>
-  <script src="shared/kit/ox-elements-glyph.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/orgx-icons.js"></script>
@@ -77,59 +76,96 @@
 
     .sr-hd ox-glyph { --ox-glyph-size: 16px; flex: none; }
     .sr-search-icon { width: 16px; height: 16px; flex: none; }
-    /* Search filters and How search works are disclosures: a chevron that turns,
-       a label that reads as a control, and a ring that hugs the label (from the
-       shared focus layer) instead of an input-like box across the card. */
-    .sr-disclosures { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 4px; margin: 0 10px 4px; }
-    .sr-tools { font-size: 12.5px; color: var(--ox-text-muted); }
-    .sr-tools[open] { flex: 1 0 100%; padding: 0 8px 8px; }
-    .sr-tools summary {
-      display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 8px;
-      border-radius: 8px; cursor: pointer; list-style: none; user-select: none;
-      font-weight: 600; color: var(--ox-text-2);
+    /* Filters: one control that reads as a control (a bordered chip with its
+       count), a panel that opens in place, presets instead of bare native date
+       pickers. Help is a small "?" in the header, never a peer of the results. */
+    .sr-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; margin: 0 18px 2px; min-width: 0; }
+    /* 44 px targets, 34 px pills: the button is the target, its .pill the look. */
+    .sr-filter-toggle {
+      display: inline-flex; align-items: center; min-height: 44px; padding: 0; border: 0; background: none; cursor: pointer;
+      font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ox-text-2);
     }
-    .sr-tools[open] summary { margin-left: -8px; }
-    .sr-tools summary::-webkit-details-marker { display: none; }
-    .sr-tools summary::marker { content: ''; }
-    .sr-tools summary:focus:not(:focus-visible) { outline: none; }
-    .sr-tools summary svg { width: 14px; height: 14px; flex: none; color: var(--ox-text-muted); transition: transform var(--ox-dur-micro, 160ms) ease; }
-    .sr-tools[open] summary svg { transform: rotate(90deg); }
-    .sr-tools summary .sr-tools-note { font-weight: 500; color: var(--ox-text-muted); }
-    .sr-tools p { line-height: 1.5; margin: 0 0 10px; }
-    .sr-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-    .sr-filters label { display: grid; gap: 5px; min-width: 0; font-weight: 600; color: var(--ox-text-2); }
-    /* Kit fields in both themes: the well surface, a hairline that firms on
-       hover, and native pickers drawn in the active color scheme. */
-    .sr-filters input, .sr-filters select {
+    .sr-filter-toggle .pill {
+      display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+      border: 1px solid var(--ox-border-strong); border-radius: 999px;
+      transition: border-color var(--ox-dur-micro, 160ms), background-color var(--ox-dur-micro, 160ms), color var(--ox-dur-micro, 160ms);
+    }
+    .sr-filter-toggle svg { width: 15px; height: 15px; flex: none; color: var(--ox-text-muted); }
+    .sr-filter-toggle .chev { width: 13px; height: 13px; transition: transform 200ms var(--ox-ease-out, ease); }
+    .sr-filter-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+    .sr-filter-toggle:hover { color: var(--ox-text); }
+    .sr-filter-toggle:hover .pill { border-color: var(--ox-text-muted); }
+    .sr-filter-toggle[aria-expanded="true"] .pill { background: var(--ox-hover); color: var(--ox-text); }
+    .sr-filter-toggle:focus-visible { outline: none; }
+    .sr-filter-toggle:focus-visible .pill { outline: 2px solid var(--ox-focus); outline-offset: 2px; }
+    .sr-filter-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--ox-text); color: var(--ox-bg); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .sr-active { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; min-width: 0; font-size: 12.5px; color: var(--ox-text-muted); }
+    .sr-active b { font-weight: 600; color: var(--ox-text-2); }
+    .sr-filter-panel { margin: 0 18px; }
+    .sr-filter-panel > form { display: grid; gap: 14px; padding: 4px 0 14px; border-bottom: 1px solid var(--ox-border); }
+    .sr-field { display: grid; gap: 6px; min-width: 0; border: 0; margin: 0; padding: 0; }
+    .sr-field-label { font-size: 12.5px; font-weight: 600; color: var(--ox-text-2); padding: 0; }
+    .sr-field select, .sr-field input[type="datetime-local"] {
       -webkit-appearance: none; appearance: none;
       width: 100%; box-sizing: border-box; min-width: 0; min-height: 44px; padding: 0 12px;
       border: 1px solid var(--ox-border-strong); border-radius: 10px;
       background-color: var(--ox-well-bg); color: var(--ox-text);
       font: 500 13px/1.2 var(--ox-font); color-scheme: inherit;
-      transition: border-color var(--ox-dur-micro, 160ms), background-color var(--ox-dur-micro, 160ms);
+      transition: border-color var(--ox-dur-micro, 160ms);
     }
-    .sr-filters select {
+    .sr-field select {
       padding-right: 34px; cursor: pointer;
       background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
       background-position: right 16px center, right 11px center;
       background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
     }
-    .sr-filters input::-webkit-datetime-edit { padding: 0; }
-    .sr-filters input::-webkit-calendar-picker-indicator { opacity: 0.7; cursor: pointer; }
-    .sr-filters input:hover, .sr-filters select:hover { border-color: var(--ox-text-muted); }
-    .sr-filter-actions { display: flex; gap: 8px; margin-top: 10px; }
-    .sr-filter-actions button { min-height: 44px; }
-    .sr-filter-actions .page-btn[type="submit"] { background: var(--ox-hover); border-color: var(--ox-border-strong); }
-    .sr-tools [role="alert"] { margin: 8px 0 0; color: var(--ox-danger); }
-    @media (max-width: 600px) { .sr-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sr-filters label:first-child { grid-column: 1 / -1; } }
-    @media (max-width: 420px) { .sr-filters { grid-template-columns: 1fr; } }
+    .sr-field input[type="datetime-local"]::-webkit-datetime-edit { padding: 0; }
+    .sr-field input[type="datetime-local"]::-webkit-calendar-picker-indicator { opacity: 0.6; cursor: pointer; }
+    .sr-field select:hover, .sr-field input:hover { border-color: var(--ox-text-muted); }
+    /* Created: a row of preset chips (radio buttons), custom dates on demand. */
+    .sr-presets { display: flex; flex-wrap: wrap; gap: 0 6px; margin: -5px 0; }
+    .sr-preset { position: relative; display: inline-flex; align-items: center; min-height: 44px; }
+    .sr-preset input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+    .sr-preset span {
+      display: inline-flex; align-items: center; height: 34px; padding: 0 13px; border-radius: 999px;
+      border: 1px solid var(--ox-border-strong); font-size: 12.5px; font-weight: 600; color: var(--ox-text-2);
+      transition: background-color var(--ox-dur-micro, 160ms), color var(--ox-dur-micro, 160ms), border-color var(--ox-dur-micro, 160ms);
+    }
+    .sr-preset input:hover + span { border-color: var(--ox-text-muted); color: var(--ox-text); }
+    .sr-preset input:checked + span { background: var(--ox-text); border-color: var(--ox-text); color: var(--ox-bg); }
+    .sr-preset input:focus-visible + span { outline: 2px solid var(--ox-focus); outline-offset: 2px; }
+    .sr-custom { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .sr-custom[hidden] { display: none; }
+    .sr-filter-actions { display: flex; align-items: center; gap: 8px; }
+    .sr-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 16px;
+      border-radius: 12px; border: 1px solid var(--ox-border-strong); background: transparent; cursor: pointer;
+      font: inherit; font-size: 13px; font-weight: 650; color: var(--ox-text);
+    }
+    .sr-btn svg { width: 15px; height: 15px; }
+    .sr-btn:hover:not(:disabled) { background: var(--ox-hover); }
+    .sr-btn.is-primary { background: var(--ox-action); border-color: var(--ox-action-border, var(--ox-action)); color: var(--ox-action-fg); }
+    .sr-btn.is-primary:hover:not(:disabled) { background: var(--ox-action); filter: brightness(1.05); }
+    .sr-btn.is-quiet { border-color: transparent; color: var(--ox-text-2); }
+    .sr-btn:disabled { opacity: 0.5; cursor: default; }
+    .sr-filter-panel [role="alert"] { margin: 0; font-size: 12.5px; color: var(--ox-danger); }
+    @media (max-width: 420px) { .sr-custom { grid-template-columns: 1fr; } }
+
+    /* Help: a "?" at the end of the header that opens a short note in place. */
+    .sr-help-btn {
+      flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: -12px -12px -12px 0;
+      border: 0; border-radius: 10px; background: none; color: var(--ox-text-muted); cursor: pointer;
+    }
+    .sr-help-btn svg { width: 16px; height: 16px; }
+    .sr-help-btn:hover, .sr-help-btn[aria-expanded="true"] { color: var(--ox-text); }
+    .sr-help { margin: 0 18px; }
+    .sr-help p { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--ox-well-bg); font-size: 12.5px; line-height: 1.5; color: var(--ox-text-2); }
 
     .sr-kind {
       flex: none;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      font-size: 13px;
+      font-weight: 650;
+      color: var(--ox-text);
     }
 
     .sr-src {
@@ -153,7 +189,7 @@
       flex-direction: column;
       gap: 2px;
       min-width: 0;
-      padding: 4px 8px 10px;
+      padding: 4px 8px 12px;
     }
 
     .sr-sub {
@@ -167,17 +203,15 @@
 
     .sr-lbl {
       margin: 0;
-      padding: 10px 10px 4px;
-      font-family: var(--ox-mono);
-      font-size: 10.5px;
+      padding: 12px 10px 4px;
+      font-size: 12.5px;
       font-weight: 600;
       line-height: 1.2;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
       color: var(--ox-text-muted);
     }
 
-    .result-list { display: flex; flex-direction: column; gap: 2px; }
+    .result-list { display: flex; flex-direction: column; }
+    .result-list > .result-card + .result-card { border-top-color: var(--ox-border); border-top-left-radius: 0; border-top-right-radius: 0; }
 
     /* One row: glyph, title, one line of OrgX words. The row is the link. */
     .result-card {
@@ -186,9 +220,10 @@
       column-gap: 12px;
       align-items: start;
       min-height: 56px;
-      padding: 10px;
-      border: 1px solid transparent;
-      border-radius: 12px;
+      padding: 12px 10px;
+      border: 0;
+      border-top: 1px solid transparent;
+      border-radius: 10px;
       color: inherit;
       text-decoration: none;
       transition: background var(--ox-dur-micro, 160ms), border-color var(--ox-dur-micro, 160ms);
@@ -234,7 +269,8 @@
     }
 
     .r-meta {
-      font: 500 11.5px/1.35 var(--ox-mono);
+      font-size: 12.5px;
+      line-height: 1.35;
       color: var(--ox-text-muted);
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
@@ -242,7 +278,8 @@
       text-overflow: ellipsis;
     }
 
-    .r-meta .need { color: var(--ox-warning); }
+    .r-meta .need { color: var(--ox-warning); font-weight: 600; }
+    .r-meta .kind { color: var(--ox-text-2); font-weight: 600; }
 
     .r-snippet {
       font-size: 12.5px;
@@ -292,7 +329,8 @@
     .page-range {
       flex: 1;
       min-width: 0;
-      font: 500 11.5px/1.3 var(--ox-mono);
+      font-size: 12.5px;
+      line-height: 1.3;
       color: var(--ox-text-muted);
       font-variant-numeric: tabular-nums;
     }
@@ -334,26 +372,20 @@
 
     .sr-more:hover { color: var(--ox-text); background: var(--ox-hover); }
 
-    /* Empty and unavailable: one sentence about the search, in the same card. */
+    /* Empty and unavailable: what happened, in plain words, and what to do. */
     .sr-state {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      padding: 6px 18px 18px;
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr);
+      column-gap: 12px;
+      row-gap: 4px;
+      padding: 6px 20px 18px;
     }
-
-    .sr-state b {
-      font-size: 15px;
-      font-weight: 650;
-      line-height: 1.3;
-      color: var(--ox-text);
-    }
-
-    .sr-state span {
-      font-size: 12.5px;
-      line-height: 1.5;
-      color: var(--ox-text-muted);
-    }
+    .sr-state > svg { grid-row: span 2; margin-top: 1px; color: var(--ox-text-muted); }
+    .sr-state[role="alert"] > svg { color: var(--ox-danger); }
+    .sr-state b { font-size: 15px; font-weight: 650; line-height: 1.3; color: var(--ox-text); }
+    .sr-state span { font-size: 13px; line-height: 1.5; color: var(--ox-text-2); overflow-wrap: anywhere; }
+    .sr-state .sr-reason { grid-column: 2; font-size: 12.5px; color: var(--ox-text-muted); }
+    .sr-state .sr-state-actions { grid-column: 2; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
     .sr-sk {
       display: block;
@@ -392,7 +424,8 @@
     <!-- Skeleton shown during loading: the arrived card's own frame. -->
     <div class="widget-shell-card skeleton-wrapper search-skeleton" aria-label="Searching organizational memory" aria-busy="true">
       <div class="ox-card sr ox-surface" data-edge="mute">
-        <div class="sr-hd"><span class="sr-kind">Search</span><span class="sr-sk" style="width:160px"></span></div>
+        <div class="sr-hd"><svg class="sr-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg><span class="sr-kind">Search</span><span class="sr-sk" style="width:160px"></span></div>
+        <div class="sr-toolbar"><span class="sr-sk" style="width:142px;height:44px;border-radius:999px"></span></div>
         <div class="sr-bd">
           <div class="search-skeleton__row"><span class="sr-sk" style="height:18px"></span><span class="col"><span class="sr-sk" style="width:62%;height:14px"></span><span class="sr-sk" style="width:38%"></span></span></div>
           <div class="search-skeleton__row"><span class="sr-sk" style="height:18px"></span><span class="col"><span class="sr-sk" style="width:54%;height:14px"></span><span class="sr-sk" style="width:30%"></span></span></div>
@@ -855,16 +888,34 @@
     
     var loadingMore = false;
     var loadMoreError = '';
-    var filters = { type: '', from: '', to: '' };
+    var filters = { type: '', from: '', to: '', range: 'any' };
     var filterError = '';
     var filterOpen = false;
+    var helpOpen = false;
     var searchRequest = null;
+    // Created-date presets: a window back from now. "Custom" shows two date fields.
+    var RANGE_PRESETS = [
+      { value: 'any', label: 'Any time' },
+      { value: '1', label: 'Past day' },
+      { value: '7', label: 'Past week' },
+      { value: '30', label: 'Past month' },
+      { value: 'custom', label: 'Custom' }
+    ];
+    var rangeLabel = (value) => (RANGE_PRESETS.find((p) => p.value === value) || {}).label || '';
     window.applySearchFilters = async function(event) {
       event.preventDefault();
       if (retrying) return;
       var form = event.currentTarget;
-      var next = { type: form.elements.namedItem('type').value, from: form.elements.namedItem('from').value, to: form.elements.namedItem('to').value };
-      filterError = next.from && next.to && new Date(next.from) > new Date(next.to) ? 'Choose an end time at or after the start time.' : '';
+      var rangeField = form.elements.namedItem('range');
+      var range = rangeField && rangeField.value ? rangeField.value : 'any';
+      var next = { type: form.elements.namedItem('type').value, from: form.elements.namedItem('from').value, to: form.elements.namedItem('to').value, range: range };
+      // Dates typed in the custom fields win; a preset fills the start from now.
+      if (next.from || next.to) next.range = 'custom';
+      else if (range !== 'any' && range !== 'custom') {
+        var start = new Date(Date.now() - Number(range) * 24 * 60 * 60 * 1000);
+        next.from = new Date(start.getTime() - start.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      } else next.range = 'any';
+      filterError = next.from && next.to && new Date(next.from) > new Date(next.to) ? 'Choose an end date on or after the start date.' : '';
       filterOpen = true;
       if (filterError) { render(); return; }
       var original = searchRequest || (window.openai && window.openai.toolInput);
@@ -881,17 +932,35 @@
         var result = await callTool('orgx_search', args);
         var payload = window.OrgXWidgetRuntime.extractSearchWidgetData(result);
         if (!payload || payload.error || result.isError || !Array.isArray(payload.results)) throw new Error('incomplete_response');
+        filterOpen = false;
         applyBootPayload(payload);
       } catch (_) { window.OrgXWidgetRuntime.reportSearchWidgetEvent('page_error'); filterError = 'Filtered search is unavailable. Your previous results are still shown. Try again.'; }
       finally { retrying = false; render(); }
     };
     window.clearSearchFilters = function() {
-      var form = document.querySelector('.sr-filters').closest('form');
+      var form = document.querySelector('.sr-filter-panel form');
       var initial = (window.openai && window.openai.toolInput) || searchRequest || {};
       form.elements.namedItem('type').value = initial.query ? '' : (initial.type || '');
       form.elements.namedItem('from').value = '';
       form.elements.namedItem('to').value = '';
+      var any = form.querySelector('input[name="range"][value="any"]');
+      if (any) any.checked = true;
       window.applySearchFilters({ preventDefault: function() {}, currentTarget: form });
+    };
+    window.pickRange = function(input) {
+      var form = input.form;
+      var custom = form.querySelector('.sr-custom');
+      var isCustom = input.value === 'custom';
+      if (!isCustom) { form.elements.namedItem('from').value = ''; form.elements.namedItem('to').value = ''; }
+      if (custom) custom.hidden = !isCustom;
+      window.OrgXWidgetRuntime.reportSize();
+    };
+    // Disclosures open in place (height and opacity) and keep focus on their trigger.
+    window.toggleDisclosure = function(trigger, which) {
+      var panel = document.getElementById(trigger.getAttribute('aria-controls'));
+      var open = trigger.getAttribute('aria-expanded') !== 'true';
+      if (which === 'filters') filterOpen = open; else helpOpen = open;
+      window.OrgXWidgetRuntime.motion.setExpanded(panel, open, trigger);
     };
     window.retrySearch = async function() {
       if (retrying) return;
@@ -913,24 +982,41 @@
     };
 
     var filterResults = function(results) { return results; };
+    var FILTER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6.5h16M7 12h10M10 17.5h4"/></svg>';
+    var CHEVRON = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
+    var HELP_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2-2.4 3.4"/><circle cx="12" cy="16.9" r="1" fill="currentColor" stroke="none"/></svg>';
+    var RETRY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.8 4.2v4.5h-4.5"/></svg>';
+    var HELP_TEXT = 'A phrase searches your organization’s memory and returns the best matches first. Ask for a type, status, workspace or initiative to narrow it. Filters start a new search: type and creation date apply before ranking, in your time zone.';
+    var helpButton = () => `<button type="button" class="sr-help-btn" aria-label="How search works" title="How search works" aria-expanded="${helpOpen}" aria-controls="sr-help" onclick="toggleDisclosure(this, 'help')">${HELP_ICON}</button>`;
+    var helpPanel = () => `<div class="sr-help" id="sr-help"${helpOpen ? '' : ' hidden'}><p>${HELP_TEXT}</p></div>`;
     var searchTools = function(results) {
       if (!searchRequest && window.openai && window.openai.toolInput) {
         searchRequest = Object.assign({}, window.openai.toolInput);
         var localTime = function(value) { var d = new Date(value); return Number.isFinite(d.getTime()) ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''; };
-        filters = { type: searchRequest.type || '', from: searchRequest.created_from ? localTime(searchRequest.created_from) : '', to: searchRequest.created_to ? localTime(searchRequest.created_to) : '' };
+        filters = { type: searchRequest.type || '', from: searchRequest.created_from ? localTime(searchRequest.created_from) : '', to: searchRequest.created_to ? localTime(searchRequest.created_to) : '', range: searchRequest.created_from || searchRequest.created_to ? 'custom' : 'any' };
       }
       var types = ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'objective', 'project', 'workspace'];
       if (filters.type && types.indexOf(filters.type) < 0) types.push(filters.type);
-      var activeFilters = [filters.type, filters.from, filters.to].filter(Boolean).length;
-      return `<div class="sr-disclosures"><details class="sr-tools" ${filterOpen ? 'open' : ''} ontoggle="filterOpen=this.open"><summary>${DISCLOSURE_ICON}<span>Search filters</span>${activeFilters ? `<span class="sr-tools-note">· ${activeFilters} on</span>` : ''}</summary>
-        <p>Type and creation dates start a new search, before ranking and result limits. Dates include both endpoints and use your device’s time zone. Retention limits still apply.</p>
-        <form onsubmit="applySearchFilters(event)"><div class="sr-filters">
-          <label>Type<select name="type" aria-label="Type"><option value="">All types</option>${types.map(type => `<option value="${escapeHtml(type)}" ${filters.type === type ? 'selected' : ''}>${escapeHtml(kindLabel(type))}</option>`).join('')}</select></label>
-          <label>Created from<input name="from" aria-label="Created from" type="datetime-local" value="${escapeHtml(filters.from)}"></label>
-          <label>Created to<input name="to" aria-label="Created to" type="datetime-local" value="${escapeHtml(filters.to)}"></label>
-        </div><div class="sr-filter-actions"><button class="page-btn" type="submit" ${retrying ? 'disabled' : ''}>Apply filters</button><button class="page-btn" type="button" onclick="clearSearchFilters()" ${retrying ? 'disabled' : ''}>Clear</button></div>
-        ${filterError ? `<p role="alert">${escapeHtml(filterError)}</p>` : ''}</form></details>
-        <details class="sr-tools"><summary>${DISCLOSURE_ICON}<span>How search works</span></summary><p>A phrase searches organizational memory. Ask for an entity type, status, workspace or initiative to narrow the request. Typed searches can load more pages; memory searches return a ranked selection, best match first. Creation-date controls apply to the full search before results are loaded.</p></details></div>`;
+      var range = filters.range || 'any';
+      var activeCount = (filters.type ? 1 : 0) + (range !== 'any' ? 1 : 0);
+      var active = [filters.type ? '<b>' + escapeHtml(kindLabel(filters.type)) + '</b>' : '', range !== 'any' && range !== 'custom' ? '<b>' + escapeHtml(rangeLabel(range)) + '</b>' : range === 'custom' ? '<b>Custom dates</b>' : ''].filter(Boolean).join(' · ');
+      return `<div class="sr-toolbar">
+          <button type="button" class="sr-filter-toggle" aria-expanded="${filterOpen}" aria-controls="sr-filter-panel" onclick="toggleDisclosure(this, 'filters')"><span class="pill">${FILTER_ICON}<span>Search filters</span>${activeCount ? `<span class="sr-filter-count" aria-label="${activeCount} on">${activeCount}</span>` : ''}${CHEVRON}</span></button>
+          ${active ? `<span class="sr-active">${active}</span>` : ''}
+        </div>
+        <div class="sr-filter-panel" id="sr-filter-panel"${filterOpen ? '' : ' hidden'}>
+        <form onsubmit="applySearchFilters(event)">
+          <label class="sr-field"><span class="sr-field-label">Type</span><select name="type" aria-label="Type"><option value="">All types</option>${types.map(type => `<option value="${escapeHtml(type)}" ${filters.type === type ? 'selected' : ''}>${escapeHtml(kindLabel(type))}</option>`).join('')}</select></label>
+          <fieldset class="sr-field"><legend class="sr-field-label">Created</legend>
+            <div class="sr-presets">${RANGE_PRESETS.map(p => `<label class="sr-preset"><input type="radio" name="range" value="${p.value}" ${range === p.value ? 'checked' : ''} onchange="pickRange(this)"><span>${p.label}</span></label>`).join('')}</div>
+            <div class="sr-custom"${range === 'custom' ? '' : ' hidden'}>
+              <label class="sr-field"><span class="sr-field-label">Created from</span><input name="from" aria-label="Created from" type="datetime-local" value="${escapeHtml(range === 'custom' ? filters.from : '')}"></label>
+              <label class="sr-field"><span class="sr-field-label">Created to</span><input name="to" aria-label="Created to" type="datetime-local" value="${escapeHtml(range === 'custom' ? filters.to : '')}"></label>
+            </div>
+          </fieldset>
+          <div class="sr-filter-actions"><button class="sr-btn is-primary" type="submit" ${retrying ? 'disabled' : ''}>${retrying ? 'Searching…' : 'Apply filters'}</button><button class="sr-btn is-quiet" type="button" onclick="clearSearchFilters()" ${retrying ? 'disabled' : ''}>Clear</button></div>
+          ${filterError ? `<p role="alert">${escapeHtml(filterError)}</p>` : ''}
+        </form></div>`;
     };
     window.loadMoreResults = async () => {
       if (loadingMore || !data || !data.next_call || data.next_call.tool !== 'orgx_search') return;
@@ -965,7 +1051,6 @@
 
     // ── Rows in OrgX words ─────────────────────────────────────────────────
 
-    var DISCLOSURE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>';
     var EXT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
 
     var GLYPH_KINDS = ['goal', 'initiative', 'workstream', 'milestone', 'task', 'run', 'decision', 'question', 'artifact', 'receipt'];
@@ -1034,26 +1119,43 @@
 
     var cardHtml = (options) => `
       <div class="widget-shell-card">
-        <div class="ox-card sr ox-surface" data-edge="${options.edge || 'teal'}">
-          <div class="sr-hd">${options.kind === 'Search' ? '<svg class="sr-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg>' : `<ox-glyph kind="${options.glyph || 'artifact'}"${options.edge === 'amber' ? ' tone="amber"' : ''}></ox-glyph>`}
+        <div class="ox-card sr ox-surface ox-enter" data-edge="${options.edge || 'teal'}">
+          <div class="sr-hd">${options.kind === 'Search' ? '<svg class="sr-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg>' : window.OrgXIcons.icon(options.glyph || 'artifact', { size: 16, className: 'sr-search-icon' })}
             <span class="sr-kind">${escapeHtml(options.kind)}</span>
             ${options.source ? `<span class="sr-src">${options.source}</span>` : ''}
-            ${options.count ? `<span class="sr-count">${escapeHtml(options.count)}</span>` : ''}
+            ${options.count ? `<span class="sr-count">${escapeHtml(options.count)}</span>` : '<span class="sr-count"></span>'}
+            ${options.help ? helpButton() : ''}
           </div>
+          ${options.help ? helpPanel() : ''}
           ${options.body}
           ${options.footer || ''}
         </div>
       </div>`;
 
-    var stateCard = (kind, title, message, edge, footer) => cardHtml({
+    var STATE_ICONS = {
+      empty: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M8 10.5h5"/></svg>',
+      error: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><circle cx="12" cy="16.4" r="1.1" fill="currentColor" stroke="none"/></svg>'
+    };
+    var stateCard = (kind, title, message, edge, footer, extra) => cardHtml({
       kind: kind,
+      glyph: kind === 'Decision history' ? 'decision' : kind === 'Next action' ? 'run' : 'search',
       edge: edge || 'mute',
-      body: `<div class="sr-state" role="${edge === 'red' ? 'alert' : 'status'}"><b>${escapeHtml(title)}</b><span>${escapeHtml(message)}</span></div>`,
+      help: kind === 'Search',
+      body: `<div class="sr-state" role="${edge === 'red' ? 'alert' : 'status'}">${edge === 'red' ? STATE_ICONS.error : STATE_ICONS.empty}<b>${escapeHtml(title)}</b><span>${escapeHtml(message)}</span>${extra || ''}</div>`,
       footer: footer
     });
 
-    var unavailable = (message) => stateCard('Search', 'Search unavailable', message, 'red',
-      `<ox-footer variant="reads" state="failed" heading="Results could not be displayed" detail="your query was not changed" action-label=""><button class="sr-more" slot="action" type="button" onclick="retrySearch()" ${retrying ? 'disabled' : ''}>${retrying ? 'Retrying…' : 'Retry search'}</button></ox-footer>`);
+    // One failure, said once: what happened, that nothing changed, and a retry button.
+    var unavailable = (message) => {
+      var reason = String(message || '').trim();
+      var plain = /did not arrive|could not be loaded|ask chatgpt/i.test(reason);
+      return stateCard('Search', 'Search unavailable',
+        plain ? reason : 'OrgX couldn’t finish this search. Nothing was changed, and your question is kept.',
+        'red', '',
+        // A short reason from OrgX ("Search backend timed out") helps; a paragraph repeats us.
+        (!plain && reason && reason.length <= 90 && !/not changed/i.test(reason) ? `<span class="sr-reason">${escapeHtml('Reason: ' + reason.replace(/[.\s]*$/, '.'))}</span>` : '') +
+        `<span class="sr-state-actions"><button class="sr-btn" type="button" onclick="retrySearch()" ${retrying ? 'disabled' : ''}>${RETRY_ICON}${retrying ? 'Retrying…' : 'Retry search'}</button></span>`);
+    };
 
     var quoted = (text) => text ? '<b>“' + escapeHtml(text) + '”</b>' : '';
 
@@ -1077,8 +1179,7 @@
         window.OrgXWidgetRuntime.reportSearchWidgetEvent('rendered');
         var history = (Array.isArray(data.decisions) ? data.decisions : Array.isArray(data.results) ? data.results : []).map(normalizeDecisionHistoryItem);
         if (!history.length) {
-          injectHtml(stateCard('Decision history', 'No matching decisions', data.topic ? 'OrgX did not find any prior decisions for “' + data.topic + '”.' : 'OrgX did not find any historical decisions for this request yet.', 'mute',
-            '<ox-footer variant="reads" state="caught-up" heading="Nothing earlier" detail="no prior ruling on this"></ox-footer>'));
+          injectHtml(stateCard('Decision history', 'No matching decisions', data.topic ? 'OrgX has no earlier decision on “' + data.topic + '”.' : 'OrgX has no earlier decisions for this request yet.', 'mute', ''));
           return;
         }
         var historyHtml = history.map((r, index) => rowHtml(
@@ -1092,7 +1193,7 @@
           source: data.topic ? quoted(data.topic) : '<b>Past approvals and rejections</b>',
           count: history.length + (history.length === 1 ? ' ruling' : ' rulings'),
           body: `<div class="sr-bd"><p class="sr-sub">Past approvals and rejections that may inform the current call.</p><div class="result-list result-list--recommendations">${historyHtml}</div></div>`,
-          footer: '<ox-footer variant="reads" state="fresh" heading="Decision history" detail="from organizational memory" action-label=""></ox-footer>'
+          footer: ''
         }));
         return;
       }
@@ -1104,8 +1205,7 @@
           recommendations = [normalizeRecommendation(data.next_action, 0)];
         }
         if (!recommendations.length) {
-          injectHtml(stateCard('Next action', 'No recommendations available', data.message || 'OrgX did not find a clear next action yet.', 'mute',
-            '<ox-footer variant="reads" state="caught-up" heading="Nothing to start" detail="no clear next action yet"></ox-footer>'));
+          injectHtml(stateCard('Next action', 'No recommendations available', data.message || 'OrgX did not find a clear next action yet.', 'mute', ''));
           return;
         }
         var recommendationsHtml = recommendations.map((r, index) => rowHtml(
@@ -1120,7 +1220,7 @@
         )).join('');
         injectHtml(cardHtml({
           kind: 'Next action',
-          glyph: 'task',
+          glyph: 'run',
           source: '',
           count: recommendations.length === 1 ? '' : recommendations.length + ' ranked',
           body: `<div class="sr-bd"><p class="sr-sub">${escapeHtml(data.message || 'Ranked follow-up actions based on current OrgX context. Use the CTA on each card to start the next step directly.')}</p><div class="result-list result-list--recommendations">${recommendationsHtml}</div></div>`,
@@ -1136,8 +1236,11 @@
       }
       window.OrgXWidgetRuntime.reportSearchWidgetEvent('rendered');
       if (!normalizedResults.length) {
-        injectHtml(stateCard('Search', 'No results found', data.query ? 'OrgX could not find a strong match for “' + data.query + '”. Try a broader phrase or a different scope.' : 'Try adjusting your query or expanding your search scope.', 'mute',
-          '<ox-footer variant="reads" state="caught-up" heading="No matches" detail="try a broader phrase"></ox-footer>'));
+        var hasFilters = !!(filters.type || (filters.range && filters.range !== 'any'));
+        var emptyCard = stateCard('Search', 'No results found', data.query ? 'Nothing in OrgX matches “' + data.query + '” closely. Try fewer or broader words' + (hasFilters ? ', or clear the filters.' : '.') : 'Try fewer or broader words, or a different scope.', 'mute', '',
+          hasFilters ? '<span class="sr-state-actions"><button class="sr-btn" type="button" onclick="clearSearchFilters()">Clear filters</button></span>' : '');
+        // With filters on, keep them in reach so they can be changed or cleared.
+        injectHtml(hasFilters ? emptyCard.replace('<div class="sr-state"', searchTools([]) + '<div class="sr-state"') : emptyCard);
         return;
       }
 
@@ -1180,13 +1283,14 @@
           ? `<ox-footer variant="reads" state="failed" heading="Couldn’t load more" detail="your results are kept" action-label="Load more results"></ox-footer>`
           : hasMore
             ? `<ox-footer variant="reads" state="fresh" heading="${normalizedResults.length} loaded" detail="more in OrgX"><button type="button" slot="action" class="sr-more" onclick="loadMoreResults()">Load more results</button></ox-footer>`
-            : `<ox-footer variant="reads" state="fresh" heading="${normalizedResults.length} ${normalizedResults.length === 1 ? 'match' : 'matches'}" detail="from organizational memory" action-label=""></ox-footer>`;
+            : '';
 
       injectHtml(cardHtml({
         kind: 'Search',
         glyph: 'question',
         edge: waiting.length ? 'amber' : 'teal',
         source: data.query ? quoted(data.query) : '<b>Organizational memory</b>',
+        help: true,
         // One count everywhere: "20+ results" when OrgX has more pages, the
         // range below reads "1–3 of 20+", and the footer says how many loaded.
         count: normalizedResults.length + (hasMore ? '+' : '') + (normalizedResults.length === 1 && !hasMore ? ' result' : ' results'),

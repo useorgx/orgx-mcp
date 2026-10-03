@@ -153,19 +153,43 @@ describe('initiative pulse: needs-you holds only what waits on a person (C2, C3)
 });
 
 describe('initiative pulse: health and progress read honestly (C4)', () => {
-  it('renders health as one chip and a 0% stream as an empty bar', async () => {
+  it('renders health as one chip and 0% progress as an empty bar with its words', async () => {
     mountWidget('initiative-pulse', { payload: qaPulse() });
     await settle();
     const health = document.querySelector('.pulse-health') as HTMLElement;
     expect(health).not.toBeNull();
     expect(health.getAttribute('data-tone')).toBe('danger');
     expect(health.textContent).toBe('Health 0');
-    const segment = document.querySelector('.pulse-signal.seg-active') as HTMLElement;
-    expect(segment.getAttribute('style')).toContain('--p:0');
-    expect(document.querySelector('.pulse-legend .seg-active')!.classList.contains('is-empty')).toBe(true);
+    const fill = document.querySelector('.pulse-progress-bar > span') as HTMLElement;
+    expect(fill.getAttribute('style')).toContain('width:0%');
+    expect(document.querySelector('.pulse-progress-value')!.textContent).toBe('0%through');
+    // One workstream reads as one, never "1 workstreams".
+    const facts = document.querySelector('.pulse-facts')!.textContent!;
+    expect(facts).toContain('1 workstream');
+    expect(facts).not.toContain('1 workstreams');
     const source = readWidgetHtml('initiative-pulse');
     expect(source).toMatch(/\.pulse-health\[data-tone="good"\]/);
-    expect(source).toContain('calc(var(--p, 0) * 1%)');
+  });
+
+  it('says what the decision count covers when the app sends its scope', async () => {
+    mountWidget('initiative-pulse', {
+      payload: qaPulse({ pending_decisions: 3, pending_decisions_scope: { level: 'initiative', total: 3, capped: false, kinds: ['decision'], urgency: 'all', includes_system: false, unit: 'review_packet', workspace_id: null, initiative_id: 'init-1' } }),
+    });
+    await settle();
+    (window as unknown as { togglePulsePanel(key: string): void }).togglePulsePanel('actions');
+    await settle();
+    expect(pageText()).toContain('3 decisions waiting on you');
+    expect(pageText()).toContain('Pending in this initiative');
+  });
+
+  it('gives every known stream owner a hover card outside the row link', async () => {
+    mountWidget('initiative-pulse', { payload: qaPulse() });
+    await settle();
+    const row = document.querySelector('.pulse-list-row')!;
+    const card = row.querySelector('ox-agent-card')!;
+    expect(card.getAttribute('agent')).toBe('eli');
+    expect(card.closest('a')).toBeNull();
+    expect(row.querySelector('a.pulse-row-link')).not.toBeNull();
   });
 });
 
