@@ -202,8 +202,8 @@ describe('workspace-map describes surfaces without naming tools', () => {
     // Command has both read and control: full access needs no caveat, and a
     // line repeated on every card is one the eye skips.
     expect(note(cards[0]!)).toBeNull();
-    expect(note(cards[1]!)).toContain('Read-only in this session');
-    expect(note(cards[2]!)).toContain('does not touch it');
+    expect(note(cards[1]!)).toContain('Read-only here');
+    expect(note(cards[2]!)).toContain('Only in OrgX');
   });
 
   it('asks an unbound session to sign in rather than to call a tool', () => {

@@ -510,8 +510,8 @@
     },
     "workspace-map": {
       "file": "public/widgets/workspace-map.html",
-      "bytes": 22713,
-      "hash": "2318cc4f8ef5",
+      "bytes": 24894,
+      "hash": "128571ffebec",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -523,6 +523,7 @@
         "shared/live-panel.js",
         "shared/live-store.js",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
         "shared/widget-theme.css"
