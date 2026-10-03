@@ -248,9 +248,10 @@ describe('MCP Apps shared-component inlining', () => {
       }
 
       if (resource.name === 'morning-brief-widget') {
+        // The brief draws its icons from the one shared set (OrgXIcons).
         expect(
           document.querySelectorAll(
-            'script[data-inline-asset="shared/icons.js"]'
+            'script[data-inline-asset="shared/orgx-icons.js"]'
           )
         ).toHaveLength(1);
         expect(sanitized).not.toContain("from './shared/icons.js'");

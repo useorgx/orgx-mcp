@@ -11,13 +11,17 @@
   <link rel="stylesheet" href="shared/tokens.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
-  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/kit/ox-elements-core.js"></script>
+  <script src="shared/kit/ox-elements-footer.js"></script>
+  <script src="shared/kit/ox-elements-avatar.js"></script>
   <script src="shared/agent-identity.js"></script>
+  <script src="shared/orgx-icons.js"></script>
 
   <style>
     /* Escalation mode. Canvas R2 (review final), K1/K4 (receipts) and Q5 supply the shape.
        Primaries are the kit's action lime; amber stays on the needs-you edge, glyph and chip. */
     :root { --ox-primary-rgb: 191, 255, 0; }
+    .ox-icon { display: block; flex: none; }
 
     [hidden] { display: none !important; }
     * { box-sizing: border-box; }
@@ -53,25 +57,20 @@
     .wcard[data-edge="teal"] { --edge-rgb: 0, 201, 167; }
     .wcard[data-edge="red"] { --edge-rgb: 244, 63, 94; }
     .hd { display: flex; align-items: center; gap: 10px; padding: 14px 18px 0; min-width: 0; }
-    .hd > ox-glyph { --ox-glyph-size: 18px; flex: none; }
-    .kind {
-      font-size: 11px; font-weight: 600; line-height: 1;
-      letter-spacing: .04em; text-transform: uppercase;
-      color: var(--ox-text-muted); white-space: nowrap;
-    }
+    .hd > .ox-icon { color: var(--ox-text-muted); }
+    .hd[data-tone="amber"] > .ox-icon { color: var(--ox-warning); }
+    .hd[data-tone="teal"] > .ox-icon { color: var(--ox-teal); }
+    .hd[data-tone="red"] > .ox-icon { color: var(--ox-danger); }
+    .kind { font-size: 13px; font-weight: 650; line-height: 1.2; color: var(--ox-text-2); white-space: nowrap; }
     .src { min-width: 0; font-size: 12.5px; color: var(--ox-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .src b { color: var(--ox-text-2); font-weight: 600; }
     .sp { flex: 1; }
     .who2 { display: inline-flex; align-items: center; gap: 8px; flex: none; font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; }
     .who2 b { color: var(--ox-text-2); font-weight: 600; }
-    .hd-link {
-      display: inline-flex; align-items: center; gap: 5px; flex: none;
-      min-height: 44px; margin: -12px 0; padding: 0 6px;
-      color: var(--ox-text-2); font-size: 12.5px; font-weight: 650; text-decoration: none; white-space: nowrap;
-    }
-    .hd-link:hover { color: var(--ox-text); }
+    /* Open in OrgX is the shared .ox-open; it keeps the header line compact. */
+    .hd .ox-open { margin: -10px 0; }
     .bd { padding: 10px 18px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-    .meta { font-size: 11.5px; line-height: 1.35; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .meta { font-size: 12.5px; line-height: 1.35; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
 
     /* Q5 / K1: the verdict first, the bar under it, the proof as rows. */
     .review-desk { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -85,67 +84,58 @@
     .review-summary, .review-consequence { margin: 0; color: var(--ox-text-muted); font-size: 13px; line-height: 1.5; text-wrap: pretty; }
     .review-summary { color: var(--ox-text-2); }
 
-    .quality-gauge { --quality-signal: var(--ox-text-muted); display: grid; gap: 6px; padding-top: 4px; }
-    .quality-gauge[data-quality-state="cleared"] { --quality-signal: var(--ox-teal); }
-    .quality-gauge[data-quality-state="held"],
-    .quality-gauge[data-quality-state="stale"] { --quality-signal: var(--ox-warning); }
-    .quality-gauge[data-quality-state="error"] { --quality-signal: var(--ox-danger); }
-    .quality-gauge[data-quality-state="pending"] { --quality-signal: var(--ox-text-2); }
-    .quality-gauge__track { position: relative; height: 8px; border-radius: 999px; background: var(--ox-hover, rgba(127, 127, 127, .12)); }
-    .quality-gauge__fill { position: absolute; inset: 0 auto 0 0; min-width: 2px; border-radius: inherit; background: var(--quality-signal); }
-    .quality-gauge__threshold,
-    .quality-gauge__historical { position: absolute; z-index: 2; top: -4px; width: 2px; height: 16px; border-radius: 2px; }
-    .quality-gauge__threshold { background: var(--ox-text); }
-    .quality-gauge__historical {
-      z-index: 1; width: 1px;
-      background: repeating-linear-gradient(to bottom, var(--ox-text-muted) 0 3px, transparent 3px 5px);
-    }
-    .quality-gauge__legend {
-      display: flex; align-items: center; justify-content: space-between; gap: 8px;
-      color: var(--ox-text-muted); font: 500 11.5px/1.3 var(--ox-mono); font-variant-numeric: tabular-nums;
-    }
-    .quality-gauge__legend span:first-child { color: var(--quality-signal); }
-    .quality-gauge__profile { overflow: hidden; color: var(--ox-text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    /* The verdict in five seconds: one sentence, a bar with the line it has to clear,
+       and a checklist of what was checked (passed / failed / missing / not run). */
+    .qv { --qv-signal: var(--ox-text-muted); display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 4px; border-radius: 14px;
+      background: var(--ox-surface-subtle, rgba(127, 127, 127, .06)); border: 1px solid var(--ox-border); }
+    .qv[data-quality-state="cleared"] { --qv-signal: var(--ox-teal); }
+    .qv[data-quality-state="held"], .qv[data-quality-state="stale"] { --qv-signal: var(--ox-warning); }
+    .qv[data-quality-state="error"] { --qv-signal: var(--ox-danger); }
+    .qv-verdict { display: flex; align-items: flex-start; gap: 10px; }
+    .qv-verdict > .ox-icon { color: var(--qv-signal); margin-top: 1px; }
+    .qv-title { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.3; color: var(--ox-text); }
+    .qv-detail { margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: var(--ox-text-2); text-wrap: pretty; }
+    .qv-meter { display: flex; flex-direction: column; gap: 5px; }
+    .qv-bar { position: relative; height: 10px; border-radius: 999px; background: var(--ox-hover, rgba(127, 127, 127, .14)); }
+    .qv-fill { position: absolute; inset: 0 auto 0 0; min-width: 4px; border-radius: inherit; background: var(--qv-signal); }
+    .qv-fill.is-history { background: repeating-linear-gradient(135deg, var(--ox-text-muted) 0 3px, transparent 3px 6px); opacity: .7; }
+    .qv-mark { position: absolute; top: -5px; width: 2px; height: 20px; margin-left: -1px; border-radius: 2px; background: var(--ox-text); }
+    .qv-scale { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .qv-scale b { color: var(--ox-text); font-weight: 700; }
+    .qv-checks-label { margin: 2px 0 0; font-size: 12.5px; font-weight: 650; color: var(--ox-text-muted); }
+    .qv-checks { list-style: none; margin: 0; padding: 0; }
+    .qv-check { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 2px 10px; align-items: start; padding: 9px 0; border-top: 1px solid var(--ox-border); }
+    .qv-check:first-child { border-top: 0; }
+    .qv-check > .ox-icon { margin-top: 1px; color: var(--ox-text-muted); }
+    .qv-check[data-status="passed"] > .ox-icon { color: var(--ox-teal); }
+    .qv-check[data-status="failed"] > .ox-icon { color: var(--ox-danger); }
+    .qv-check[data-status="missing"] > .ox-icon { color: var(--ox-warning); }
+    .qv-check b { display: block; font-size: 13.5px; font-weight: 650; line-height: 1.3; color: var(--ox-text); }
+    .qv-check span { display: block; font-size: 12.5px; line-height: 1.4; color: var(--ox-text-muted); overflow-wrap: anywhere; }
+    .qv-state { font-size: 12px; font-weight: 650; line-height: 1.3; color: var(--ox-text-muted); white-space: nowrap; padding-top: 1px; }
+    .qv-check[data-status="passed"] .qv-state { color: var(--ox-teal); }
+    .qv-check[data-status="failed"] .qv-state { color: var(--ox-danger-text, var(--ox-danger)); }
+    .qv-check[data-status="missing"] .qv-state { color: var(--ox-warning); }
 
-    /* K1: criteria as receipt rows, failures first. */
+    /* Scoring details: opens in place (.ox-collapse), no measured height, nothing jumps. */
+    .qv-more { border-top: 1px solid var(--ox-border); margin: 0 -14px; padding: 0 14px; }
+    .qv-more__toggle {
+      display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0; border: 0; background: none;
+      cursor: pointer; text-align: left; font: 650 13px/1.3 var(--ox-font); color: var(--ox-text-2);
+    }
+    .qv-more__toggle:hover { color: var(--ox-text); }
+    .qv-more__toggle .ox-icon { margin-left: auto; color: var(--ox-text-muted); transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .qv-more__toggle[aria-expanded="true"] .ox-icon { transform: rotate(180deg); }
+    .qv-more__body { display: flex; flex-direction: column; gap: 12px; padding: 0 0 12px; }
+    .qv-facts { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; font-size: 13px; }
+    .qv-facts dt { color: var(--ox-text-muted); }
+    .qv-facts dd { margin: 0; color: var(--ox-text-2); overflow-wrap: anywhere; }
+    .qv-note { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); }
+    .ruling-note { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--ox-well-bg, rgba(127, 127, 127, .06)); font-size: 13px; line-height: 1.45; color: var(--ox-text-2); }
+    .ruling-note b { color: var(--ox-text); font-weight: 650; }
     .receipts { display: flex; flex-direction: column; }
     .receipts__more { margin: 6px 0 0; font-size: 12.5px; color: var(--ox-text-muted); }
-
-    .quality-anatomy { border-block: 1px solid var(--ox-border); }
-    .quality-anatomy > summary {
-      display: grid; grid-template-columns: minmax(0, 1fr) 18px; align-items: center; gap: 8px;
-      min-height: 48px; padding-block: 9px; color: var(--ox-text); cursor: pointer; list-style: none;
-    }
-    .quality-anatomy > summary::-webkit-details-marker { display: none; }
-    .quality-anatomy__title { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; font-weight: 650; line-height: 1.25; }
-    .quality-anatomy__freshness { color: var(--ox-warning); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
-    .quality-anatomy__flow { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); min-width: 0; }
-    .quality-anatomy__flow-step { display: flex; gap: 6px; align-items: baseline; min-width: 0; color: var(--ox-text-muted); font-size: 11.5px; }
-    .quality-anatomy__flow-step b { color: var(--ox-text); font: 600 12px/1 var(--ox-mono); }
-    .quality-anatomy__chevron { color: var(--ox-text-muted); transition: transform 150ms var(--ox-ease, ease); }
-    .quality-anatomy[open] .quality-anatomy__chevron { transform: rotate(180deg); }
-    .quality-anatomy__equation {
-      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-block: 10px;
-      border-top: 1px solid var(--ox-border); color: var(--ox-text-muted); font: 500 11.5px/1.35 var(--ox-mono);
-    }
-    .quality-anatomy__equation span { position: relative; min-width: 0; padding-inline-end: 10px; overflow-wrap: anywhere; }
-    .quality-anatomy__equation span + span::before { content: "\2192"; position: absolute; inset-inline-start: -11px; color: var(--ox-text-muted); }
-    .quality-anatomy__calculation {
-      padding: 9px 0; border-top: 1px solid var(--ox-border); color: var(--ox-text);
-      font: 600 12px/1.45 var(--ox-mono); overflow-wrap: anywhere; font-variant-numeric: tabular-nums;
-    }
-    .quality-anatomy__calculation span { margin-inline-end: 8px; color: var(--ox-text-muted); font-family: var(--ox-font); font-weight: 500; }
-    .quality-anatomy__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--ox-border); }
-    .quality-anatomy__stage { min-width: 0; padding: 11px 10px 12px 0; }
-    .quality-anatomy__stage:nth-child(even) { border-inline-start: 1px solid var(--ox-border); padding-inline-start: 12px; }
-    .quality-anatomy__stage:nth-child(n + 3) { border-top: 1px solid var(--ox-border); }
-    .quality-anatomy__stage-label { color: var(--ox-text-muted); font: 600 10.5px/1.2 var(--ox-mono); letter-spacing: .1em; text-transform: uppercase; }
-    .quality-anatomy__stage-value { margin-top: 6px; color: var(--ox-text); font-size: 13px; font-weight: 650; line-height: 1.35; }
-    .quality-anatomy__stage-detail {
-      display: -webkit-box; margin-top: 3px; overflow: hidden; color: var(--ox-text-muted);
-      font-size: 12px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
-    }
-    .quality-anatomy__note { margin: 0; padding: 10px 0 11px; border-top: 1px solid var(--ox-border); color: var(--ox-text-muted); font-size: 12px; line-height: 1.45; }
+    .receipts-label { margin: 0; font-size: 12.5px; font-weight: 650; color: var(--ox-text-muted); }
 
     /* Q4: the artifact itself, read in one well with its tabs above. */
     .review-evidence { display: flex; flex-direction: column; min-width: 0; }
@@ -169,7 +159,7 @@
     .artifact-preview__body img, .artifact-preview__body video { display: block; max-width: 100%; max-height: 220px; margin: 0 auto; border-radius: 8px; }
     .artifact-preview.is-expanded .artifact-preview__body img,
     .artifact-preview.is-expanded .artifact-preview__body video { max-height: 600px; }
-    .artifact-preview__body pre { margin: 0; font: 12px/1.55 var(--ox-mono); white-space: pre-wrap; color: var(--ox-text); }
+    .artifact-preview__body pre { margin: 0; font: 12px/1.55 var(--ox-font-code); white-space: pre-wrap; color: var(--ox-text); }
     .diff-preview span { display: block; }
     .diff-preview .is-add { color: var(--ox-teal); }
     .diff-preview .is-remove { color: var(--ox-danger); }
@@ -183,13 +173,6 @@
       color: var(--ox-text-2); font-family: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
     }
     .evidence-readout { display: flex; flex-direction: column; gap: 10px; }
-    .evidence-verdict { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
-    .evidence-verdict__label { font-size: 13.5px; font-weight: 650; color: var(--ox-text); }
-    .evidence-verdict__score { font: 500 12px/1 var(--ox-mono); color: var(--ox-text-muted); }
-    .evidence-verdict__detail { flex-basis: 100%; margin: 0; font-size: 13px; line-height: 1.5; color: var(--ox-text-muted); }
-    .evidence-meter { position: relative; height: 6px; border-radius: 999px; background: var(--ox-hover, rgba(127, 127, 127, .12)); }
-    .evidence-meter__fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--ox-text-muted); }
-    .evidence-meter__threshold { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--ox-text); }
     .evidence-facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 13px; }
     .evidence-facts dt { color: var(--ox-text-muted); }
     .evidence-facts dd { margin: 0; color: var(--ox-text); overflow-wrap: anywhere; }
@@ -197,16 +180,15 @@
     .version-history { display: flex; flex-direction: column; }
     .version-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 40px; border-top: 1px solid var(--ox-border); font-size: 13px; color: var(--ox-text-2); }
     .version-row:first-child { border-top: 0; }
-    .version-row__number { font: 600 12px/1 var(--ox-mono); color: var(--ox-text); }
+    .version-row__number { font-size: 13px; font-weight: 650; color: var(--ox-text); }
     .version-row__state { font-size: 12px; color: var(--ox-text-muted); }
 
     /* A held approval reads as one line, not a banner. */
-    .verification-block { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); }
-    .verification-block strong { color: var(--ox-warning); font-weight: 650; margin-right: 6px; }
     .decision-row { display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.45; }
     .decision-row strong { color: var(--ox-text); font-weight: 650; }
     .decision-row span { color: var(--ox-text-muted); }
 
+    .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
     .composer { display: flex; flex-direction: column; gap: 8px; }
     .composer label { font-size: 13px; font-weight: 650; color: var(--ox-text); }
     .composer textarea {
@@ -247,28 +229,31 @@
     .empty-copy { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ox-text-muted); }
 
     @media (max-width: 760px) {
-      .who2 b { display: none; }
+      .who2 b { max-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
     }
     @media (max-width: 520px) {
       .hd { flex-wrap: wrap; row-gap: 4px; padding: 12px 14px 0; }
       .hd .src { flex-basis: calc(100% - 28px); order: 2; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
       .bd { padding: 10px 14px 14px; }
       .review-question { font-size: 18px; }
-      .quality-anatomy__flow { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 4px; }
-      .quality-anatomy__equation { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 6px; }
-      .quality-anatomy__grid { grid-template-columns: 1fr; }
-      .quality-anatomy__stage:nth-child(even) { border-inline-start: 0; padding-inline-start: 0; }
-      .quality-anatomy__stage:nth-child(n + 2) { border-top: 1px solid var(--ox-border); }
-      .hd-link span { display: none; }
-      /* Icon only: a 44px square hit area whose margins keep the 24px footprint. */
-      .hd-link { min-width: 44px; justify-content: center; margin-inline: -10px; }
+      .qv { padding: 12px 12px 4px; }
+      .qv-more { margin: 0 -12px; padding: 0 12px; }
+      .qv-facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
+      .qv-facts dd + dt { margin-top: 6px; }
+      .who2 b { display: none; }
+      /* Phone: the link is its icon in a 44px target. */
+      .hd .ox-open span { display: none; }
+      .hd .ox-open { min-width: 44px; justify-content: center; }
     }
     @media (max-width: 420px) {
-      .ft-btn { padding: 0 8px; gap: 4px; font-size: 12px; }
+      /* The kit gives its actions 62% of the footer: both controls fit at 375 px. */
+      .ft-btn { padding: 0 6px; gap: 4px; font-size: 12px; letter-spacing: -.01em; }
+      .ft-btn--primary { padding: 0 6px; }
+      .ft-btn--text[disabled] { padding: 0 4px; }
     }
     @media (prefers-reduced-motion: reduce) {
       .stage.is-resolving { animation: none; }
-      .artifact-preview__body, .quality-anatomy__chevron { transition: none; }
+      .artifact-preview__body, .qv-more__toggle .ox-icon { transition: none; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
@@ -632,21 +617,6 @@
         return normalizeRatio(firstNumber([record.score, record.value, record.rating]));
       }
 
-      function topEvidenceLabels(items, fallback, includeScores) {
-        const seen = new Set();
-        const labels = [];
-        items.forEach(function (item) {
-          if (labels.length >= 2) return;
-          const label = evidenceRecordLabel(item, '');
-          const key = label.toLowerCase();
-          if (!label || seen.has(key)) return;
-          seen.add(key);
-          const score = includeScores ? evidenceRecordScore(item) : null;
-          labels.push(label + (score === null ? '' : ' ' + Math.round(score * 100)));
-        });
-        return labels.length ? labels.join(' · ') : fallback;
-      }
-
       function hasAllowedHttpsOrigin(value, allowedOrigins) {
         try {
           const url = new URL(value);
@@ -825,8 +795,19 @@
           not_scored: qualityState === 'skipped' ? 'Verification not required' : 'Not scored yet',
         };
         const metadata = asRecord(artifact.metadata);
+        // purpose.reviewAction (optional): sign a deliverable, resolve a blocker, inspect a record.
+        // Only `sign` ever offers Approve; a blocker is resolved in OrgX, a record is read.
+        const reviewAction = firstString([purpose.reviewAction, purpose.review_action]).toLowerCase();
+        const mode = reviewAction === 'resolve' || reviewAction === 'inspect' || reviewAction === 'sign'
+          ? reviewAction
+          : firstString([purpose.kind]).toLowerCase() === 'blocker' ? 'resolve' : '';
+        const rulingNote = firstString([ruling.note]);
 
         return {
+          mode: mode,
+          rulingNote: rulingNote,
+          findings: Array.isArray(quality.findings) ? quality.findings.map(asRecord).filter(function (f) { return firstString([f.label]); }) : [],
+          barSource: firstString([thresholdSource.kind]),
           state: state,
           label: labels[state],
           detail: firstString([quality.reason, asRecord(contract.workflow).reason]) ||
@@ -843,6 +824,7 @@
             hasCanonicalActionContract &&
             canReviewValue === true &&
             reviewRequiredValue === true &&
+            mode !== 'resolve' && mode !== 'inspect' &&
             !['accepted', 'changes_requested', 'rejected'].includes(rulingState),
           reviewControlsLabel: ['accepted', 'changes_requested', 'rejected'].includes(rulingState)
             ? 'Ruling recorded'
@@ -952,8 +934,13 @@
           profileLabel: profileName
             ? profileName + (profileVersion === null ? '' : ' v' + profileVersion) + (profileScope ? ' · ' + profileScope : '')
             : 'Quality policy source unavailable',
+          // Legacy payloads: a blocker artifact is resolved, never signed.
+          mode: /blocker/i.test(artifact.artifact_type || '') ? 'resolve' : 'sign',
+          rulingNote: firstString([review.note, review.notes, review.comment]),
+          findings: [],
+          barSource: profileName ? 'eval_profile' : '',
           blocksApproval: blocksApproval,
-          canReview: true,
+          canReview: !/blocker/i.test(artifact.artifact_type || ''),
           reviewControlsLabel: '',
           reviewControlsDetail: '',
           reviewer: resolveReviewerSignal(review),
@@ -1051,41 +1038,122 @@
         );
       }
 
-      function renderQualityGauge(evidence) {
-        if (evidence.threshold === null) return '';
-        const scoreIsCurrent = evidence.state === 'cleared' || evidence.state === 'held';
-        const score = scoreIsCurrent && evidence.score !== null
-          ? Math.round(evidence.score * 100)
-          : null;
-        const previousScore = evidence.previousScore === null
-          ? null
-          : Math.round(evidence.previousScore * 100);
-        const threshold = Math.round(evidence.threshold * 100);
-        const currentLabel = score !== null
-          ? 'Current ' + score
-          : previousScore !== null
-            ? 'Prior ' + previousScore + ' · historical'
-            : evidence.state === 'pending'
-              ? 'Checking now'
-              : 'No current score';
-        const ariaParts = [
-          score === null
-            ? 'No current quality score.'
-            : 'Current quality score ' + score + ' out of 100.',
-        ];
-        if (previousScore !== null) ariaParts.push('Historical score ' + previousScore + '.');
-        ariaParts.push('Quality bar ' + threshold + '.');
+      const oxIcon = function (name, size) {
+        return window.OrgXIcons ? window.OrgXIcons.icon(name, { size: size || 16 }) : '';
+      };
+      function pct(value) {
+        return typeof value === 'number' && isFinite(value) ? Math.round(value * 100) : null;
+      }
+      function labelsOf(items, withScores, n) {
+        return items.slice(0, n || 2).map(function (item) {
+          const score = withScores ? evidenceRecordScore(item) : null;
+          return evidenceRecordLabel(item, '') + (score === null ? '' : ' ' + Math.round(score * 100));
+        }).filter(Boolean).join(', ');
+      }
+
+      // One plain sentence for where the score stands. quality.score may be null: "Not scored yet",
+      // never NaN or an empty bar.
+      function verdictFor(evidence, version) {
+        const score = pct(evidence.score);
+        const bar = pct(evidence.threshold);
+        const prior = pct(evidence.previousScore);
+        const needed = bar === null ? '' : bar + ' is needed to sign';
+        const optional = !evidence.blocksApproval;
+        switch (evidence.state) {
+          case 'cleared':
+            return { icon: 'done', title: score === null ? 'Cleared the bar' : 'Cleared · scored ' + score + (bar === null ? '' : ' of the ' + bar + ' needed'), detail: 'This version meets the quality bar.' };
+          case 'held':
+            return {
+              icon: 'needs-you',
+              title: score === null ? 'Held below the bar' : 'Held · scored ' + score + (bar === null ? '' : ' of the ' + bar + ' needed'),
+              detail: evidence.blocksApproval ? 'Approval waits until a stronger version is scored.' : 'It is below the bar; policy still lets you decide.',
+            };
+          case 'stale':
+            return { icon: 'waiting', title: prior === null ? 'Score is out of date' : 'Out of date · ' + prior + ' was for an older version', detail: 'v' + version + ' needs its own score' + (needed ? '; ' + needed : '') + '.' };
+          case 'error':
+            return { icon: 'failed', title: 'The check didn’t produce a score', detail: 'Run it again in OrgX. Older scores are history only.' };
+          case 'pending':
+            return { icon: 'active', title: 'Scoring now', detail: 'The result lands here when the check finishes.' };
+          default:
+            if (evidence.evalStatus === 'skipped') return { icon: 'done', title: 'No score needed', detail: 'This kind of artifact is not scored.' };
+            return {
+              icon: 'draft',
+              title: 'Not scored yet',
+              detail: 'Nothing has scored v' + version + ' yet' + (needed ? '; ' + needed : '') + (optional && evidence.canReview ? '. You can still decide on it.' : '.'),
+            };
+        }
+      }
+
+      // What was checked, as four plain rows: passed, failed, missing, or not run.
+      function buildChecks(anatomy, evidence) {
+        const rec = anatomy.records;
+        const scored = anatomy.evidenceIsCurrent && evidence.score !== null;
+        const findings = (evidence.findings || []).map(function (f) {
+          return { label: f.label, score: typeof f.score === 'number' ? f.score : undefined, passed: f.tone === 'danger' ? false : f.tone === 'good' ? true : undefined };
+        });
+        const criteria = rec.criteria.length ? rec.criteria : rec.supportingLayers.length ? rec.supportingLayers : findings;
+        const below = criteria.filter(function (c) { return evidenceRecordVerdict(c, evidence.threshold) === false; });
+        const checks = [];
+        if (criteria.length) {
+          checks.push(below.length
+            ? { status: 'failed', label: 'Judged against criteria', detail: below.length + ' of ' + criteria.length + ' below the bar: ' + labelsOf(below, true) }
+            : { status: 'passed', label: 'Judged against criteria', detail: 'All ' + criteria.length + ' at or above the bar' + (labelsOf(criteria, true, 3) ? ': ' + labelsOf(criteria, true, 3) : '') });
+        } else {
+          checks.push(scored
+            ? { status: 'missing', label: 'Judged against criteria', detail: 'No criteria were recorded, so OrgX can’t show what set the score.' }
+            : { status: 'not-run', label: 'Judged against criteria', detail: 'No judge has scored this version yet.' });
+        }
+        const failedChecks = rec.measured.filter(function (m) { return evidenceRecordVerdict(m, null) === false; });
+        const passedChecks = rec.measured.filter(function (m) { return evidenceRecordVerdict(m, null) === true; });
+        checks.push(!rec.measured.length
+          ? { status: 'not-run', label: 'Automatic checks', detail: 'None ran on this version.' }
+          : failedChecks.length
+            ? { status: 'failed', label: 'Automatic checks', detail: failedChecks.length + ' of ' + rec.measured.length + ' failed: ' + labelsOf(failedChecks, false) }
+            : { status: 'passed', label: 'Automatic checks', detail: passedChecks.length + ' of ' + rec.measured.length + ' passed' + (passedChecks.length < rec.measured.length ? ', the rest unreported' : '') });
+        checks.push(anatomy.observedCount
+          ? { status: 'passed', label: 'Looked at the output', detail: anatomy.observedCount + ' inspection' + (anatomy.observedCount === 1 ? '' : 's') + (labelsOf(rec.observations, false, 1) ? ': ' + labelsOf(rec.observations, false, 1) : '') }
+          : { status: 'not-run', label: 'Looked at the output', detail: 'Nobody inspected the rendered output.' });
+        const refs = anatomy.inputCount - 1;
+        checks.push(refs > 0
+          ? { status: 'passed', label: 'Sources linked', detail: refs + ' linked' + (labelsOf(rec.relationships || [], false) ? ': ' + labelsOf(rec.relationships || [], false) : '') }
+          : { status: 'not-run', label: 'Sources linked', detail: 'No briefs or references were linked.' });
+        return checks;
+      }
+
+      const CHECK_ICON = { passed: 'done', failed: 'failed', missing: 'needs-you', 'not-run': 'draft' };
+      const CHECK_WORD = { passed: 'Passed', failed: 'Failed', missing: 'Missing', 'not-run': 'Not run' };
+
+      function barSourceText(evidence, bar) {
+        if (evidence.barSource === 'system_default' || evidence.barSource === 'contract_default') return 'The OrgX default bar' + (bar === null ? '' : ' (' + bar + ')');
+        if (evidence.profileLabel && evidence.profileLabel !== 'Quality policy source unavailable') return evidence.profileLabel.replace(/ · (\w+)$/, ' ($1 policy)');
+        return bar === null ? 'No bar is set' : 'A bar of ' + bar;
+      }
+
+      function renderQualityGauge(evidence, artifact, reviewContract) {
+        const anatomy = buildQualityAnatomy(artifact, evidence, reviewContract);
+        const version = artifact.version || 1;
+        const verdict = verdictFor(evidence, version);
+        const score = anatomy.evidenceIsCurrent ? pct(evidence.score) : null;
+        const prior = pct(evidence.previousScore);
+        const bar = pct(evidence.threshold);
+        const shownScore = score !== null ? score : evidence.state === 'stale' ? prior : null;
+        const meter = bar !== null && shownScore !== null
+          ? '<div class="qv-meter" role="img" aria-label="' + escapeAttribute((score !== null ? 'Scored ' : 'Older version scored ') + shownScore + ' out of 100; ' + bar + ' needed.') + '">' +
+            '<div class="qv-bar"><span class="qv-fill' + (score === null ? ' is-history' : '') + '" style="width:' + shownScore + '%"></span>' +
+            '<span class="qv-mark" style="left:' + bar + '%" title="' + bar + ' needed"></span></div>' +
+            '<div class="qv-scale"><span>' + (score === null ? 'Older version' : 'Scored') + ' <b>' + shownScore + '</b></span><span><b>' + bar + '</b> needed</span></div></div>'
+          : '';
+        const checks = buildChecks(anatomy, evidence).map(function (c) {
+          return '<li class="qv-check" data-status="' + c.status + '">' + oxIcon(CHECK_ICON[c.status], 18) +
+            '<span><b>' + escapeHtml(c.label) + '</b><span>' + escapeHtml(c.detail) + '</span></span>' +
+            '<span class="qv-state">' + CHECK_WORD[c.status] + '</span></li>';
+        }).join('');
         return (
-          '<section class="quality-gauge" data-quality-gauge data-quality-state="' + escapeAttribute(evidence.state) + '" role="img" aria-label="' + escapeAttribute(ariaParts.join(' ')) + '">' +
-          '<div class="quality-gauge__track">' +
-          (score === null ? '' : '<span class="quality-gauge__fill" style="width:' + score + '%"></span>') +
-          (previousScore === null ? '' : '<span class="quality-gauge__historical" style="left:calc(' + previousScore + '% - 1px)" title="Historical score ' + previousScore + '"></span>') +
-          '<span class="quality-gauge__threshold" style="left:calc(' + threshold + '% - 1px)" title="Quality bar ' + threshold + '"></span>' +
-          '</div>' +
-          '<div class="quality-gauge__legend"><span>' + escapeHtml(currentLabel) + '</span>' +
-          (score !== null && previousScore !== null ? '<span>Prior ' + previousScore + '</span>' : '') +
-          '<span>Quality bar ' + threshold + '</span></div>' +
-          '<div class="quality-gauge__profile" title="' + escapeAttribute(evidence.profileLabel) + '">' + escapeHtml(evidence.profileLabel) + '</div>' +
+          '<section class="qv" data-quality-gauge data-quality-state="' + escapeAttribute(evidence.state) + '" aria-label="Quality check">' +
+          '<div class="qv-verdict">' + oxIcon(verdict.icon, 20) + '<div><p class="qv-title">' + escapeHtml(verdict.title) + '</p><p class="qv-detail">' + escapeHtml(verdict.detail) + '</p></div></div>' +
+          meter +
+          '<p class="qv-checks-label">What was checked</p><ul class="qv-checks">' + checks + '</ul>' +
+          renderQualityAnatomy(artifact, evidence, reviewContract, anatomy) +
           '</section>'
         );
       }
@@ -1179,20 +1247,6 @@
             evalData.observed_count,
           ])) || 0
         );
-        const evidenceRefs = nonNegativeInteger(firstNumber([
-          contractCounts.evidenceRefs,
-          contractCounts.evidence_refs,
-          snapshotInput.evidenceRefs,
-          snapshotInput.evidence_refs,
-          evalData.evidenceRefs,
-          evalData.evidence_refs,
-        ]));
-        const version = nonNegativeInteger(firstNumber([
-          snapshotInput.artifactVersion,
-          snapshotInput.artifact_version,
-          contractLineage.version,
-          artifact.version,
-        ])) || 1;
         const criteriaByPriority = criteria.slice().sort(function (left, right) {
           const leftVerdict = evidenceRecordVerdict(left, evidence.threshold);
           const rightVerdict = evidenceRecordVerdict(right, evidence.threshold);
@@ -1203,45 +1257,11 @@
           if (leftScore === null || rightScore === null) return 0;
           return leftScore - rightScore;
         });
-        const criteriaHeld = criteria.filter(function (item) {
-          return evidenceRecordVerdict(item, evidence.threshold) === false;
-        }).length;
-        let measuredClear = 0;
-        let measuredHeld = 0;
-        let measuredUnknown = 0;
-        measured.forEach(function (item) {
-          const verdict = evidenceRecordVerdict(item, null);
-          if (verdict === true) measuredClear += 1;
-          else if (verdict === false) measuredHeld += 1;
-          else measuredUnknown += 1;
-        });
         const inputCount = 1 + linkedReferenceCount;
         const evidenceIsCurrent = evidence.state === 'cleared' || evidence.state === 'held';
         const scoreLabel = !evidenceIsCurrent || evidence.score === null
           ? 'No current score'
           : Math.round(evidence.score * 100);
-        const thresholdLabel = evidence.threshold === null ? 'No bar' : Math.round(evidence.threshold * 100);
-        const decisionLabel = evidence.state === 'cleared'
-          ? 'cleared'
-          : evidence.state === 'held'
-            ? 'held'
-            : evidence.state.replace(/_/g, ' ');
-        const summaryTitle = evidence.score !== null && evidence.state === 'held'
-          ? 'How ' + Math.round(evidence.score * 100) + ' became held'
-          : evidence.score !== null && evidence.state === 'cleared'
-            ? 'How ' + Math.round(evidence.score * 100) + ' cleared the bar'
-            : evidence.state === 'pending'
-              ? 'How this check will decide'
-              : evidence.state === 'stale'
-                ? 'Why this evidence is stale'
-                : evidence.state === 'error'
-                  ? 'Why verification has no current score'
-                  : 'What will be evaluated';
-        const measuredValue = measured.length === 0
-          ? 'No measured checks'
-          : measured.length + ' checks · ' + measuredClear + ' clear' +
-            (measuredHeld ? ' · ' + measuredHeld + ' held' : '') +
-            (measuredUnknown ? ' · ' + measuredUnknown + ' unreported' : '');
         const aggregation = asRecord(snapshot.aggregation);
         const aggregationMethod = firstString([aggregation.method]);
         const criterionScores = criteria.map(evidenceRecordScore);
@@ -1271,126 +1291,61 @@
             supportingLayers: judgedCount === 0 ? supportingLayers : [],
             measured: measured,
             observations: observations,
+            relationships: relationships,
           },
           inputCount: inputCount,
           judgedCount: judgedCount,
           measuredCount: measured.length,
           observedCount: observedCount,
           evidenceIsCurrent: evidenceIsCurrent,
-          summaryTitle: summaryTitle,
           calculation: calculation,
           hasScoredCriteria: criteria.length > 0,
-          equation: [
-            'v' + version + ' + ' + linkedReferenceCount + ' refs',
-            judgedCount + ' criteria',
-            scoreLabel + ' vs ' + thresholdLabel,
-            decisionLabel,
-          ],
-          stages: [
-            {
-              lens: 'inputs',
-              label: 'Inputs',
-              value: '1 artifact · ' + linkedReferenceCount + ' linked ref' + (linkedReferenceCount === 1 ? '' : 's'),
-              detail: 'Current v' + version + (evidenceRefs === null ? '' : ' · ' + evidenceRefs + ' evidence record' + (evidenceRefs === 1 ? '' : 's')) + ' · ' + topEvidenceLabels(relationships, 'No linked inputs returned', false),
-            },
-            {
-              lens: 'judged',
-              label: 'Judged',
-              value: judgedCount === 0
-                ? supportingLayers.length
-                  ? 'No scored inputs · ' + supportingLayers.length + ' supporting layer' + (supportingLayers.length === 1 ? '' : 's')
-                  : 'No judged criteria'
-                : judgedCount + ' criteria' + (criteriaHeld ? ' · ' + criteriaHeld + ' below bar' : ''),
-              detail: judgedCount
-                ? topEvidenceLabels(criteriaByPriority, 'Criterion labels not returned', true)
-                : supportingLayers.length
-                  ? topEvidenceLabels(supportingLayers, 'Supporting layers returned', true) + ' · not score formula'
-                  : 'No qualitative judgments returned',
-            },
-            {
-              lens: 'measured',
-              label: 'Measured',
-              value: measuredValue,
-              detail: topEvidenceLabels(measured, 'No deterministic check records returned', false),
-            },
-            {
-              lens: 'observed',
-              label: 'Observed',
-              value: observedCount === 0
-                ? 'No direct observations'
-                : observedCount + ' inspection' + (observedCount === 1 ? '' : 's'),
-              detail: topEvidenceLabels(observations, 'No direct observation records returned', false),
-            },
-          ],
         };
       }
 
-      function renderQualityAnatomy(artifact, evidence, reviewContract) {
-        const anatomy = buildQualityAnatomy(artifact, evidence, reviewContract);
-        const expanded = new URLSearchParams(window.location.search).get('anatomy') === 'expanded';
-        const summaryLabel = anatomy.summaryTitle + ': ' + anatomy.inputCount + ' inputs, ' + anatomy.judgedCount + ' judged, ' + anatomy.measuredCount + ' measured, and ' + anatomy.observedCount + ' observed.' + (anatomy.evidenceIsCurrent ? '' : ' Evidence is context only.');
-        const flow = [
-          ['Inputs', anatomy.inputCount],
-          ['Judged', anatomy.judgedCount],
-          ['Measured', anatomy.measuredCount],
-          ['Observed', anatomy.observedCount],
-        ].map(function (item) {
-          return '<span class="quality-anatomy__flow-step"><span>' + item[0] + '</span><b>' + item[1] + '</b></span>';
-        }).join('');
-        const stages = anatomy.stages.map(function (stage) {
-          return (
-            '<div class="quality-anatomy__stage" data-lens="' + stage.lens + '" role="listitem">' +
-            '<div class="quality-anatomy__stage-label">' + escapeHtml(stage.label) + '</div>' +
-            '<div class="quality-anatomy__stage-value">' + escapeHtml(stage.value) + '</div>' +
-            '<div class="quality-anatomy__stage-detail">' + escapeHtml(stage.detail) + '</div>' +
-            '</div>'
-          );
-        }).join('');
-        const equation = anatomy.equation.map(function (step) {
-          return '<span>' + escapeHtml(String(step)) + '</span>';
-        }).join('');
-        const note = anatomy.evidenceIsCurrent
-          ? 'Judged criteria produce the quality score. Measured checks and observations support confidence; neither substitutes for the human ruling or later outcome receipts.'
-          : 'This quality evidence is context only and cannot clear the current version. A fresh judgment is required; later outcome receipts remain separate.';
+      // Scoring details, on demand: every criterion and check as a receipt row, how the score is
+      // made, and where the bar comes from. Opens in place (.ox-collapse); nothing jumps.
+      let anatomyOpen = new URLSearchParams(window.location.search).get('anatomy') === 'expanded';
+      function renderQualityAnatomy(artifact, evidence, reviewContract, built) {
+        const anatomy = built || buildQualityAnatomy(artifact, evidence, reviewContract);
+        const bar = pct(evidence.threshold);
+        const calc = anatomy.calculation === 'Recorded score · formula unavailable'
+          ? (anatomy.hasScoredCriteria ? 'One recorded score; the breakdown wasn’t saved.' : 'One overall score; no breakdown was saved.')
+          : anatomy.calculation.indexOf('Holistic') === 0 ? 'One overall judgment: ' + anatomy.calculation.replace(/^Holistic judgment = /, '') + '.'
+          : anatomy.calculation.indexOf('×') !== -1 ? 'Weighted average: ' + anatomy.calculation.replace(/ = /, ' → ') + '.'
+          : 'Average of ' + anatomy.judgedCount + ' criteria: ' + anatomy.calculation.replace(/^\(/, '').replace(/\) ÷ \d+ = /, ' → ') + '.';
+        const receipts = renderReceipts(artifact, evidence, reviewContract);
         return (
-          '<details class="quality-anatomy" data-quality-anatomy' + (expanded ? ' open' : '') + '>' +
-          '<summary aria-label="' + escapeAttribute(summaryLabel) + '">' +
-          '<span class="quality-anatomy__title">' + escapeHtml(anatomy.summaryTitle) + (anatomy.evidenceIsCurrent ? '' : '<span class="quality-anatomy__freshness">Context only</span>') + '</span>' +
-          '<svg class="quality-anatomy__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>' +
-          '<span class="quality-anatomy__flow" aria-hidden="true">' + flow + '</span>' +
-          '</summary>' +
-          '<div class="quality-anatomy__equation" aria-label="Quality decision path">' + equation + '</div>' +
-          '<div class="quality-anatomy__calculation"><span>Calculation</span>' + escapeHtml(anatomy.calculation) + '</div>' +
-          '<div class="quality-anatomy__grid" role="list" aria-label="Quality evidence lenses">' + stages + '</div>' +
-          '<p class="quality-anatomy__note">' + escapeHtml(note) + '</p>' +
-          '</details>'
+          '<div class="qv-more" data-quality-anatomy>' +
+          '<button type="button" class="qv-more__toggle" data-anatomy-toggle aria-expanded="' + anatomyOpen + '" aria-controls="qv-more-body">Scoring details' + (anatomy.evidenceIsCurrent ? '' : ' · context only') + oxIcon('expand', 16) + '</button>' +
+          '<div class="ox-collapse" id="qv-more-body"><div><div class="qv-more__body">' +
+          receipts +
+          '<dl class="qv-facts">' +
+          '<dt>How the score is made</dt><dd>' + escapeHtml(anatomy.hasScoredCriteria || anatomy.calculation.indexOf('Holistic') === 0 ? calc : (evidence.score === null ? 'Nothing has been scored yet.' : 'One overall score; no breakdown was saved.')) + '</dd>' +
+          '<dt>The bar</dt><dd>' + escapeHtml(barSourceText(evidence, bar)) + '</dd>' +
+          '</dl>' +
+          '<p class="qv-note">' + escapeHtml(anatomy.evidenceIsCurrent
+            ? 'The score comes from the judged criteria. Checks and inspections add confidence; your ruling stays separate.'
+            : 'This evidence belongs to another version or failed run, so it can’t clear this one.') + '</p>' +
+          '</div></div></div>' +
+          '</div>'
         );
       }
 
       function renderEvidence(artifact, evidence) {
-        const scoreLabel = evidence.score === null ? '—' : Math.round(evidence.score * 100) + ' / 100';
-        const thresholdLabel = evidence.threshold === null ? 'Not set' : Math.round(evidence.threshold * 100) + ' / 100';
-        const scoreWidth = evidence.score === null ? 0 : Math.round(evidence.score * 100);
-        const thresholdLeft = evidence.threshold === null ? null : Math.round(evidence.threshold * 100);
+        const scoreLabel = evidence.score === null ? '' : 'Scored ' + Math.round(evidence.score * 100);
+        const thresholdLabel = evidence.threshold === null ? 'Not set' : Math.round(evidence.threshold * 100) + ' needed · ' + barSourceText(evidence, Math.round(evidence.threshold * 100));
         const producer = artifact.author || {};
         const source = evidence.sourceUrl && isAllowedArtifactLinkUrl(evidence.sourceUrl)
           ? '<a href="' + escapeAttribute(evidence.sourceUrl) + '" data-source-link>' + escapeHtml(evidence.sourceUrl.replace(/^https?:\/\//i, '').slice(0, 52)) + (evidence.sourceUrl.length > 60 ? '…' : '') + '</a>'
           : 'Attached artifact record';
         return (
           '<div class="evidence-readout">' +
-          '<div class="evidence-verdict">' +
-          '<span class="evidence-verdict__label">' + escapeHtml(evidence.label) + '</span>' +
-          '<span class="evidence-verdict__score">' + scoreLabel + '</span>' +
-          '<p class="evidence-verdict__detail">' + escapeHtml(evidence.detail) + '</p>' +
-          '</div>' +
-          '<div class="evidence-meter" role="meter" aria-label="Artifact quality score" aria-valuemin="0" aria-valuemax="100"' + (evidence.score === null ? '' : ' aria-valuenow="' + scoreWidth + '"') + '>' +
-          '<span class="evidence-meter__fill" style="width:' + scoreWidth + '%"></span>' +
-          (thresholdLeft === null ? '' : '<span class="evidence-meter__threshold" style="left:' + thresholdLeft + '%" title="Quality threshold"></span>') +
-          '</div>' +
           '<dl class="evidence-facts">' +
-          '<dt>Quality bar</dt><dd>' + thresholdLabel + ' · ' + escapeHtml(evidence.evalStatus.replace(/_/g, ' ')) + '</dd>' +
+          '<dt>Quality</dt><dd>' + escapeHtml(evidence.score === null ? evidence.label : scoreLabel + ' · ' + evidence.label) + '</dd>' +
+          '<dt>Bar</dt><dd>' + escapeHtml(thresholdLabel) + '</dd>' +
           '<dt>Produced by</dt><dd>' + escapeHtml(producer.name || 'OrgX agent') + (producer.role ? ' · ' + escapeHtml(producer.role) : '') + '</dd>' +
-          '<dt>Manual review</dt><dd>' + escapeHtml(evidence.reviewer) + ' · ' + escapeHtml(String(evidence.reviewStatus || 'in review').replace(/_/g, ' ')) + '</dd>' +
+          '<dt>Review</dt><dd>' + escapeHtml(evidence.reviewer) + '</dd>' +
           '<dt>Source</dt><dd>' + source + '</dd>' +
           '</dl>' +
           '</div>'
@@ -1436,7 +1391,7 @@
           rows.push({
             status: receiptStatus(verdict),
             label: evidenceRecordLabel(item, 'Criterion'),
-            detail: 'Judged' + (verdict === false && bar !== null ? ' · below the ' + bar + ' bar' : ''),
+            detail: 'Criterion' + (verdict === false && bar !== null ? ' · below the ' + bar + ' bar' : ''),
             value: score === null ? '' : String(Math.round(score * 100)),
           });
         });
@@ -1453,7 +1408,7 @@
           rows.push({
             status: receiptStatus(evidenceRecordVerdict(item, null)),
             label: evidenceRecordLabel(item, 'Check'),
-            detail: 'Measured',
+            detail: 'Automatic check',
             value: '',
           });
         });
@@ -1462,7 +1417,7 @@
           rows.push({
             status: verdict === null ? 'unverified' : receiptStatus(verdict),
             label: evidenceRecordLabel(item, 'Observation'),
-            detail: 'Observed · no score',
+            detail: 'Inspection · no score',
             value: '',
           });
         });
@@ -1471,17 +1426,13 @@
         rows.sort(function (left, right) { return rank[left.status] - rank[right.status]; });
         // Quiet when fine: met rows collapse into a count; the rest show, five at most.
         const open = rows.filter(function (row) { return row.status !== 'met'; });
-        const shown = open.slice(0, 5);
-        const metCount = rows.length - open.length;
-        const restOther = open.length - shown.length;
-        const moreLine = !open.length
-          ? 'All ' + rows.length + ' criteria and checks met.'
-          : metCount || restOther
-            ? [metCount ? metCount + ' met' : '', restOther ? restOther + ' more open' : ''].filter(Boolean).join(' and ') + ' in the full receipt.'
-            : '';
+        // Inside the details every row shows, failures first.
+        const shown = open.concat(rows.filter(function (row) { return row.status === 'met'; })).slice(0, 12);
+        const moreLine = rows.length > shown.length ? (rows.length - shown.length) + ' more in OrgX.' : '';
         if (!shown.length) return '<p class="receipts__more">' + escapeHtml(moreLine) + '</p>';
         return (
-          '<div class="receipts" role="list" aria-label=""' + escapeAttribute(anatomy.evidenceIsCurrent ? 'Criteria and checks' : 'Criteria and checks, context only') + '">' +
+          '<p class="receipts-label">Every criterion and check</p>' +
+          '<div class="receipts" role="list" aria-label="' + escapeAttribute(anatomy.evidenceIsCurrent ? 'Criteria and checks' : 'Criteria and checks, context only') + '">' +
           shown.map(function (row) {
             return '<ox-receipt-row status="' + row.status + '" label="' + escapeAttribute(row.label) + '" detail="' + escapeAttribute(row.detail + (anatomy.evidenceIsCurrent ? '' : ' · context only')) + '"' + (row.value ? ' value="' + escapeAttribute(row.value) + '"' : '') + '></ox-receipt-row>';
           }).join('') +
@@ -1503,7 +1454,8 @@
         const approvalDisabled = Boolean(evidence && evidence.blocksApproval);
         return (
           (approvalDisabled
-            ? '<p class="verification-block" id="verification-block"><strong>Approval is held by policy</strong>' + escapeHtml(evidence.detail) + '</p>'
+            // The verdict above says it; this line names it for the disabled Approve.
+            ? '<p class="verification-block sr-only" id="verification-block">Approval is held by policy. ' + escapeHtml(evidence.detail) + '</p>'
             : '') +
           '<div class="composer" id="artifact-change-composer" data-composer hidden>' +
           '<label for="composer-input">What needs to change?</label>' +
@@ -1536,17 +1488,20 @@
         return window.OrgXLinks.artifact(artifact.id);
       }
 
-      function renderHeader(artifact, tone, form) {
+      const KIND_LABEL = { resolve: 'Blocker', inspect: 'Record', sign: 'Artifact' };
+      function renderHeader(artifact, tone, form, mode) {
         const deepLink = artifact.id ? buildArtifactLink(artifact) : null;
         const status = String(artifact.status || 'in_review').replace(/_/g, ' ');
         return (
-          '<div class="hd">' +
-          '<ox-glyph kind="artifact"' + (tone ? ' tone="' + tone + '"' : '') + '></ox-glyph>' +
-          '<span class="kind">Artifact</span>' +
-          '<span class="src" title="' + escapeAttribute(humanizeCodes(artifact.name || '')) + '"><b>' + escapeHtml(humanizeCodes(artifact.name || 'Artifact')) + '</b> · v' + escapeHtml(String(artifact.version || 1)) + ' · ' + escapeHtml(status) + '</span>' +
+          '<div class="hd"' + (tone ? ' data-tone="' + tone + '"' : '') + '>' +
+          oxIcon(mode === 'resolve' ? 'blocked' : 'artifact', 18) +
+          '<span class="kind">' + (KIND_LABEL[mode] || 'Artifact') + '</span>' +
+          '<span class="src" title="' + escapeAttribute(humanizeCodes(artifact.name || '')) + '"><b>' + escapeHtml(humanizeCodes(artifact.name || 'Artifact')) + '</b>' +
+          // The version once: "Launch narrative — v4" is not followed by "· v4".
+          (new RegExp('\\bv' + (artifact.version || 1) + '$').test(String(artifact.name || '')) ? '' : ' · v' + escapeHtml(String(artifact.version || 1))) + ' · ' + escapeHtml(status) + '</span>' +
           '<span class="sp"></span>' +
-          (deepLink ? '<a class="hd-link" data-deeplink href="' + escapeAttribute(deepLink) + '" aria-label="Open in OrgX"><span>Open in OrgX</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg></a>' : '') +
           renderAuthor(artifact, form) +
+          (deepLink ? '<a class="ox-open" data-deeplink href="' + escapeAttribute(deepLink) + '" aria-label="Open in OrgX"><span>Open in OrgX</span></a>' : '') +
           '</div>'
         );
       }
@@ -1596,7 +1551,7 @@
         }
         const frames = {
           decide: held
-            ? { variant: 'confirms-in-orgx', state: 'draft', heading: 'Approval held', detail: 'evidence is below the bar' }
+            ? { variant: 'confirms-in-orgx', state: 'draft', heading: 'Held', detail: '' }
             : { variant: 'finishes-here', state: 'needs-you', heading: 'Finishes here', detail: 'recorded in OrgX' },
           compose: { variant: 'finishes-here', state: 'needs-you', heading: 'Request changes', detail: 'the author is notified' },
           sending: footerAction === 'changes'
@@ -1817,7 +1772,7 @@
         if (artifact && artifact.__error) {
           stage.innerHTML = (
             '<article class="wcard ox-surface" data-edge="red">' +
-            '<div class="hd"><ox-glyph kind="artifact" tone="red"></ox-glyph><span class="kind">Artifact</span></div>' +
+            '<div class="hd" data-tone="red">' + oxIcon('artifact', 18) + '<span class="kind">Artifact</span></div>' +
             '<div class="bd"><h2 class="review-question">Evidence disconnected</h2>' +
             '<p class="empty-copy">' + escapeHtml(artifact.__error) + ' Restore the evidence before signing off.</p></div>' +
             '<ox-footer variant="reads" state="failed" heading="Couldn’t load the evidence" detail="no action was taken" action-label="Retry evidence" data-retry-evidence></ox-footer>' +
@@ -1832,7 +1787,7 @@
         if (!artifact || !artifact.id) {
           stage.innerHTML = (
             '<article class="wcard ox-surface" data-edge="teal">' +
-            '<div class="hd"><ox-glyph kind="artifact" tone="teal"></ox-glyph><span class="kind">Artifact review</span></div>' +
+            '<div class="hd" data-tone="teal">' + oxIcon('artifact', 18) + '<span class="kind">Artifact review</span></div>' +
             '<div class="bd"><h2 class="review-question">Inbox clear</h2>' +
             '<p class="empty-copy">No artifacts waiting for review. Nothing to sign off on right now.</p></div>' +
             '<ox-footer variant="reads" state="caught-up" heading="Nothing waits on you" detail="no artifacts in review"></ox-footer>' +
@@ -1858,7 +1813,7 @@
           const approved = artifact.status === 'approved';
           stage.innerHTML = (
             '<article class="wcard ox-surface" data-edge="teal">' +
-            renderHeader(artifact, 'teal', 'proactive') +
+            renderHeader(artifact, 'teal', 'proactive', 'sign') +
             '<div class="bd">' +
             '<h2 class="review-question">' + (approved ? 'Approval recorded' : 'Revision requested') + '</h2>' +
             '<p class="review-summary">' + (approved ? 'Signed off. Execution can continue from this version.' : 'Guidance filed. The author owns the next revision.') + '</p>' +
@@ -1871,38 +1826,62 @@
           return;
         }
 
-        const canReview = evidence.canReview !== false;
+        // What the reviewer is asked to do: sign (Approve / Request changes), resolve a blocker
+        // in OrgX (never "signature" or Approve), or inspect a record (read-only).
+        const mode = evidence.mode === 'resolve' || evidence.mode === 'inspect' ? evidence.mode : 'sign';
+        const canReview = mode === 'sign' && evidence.canReview !== false;
         const held = canReview && evidence.blocksApproval;
-        const tone = rulingRecorded ? 'teal' : !canReview ? '' : held ? 'amber' : 'amber';
+        const tone = rulingRecorded ? 'teal' : mode === 'resolve' ? 'red' : !canReview ? '' : 'amber';
         const chip = rulingRecorded
-          ? '<ox-state-chip state="confirmed" label="Human ruling recorded"></ox-state-chip>'
-          : !canReview
-            ? '<ox-state-chip state="view_only"></ox-state-chip>'
-            : held
-              ? '<ox-state-chip state="stale" label="Verification held"></ox-state-chip>'
-              : '<ox-state-chip state="needs_you" label="Needs your signature"></ox-state-chip>';
+          ? '<ox-state-chip state="confirmed" label="Ruling recorded"></ox-state-chip>'
+          : mode === 'resolve'
+            ? '<ox-state-chip state="blocked" label="Blocking work"></ox-state-chip>'
+            : mode === 'inspect'
+              ? '<ox-state-chip state="view_only" label="Read only"></ox-state-chip>'
+              : !canReview
+                ? '<ox-state-chip state="view_only"></ox-state-chip>'
+                : held
+                  ? '<ox-state-chip state="stale" label="Held below the bar"></ox-state-chip>'
+                  : '<ox-state-chip state="needs_you" label="Needs your sign-off"></ox-state-chip>';
         const footer = canReview
           ? '<ox-footer id="reviewFooter" variant="finishes-here" state="needs-you">' + renderFooterControls(evidence) + '</ox-footer>'
-          : rulingRecorded
-            ? '<ox-footer variant="confirms-in-orgx" state="confirmed" heading="Ruling recorded" detail="evidence stays separate" action-label=""></ox-footer>'
-            : '<ox-footer variant="confirms-in-orgx" state="waiting" heading="Decided in OrgX" detail="you can read the evidence here" action-label=""></ox-footer>';
+          : mode === 'resolve' && !rulingRecorded
+            ? '<ox-footer id="handoffFooter" variant="confirms-in-orgx" state="needs-you" heading="Blocking work" detail="cleared in OrgX" primary-label="Resolve in OrgX ↗"></ox-footer>'
+            : rulingRecorded
+              ? '<ox-footer variant="confirms-in-orgx" state="confirmed" heading="Ruling recorded" detail="evidence stays separate" action-label=""></ox-footer>'
+              : mode === 'inspect'
+                ? '<ox-footer id="handoffFooter" variant="reads" state="fresh" heading="A record to read" detail="nothing to sign here" action-label="Open in OrgX ↗"></ox-footer>'
+                : '<ox-footer id="handoffFooter" variant="confirms-in-orgx" state="waiting" heading="Decided in OrgX" detail="you can read the evidence here" action-label="Open in OrgX ↗"></ox-footer>';
+        const question = rulingRecorded
+          ? 'What remains unresolved after the ruling?'
+          : mode === 'resolve' ? 'What’s blocking, and what clears it?'
+          : mode === 'inspect' ? 'What does this record show?'
+          : evidence.canReview === false ? 'What does the current evidence establish?'
+          : 'Is this version good enough to sign?';
+        const consequence = rulingRecorded
+          ? 'The ruling stays recorded. Quality, visual proof and later outcomes stay separate.'
+          : mode === 'resolve'
+            ? 'Blockers are resolved, not signed: fixing or acknowledging it in OrgX lets the work continue.'
+            : mode === 'inspect'
+              ? 'This is evidence for other work. Nothing here needs your signature.'
+              : evidence.canReview === false
+                ? 'Your role can read this evidence; the ruling is recorded in OrgX.'
+                : 'Approving releases this version to the next step. Requesting changes sends your note to ' + ((artifact.author && artifact.author.name) || 'the author') + '.';
+        // A blocker with no score skips the quality check entirely: there is nothing to grade.
+        const showQuality = !(mode === 'resolve' && evidence.score === null) && !(mode === 'inspect' && evidence.state === 'not_scored');
 
         stage.innerHTML = (
           '<article class="wcard ox-surface" data-edge="' + (tone || 'mute') + '">' +
-          renderHeader(artifact, tone, 'verifying') +
+          renderHeader(artifact, tone, mode === 'resolve' ? 'asking' : 'verifying', mode) +
           '<div class="bd">' +
           '<div class="review-desk animate-in">' +
           '<div class="review-control">' +
-          '<div class="review-status">' + chip + (held ? '' : '<span class="meta">' + escapeHtml(evidence.label || '') + '</span>') + '</div>' +
-          '<h2 class="review-question">' + (rulingRecorded ? 'What remains unresolved after the ruling?' : evidence.canReview === false ? 'What does the current evidence establish?' : 'Does this evidence meet the bar to advance?') + '</h2>' +
+          '<div class="review-status">' + chip + '</div>' +
+          '<h2 class="review-question">' + escapeHtml(question) + '</h2>' +
           '<p class="review-summary">' + escapeHtml(humanizeCodes(summary)) + '</p>' +
-          renderQualityGauge(evidence) +
-          renderReceipts(artifact, evidence, activeReviewContract) +
-          '<p class="review-consequence">' + (rulingRecorded
-            ? 'The ruling stays recorded. Quality, modality proof, and later outcome receipts remain separate evidence states.'
-            : evidence.canReview === false
-              ? 'This view is evidence-only for your current authority; no ruling will be written.'
-              : 'Approval releases this version to the next execution step. A change request returns precise guidance to ' + escapeHtml((artifact.author && artifact.author.name) || 'the author') + '.') + '</p>' +
+          (evidence.rulingNote ? '<p class="ruling-note"><b>Reviewer note</b> · ' + escapeHtml(evidence.rulingNote) + '</p>' : '') +
+          (showQuality ? renderQualityGauge(evidence, artifact, activeReviewContract) : '') +
+          '<p class="review-consequence">' + escapeHtml(consequence) + '</p>' +
           '</div>' +
           '<div class="review-evidence">' +
           '<div class="artifact-preview" data-preview>' +
@@ -1915,14 +1894,13 @@
           '<div class="artifact-preview__body" data-preview-body>' + renderPreview(artifact) + '</div>' +
           '<div class="preview-toolbar">' +
           '<span class="meta">' + escapeHtml(artifact.artifact_type.replace(/[_.-]+/g, ' ')) + ' · v' + escapeHtml(String(artifact.version)) + '</span>' +
-          '<button class="preview-toggle" type="button" data-preview-toggle aria-expanded="false">Expand evidence</button>' +
+          '<button class="preview-toggle" type="button" data-preview-toggle aria-expanded="false">Show all</button>' +
           '</div></div>' +
           '<div class="viewer-panel viewer-panel--readout" id="artifact-evidence-panel" role="tabpanel" data-view-panel="evidence" hidden>' + renderEvidence(artifact, evidence) + '</div>' +
           '<div class="viewer-panel viewer-panel--readout" id="artifact-history-panel" role="tabpanel" data-view-panel="history" hidden>' + renderHistory(artifact) + '</div>' +
           '</div>' +
           '</div>' +
-          renderQualityAnatomy(artifact, evidence, activeReviewContract) +
-          renderDecisionRow(evidence) +
+          (canReview ? renderDecisionRow(evidence) : '') +
           '</div>' +
           '</div>' +
           footer +
@@ -1972,13 +1950,30 @@
           });
         }
 
+        const anatomyToggle = stage.querySelector('[data-anatomy-toggle]');
+        if (anatomyToggle) {
+          anatomyToggle.addEventListener('click', function () {
+            anatomyOpen = anatomyToggle.getAttribute('aria-expanded') !== 'true';
+            anatomyToggle.setAttribute('aria-expanded', String(anatomyOpen));
+          });
+        }
+        const handoff = stage.querySelector('#handoffFooter');
+        if (handoff && artifact.id) {
+          const openArtifact = function () {
+            openWidgetLink(buildArtifactLink(artifact));
+            // Opening OrgX changes nothing here: hand the kit's pressed control back.
+            handoff.setAttribute('state', handoff.getAttribute('state') || '');
+          };
+          handoff.addEventListener('ox-primary', openArtifact);
+          handoff.addEventListener('ox-action', openArtifact);
+        }
         const preview = stage.querySelector('[data-preview]');
         const previewToggle = stage.querySelector('[data-preview-toggle]');
         function togglePreview() {
           if (!preview || !previewToggle) return;
           const expanded = preview.classList.toggle('is-expanded');
           previewToggle.setAttribute('aria-expanded', String(expanded));
-          previewToggle.textContent = expanded ? 'Compress evidence' : 'Expand evidence';
+          previewToggle.textContent = expanded ? 'Show less' : 'Show all';
           reportSize();
         }
         if (previewToggle) previewToggle.addEventListener('click', togglePreview);

@@ -8,8 +8,11 @@
   <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
-  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/kit/ox-elements-core.js"></script>
+  <script src="shared/kit/ox-elements-footer.js"></script>
+  <script src="shared/kit/ox-elements-avatar.js"></script>
   <script src="shared/agent-identity.js"></script>
+  <script src="shared/orgx-icons.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/widget-state.js"></script>
@@ -20,6 +23,7 @@
   <style>
     /* Creation mode keeps its iris identity; the canvas Q2 card supplies the shape. */
     :root { --ox-primary: #6366f1; --ox-primary-rgb: 99, 102, 241; }
+    .ox-icon { display: block; flex: none; }
 
     * { box-sizing: border-box; }
     body {
@@ -57,18 +61,17 @@
     .wcard[data-edge="teal"] { --edge-rgb: 0, 201, 167; }
     .wcard[data-edge="red"] { --edge-rgb: 244, 63, 94; }
     .hd { display: flex; align-items: center; gap: 10px; padding: 14px 18px 0; min-width: 0; }
-    .hd > ox-glyph { --ox-glyph-size: 18px; flex: none; }
-    .kind {
-      font-size: 11px; font-weight: 600; line-height: 1;
-      letter-spacing: .04em; text-transform: uppercase;
-      color: var(--ox-text-muted); white-space: nowrap;
-    }
+    .hd > .ox-icon { color: var(--ox-text-muted); }
+    .hd[data-tone="teal"] > .ox-icon { color: var(--ox-teal); }
+    .hd[data-tone="amber"] > .ox-icon { color: var(--ox-warning); }
+    .hd[data-tone="red"] > .ox-icon { color: var(--ox-danger); }
+    .kind { font-size: 13px; font-weight: 650; line-height: 1.2; color: var(--ox-text-2); white-space: nowrap; }
     .src {
       display: inline-flex; align-items: center; gap: 5px;
       min-width: 0; font-size: 12.5px; color: var(--ox-text-muted);
       white-space: nowrap; overflow: hidden;
     }
-    .src ox-glyph { --ox-glyph-size: 15px; flex: none; }
+    .src .ox-icon { color: var(--ox-text-muted); }
     .src b { color: var(--ox-text-2); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
     .sp { flex: 1; }
     .who2 { display: inline-flex; align-items: center; gap: 8px; flex: none; font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; }
@@ -80,7 +83,7 @@
       text-wrap: balance; overflow-wrap: anywhere;
     }
     .status { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-height: 22px; }
-    .meta { font-size: 11.5px; line-height: 1.3; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .meta { font-size: 12.5px; line-height: 1.3; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
     .note { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ox-text-muted); text-wrap: pretty; }
     .cap { display: flex; flex-direction: column; gap: 6px; }
     .segbar { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; background: var(--ox-hover, rgba(127, 127, 127, .1)); }
@@ -92,7 +95,10 @@
     .cap-row .muted { color: var(--ox-text-muted); }
     .cap-row .meta { margin-left: auto; }
     .rows { display: flex; flex-direction: column; }
-
+    /* Where to go next: the shared .ox-open link, not a row dressed as a met criterion. */
+    .links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+    .links .ox-open span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .links .ox-open small { font-size: 12.5px; font-weight: 500; color: var(--ox-text-muted); }
     /*
      * M1: the agent is the face; the model is the mark. A provider mark sits
      * on the avatar, cut out by a ring in the surface colour; the model line
@@ -404,7 +410,7 @@
         return {
           id: payload.entity.id || payload.id || payload.task_id || payload.run_id || null,
           type: payload.entity.type || payload.type || 'task',
-          title: payload.entity.title || payload.title || payload.task_summary || payload.task_title || 'Execution dispatched',
+          title: payload.entity.title || payload.title || payload.task_summary || payload.task_title || 'Work started',
           agent_name: inferredAgentName || payload.entity.agent_name || null,
           domain: inferredDomain,
           workspace_name: workspaceName,
@@ -434,7 +440,7 @@
           payload.task_title ||
           payload.task ||
           payload.message ||
-          (dispatched ? 'Execution dispatched' : 'Agent work preflight'),
+          (dispatched ? 'Work started' : 'Not started yet'),
         agent_name: inferredAgentName,
         domain: inferredDomain,
         workspace_name: workspaceName,
@@ -502,6 +508,10 @@
       return String(text || '').replace(/(^|[^\w./:#=?&-])([a-z][a-z0-9]*(?:_[a-z0-9]+)+)(?![\w/=-]|\.\w)/g, function(all, lead, code) {
         return lead + (REASON_COPY[code] || code.replace(/_/g, ' '));
       });
+    }
+    function sentenceOf(text) {
+      var t = String(text || '').trim();
+      return t ? t.charAt(0).toUpperCase() + t.slice(1).replace(/[.!]?$/, '.') : '';
     }
     function runReason(data) {
       var raw = data && (firstString([data.outcome, data.message, data.reason, data.error_code, data.code]) || '');
@@ -637,21 +647,24 @@
       var view;
 
       if (!isDispatch) {
+        // Nothing ran: say what this was in plain words (an estimate, a spend check, a suggested route).
         if (model.action === 'guard' && model.allowed === false) {
-          view = { chip: 'blocked', chipLabel: 'Dispatch blocked', edge: 'red',
-            footer: { variant: 'confirms-in-orgx', state: 'rejected', heading: 'Dispatch blocked', detail: model.blocked_reason || 'nothing was started', action: '' } };
+          view = { chip: 'blocked', chipLabel: 'Can’t run', edge: 'red',
+            footer: { variant: 'confirms-in-orgx', state: 'rejected', heading: 'Nothing started', detail: 'stopped by the spend limits', action: '' } };
         } else {
           view = { chip: null, edge: 'mute',
-            footer: { variant: 'reads', state: 'caught-up', heading: 'Preflight only · no dispatch', detail: model.action === 'guard' ? 'the guard allows this dispatch' : 'nothing was started' } };
+            footer: { variant: 'reads', state: 'caught-up', heading: 'Nothing started', detail: model.action === 'guard' ? 'it can run when you start it' : model.action === 'estimate' ? 'this is an estimate' : 'this is a suggestion' } };
         }
-        // A denied guard is a blocked dispatch, not a passing preflight.
+        // A denied check is blocked work, not a passing check.
         view.key = view.chip === 'blocked' ? 'blocked' : 'preflight';
-        view.kind = model.action === 'estimate' ? 'Route estimate' : model.action === 'guard' ? 'Dispatch guard' : 'Agent route';
+        view.kind = model.action === 'estimate' ? 'Cost estimate' : model.action === 'guard' ? 'Spend check' : 'Suggested route';
         view.note = model.action === 'estimate'
-          ? 'Routing and cost context only. No agent work was dispatched.'
+          ? 'What this would cost and which model would run it. Nothing was started.'
           : model.action === 'guard'
-          ? 'OrgX checked whether this delegation can proceed. No agent work was dispatched.'
-          : 'OrgX classified the best execution route. No agent work was dispatched.';
+          ? (model.allowed === false
+            ? (model.blocked_reason ? sentenceOf(humanizeCodes(model.blocked_reason)) : 'OrgX checked the spend limits for this work and stopped it.')
+            : 'OrgX checked the spend limits for this work. It can run.')
+          : 'Which agent and model OrgX would use. Nothing was started.';
         view.consoleUrl = consoleUrl;
         return view;
       }
@@ -688,7 +701,7 @@
           view = { chip: 'queued', edge: 'teal', footer: { variant: 'queues-work', state: 'queued', heading: heading || 'Waiting to start', detail: detail || 'waiting for an execution slot', action: executionLabel + ' ↗' } };
           break;
         case 'starting':
-          view = { chip: 'queued', chipLabel: 'Accepted', edge: 'teal', footer: { variant: 'queues-work', state: 'queued', heading: 'Dispatch accepted', detail: 'waiting for the execution receipt', action: executionLabel + ' ↗' } };
+          view = { chip: 'queued', chipLabel: 'Accepted', edge: 'teal', footer: { variant: 'queues-work', state: 'queued', heading: 'Accepted', detail: 'waiting for the run to start', action: executionLabel + ' ↗' } };
           break;
         case 'stale':
           view = { chip: 'stale', edge: 'amber', footer: { variant: 'reads', state: 'stale', heading: 'Out of date', detail: age ? age.replace(/^Updated /, '') : 'no current heartbeat', action: executionLabel + ' ↗' } };
@@ -706,12 +719,12 @@
           view = { chip: 'handed_off', chipLabel: 'Awaiting state', edge: 'mute', footer: { variant: 'queues-work', state: 'queued', heading: 'Awaiting state', detail: 'OrgX has not reported a state yet', action: executionLabel + ' ↗' } };
       }
       view.key = state;
-      view.kind = model.action === 'handoff' ? 'Handed off' : 'Dispatched';
+      view.kind = model.action === 'handoff' ? 'Handed off' : 'Started';
       // Say it once: the footer carries the short state; the note explains
       // only what the footer cannot (why it is waiting, what went wrong).
       view.note = state === 'in_progress' || state === 'completed' || state === 'queued' ? null : (model.note || stateMeta.description);
-      if (state === 'starting' && !model.note) view.note = stateMeta.description + ' The execution link remains the proof boundary.';
-      if (runStatus.missing) view.note = 'OrgX has no status for this run yet. Showing what the dispatch reported.';
+      if (state === 'starting' && !model.note) view.note = stateMeta.description;
+      if (runStatus.missing) view.note = 'OrgX has no status for this run yet. Showing what was reported when it started.';
       // What OrgX said went wrong, in words, once (the footer stays short at phone width).
       if (state === 'failed' && live) view.note = detail ? 'The run stopped: ' + detail.replace(/[.!]?$/, '.') : null;
       if (runStatus.unreachable && ['completed', 'failed', 'cancelled'].indexOf(state) === -1) {
@@ -795,29 +808,36 @@
       }).filter(Boolean);
     }
 
+    function linkHtml(url, label, sub) {
+      var attrs = window.OrgXLinks.attrs(url) || ('href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer" data-ox-link');
+      return '<a class="ox-open" ' + attrs + '><span>' + escapeHtml(label) + (sub ? ' <small>' + escapeHtml(sub) + '</small>' : '') + '</span></a>';
+    }
+
+    function renderLinks(model) {
+      var links = usableLinks(model).map(function(l) {
+        return linkHtml(l.url, 'Open ' + String(l.platform || 'in OrgX').toLowerCase().replace(/^orgx$/, 'in OrgX'), l.label || '');
+      });
+      return links.length ? '<div class="links">' + links.join('') + '</div>' : '';
+    }
+
     function renderRows(model, view) {
       var isDispatch = model.dispatched !== false;
-      var rows = usableLinks(model).map(function(l) {
-        return receiptRow({ status: 'met', label: 'Open ' + l.platform + ' · ' + (l.label || model.id || 'OrgX'), detail: [model.workspace_name, model.domain].filter(Boolean).join(' · '), href: l.url });
-      });
       if (!isDispatch) {
-        rows.push(receiptRow({ status: 'unverified', label: 'Result · No dispatch', detail: model.agent_name ? 'Requested owner · ' + model.agent_name : 'Requested owner · Automatic' }));
-        return rows.join('');
+        // Nothing ran: who would take it, in words.
+        return receiptRow({ status: 'unverified', label: model.agent_name ? 'Would go to ' + model.agent_name : 'OrgX picks the agent when it runs', detail: 'Nothing has started' });
       }
       var receiptId = firstString([model.receipt_id, model.receiptId, model.run_id, model.runId, model.execution_id, model.executionId]);
       if (receiptId) {
-        var shortId = UUID_RE.test(receiptId) ? 'run ' + receiptId.slice(0, 8) : receiptId;
-        rows.push(receiptRow({
-          // Last-known (status can't be read here) is not live: no spinner on the receipt either.
-          status: view.key === 'failed' ? 'fail' : view.key === 'completed' ? 'met' : view.lastKnown || view.key === 'stale' || view.key === 'cancelled' ? 'unverified' : 'pending',
-          label: 'Receipt · ' + shortId,
-          detail: view.key === 'completed' ? 'Execution complete' : runStatus.data ? 'Status from OrgX' : 'Reported by the dispatch',
+        var shortId = UUID_RE.test(receiptId) ? receiptId.slice(0, 8) : receiptId.replace(/^run[-_]/i, '');
+        // The footer carries the live state; this row is the record (no second spinner).
+        return receiptRow({
+          status: view.key === 'failed' ? 'fail' : view.key === 'completed' ? 'met' : 'unverified',
+          label: 'Run ' + shortId,
+          detail: view.key === 'completed' ? 'Finished' : runStatus.data ? 'Status from OrgX' : 'As reported when it started',
           value: runStatus.checkedAt ? formatClock(runStatus.checkedAt) : ''
-        }));
-      } else {
-        rows.push(receiptRow({ status: 'pending', label: 'Receipt · awaiting receipt ID', detail: model.workspace_ready ? model.workspace_name : 'Context syncing' }));
+        });
       }
-      return rows.join('');
+      return receiptRow({ status: 'unverified', label: 'No run yet', detail: model.workspace_ready ? model.workspace_name : 'OrgX will start one when a slot opens' });
     }
 
     var currentView = null;
@@ -863,22 +883,26 @@
         + (ft.primary !== undefined ? ' primary-label="' + escapeHtml(ft.primary) + '"' : '')
         + (ft.action !== undefined ? ' action-label="' + escapeHtml(ft.action) + '"' : '');
 
+      var ICON_FOR = { run: 'run', initiative: 'initiative', workstream: 'workstream', milestone: 'milestone', task: 'task' };
+      if (model.dispatched === false) glyphKind = model.action === 'estimate' ? 'cost' : model.action === 'guard' ? (view.key === 'blocked' ? 'blocked' : 'cost') : 'agent';
       injectHtml(
         '<article class="wcard ox-surface" data-edge="' + view.edge + '" data-state="' + escapeHtml(view.key) + '">'
-        + '<div class="hd">'
-        + '<ox-glyph kind="' + glyphKind + '"' + (glyphTone ? ' tone="' + glyphTone + '"' : '') + '></ox-glyph>'
+        + '<div class="hd"' + (glyphTone ? ' data-tone="' + glyphTone + '"' : '') + '>'
+        + window.OrgXIcons.icon(ICON_FOR[glyphKind] || glyphKind, { size: 18 })
         + '<span class="kind">' + escapeHtml(view.kind) + '</span>'
-        + (place ? '<span class="src">in <ox-glyph kind="' + (model.initiative_name ? 'initiative' : 'workstream') + '"></ox-glyph><b>' + escapeHtml(place) + '</b></span>' : '')
+        + (place ? '<span class="src">in ' + window.OrgXIcons.icon(model.initiative_name ? 'initiative' : 'workstream', { size: 15 }) + '<b>' + escapeHtml(place) + '</b></span>' : '')
         + '<span class="sp"></span>' + who
         + '</div>'
         + '<div class="bd">'
         + '<h3 class="pk-q">' + escapeHtml(model.title) + '</h3>'
         + (view.chip ? '<div class="status"><ox-state-chip state="' + view.chip + '"' + (view.chipLabel ? ' label="' + escapeHtml(view.chipLabel) + '"' : '') + ' reserve="queued running succeeded failed_step stale needs_you cancelled"></ox-state-chip>'
-          + (model.dispatched !== false && window.OrgXWidgetState && window.OrgXWidgetState.observedAt(runStatus.data || model) !== null ? '<span class="meta">' + escapeHtml(view.lastKnown ? window.OrgXWidgetState.formatAge(runStatus.data || model).replace(/^Updated /, 'reported ') : window.OrgXWidgetState.formatAge(runStatus.data || model)) + '</span>' : '') + '</div>' : '')
+          // The footer already says how fresh a running card is; the age shows here otherwise.
+          + (model.dispatched !== false && view.key !== 'in_progress' && window.OrgXWidgetState && window.OrgXWidgetState.observedAt(runStatus.data || model) !== null ? '<span class="meta">' + escapeHtml(view.lastKnown ? window.OrgXWidgetState.formatAge(runStatus.data || model).replace(/^Updated /, 'reported ') : window.OrgXWidgetState.formatAge(runStatus.data || model)) + '</span>' : '') + '</div>' : '')
         + (view.note ? '<p class="note">' + escapeHtml(view.note) + '</p>' : '')
         + renderModel(info)
         + renderCap(model)
-        + '<div class="rows" role="list" aria-label="Dispatch receipts">' + renderRows(model, view) + '</div>'
+        + '<div class="rows" role="list" aria-label="Run record">' + renderRows(model, view) + '</div>'
+        + renderLinks(model)
         + '</div>'
         + '<ox-footer id="dispatchFooter" ' + footerAttrs + '></ox-footer>'
         + '</article>'
@@ -911,9 +935,12 @@
       var toggle = event.target && event.target.closest ? event.target.closest('[data-model-toggle]') : null;
       if (!toggle) return;
       modelOpen = !modelOpen;
-      render();
-      var again = document.querySelector('[data-model-toggle]');
-      if (again && again.focus) again.focus();
+      toggle.textContent = modelOpen ? 'Hide details' : 'Model details';
+      // Opens in place (height + opacity, reduced-motion aware); no re-render, focus stays put.
+      var panel = document.getElementById('modelDetails');
+      var motion = window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.motion;
+      if (panel && motion) motion.setExpanded(panel, modelOpen, toggle);
+      else if (panel) { panel.hidden = !modelOpen; toggle.setAttribute('aria-expanded', String(modelOpen)); }
     });
 
     // Receipt rows are links; route them through the host instead of a raw navigation.

@@ -90,18 +90,21 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 107794,
-      "hash": "fd76b3688223",
+      "bytes": 110551,
+      "hash": "9a62b68c154c",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
         "shared/interaction-kit.css",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-avatar.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
         "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/tokens.css",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
@@ -112,29 +115,33 @@
         "ox-state-chip",
         "ox-receipt-row",
         "ox-footer",
-        "ox-glyph",
         "ox-avatar"
       ],
       "kitBundles": [
-        "shared/kit/ox-elements.js"
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-avatar.js"
       ],
       "demoOnly": false
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 151624,
-      "hash": "c0f69533d456",
+      "bytes": 164389,
+      "hash": "01cdd30e6a79",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-avatar.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
         "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
         "shared/widget-theme.css"
@@ -144,11 +151,12 @@
         "ox-attention-line",
         "ox-receipt-row",
         "ox-footer",
-        "ox-glyph",
         "ox-avatar"
       ],
       "kitBundles": [
-        "shared/kit/ox-elements.js"
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-avatar.js"
       ],
       "demoOnly": false
     },
@@ -241,12 +249,11 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 63192,
-      "hash": "0d7c4536cff3",
+      "bytes": 62532,
+      "hash": "a1099f862506",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
-        "shared/icons.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
         "shared/kit/ox-elements-avatar.js",
@@ -257,6 +264,7 @@
         "shared/live-panel.js",
         "shared/live-store.js",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/tokens.css",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
@@ -279,8 +287,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 102129,
-      "hash": "9ef2c515eb13",
+      "bytes": 108030,
+      "hash": "00b6a0de5d25",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -453,19 +461,22 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 55404,
-      "hash": "51073468a3dc",
+      "bytes": 57544,
+      "hash": "715f79e5ccf4",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-avatar.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
         "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
         "shared/widget-state.js",
@@ -476,11 +487,12 @@
         "ox-state-chip",
         "ox-receipt-row",
         "ox-footer",
-        "ox-glyph",
         "ox-avatar"
       ],
       "kitBundles": [
-        "shared/kit/ox-elements.js"
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-avatar.js"
       ],
       "demoOnly": false
     },

@@ -13,6 +13,7 @@
   <script src="shared/kit/ox-elements-footer.js"></script>
   <script src="shared/kit/ox-elements-avatar.js"></script>
   <script src="shared/agent-identity.js"></script>
+  <script src="shared/orgx-icons.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
@@ -20,6 +21,7 @@
     /* Canvas: F6 (digest now, events later) and F2 (calm). Surfaces, text and status
        colors come from the kit tokens and the widget theme; this sheet lays the brief out. */
     :root { --ox-primary-rgb: 0, 201, 167; }
+    .ox-icon { display: block; flex: none; }
 
     /* The kit's primaries are its action lime (--ox-action) in every widget. */
 
@@ -78,50 +80,38 @@
     .brief-shell .app-action-card:hover { transform: none; box-shadow: none; }
     .brief-shell .app-action-card:hover .app-action-card-title { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ox-border-strong); }
     .ev-dot { width: 7px; height: 7px; border-radius: 999px; flex: none; background: var(--ox-warning); }
-    .app-action-card[data-tone="attention"] .ev-dot { background: var(--ox-danger); }
-    .brief-shell .app-action-card-body { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
-    .brief-shell .app-action-card-title { font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--ox-text); white-space: nowrap; }
+    .act-icon { display: grid; place-items: center; width: 20px; color: var(--ox-warning); flex: none; }
+    .app-action-card[data-tone="attention"] .act-icon { color: var(--ox-danger); }
+    .brief-shell .app-action-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .brief-shell .app-action-card-title { font-size: 14px; font-weight: 650; line-height: 1.35; color: var(--ox-text); }
     .brief-shell .app-action-card-detail { margin: 0; font-size: 12.5px; color: var(--ox-text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .brief-shell .app-action-card-cta {
-      display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 0; padding: 0;
-      border: 0; border-radius: 0; background: none; color: var(--ox-text-muted);
-      font: 500 11.5px/1.3 var(--ox-mono); letter-spacing: 0; text-transform: none;
+      display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 36px; padding: 0 12px;
+      border: 1px solid var(--ox-border-strong); border-radius: 12px; background: var(--ox-surface-subtle, transparent);
+      color: var(--ox-text); font: 650 13px/1.2 var(--ox-font); letter-spacing: 0; text-transform: none; white-space: nowrap;
     }
-    .brief-shell .app-action-card-cta svg { width: 12px; height: 12px; }
+    .brief-shell .app-action-card:hover .app-action-card-cta { border-color: var(--ox-text-muted); }
+    .brief-shell .app-action-card-cta .ox-icon { color: var(--ox-text-2); }
 
     .landed { display: flex; flex-direction: column; }
 
-    /* Detail on demand: the four sections, opened from the rail or their own row. */
-    .brief-shell .app-metric-rail {
-      display: flex; flex-wrap: wrap; gap: 0 4px; padding: 0 14px; min-height: 44px; align-items: stretch;
-      border-top: 1px solid var(--ox-border); background: none; border-radius: 0;
-    }
-    .brief-shell .app-metric-button {
-      display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 8px;
-      border: 0; border-bottom: 2px solid transparent; border-radius: 0; margin-bottom: -1px;
-      background: transparent; color: var(--ox-text-muted); cursor: pointer; font-size: 13px; font-weight: 600;
-    }
-    .brief-shell .app-metric-button:hover { color: var(--ox-text); background: none; }
-    .brief-shell .app-metric-button[aria-pressed="true"] { color: var(--ox-text); border-bottom-color: var(--ox-text-2); background: none; }
-    .metric-value { font: 600 12px/1 var(--ox-mono); color: var(--ox-text-2); font-variant-numeric: tabular-nums; }
-    .metric-label { order: -1; }
-    .brief-shell .app-metric-button.is-empty { opacity: 0.6; }
-
+    /* Detail on demand: each section is one row that opens in place (.ox-collapse:
+       nothing measured, nothing below it jumps; reduced motion switches instantly). */
     .brief-shell .app-accordion-section { border-top: 1px solid var(--ox-border); }
     .brief-shell .app-accordion-trigger {
       display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
-      min-height: 44px; padding: 0 22px; background: transparent; border: 0; cursor: pointer; text-align: left;
+      min-height: 48px; padding: 0 22px; background: transparent; border: 0; cursor: pointer; text-align: left;
     }
     .brief-shell .app-accordion-trigger:hover { background: var(--ox-hover); }
-    .brief-shell .app-accordion-trigger-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .brief-shell .app-accordion-trigger-title { font-size: 13px; font-weight: 600; color: var(--ox-text-2); }
+    .brief-shell .app-accordion-trigger-left { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--ox-text-muted); }
+    .brief-shell .app-accordion-trigger-title { font-size: 13.5px; font-weight: 650; color: var(--ox-text-2); }
     .brief-shell .app-accordion-trigger-badge {
       min-height: 0; padding: 0; border-radius: 0; background: none;
-      font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted);
+      font-size: 13px; font-weight: 500; color: var(--ox-text-muted); font-variant-numeric: tabular-nums;
     }
-    .brief-shell .app-accordion-chevron { width: 14px; height: 14px; color: var(--ox-text-muted); display: grid; place-items: center; }
-    .brief-shell .app-accordion-body { padding: 0 22px; }
-    .brief-shell .app-accordion-section.is-open .app-accordion-body { padding: 0 22px 14px; max-height: 1200px; }
+    .brief-shell .app-accordion-chevron { color: var(--ox-text-muted); display: grid; place-items: center; transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .brief-shell .app-accordion-trigger[aria-expanded="true"] .app-accordion-chevron { transform: rotate(180deg); }
+    .brief-shell .app-accordion-panel-inner { padding: 0 22px 14px; }
     .brief-shell .app-accordion-section.is-open .app-accordion-trigger-title { color: var(--ox-text); }
 
     .brief-shell .app-list-row { padding: 10px 0; gap: 10px; }
@@ -129,17 +119,18 @@
     .brief-shell .app-list-row-title { font-size: 13.5px; font-weight: 600; color: var(--ox-text); }
     .brief-shell .app-list-row-detail { font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); }
 
-    .priority-row { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 0; }
-    .priority-row + .priority-row { border-top: 1px solid var(--ox-border); }
-    .priority-who { width: 32px; height: 32px; display: grid; place-items: center; color: var(--ox-text-muted); }
-    .priority-domain { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); }
-    /* Priority headline: the title's first sentence, about three lines; the rest reads as body text. */
+    /* Today's priorities: scannable rows. Owner, the title (two lines at most), one line of why. */
+    .priorities { display: flex; flex-direction: column; }
+    .priorities-label { margin: 2px 0 2px; font-size: 12.5px; font-weight: 650; color: var(--ox-text-muted); }
+    .priority-row { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; padding: 9px 0; border-top: 1px solid var(--ox-border); }
+    .priority-row:first-of-type { border-top: 0; }
+    .priority-who { width: 28px; height: 28px; display: grid; place-items: center; color: var(--ox-text-muted); }
+    .priority-body { min-width: 0; }
     .priority-title {
-      font-size: 13.5px; font-weight: 600; line-height: 1.35; margin-top: 1px; overflow-wrap: anywhere;
-      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
+      font-size: 14px; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; color: var(--ox-text);
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
     }
-    .priority-note { font-size: 12.5px; line-height: 1.45; color: var(--ox-text-2); margin-top: 2px; overflow-wrap: anywhere; }
-    .priority-more { font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); margin-top: 2px; overflow-wrap: anywhere; }
+    .priority-note { font-size: 12.5px; line-height: 1.4; color: var(--ox-text-muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* One honest degraded notice, inside the card: which source is missing, and what that means. */
     .brief-partial {
@@ -151,20 +142,20 @@
     .brief-partial .ev-dot { margin-top: 5px; }
 
     .output-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-    .output-meta { display: flex; align-items: center; gap: 6px; font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); margin-top: 2px; }
+    .output-meta { display: flex; align-items: center; gap: 6px; font-size: 12.5px; line-height: 1.3; color: var(--ox-text-muted); margin-top: 4px; }
     .output-meta ox-avatar { margin-right: 2px; }
     .output-link {
-      min-height: 44px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--ox-border-strong);
+      min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--ox-border-strong);
       background: transparent; color: var(--ox-text); font-size: 12.5px; font-weight: 650; cursor: pointer; white-space: nowrap;
     }
     .output-link:hover { background: var(--ox-hover); }
 
-    .value-line { font: 500 11.5px/1.5 var(--ox-mono); color: var(--ox-text-muted); padding-top: 8px; font-variant-numeric: tabular-nums; }
+    .value-line { font-size: 12.5px; line-height: 1.5; color: var(--ox-text-muted); padding-top: 8px; font-variant-numeric: tabular-nums; }
 
-    .attention-row { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; gap: 10px; align-items: start; }
-    .attention-row .ev-dot { margin-top: 6px; }
-    .attention-row[data-tone="attention"] .ev-dot { background: var(--ox-danger); }
-    .attention-chip { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); padding-top: 2px; white-space: nowrap; }
+    .attention-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+    .attention-row .act-icon { margin-top: 1px; width: 18px; }
+    .attention-row[data-tone="attention"] .act-icon { color: var(--ox-danger); }
+    .attention-chip { font-size: 12.5px; color: var(--ox-text-muted); padding-top: 2px; white-space: nowrap; }
     .narrative-note { font-size: 12.5px; color: var(--ox-text-muted); padding-top: 8px; }
 
     .brief-calm { padding: 16px 22px 18px; display: flex; flex-direction: column; gap: 4px; }
@@ -173,7 +164,8 @@
 
     .sk { display: block; border-radius: 6px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.12)); }
 
-    .focusable:focus-visible, .app-action-card:focus-visible, .app-metric-button:focus-visible, .app-accordion-trigger:focus-visible, .output-link:focus-visible {
+    .brief-head [slot="meta"] { font: 500 12px/1.3 var(--ox-font); font-variant-numeric: tabular-nums; }
+    .focusable:focus-visible, .app-action-card:focus-visible, .app-accordion-trigger:focus-visible, .output-link:focus-visible {
       outline: 2px solid var(--ox-focus); outline-offset: -2px; border-radius: 8px;
     }
 
@@ -182,28 +174,28 @@
       .brief-digest, .brief-calm { padding: 14px 16px 16px; }
       .brief-head { --ox-attention-padding: 0 16px; }
       .brief-shell .app-accordion-trigger { padding: 0 16px; }
-      .brief-shell .app-accordion-body, .brief-shell .app-accordion-section.is-open .app-accordion-body { padding-left: 16px; padding-right: 16px; }
-      .brief-shell .app-metric-rail { padding: 0 8px; gap: 0; }
-      .brief-shell .app-metric-button { padding: 0 5px; gap: 5px; font-size: 12.5px; }
-      .brief-shell .app-action-card-body { flex-direction: column; gap: 1px; align-items: stretch; }
-      .brief-shell .app-action-card-title { white-space: normal; }
+      .brief-shell .app-accordion-panel-inner { padding-left: 16px; padding-right: 16px; }
+      .brief-shell .app-action-card-cta .cta-label { display: none; }
+      .attention-row { grid-template-columns: 18px minmax(0, 1fr); }
+      .attention-chip { display: none; }
+      .brief-shell .app-action-card-cta { width: 40px; min-height: 40px; padding: 0; justify-content: center; }
     }
 
     @media (prefers-reduced-motion: reduce) {
       .animate-in { animation: none; }
-      .brief-shell .app-accordion-body { transition: none; }
+      .brief-shell .app-accordion-chevron { transition: none; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
 <body>
   <div class="container" id="content"></div>
-  <script src="shared/icons.js"></script>
   <script src="shared/live-machine.js"></script>
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
   <script>
-    const icons = window.OrgXWidgetIcons;
+    // One icon set (OrgXIcons) for statuses, sections and actions.
+    const oxIcon = (name, size = 16) => (window.OrgXIcons ? window.OrgXIcons.icon(name, { size }) : '');
     const escapeHtml = (value) => {
       if (value === null || value === undefined) return '';
       const div = document.createElement('div');
@@ -565,11 +557,18 @@
       if (!code || !/^[a-z][a-z0-9_]*$/.test(code)) return '';
       return SOURCE_NAMES[code] || code.replace(/_/g, ' ');
     }
+    // degraded_sources (optional) names each failed source: [{ source, label, reason }].
+    function namedSources(payload) {
+      return asArray(payload.degraded_sources)
+        .map((item) => String(asObject(item).label || '').trim())
+        .filter(Boolean)
+        .map((label) => 'the ' + (/^[A-Z][a-z]/.test(label) && !/^[A-Z]{2}/.test(label) ? label.charAt(0).toLowerCase() + label.slice(1) : label));
+    }
     function missingSources(payload) {
-      const names = [];
+      const names = namedSources(payload);
       [...asArray(payload.degraded), ...asArray(payload.dataGaps), payload.degraded_reason].forEach((item) => {
         const name = sourceName(typeof item === 'string' ? item : asObject(item).source || asObject(item).name);
-        if (name && !names.includes(name)) names.push(name);
+        if (name && !names.some((n) => n.replace(/^the /, '') === name.replace(/^the /, ''))) names.push(name);
       });
       return names.slice(0, 3);
     }
@@ -600,12 +599,12 @@
         rest = full.slice(end).trim();
         break;
       }
-      if (head.length > HEADLINE_MAX) {
-        const cut = head.slice(0, HEADLINE_MAX);
-        const space = cut.lastIndexOf(' ');
-        const at = space > HEADLINE_MAX * 0.6 ? space : HEADLINE_MAX;
-        rest = '…' + head.slice(at).trim() + (rest ? ' ' + rest : '');
-        head = head.slice(0, at).replace(/[\s,;:–—-]+$/, '') + '…';
+      // A long first sentence splits at its label ("Production verification of PR #424: …");
+      // otherwise CSS clamps it. Never "…" plus an orphaned continuation.
+      const colon = head.indexOf(': ');
+      if (head.length > HEADLINE_MAX && colon >= 16 && colon <= HEADLINE_MAX) {
+        rest = head.slice(colon + 2).trim() + (rest ? ' ' + rest : '');
+        head = head.slice(0, colon).trim();
       }
       return { headline: head, body: rest };
     }
@@ -613,7 +612,10 @@
     function normalizeBrief(payload) {
       if (!payload || typeof payload !== 'object') return null;
 
-      const isPartial = payload.degraded === true || asArray(payload.degraded).length > 0;
+      const isPartial = payload.degraded === true || asArray(payload.degraded).length > 0 || asArray(payload.degraded_sources).length > 0;
+      // pending_decisions_scope (optional): where the pending count was counted.
+      const scope = asObject(payload.pending_decisions_scope);
+      const scopePhrase = scope.level === 'initiative' ? 'in this initiative' : scope.level === 'workspace' ? 'across the workspace' : '';
       const sessionSummary = asObject(payload.session_summary);
       const valueDashboard = asObject(payload.value_dashboard);
       const workspacePulse = asObject(payload.workspace_pulse);
@@ -697,12 +699,17 @@
         isReviewable(artifact, reviewIds)
       );
 
+      // A status line ("Morning brief ready") is not a summary; say nothing rather than that.
+      const message = typeof payload.message === 'string' ? payload.message.trim() : '';
+      const statusOnly = /^(?:the )?(?:morning )?brief(?: summary)? (?:is )?(?:ready|refreshing|loaded|unavailable)\.?$/i.test(message);
       const summary =
         typeof payload.summary === 'string' && payload.summary.trim()
           ? payload.summary.trim()
-          : typeof payload.message === 'string' && payload.message.trim()
-            ? payload.message.trim()
-            : `${titleCase(sessionSummary.session_type || 'recent')} session: ${pluralize(
+          : message && !statusOnly
+            ? message
+            : !Object.keys(sessionSummary).length
+              ? ''
+              : `${titleCase(sessionSummary.session_type || 'recent')} session: ${pluralize(
                 asNumber(sessionSummary.receipts_produced) || 0,
                 'receipt'
               )} produced, ${pluralize(
@@ -710,19 +717,13 @@
                 'completion'
               )}, ${pluralize(asNumber(sessionSummary.failed) || 0, 'failure')}.`;
 
+      // Pending decisions are their own row in the digest (with a link to the queue); this list
+      // holds what else needs attention.
       const attentionSignals = [];
-      if (pendingDecisions > 0) {
-        attentionSignals.push({
-          tone: 'warning',
-          title: `${pluralize(pendingDecisions, 'pending decision')}`,
-          description:
-            'Operator approval is still required before downstream work can continue.',
-          meta: 'Decision queue',
-        });
-      }
       if (blockedWork > 0) {
         attentionSignals.push({
           tone: 'attention',
+          icon: 'blocked',
           title: `${pluralize(blockedWork, 'blocked workstream')}`,
           description:
             'Execution is blocked in the latest workspace pulse and should be cleared today.',
@@ -732,6 +733,7 @@
       if (exceptions.length > 0) {
         attentionSignals.push({
           tone: 'attention',
+          icon: 'needs-you',
           title: `${pluralize(exceptions.length, 'exception')} flagged`,
           description:
             compactList(
@@ -752,36 +754,41 @@
       if (reviewItems.length > 0) {
         actions.push({
           tone: 'review',
-          icon: icons.eye(15),
-          title: `${pluralize(reviewItems.length, 'artifact')} need review`,
+          icon: 'artifact',
+          title: `${pluralize(reviewItems.length, 'artifact')} need${reviewItems.length === 1 ? 's' : ''} your review`,
           detail:
             compactList(
               reviewItems.map((item) => item.name || item.title || 'Review item'),
               2
             ) || 'Agent output is waiting for an operator call.',
-          cta: 'Review in OrgX',
+          cta: 'Review',
           url: reviewActionUrl,
           section: 'output',
         });
       }
 
-      if (pendingDecisions > 0 || blockedWork > 0 || exceptions.length > 0) {
+      if (pendingDecisions > 0) {
+        actions.push({
+          tone: 'review',
+          icon: 'decision',
+          title: `${pluralize(pendingDecisions, 'decision')} ${scopePhrase ? scopePhrase + ' ' : ''}need${pendingDecisions === 1 ? 's' : ''} you`,
+          detail: 'Decide them before the next autonomous run starts',
+          cta: 'Decide',
+          url: window.OrgXLinks.decisions(),
+          section: 'attention',
+        });
+      }
+      if (blockedWork > 0 || exceptions.length > 0) {
         actions.push({
           tone: 'attention',
-          icon: icons.warning(15),
-          title:
-            pendingDecisions > 0
-              ? `${pluralize(pendingDecisions, 'decision')} need a call`
-              : blockedWork > 0
-                ? `${pluralize(blockedWork, 'blocked workstream')} need clearance`
-                : `${pluralize(exceptions.length, 'exception')} need attention`,
-          detail:
-            blockedWork > 0
-              ? `${pluralize(blockedWork, 'blocked workstream')} surfaced in the workspace pulse.`
-              : exceptions.length > 0
-                ? `${pluralize(exceptions.length, 'guardrail exception')} surfaced in the latest session.`
-                : 'Review the flagged items before the next autonomous run starts.',
-          cta: 'Resolve',
+          icon: blockedWork > 0 ? 'blocked' : 'needs-you',
+          title: blockedWork > 0
+            ? `${pluralize(blockedWork, 'blocked workstream')} need${blockedWork === 1 ? 's' : ''} clearing`
+            : `${pluralize(exceptions.length, 'exception')} need${exceptions.length === 1 ? 's' : ''} a look`,
+          detail: blockedWork > 0 && exceptions.length
+            ? `and ${pluralize(exceptions.length, 'guardrail exception')} in the latest session`
+            : blockedWork > 0 ? 'From the latest workspace pulse' : 'From the latest autonomous session',
+          cta: 'See why',
           url: null,
           section: 'attention',
         });
@@ -819,7 +826,7 @@
         narrativeAvailable:
           typeof payload.brief_markdown === 'string' && payload.brief_markdown.trim().length > 0,
         footerUrl,
-        footerLabel: reviewActionUrl ? 'Review queue' : 'Latest output',
+        footerLabel: reviewActionUrl ? 'Review queue' : outputActionUrl !== FALLBACK_REVIEW_URL ? 'Latest output' : 'Open OrgX',
         pendingDecisions,
         blockedWork,
         isPartial,
@@ -829,8 +836,7 @@
         clockLabel: formatClock(payload.generated_at || payload.created_at || workspacePulse.generatedAt),
         acceptedOutputs: outputRows.filter((artifact) => !isReviewable(artifact, reviewIds)),
         doneLine: [
-          asNumber(sessionSummary.completed) ? `${asNumber(sessionSummary.completed)} done overnight` : '',
-          asNumber(sessionSummary.receipts_produced) ? pluralize(asNumber(sessionSummary.receipts_produced), 'receipt') : '',
+          asNumber(sessionSummary.completed) ? `${asNumber(sessionSummary.completed)} done` : '',
           asNumber(sessionSummary.failed) ? `${asNumber(sessionSummary.failed)} failed` : '',
         ].filter(Boolean).join(' · '),
         valueLine: isPartial ? '' : [
@@ -848,13 +854,11 @@
         metricDisplays: {
           priorities: isPartial && !priorities.length ? '—' : String(priorities.length || 0),
           output: isPartial && !outputRows.length ? '—' : String(outputRows.length || 0),
-          receipts: topReceipts.length
-            ? formatCompactCurrency(
-                topReceipts.reduce((total, receipt) => {
-                  return total + (asNumber(receipt.attributed_value_usd) || 0);
-                }, 0)
-              )
-            : isPartial ? '—' : '0',
+          // A value only when there is one: never "$0.00", never a dash.
+          receipts: (() => {
+            const total = topReceipts.reduce((sum, receipt) => sum + (asNumber(receipt.attributed_value_usd) || 0), 0);
+            return total > 0 ? formatCompactCurrency(total) : String(topReceipts.length);
+          })(),
           attention: isPartial && !attentionSignals.length ? '—' : String(attentionSignals.length || 0),
         },
       };
@@ -922,24 +926,21 @@
       `;
     }
 
+    // Scannable rows: who, the title (two lines at most, the whole text in its tooltip), one line of why.
     function renderPriorityRows(brief) {
-      if (!brief.priorities.length) {
-        return '<div class="app-list-row-detail">No priority follow-ups were captured in this brief.</div>';
-      }
-
       return brief.priorities
+        .slice(0, 3)
         .map((priority) => {
-          const domain = titleCase(priority.domain || 'Execution');
           const agentKey = agentFor(priority.agent_name, priority.domain);
-          const head = splitHeadline(priority.title || 'Priority item');
+          const full = String(priority.title || 'Priority item').replace(/\s+/g, ' ').trim();
+          const head = splitHeadline(full).headline;
+          const reason = String(priority.reason || '').trim();
           return `
-            <div class="priority-row">
-              <div class="priority-who">${avatarHtml(agentKey, agentKey ? '' : (priority.agent_name || 'OrgX'), 'row', { task: head.headline })}</div>
+            <div class="priority-row" role="listitem">
+              <div class="priority-who">${avatarHtml(agentKey, agentKey ? '' : (priority.agent_name || 'OrgX'), 'inline', { task: head })}</div>
               <div class="priority-body">
-                <div class="priority-domain">${escapeHtml(domain)}</div>
-                <div class="priority-title">${escapeHtml(head.headline)}</div>
-                ${head.body ? `<div class="priority-more">${escapeHtml(head.body)}</div>` : ''}
-                <div class="priority-note">${escapeHtml(priority.reason || 'No rationale provided.')}</div>
+                <div class="priority-title"${head !== full ? ` title="${escapeHtml(full)}"` : ''}>${escapeHtml(head)}</div>
+                ${reason ? `<div class="priority-note" title="${escapeHtml(reason)}">${escapeHtml(reason)}</div>` : ''}
               </div>
             </div>
           `;
@@ -1003,7 +1004,7 @@
 
       const rows = brief.topReceipts
         .map((receipt) => {
-          const value = formatCurrency(receipt.attributed_value_usd) || 'Captured';
+          const value = (asNumber(receipt.attributed_value_usd) || 0) > 0 ? formatCurrency(receipt.attributed_value_usd) : '';
           const url = typeof receipt.url === 'string' && receipt.url ? receipt.url : '';
           return `<ox-receipt-row status="met" label="${escapeHtml(receipt.intent || 'Execution receipt')}" value="${escapeHtml(value)}"${url ? ` href="${escapeHtml(url)}"` : ''}></ox-receipt-row>`;
         })
@@ -1017,7 +1018,7 @@
           const tone = item.tone === 'warning' ? 'review' : 'attention';
           return `
             <div class="app-list-row attention-row" data-tone="${tone}">
-              <span class="ev-dot" aria-hidden="true"></span>
+              <span class="act-icon" aria-hidden="true">${oxIcon(item.icon || 'needs-you', 18)}</span>
               <div class="app-list-row-body">
                 <div class="app-list-row-title">${escapeHtml(item.title)}</div>
                 <div class="app-list-row-detail">${escapeHtml(item.description)}</div>
@@ -1076,10 +1077,9 @@
       const line = attentionLine(brief);
       const footer = footerFor(brief, line);
       const landed = brief.acceptedOutputs.slice(0, 2);
-      // Every section keeps its control (owner requirement); empty ones render dimmed.
+      // Priorities lead the digest as rows; the other sections are one row each, shown only
+      // when they hold something (no "Output –", no "Receipts $0.00").
       const has = sectionAvailability(brief);
-      const available = { priorities: true, output: true, receipts: true, attention: true };
-
       content.innerHTML = `
         <div class="brief-shell widget-shell-card animate-in">
           <div class="ox-card app-flat-card" data-edge="${line.edge}">
@@ -1091,7 +1091,7 @@
 
             <div class="brief-digest">
               ${brief.partialNotice ? `<p class="brief-partial" role="status"><span class="ev-dot" aria-hidden="true"></span><span><b>Partial brief.</b> ${escapeHtml(brief.partialNotice)}</span></p>` : ''}
-              <p class="brief-summary">${escapeHtml(brief.summary)}</p>
+              ${brief.summary ? `<p class="brief-summary">${escapeHtml(brief.summary)}</p>` : ''}
               ${
                 brief.actions.length
                   ? `
@@ -1105,18 +1105,23 @@
                             : `data-section="${escapeHtml(action.section)}" aria-controls="panel-${escapeHtml(action.section)}"`;
                           return `
                             <a href="${escapeHtml(href)}" class="action-card app-action-card focusable" data-tone="${escapeHtml(action.tone)}" data-action="${dataAction}" ${extraAttrs}>
-                              <span class="ev-dot" aria-hidden="true"></span>
+                              <span class="act-icon" aria-hidden="true">${oxIcon(action.icon, 18)}</span>
                               <span class="app-action-card-body">
                                 <span class="app-action-card-title">${escapeHtml(action.title)}</span>
                                 <span class="app-action-card-detail">${escapeHtml(action.detail)}</span>
                               </span>
-                              <span class="app-action-card-cta">${escapeHtml(action.cta)} ${action.url ? '<span aria-hidden="true">↗</span>' : icons.chevronDown(12)}</span>
+                              <span class="app-action-card-cta"><span class="cta-label">${escapeHtml(action.cta)}</span>${oxIcon(action.url ? 'open-external' : 'expand', 14)}</span>
                             </a>
                           `;
                         })
                         .join('')}
                     </div>
                   `
+                  : ''
+              }
+              ${
+                has.priorities
+                  ? `<div class="priorities" role="list" aria-labelledby="priorities-label"><p class="priorities-label" id="priorities-label">Top priorities</p>${renderPriorityRows(brief)}</div>`
                   : ''
               }
               ${
@@ -1134,16 +1139,9 @@
               }
             </div>
 
-            <div class="metric-rail app-metric-rail" aria-label="Brief sections">${
-              available.priorities ? `<button type="button" class="app-metric-button focusable${has.priorities ? '' : ' is-empty'}" data-action="open-section" data-section="priorities" aria-pressed="${state.activeSection === 'priorities'}" aria-controls="panel-priorities"><span class="metric-value">${escapeHtml(brief.metricDisplays.priorities)}</span><span class="metric-label">Priorities</span></button>` : ''}${
-              available.output ? `<button type="button" class="app-metric-button focusable${has.output ? '' : ' is-empty'}" data-action="open-section" data-section="output" aria-pressed="${state.activeSection === 'output'}" aria-controls="panel-output"><span class="metric-value">${escapeHtml(brief.metricDisplays.output)}</span><span class="metric-label">Output</span></button>` : ''}${
-              available.receipts ? `<button type="button" class="app-metric-button focusable${has.receipts ? '' : ' is-empty'}" data-action="open-section" data-section="receipts" aria-pressed="${state.activeSection === 'receipts'}" aria-controls="panel-receipts"><span class="metric-value">${escapeHtml(brief.metricDisplays.receipts)}</span><span class="metric-label">Receipts</span></button>` : ''}${
-              available.attention ? `<button type="button" class="app-metric-button focusable${has.attention ? '' : ' is-empty'}" data-action="open-section" data-section="attention" aria-pressed="${state.activeSection === 'attention'}" aria-controls="panel-attention"><span class="metric-value">${escapeHtml(brief.metricDisplays.attention)}</span><span class="metric-label">Flags</span></button>` : ''}</div>
-
-            ${available.priorities ? sectionHtml('priorities', 'Top priorities', String(brief.counts.priorities), `<div class="priority-list">${renderPriorityRows(brief)}</div>`) : ''}
-            ${available.output ? sectionHtml('output', 'Overnight output', String(brief.counts.output), `<div class="output-list app-list-stack">${renderOutputRows(brief)}</div>`) : ''}
-            ${available.receipts ? sectionHtml('receipts', 'Value receipts', brief.metricDisplays.receipts, `<div class="receipt-list app-list-stack">${renderReceiptRows(brief)}</div>`) : ''}
-            ${available.attention ? sectionHtml('attention', 'Needs attention', String(brief.counts.attention), `<div class="attention-list app-list-stack">${renderAttentionRows(brief)}</div>`) : ''}
+            ${has.output ? sectionHtml('output', 'artifact', 'Overnight output', String(brief.counts.output), `<div class="output-list app-list-stack">${renderOutputRows(brief)}</div>`) : ''}
+            ${has.receipts ? sectionHtml('receipts', 'cost', 'Value receipts', brief.metricDisplays.receipts, `<div class="receipt-list app-list-stack">${renderReceiptRows(brief)}</div>`) : ''}
+            ${has.attention ? sectionHtml('attention', 'needs-you', 'Needs attention', String(brief.counts.attention), `<div class="attention-list app-list-stack">${renderAttentionRows(brief)}</div>`) : ''}
 
             <ox-footer variant="reads" class="brief-footer" state="${footer.state}" heading="${escapeHtml(footer.heading)}" detail="${escapeHtml(footer.detail)}" action-label="${escapeHtml(footer.action)}"${
               brief.footerUrl ? ` data-url="${escapeHtml(brief.footerUrl)}"` : ''
@@ -1153,20 +1151,21 @@
       `;
     }
 
-    function sectionHtml(section, title, badge, body) {
+    function sectionHtml(section, icon, title, badge, body) {
       const open = state.activeSection === section;
       return `
             <section class="brief-section app-accordion-section ${open ? 'is-open' : ''}" id="section-${section}">
               <button type="button" class="app-accordion-trigger focusable" id="trigger-${section}" data-action="toggle-section" data-section="${section}" aria-expanded="${open}" aria-controls="panel-${section}">
                 <span class="app-accordion-trigger-left">
+                  ${oxIcon(icon, 16)}
                   <span class="app-accordion-trigger-title">${escapeHtml(title)}</span>
                   <span class="app-accordion-trigger-badge">${escapeHtml(badge)}</span>
                 </span>
-                <span class="app-accordion-chevron">${icons.chevronDown(14)}</span>
+                <span class="app-accordion-chevron">${oxIcon('expand', 16)}</span>
               </button>
-              <div class="app-accordion-body" id="panel-${section}" role="region" aria-labelledby="trigger-${section}" aria-hidden="${!open}">
+              <div class="app-accordion-panel ox-collapse" id="panel-${section}" role="region" aria-labelledby="trigger-${section}"><div><div class="app-accordion-panel-inner">
                 ${body}
-              </div>
+              </div></div></div>
             </section>`;
     }
 
@@ -1211,14 +1210,9 @@
         const isOpen = sectionId === section;
         sectionElement.classList.toggle('is-open', isOpen);
 
+        // The panel follows its trigger's aria-expanded (.ox-collapse animates it in CSS).
         const trigger = sectionElement.querySelector('.app-accordion-trigger');
-        const panel = sectionElement.querySelector('.app-accordion-body');
         if (trigger) trigger.setAttribute('aria-expanded', String(isOpen));
-        if (panel) panel.setAttribute('aria-hidden', String(!isOpen));
-      });
-
-      content.querySelectorAll('.app-metric-button[data-section]').forEach((button) => {
-        button.setAttribute('aria-pressed', String(button.dataset.section === section));
       });
 
       if (section && options.scroll) {
