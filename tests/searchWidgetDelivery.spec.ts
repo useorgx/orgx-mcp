@@ -121,7 +121,7 @@ describe('search delivery through the real ChatGPT widget', () => {
     expect(text()).not.toContain('**');
     expect(dom.window.document.querySelector('.result-card')?.getAttribute('href')).toContain(id);
     expect(dom.window.document.querySelector('.sr-hd ox-glyph[kind="question"]')).toBeNull();
-    expect(text()).toContain('How search works');
+    expect(dom.window.document.querySelector('.sr-help-btn')!.getAttribute('aria-label')).toBe('How search works');
   });
   it('starts a new filtered search with inclusive ISO bounds and resets pagination', async () => {
     const callTool = vi.fn().mockResolvedValue({ structuredContent: { results: [{ title: 'Filtered task', type: 'task' }] } });
@@ -279,16 +279,45 @@ describe('search results read consistently (C6, C8)', () => {
     expect(doc.querySelector('.sr-count')!.textContent).toBe('20+ results');
     expect(doc.querySelector('.page-range')!.textContent).toBe('1–3 of 20+');
     expect(doc.querySelector('ox-footer')!.getAttribute('heading')).toBe('20 loaded');
+    expect(doc.querySelector('.sr-more')!.textContent).toBe('Load more results');
     expect(text()).not.toContain('of 20 loaded');
   });
-  it('makes filters and help real disclosures with styled fields', async () => {
+  it('makes filters a real control with presets, and help a small header button', async () => {
     boot({ query: 'Exact title', results: rows });
     await vi.advanceTimersByTimeAsync(250);
-    const summaries = Array.from(dom.window.document.querySelectorAll('.sr-tools summary'));
-    expect(summaries.map((summary) => summary.textContent!.trim())).toEqual(['Search filters', 'How search works']);
-    for (const summary of summaries) expect(summary.querySelector('svg')).not.toBeNull();
-    expect(html).toContain('.sr-tools summary:focus:not(:focus-visible) { outline: none; }');
-    expect(html).toMatch(/\.sr-filters input, \.sr-filters select \{[^}]*appearance: none;[^}]*background-color: var\(--ox-well-bg\)/);
-    expect(html).not.toContain('.sr-bd .result-list:first-of-type > .result-card:first-child');
+    const doc = dom.window.document;
+    const toggle = doc.querySelector('.sr-filter-toggle')!;
+    expect(toggle.textContent!.trim()).toBe('Search filters');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(doc.getElementById(toggle.getAttribute('aria-controls')!)!.hidden).toBe(true);
+    const presets = Array.from(doc.querySelectorAll('input[name="range"]')).map((input) => (input as HTMLInputElement).value);
+    expect(presets).toEqual(['any', '1', '7', '30', 'custom']);
+    // Custom dates stay out of sight until Custom is chosen.
+    expect((doc.querySelector('.sr-custom') as HTMLElement).hidden).toBe(true);
+    const help = doc.querySelector('.sr-help-btn')!;
+    expect(help.closest('.sr-hd')).not.toBeNull();
+    expect(help.getAttribute('aria-expanded')).toBe('false');
+    // The counts footer said the header's count again; it is gone.
+    expect(doc.querySelector('ox-footer')).toBeNull();
+    expect(html).toMatch(/\.sr-field select, \.sr-field input\[type="datetime-local"\] \{[^}]*appearance: none;[^}]*background-color: var\(--ox-well-bg\)/);
+  });
+
+  it('starts a filtered search from a created-date preset', async () => {
+    const callTool = vi.fn().mockResolvedValue({ structuredContent: { results: [{ title: 'Recent task', type: 'task' }] } });
+    boot({ results: [{ title: 'Old task', type: 'task' }] }, undefined, callTool);
+    (dom.window as any).openai.toolInput = { query: 'launch' };
+    await vi.advanceTimersByTimeAsync(250);
+    const form = dom.window.document.querySelector('.sr-filter-panel form') as HTMLFormElement;
+    (form.querySelector('input[name="range"][value="7"]') as HTMLInputElement).checked = true;
+    const before = Date.now();
+    await (dom.window as any).applySearchFilters({ preventDefault() {}, currentTarget: form });
+    const args = callTool.mock.calls[0][1];
+    expect(args.query).toBe('launch');
+    expect(args.created_to).toBeUndefined();
+    const from = Date.parse(args.created_from);
+    expect(before - from).toBeGreaterThanOrEqual(7 * 86_400_000 - 120_000);
+    expect(before - from).toBeLessThanOrEqual(7 * 86_400_000 + 120_000);
+    expect(text()).toContain('Recent task');
+    expect(text()).toContain('Past week');
   });
 });

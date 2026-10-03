@@ -34,8 +34,9 @@ describe('search card browser flow', () => {
       });
       await page.goto('https://mcp.useorgx.test/widgets/search-results.html', { waitUntil: 'domcontentloaded' });
       await page.getByText('Original result', { exact: true }).waitFor();
-      await page.getByText('Search filters', { exact: true }).click();
+      await page.getByRole('button', { name: 'Search filters' }).click();
       await page.getByLabel('Type', { exact: true }).selectOption('task');
+      await page.getByRole('radio', { name: 'Custom' }).check();
       await page.getByLabel('Created from', { exact: true }).fill('2026-10-01T00:00');
       await page.getByLabel('Created to', { exact: true }).fill('2026-10-02T00:00');
       await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
@@ -44,7 +45,10 @@ describe('search card browser flow', () => {
       expect(requests[0].args.type).toBe('task'); expect(requests[0].args.cursor).toBeUndefined();
       expect(requests[0].args.created_from).toBe(new Date('2026-10-01T00:00').toISOString());
       expect(requests[0].args.created_to).toBe(new Date('2026-10-02T00:00').toISOString());
+      // A filtered search that lands closes the panel; the active filters stay in view.
+      expect(await page.locator('.sr-active').textContent()).toContain('Task');
       await page.evaluate(() => { (window as unknown as { failSearch: boolean }).failSearch = true; });
+      await page.getByRole('button', { name: 'Search filters' }).click();
       await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
       await page.getByRole('alert').waitFor();
       expect(await page.getByRole('alert').textContent()).toContain('previous results are still shown');
@@ -54,8 +58,8 @@ describe('search card browser flow', () => {
       await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
       await page.getByRole('alert').waitFor({ state: 'detached' });
       expect(await page.getByText('Filtered result', { exact: true }).count()).toBe(1);
-      await page.getByText('How search works', { exact: true }).click();
-      expect(await page.getByText(/Creation-date controls apply to the full search/).isVisible()).toBe(true);
+      await page.getByRole('button', { name: 'How search works' }).click();
+      expect(await page.getByText(/Filters start a new search/).isVisible()).toBe(true);
     } finally { await browser.close(); }
   }, 30_000);
 });
