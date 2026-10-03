@@ -35,7 +35,7 @@ try {
       const text = await page.locator('#content').innerText();
       assert.match(text, /Your Assignment Goal: Produce a campaign/);
       assert.doesNotMatch(text, /##|\*\*|Recently updated|Just now|No excerpt available/);
-      assert.match(await page.locator('.result-card').first().getAttribute('href'), /task=task-0/);
+      assert.match(await page.locator('.result-card').first().getAttribute('href'), /\/tasks\/task-0$/); // the task page (OrgXLinks.task)
       assert.match(text, /Campaign 0/);
       await page.getByRole('button', { name: 'Next', exact: true }).click();
       assert.doesNotMatch(await page.locator('.result-list').innerText(), /Campaign 0/);

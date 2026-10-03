@@ -150,6 +150,21 @@
     );
   }
 
+  // Standalone previews (a widget opened directly, not inside a host) read the
+  // headshots from this deployment's public/avatars/agents/photo, as they
+  // already do for the rendered set; in a host the kit default
+  // (mcp.useorgx.com) applies. The kit loads before this file.
+  (function useLocalPhotosWhenStandalone() {
+    try {
+      var config = global.OrgXElements && global.OrgXElements.avatarConfig;
+      var framed = global.parent && global.parent !== global;
+      if (!config || framed || global.openai || !/^https?:$/.test(global.location.protocol)) return;
+      config.photoBaseUrl = new URL('../avatars/agents/photo', global.location.href).toString().replace(/\/$/, '');
+    } catch (_) {
+      // Keep the default.
+    }
+  })();
+
   global.OrgXAgentIdentity = {
     AGENTS: AGENTS.map(function (agent) { return { key: agent.key, name: agent.name, role: agent.role }; }),
     resolveAgentKey: resolveAgentKey,
