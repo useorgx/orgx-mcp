@@ -2345,17 +2345,17 @@
       const hasCons = Boolean(d.if_approved || d.if_rejected);
       let recLine = d.recommendation
         ? `<div>
-            <div class="dq-rec">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 22, owner.isSystem, d)}<span>${escapeHtml(owner.name)} recommends</span>${owner.role ? `<span class="role">· ${escapeHtml(owner.role)} agent</span>` : ''}${d.recommendation_unverified ? '<span class="role">· unverified</span>' : ''}</div>
+            <div class="dq-rec">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 'inline', owner.isSystem, d)}<span>${escapeHtml(owner.name)} recommends</span>${owner.role ? `<span class="role">· ${escapeHtml(owner.role)} agent</span>` : ''}${d.recommendation_unverified ? '<span class="role">· unverified</span>' : ''}</div>
             <div class="dq-why">${escapeHtml(d.recommendation)}</div>
           </div>`
         : d.recommendation_missing && kindFromType(d) === 'decision'
         // The app could not make one: say so once, quietly.
-        ? `<div class="dq-rec is-quiet">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 22, owner.isSystem)}<span>No recommendation yet</span></div>`
+        ? `<div class="dq-rec is-quiet">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 'inline', owner.isSystem)}<span>No recommendation yet</span></div>`
         : '';
       // Actions and run approvals carry no recommendation: say who is asking.
       const kind = kindFromType(d);
       if (!recLine && kind !== 'decision' && !owner.isSystem) {
-        recLine = `<div><div class="dq-rec">${renderAvatar(owner.label, 22, false, d)}<span>${escapeHtml(owner.name)}</span><span class="role">${kind === 'action' ? 'wants to run this action' : 'is paused until you approve'}</span></div></div>`;
+        recLine = `<div><div class="dq-rec">${renderAvatar(owner.label, 'inline', false, d)}<span>${escapeHtml(owner.name)}</span><span class="role">${kind === 'action' ? 'wants to run this action' : 'is paused until you approve'}</span></div></div>`;
       }
       const evidenceHtml = shownEvidence.length
         ? `<div class="dq-evidence" role="list">

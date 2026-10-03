@@ -657,7 +657,7 @@
             // Owners always get a face: an agent's headshot and hover card, the
             // OrgX mark for system owners, initials for a person.
             var owner = fact.label === 'Owner'
-              ? window.OrgXAgentIdentity.agentCard({ agent: agentFor(fact.value) || fact.value, name: fact.value, size: 20, state: chip ? chip.state : '', task: card.title })
+              ? window.OrgXAgentIdentity.agentCard({ agent: agentFor(fact.value) || fact.value, name: fact.value, size: 'inline', state: chip ? chip.state : '', task: card.title })
               : '';
             return '<div><dt>' + escapeHtml(fact.label) + '</dt><dd>' + owner + escapeHtml(fact.value) + '</dd></div>';
           }).join('') + '</dl>'

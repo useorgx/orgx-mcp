@@ -168,7 +168,7 @@
       }
       .pulse-list > .pulse-list-row:first-child { border-top: 0; }
       .pulse-list-row:hover .pulse-list-title { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ox-border-strong); }
-      .pulse-list-leading { display: grid; place-items: center; width: 28px; color: var(--ox-text-muted); --ox-glyph-size: 18px; }
+      .pulse-list-leading { display: grid; place-items: center; width: 32px; color: var(--ox-text-muted); --ox-glyph-size: 18px; }
       .pulse-list-leading[data-tone="amber"] { color: var(--ox-warning); }
       .pulse-list-leading[data-tone="red"] { color: var(--ox-danger); }
       .pulse-list-leading[data-tone="teal"] { color: var(--ox-teal); }
@@ -1072,7 +1072,7 @@ external: function (size) {
         var identity = window.OrgXAgentIdentity;
         var key = identity.resolveAgentKey(name, domain);
         if (!key && !(name && String(name).trim())) return "";
-        return identity.avatar({ agent: key || name, name: name, size: 24 });
+        return identity.avatar({ agent: key || name, name: name, size: 'row' });
       };
 
       var toneForStatus = function (status, fallbackProgress, blockerCount) {

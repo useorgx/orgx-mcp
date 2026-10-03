@@ -1059,7 +1059,7 @@
       return '<span class="ws-agent">' + identity.agentCard({
         agent: who ? who.key : '',
         name: who ? who.name : name,
-        size: 24,
+        size: 'row',
         state: chip.state,
         statusLabel: chip.label,
         task: (execution && (execution.current_task || execution.task_title)) || workTitle,

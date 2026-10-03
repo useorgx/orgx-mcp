@@ -48,6 +48,9 @@ describe('agent identity', () => {
     expect(agent.getAttribute('agent')).toBe('eli');
     expect(agent.getAttribute('name')).toBe('Eli');
     expect(agent.getAttribute('size')).toBe('28');
+    // Never smaller than inline (28 px), so a headshot stays a face; presets pass through.
+    expect(el(identity.avatar({ agent: 'eli', size: 20 })).getAttribute('size')).toBe('inline');
+    expect(el(identity.avatar({ agent: 'eli', size: 'row' })).getAttribute('size')).toBe('row');
     const system = el(identity.avatar({ name: 'OrgX System' }));
     expect(system.getAttribute('agent')).toBe('system');
     expect(system.getAttribute('name')).toBe('OrgX');
@@ -73,7 +76,7 @@ describe('agent identity', () => {
   });
 
   it('falls back to the plain avatar for people and OrgX', () => {
-    expect(identity.agentCard({ name: 'Ada Lovelace', label: 'Ada' })).toBe('<ox-avatar size="24" name="Ada Lovelace"></ox-avatar>Ada');
+    expect(identity.agentCard({ name: 'Ada Lovelace', label: 'Ada' })).toBe('<ox-avatar size="inline" name="Ada Lovelace"></ox-avatar>Ada');
     expect(identity.agentCard({ agent: 'system' })).toContain('agent="system"');
   });
 });

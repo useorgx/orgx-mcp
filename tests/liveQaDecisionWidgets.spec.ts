@@ -204,10 +204,10 @@ describe('B2 · decisions: no "status: unavailable", and the OrgX mark renders',
     expect(rec.textContent).toContain('No recommendation yet');
     expect(visibleText()).not.toMatch(/status:\s*unavailable/i);
     expect(visibleText()).not.toContain('recommends');
-    // The kit avatar draws the OrgX mark (never an empty circle) at the same 22px footprint.
+    // The kit avatar draws the OrgX mark (never an empty circle) at the inline size (28 px).
     const avatar = rec.querySelector('.agent-avatar--system ox-avatar')!;
     expect(avatar.getAttribute('agent')).toBe('system');
-    expect(avatar.getAttribute('size')).toBe('22');
+    expect(avatar.getAttribute('size')).toBe('inline');
     expect(rec.querySelector('img')).toBeNull();
   });
 

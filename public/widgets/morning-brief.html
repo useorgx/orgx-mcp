@@ -131,7 +131,7 @@
 
     .priority-row { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 0; }
     .priority-row + .priority-row { border-top: 1px solid var(--ox-border); }
-    .priority-who { width: 22px; height: 22px; display: grid; place-items: center; color: var(--ox-text-muted); }
+    .priority-who { width: 32px; height: 32px; display: grid; place-items: center; color: var(--ox-text-muted); }
     .priority-domain { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); }
     /* Priority headline: the title's first sentence, about three lines; the rest reads as body text. */
     .priority-title {
@@ -884,7 +884,7 @@
 
     // An agent's headshot in its hover card (state, task, Open in OrgX); the
     // OrgX mark for OrgX/system work; initials for a person.
-    function avatarHtml(agentKey, name, size = 20, extra = {}) {
+    function avatarHtml(agentKey, name, size = 'inline', extra = {}) {
       return window.OrgXAgentIdentity.agentCard({ agent: agentKey || name, name, size, ...extra });
     }
 
@@ -934,7 +934,7 @@
           const head = splitHeadline(priority.title || 'Priority item');
           return `
             <div class="priority-row">
-              <div class="priority-who">${avatarHtml(agentKey, agentKey ? '' : (priority.agent_name || 'OrgX'), 22, { task: head.headline })}</div>
+              <div class="priority-who">${avatarHtml(agentKey, agentKey ? '' : (priority.agent_name || 'OrgX'), 'row', { task: head.headline })}</div>
               <div class="priority-body">
                 <div class="priority-domain">${escapeHtml(domain)}</div>
                 <div class="priority-title">${escapeHtml(head.headline)}</div>
@@ -983,7 +983,7 @@
               <div class="app-list-row-body">
                 <div class="app-list-row-title">${escapeHtml(row.title || row.name || 'Untitled artifact')}</div>
                 <div class="app-list-row-detail">${escapeHtml(summary)}</div>
-                <div class="output-meta">${avatarHtml(agentKey, author, 18, { task: row.title || row.name, state: reviewable ? 'needs_you' : '', statusLabel: reviewable ? 'Your review' : '', label: `<span>${escapeHtml(author)}</span>` })}<span aria-hidden="true">·</span><span>${escapeHtml(type)}</span></div>
+                <div class="output-meta">${avatarHtml(agentKey, author, 'inline', { task: row.title || row.name, state: reviewable ? 'needs_you' : '', statusLabel: reviewable ? 'Your review' : '', label: `<span>${escapeHtml(author)}</span>` })}<span aria-hidden="true">·</span><span>${escapeHtml(type)}</span></div>
               </div>
               ${
                 reviewable && url

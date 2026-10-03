@@ -80,6 +80,20 @@
     }
   }
 
+  /**
+   * Display sizes (the kit's <ox-avatar> presets): inline beside text, row in
+   * list rows, header in card headers. Smaller than inline and a headshot is
+   * no longer a recognizable face.
+   */
+  var SIZES = { inline: 28, row: 32, header: 40 };
+
+  /** A preset name passes through (the kit sizes it); pixels are kept, never below inline. */
+  function sizeAttr(size) {
+    if (SIZES[size]) return size;
+    var px = Math.round(Number(size));
+    return px >= SIZES.inline ? String(px) : 'inline';
+  }
+
   function esc(value) {
     return String(value).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; });
   }
@@ -96,13 +110,14 @@
 
   /**
    * '<ox-avatar>' for an owner. options: agent (key, name, id or domain),
-   * name (display name), size (px, default 24), form (kept for the rendered
+   * name (display name), size ('inline' 28 (default) | 'row' 32 | 'header' 40,
+   * or px of at least 28), form (kept for the rendered
    * set; photo mode ignores it), className.
    */
   function avatar(options) {
     var o = options || {};
     var who = profile(o.agent, o.name);
-    var base = { class: o.className, size: String(Math.round(Number(o.size) || 24)), form: o.form };
+    var base = { class: o.className, size: sizeAttr(o.size), form: o.form };
     if (who) {
       base.agent = who.key;
       base.name = who.name;
@@ -139,7 +154,7 @@
         agent: who.key,
         name: who.name,
         role: o.role || who.role,
-        size: String(Math.round(Number(o.size) || 24)),
+        size: sizeAttr(o.size),
         state: o.state,
         'status-label': o.statusLabel,
         detail: detail,
@@ -166,6 +181,7 @@
   })();
 
   global.OrgXAgentIdentity = {
+    SIZES: SIZES,
     AGENTS: AGENTS.map(function (agent) { return { key: agent.key, name: agent.name, role: agent.role }; }),
     resolveAgentKey: resolveAgentKey,
     profile: profile,

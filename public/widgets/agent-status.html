@@ -645,7 +645,7 @@
     function renderAvatar(agent, size) {
       var identity = window.OrgXAgentIdentity;
       var key = identity.resolveAgentKey(agent.name, agent.role);
-      return identity.avatar({ agent: key || agent.name, name: agent.name, size: size || 32 });
+      return identity.avatar({ agent: key || agent.name, name: agent.name, size: size || 'row' });
     }
 
     /* The selected agent's identity as a hover card: name, role, state, task, Open in OrgX. */
@@ -659,7 +659,7 @@
         agent: who.key,
         name: agent.name,
         role: agent.role,
-        size: 20,
+        size: 'inline',
         state: state,
         statusLabel: agent.status === 'review' ? 'Your review' : CHIP_LABELS[state],
         task: agent.currentTask,
@@ -717,7 +717,7 @@
       ].filter(Boolean).join(' · ');
       return (
         '<button type="button" class="agent-switcher-row focusable" role="tab" data-action="select-agent" data-agent-tab="' + escapeHtml(agent.id) + '" data-agent-row="' + escapeHtml(agent.runId || '') + '" aria-selected="' + String(selected) + '" tabindex="' + (selected ? '0' : '-1') + '">' +
-          '<span class="agent-avatar" aria-hidden="true">' + renderAvatar(agent, 32) + '</span>' +
+          '<span class="agent-avatar" aria-hidden="true">' + renderAvatar(agent, 'row') + '</span>' +
           '<span class="switcher-copy">' +
             '<span class="switcher-identity"><span class="switcher-name">' + escapeHtml(agent.name) + '</span><span class="switcher-role">' + escapeHtml(agent.role) + '</span></span>' +
             '<span class="switcher-focus">' + escapeHtml(switcherMeta) + (agent.currentMeta ? ' · ' + escapeHtml(agent.currentMeta) : '') + '</span>' +
