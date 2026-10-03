@@ -90,18 +90,21 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 107794,
-      "hash": "fd76b3688223",
+      "bytes": 116462,
+      "hash": "11f2818c4c84",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
         "shared/interaction-kit.css",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-avatar.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
         "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/tokens.css",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
@@ -112,29 +115,33 @@
         "ox-state-chip",
         "ox-receipt-row",
         "ox-footer",
-        "ox-glyph",
         "ox-avatar"
       ],
       "kitBundles": [
-        "shared/kit/ox-elements.js"
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-avatar.js"
       ],
       "demoOnly": false
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 151624,
-      "hash": "c0f69533d456",
+      "bytes": 165496,
+      "hash": "41ab6cdd5e65",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-avatar.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
         "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
         "shared/widget-theme.css"
@@ -144,11 +151,12 @@
         "ox-attention-line",
         "ox-receipt-row",
         "ox-footer",
-        "ox-glyph",
         "ox-avatar"
       ],
       "kitBundles": [
-        "shared/kit/ox-elements.js"
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-avatar.js"
       ],
       "demoOnly": false
     },

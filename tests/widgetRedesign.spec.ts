@@ -13,7 +13,7 @@ describe("OrgX compact widget redesign", () => {
   it("composes artifact review as evidence beside consequence with recoverable actions", () => {
     const html = widget("artifact-review");
     expect(html).toContain('class="review-desk');
-    expect(html).toContain("Does this evidence meet the bar to advance?");
+    expect(html).toContain("Is this version good enough to sign?");
     expect(html).toContain('aria-controls="artifact-change-composer"');
     expect(html).toContain("Recording approval and advancing the artifact");
     expect(html).toContain("Your note is preserved; try again.");
@@ -65,8 +65,9 @@ describe("OrgX compact widget redesign", () => {
   it("shows one consequential decision and progressively discloses evidence", () => {
     const html = widget("decisions");
     expect(html).toContain("var itemsPerPage = 1");
-    expect(html).toContain('<details class="decision-evidence">');
-    expect(html).toContain("Evidence and consequence");
+    expect(html).toContain('class="decision-evidence__toggle" data-action="toggle-details"');
+    expect(html).toContain('<div class="ox-collapse" id="details-');
+    expect(html).toContain("More context");
     expect(html).toContain("data-reject-id=");
     expect(html).toContain("CSS.escape(decisionId)");
     expect(html).toContain("Decision queue unavailable");

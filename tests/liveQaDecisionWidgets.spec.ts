@@ -259,34 +259,74 @@ describe('B3 · decisions: "Evidence and consequence" in sentences', () => {
 });
 
 describe('B4 · short headlines', () => {
-  it('decisions: the first sentence is the headline and the rest is body text', async () => {
+  it('decisions: the first sentence is the headline and the rest is structured body text', async () => {
     mountDecisions([packetDecision(D1, LONG)], { [D1]: 't1' }, () => ({}));
     await vi.waitFor(() => expect(document.querySelector('.dq-q')).not.toBeNull());
     expect(document.querySelector('.dq-q')!.textContent).toBe('The OrgX floor stopped a merge action in an agent-cli session and is waiting for you.');
-    expect(document.querySelector('.dq-detail')!.textContent).toBe(LONG.slice(LONG.indexOf("Agent's reason")));
+    // No wall of text: the labelled reason is a fact, the rest a short lede, and what
+    // approving does goes to "If approved".
+    expect(document.querySelector('.dq-facts dt')!.textContent).toBe("Agent's reason");
+    expect(document.querySelector('.dq-facts dd')!.textContent).toBe('Please review PR #3239.');
+    expect(document.querySelector('.dq-lede')!.textContent).toBe('Required GitHub CI did not start because the Actions budget is exhausted.');
+    expect(document.querySelector('.dq-cons .v')!.textContent).toBe('Let exactly this action run once in the next 24 hours.');
+    expect(document.querySelector('.dq-detail')!.textContent).not.toContain('Approve to let');
+  });
+
+  it('decisions: a command is set as code and a URL is a link', async () => {
+    const text = 'Merge PR #3239 once CI is green? Command: gh pr merge 3239 --squash. See https://github.com/useorgx/orgx/pull/3239 for the diff. Recommendation: approve once the Actions budget resets.';
+    mountDecisions([{ ...plainDecision(D1, text), recommendation: undefined }], { [D1]: 't1' }, () => ({}));
+    await vi.waitFor(() => expect(document.querySelector('.dq-q')).not.toBeNull());
+    expect(document.querySelector('.dq-q')!.textContent).toBe('Merge PR #3239 once CI is green?');
+    expect(document.querySelector('.dq-cmd pre code')!.textContent).toBe('gh pr merge 3239 --squash');
+    const link = document.querySelector('.dq-detail a') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('https://github.com/useorgx/orgx/pull/3239');
+    expect(link.textContent).toBe('github.com/useorgx/orgx/pull/3239');
+    // A stated recommendation fills the recommendation line, not the body.
+    expect(document.querySelector('.dq-why')!.textContent).toBe('Approve once the Actions budget resets.');
   });
 
   it('decisions: a title field wins over the first sentence', async () => {
     mountDecisions([{ ...plainDecision(D1, LONG), title: 'Allow one merge of PR #3239' }], { [D1]: 't1' }, () => ({}));
     await vi.waitFor(() => expect(document.querySelector('.dq-q')).not.toBeNull());
     expect(document.querySelector('.dq-q')!.textContent).toBe('Allow one merge of PR #3239');
-    expect(document.querySelector('.dq-detail')!.textContent).toBe(LONG);
+    expect(document.querySelector('.dq-detail')!.textContent).toContain('The OrgX floor stopped a merge action in an agent-cli session and is waiting for you.');
   });
 
-  it('decisions: a first sentence too long for three lines is cut at a word, and nothing is lost', async () => {
+  it('decisions: a long first sentence splits at its label, never into "…" plus an orphan', async () => {
     const run = 'Production verification of MCP PR #424: admission, privacy and plan compatibility changes are deployed as f9c40d233e4e13809d9f901b005fe3410b37a4b0. A green deployment alone does not approve marketing.';
     mountDecisions([plainDecision(D1, run)], { [D1]: 't1' }, () => ({}));
     await vi.waitFor(() => expect(document.querySelector('.dq-q')).not.toBeNull());
     const head = document.querySelector('.dq-q')!.textContent!;
     const body = document.querySelector('.dq-detail')!.textContent!;
-    expect(head.length).toBeLessThanOrEqual(97);
-    expect(head.endsWith('…')).toBe(true);
-    expect(`${head.slice(0, -1)} ${body.slice(1)}`).toBe(run);
+    expect(head).toBe('Production verification of MCP PR #424');
+    expect(head).not.toContain('…');
+    expect(body.startsWith('…')).toBe(false);
+    expect(body).toContain('Admission, privacy and plan compatibility changes are deployed as');
+    // The hash is code, shortened, with the full value in its title.
+    expect(document.querySelector('.dq-detail code[title="f9c40d233e4e13809d9f901b005fe3410b37a4b0"]')).not.toBeNull();
+    expect(body).toContain('A green deployment alone does not approve marketing.');
   });
 
-  it('decisions: the headline is clamped to about three lines in CSS', () => {
+  it('decisions: the header counts pending decisions in their scope', async () => {
+    ensureCssEscape();
+    mountWidget('decisions', {
+      payload: {
+        decisions: [plainDecision(D1, 'Ship the pricing page?')],
+        total_pending: 25,
+        pending_decisions_scope: { level: 'workspace', workspace_id: 'w', initiative_id: null, kinds: ['decision'], urgency: 'all', includes_system: false, unit: 'review_packet', total: 25, capped: false },
+      },
+      callTool: vi.fn(() => Promise.resolve({})),
+    });
+    await vi.waitFor(() => expect(document.querySelector('#dqAttention')).not.toBeNull());
+    expect(document.querySelector('#dqAttention > span:not([slot])')!.textContent).toBe('1 here · 25 across the workspace');
+    expect(document.querySelector('.dq-more')!.textContent).toContain('24 more across the workspace in OrgX');
+  });
+
+  it('decisions: the headline is clamped to about three lines in CSS, never cut in the text', () => {
     const html = readFileSync(join(WIDGETS_DIR, 'decisions.html'), 'utf8');
     expect(html).toMatch(/\.dq-q \{[\s\S]*?-webkit-line-clamp: 3;/);
+    expect(html).toContain('Show the whole request');
+    expect(html).not.toMatch(/rest = '…'/);
   });
 
   it('panel: the packet headline is the first sentence with the rest as body text', async () => {

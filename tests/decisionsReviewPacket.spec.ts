@@ -17,6 +17,6 @@ describe('decisions widget canonical review packet', () => {
     expect(source).toContain('packet.consequences');
     expect(source).toContain("if (packetId) return `packet:${packetId}`");
     expect(source).toContain('review packet');
-    expect(source).toContain('Collapsed');
+    expect(source).toContain('merged');
   });
 });

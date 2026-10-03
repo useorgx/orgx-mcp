@@ -8,8 +8,11 @@
   <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
-  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/kit/ox-elements-core.js"></script>
+  <script src="shared/kit/ox-elements-footer.js"></script>
+  <script src="shared/kit/ox-elements-avatar.js"></script>
   <script src="shared/agent-identity.js"></script>
+  <script src="shared/orgx-icons.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
@@ -61,7 +64,10 @@
        this sheet only lays the card out. */
     /* Primaries (Approve, Confirm, Retry, Decide in OrgX) are the kit's action lime.
        Amber is only "needs you": the attention line, the status line and the card edge. */
-    :root { --ox-primary-rgb: 191, 255, 0; }
+    :root { --ox-primary-rgb: 191, 255, 0; --dq-code: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+    /* Meta reads in the sans scale; mono is kept for code and ids (--dq-code). */
+    ox-receipt-row, ox-attention-line, ox-state-chip, ox-footer { --ox-mono: var(--ox-font); }
+    .ox-icon { display: block; flex: none; }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -110,36 +116,69 @@
     .ox-card[data-edge="mute"] { --edge-rgb: var(--ox-edge-mute-rgb); }
 
     .dq-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 8px 0 20px; }
-    .dq-head-link {
-      display: inline-flex; align-items: center; gap: 6px;
-      min-height: 44px; padding: 0 12px; border-radius: 10px;
-      font-size: 12.5px; font-weight: 600; color: var(--ox-text-2); text-decoration: none; white-space: nowrap;
+    /* OrgX links read as controls: 44px, full-contrast label, a hairline edge. */
+    .dq-head-link, .dq-all {
+      display: inline-flex; align-items: center; gap: 6px; flex: none;
+      min-height: 44px; padding: 0 14px; border-radius: 12px;
+      border: 1px solid var(--ox-border-strong); background: var(--ox-surface-subtle, transparent);
+      font-size: 13px; font-weight: 650; line-height: 1.2; color: var(--ox-text); text-decoration: none; white-space: nowrap;
+      transition: background 160ms ease, border-color 160ms ease;
     }
-    .dq-head-link:hover { color: var(--ox-text); background: var(--ox-hover); }
-    .dq-head-link svg { width: 12px; height: 12px; }
+    .dq-head-link { min-height: 36px; padding: 0 12px; position: relative; }
+    .dq-head-link::after { content: ""; position: absolute; inset: -4px -2px; }
+    .dq-head-link:hover, .dq-all:hover { background: var(--ox-hover); border-color: var(--ox-text-muted); }
+    .dq-head-link svg, .dq-all svg { width: 14px; height: 14px; color: var(--ox-text-2); }
+    .dq-head [slot="meta"] { font: 500 12px/1.3 var(--ox-font); font-variant-numeric: tabular-nums; }
 
     .dq-body { padding: 20px 24px 22px; display: flex; flex-direction: column; gap: 18px; }
 
     .dq-status {
-      display: flex; align-items: center; gap: 8px; min-width: 0;
-      font: 600 12px/1.3 var(--ox-mono); color: var(--ox-text-muted);
+      display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 22px;
+      font: 600 13px/1.3 var(--ox-font); color: var(--ox-text-muted);
       white-space: nowrap; font-variant-numeric: tabular-nums;
     }
+    .dq-status .ctx { font-weight: 500; }
     .dq-status .need { display: inline-flex; align-items: center; gap: 6px; color: var(--ox-warning); }
     .dq-status .done { display: inline-flex; align-items: center; gap: 6px; color: var(--ox-teal); }
     .dq-status .ctx-wrap { display: contents; }
     .dq-status .ctx { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-    .dq-status .urg { margin-left: auto; padding-left: 8px; }
-    .dq-status .urg-critical { color: var(--ox-danger); }
-    .dq-status ox-glyph { --ox-glyph-size: 15px; }
+    .dq-status .urg {
+      margin-left: auto; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 650;
+      color: var(--ox-text-2); background: var(--ox-hover, rgba(127, 127, 127, .1));
+    }
+    .dq-status .urg-critical { color: var(--ox-danger-text, var(--ox-danger)); background: rgba(var(--ox-edge-red-rgb, 244, 63, 94), .12); }
 
-    /* The headline is the decision's title (or its first sentence), about three lines at most;
-       the rest of the text reads as body copy under it. */
+    /* The headline is the decision's title (or its first sentence), whole. A headline that
+       would run past three lines is clamped by CSS (never cut mid-sentence in the text);
+       "Show the whole request" lifts the clamp in place. */
     .dq-q {
-      font-size: 26px; line-height: 1.18; font-weight: 700; letter-spacing: -0.025em; text-wrap: balance; overflow-wrap: anywhere;
+      font-size: 24px; line-height: 1.2; font-weight: 700; letter-spacing: -0.022em; text-wrap: balance; overflow-wrap: anywhere;
       display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
     }
-    .dq-detail { margin-top: 10px; font-size: 14px; line-height: 1.5; color: var(--ox-text-2); overflow-wrap: anywhere; text-wrap: pretty; }
+    .dq-q.is-whole { -webkit-line-clamp: unset; line-clamp: none; display: block; }
+    .dq-q-more {
+      display: inline-flex; align-items: center; gap: 4px; min-height: 36px; margin: 2px 0 -8px; padding: 0;
+      border: 0; background: none; cursor: pointer; font-size: 13px; font-weight: 650; color: var(--ox-text-2);
+    }
+    .dq-q-more[hidden] { display: none; }
+    .dq-q-more:hover { color: var(--ox-text); text-decoration: underline; text-underline-offset: 3px; }
+    /* The body, structured: a short lede, labelled facts, commands set as code. */
+    .dq-detail { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.5; color: var(--ox-text-2); overflow-wrap: anywhere; }
+    .dq-lede { margin: 0; text-wrap: pretty; }
+    .dq-facts { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; font-size: 13.5px; }
+    .dq-facts dt { color: var(--ox-text-muted); font-weight: 500; }
+    .dq-facts dd { margin: 0; color: var(--ox-text-2); }
+    .dq-cmd { display: flex; flex-direction: column; gap: 4px; }
+    .dq-cmd .k { font-size: 12.5px; color: var(--ox-text-muted); }
+    .dq-cmd pre code { padding: 0; background: none; font: inherit; }
+    .dq-cmd pre {
+      margin: 0; padding: 9px 12px; border-radius: 10px; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+      background: var(--ox-well-bg, rgba(127, 127, 127, .08)); box-shadow: var(--ox-well-shadow, none);
+      font: 500 12.5px/1.5 var(--dq-code); color: var(--ox-text);
+    }
+    .dq-detail code, .decision-evidence__copy code, .dq-why code { font: 500 0.92em/1 var(--dq-code); padding: 1px 5px; border-radius: 5px; background: var(--ox-hover, rgba(127, 127, 127, .1)); color: var(--ox-text); }
+    .dq-detail a, .decision-evidence__copy a, .dq-why a { color: var(--ox-text); text-decoration: underline; text-decoration-color: var(--ox-border-strong); text-underline-offset: 3px; overflow-wrap: anywhere; }
+    .dq-detail a:hover, .decision-evidence__copy a:hover, .dq-why a:hover { text-decoration-color: currentColor; }
     .dq-q a { color: inherit; text-decoration: none; }
     .dq-q a:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 
@@ -151,34 +190,31 @@
     .agent-avatar { display: inline-flex; flex: none; line-height: 0; }
     /* OrgX's own items carry the OrgX mark, drawn inline so a host that blocks images never shows an empty circle. */
 
-    .dq-evidence { display: flex; flex-direction: column; }
-    .dq-all {
-      display: inline-flex; align-items: center; gap: 6px; min-height: 44px;
-      font-size: 12.5px; color: var(--ox-text-2); text-decoration: none; align-self: flex-start;
-    }
-    .dq-all:hover { color: var(--ox-text); }
-    .dq-all svg { width: 12px; height: 12px; }
+    .dq-evidence { display: flex; flex-direction: column; gap: 8px; }
+    .dq-evidence > [role="list"] { display: flex; flex-direction: column; }
+    .dq-all { align-self: flex-start; }
 
     .dq-cons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
     .dq-cons.is-single { grid-template-columns: minmax(0, 1fr); }
-    .dq-cons .k { font-size: 12.5px; color: var(--ox-text-muted); margin-bottom: 3px; }
+    .dq-cons .k { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--ox-text-muted); margin-bottom: 3px; }
+    .dq-cons .k .ox-icon { color: var(--ox-text-muted); }
+    .dq-cons .k[data-tone="approve"] .ox-icon { color: var(--ox-teal); }
     .dq-cons .v { font-size: 13.5px; line-height: 1.45; color: var(--ox-text-2); }
 
+    /* Context and details: a disclosure that opens in place (.ox-collapse: no measured
+       height, nothing below it jumps; reduced motion switches instantly). */
     .decision-evidence { border-top: 1px solid var(--ox-border); }
-    .decision-evidence > summary {
-      display: flex; align-items: center; gap: 8px; min-height: 44px;
-      list-style: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ox-text-2);
+    .decision-evidence__toggle {
+      display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 0;
+      border: 0; background: none; cursor: pointer; text-align: left;
+      font-size: 13.5px; font-weight: 650; color: var(--ox-text-2); white-space: nowrap;
     }
-    .decision-evidence > summary::-webkit-details-marker { display: none; }
-    .decision-evidence > summary::after {
-      content: ""; width: 7px; height: 7px; margin-left: auto; margin-right: 4px;
-      border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor;
-      transform: rotate(45deg) translateY(-2px); transition: transform 160ms ease;
-    }
-    .decision-evidence[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
-    .decision-evidence > summary:hover { color: var(--ox-text); }
-    .decision-evidence__body { display: flex; flex-direction: column; gap: 12px; padding: 2px 0 6px; }
-    .decision-evidence__item .k { font-size: 12.5px; color: var(--ox-text-muted); margin-bottom: 3px; }
+    .decision-evidence__toggle .hint { flex: 1; font-weight: 500; color: var(--ox-text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .decision-evidence__toggle .ox-icon { margin-left: auto; color: var(--ox-text-muted); transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .decision-evidence__toggle[aria-expanded="true"] .ox-icon { transform: rotate(180deg); }
+    .decision-evidence__toggle:hover { color: var(--ox-text); }
+    .decision-evidence__body { display: flex; flex-direction: column; gap: 14px; padding: 2px 0 8px; }
+    .decision-evidence__item .k { font-size: 12.5px; font-weight: 600; color: var(--ox-text-muted); margin-bottom: 3px; }
     .decision-evidence__copy { font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); overflow-wrap: anywhere; }
     .decision-evidence__copy p { margin: 0; }
     .decision-evidence__copy p + p { margin-top: 4px; }
@@ -186,10 +222,12 @@
     .decision-tradeoff { font-size: 13px; line-height: 1.45; color: var(--ox-text-2); }
     .decision-tradeoff strong { display: block; color: var(--ox-text); font-weight: 600; }
     .params-well {
-      display: flex; flex-wrap: wrap; gap: 4px 14px;
-      font: 500 11.5px/1.5 var(--ox-mono); color: var(--ox-text-muted); font-variant-numeric: tabular-nums;
+      display: flex; flex-wrap: wrap; gap: 4px 6px;
+      font: 500 12.5px/1.5 var(--ox-font); color: var(--ox-text-muted); font-variant-numeric: tabular-nums;
     }
+    .param-chip + .param-chip::before { content: "·"; margin-right: 6px; }
     .param-chip strong { font-weight: 600; color: var(--ox-text-2); overflow-wrap: anywhere; }
+    .param-chip code { font: 500 12px/1.4 var(--dq-code); }
 
     /* Decide in OrgX: the fallback when this widget holds no approval token. */
     .decide-in-orgx {
@@ -221,7 +259,7 @@
     .dq-opt-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .dq-opt-label { font-size: 14px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
     .dq-opt-desc { font-size: 12.5px; line-height: 1.4; color: var(--ox-text-muted); overflow-wrap: anywhere; }
-    .dq-opt-tag { font: 600 11px/1.2 var(--ox-mono); color: var(--ox-text-muted); white-space: nowrap; }
+    .dq-opt-tag { font-size: 12px; font-weight: 600; color: var(--ox-text-muted); white-space: nowrap; }
     .dq-opt-go { width: 14px; height: 14px; color: var(--ox-text-muted); flex: none; }
     .dq-opt-box {
       width: 18px; height: 18px; border-radius: 5px; flex: none; display: grid; place-items: center;
@@ -248,7 +286,7 @@
     /* Typed answers and reasons the server asks for; one inline line when a click was refused. */
     .dq-field { display: flex; flex-direction: column; gap: 8px; }
     .dq-field label { font-size: 12.5px; color: var(--ox-text-muted); }
-    .dq-counter { font: 500 11px/1.2 var(--ox-mono); color: var(--ox-text-muted); align-self: flex-end; min-height: 0; }
+    .dq-counter { font-size: 12px; line-height: 1.2; color: var(--ox-text-muted); align-self: flex-end; min-height: 0; font-variant-numeric: tabular-nums; }
     .dq-counter:empty { display: none; }
     .dq-field-error {
       margin: -4px 0 0; font-size: 12.5px; line-height: 1.4; font-weight: 600;
@@ -266,7 +304,7 @@
     .dq-text-btn::after { content: ""; position: absolute; inset: -4px -2px; }
     .dq-text-btn:hover { color: var(--ox-text); background: var(--ox-hover); }
     .dq-text-btn:disabled { opacity: 0.55; cursor: default; }
-    .dq-text-btn:focus-visible, .dq-opt:focus-visible, .dq-row:focus-visible, .dq-head-link:focus-visible, .dq-all:focus-visible, .decide-in-orgx:focus-visible, .dq-q a:focus-visible, .decision-evidence > summary:focus-visible {
+    .dq-text-btn:focus-visible, .dq-opt:focus-visible, .dq-row:focus-visible, .dq-head-link:focus-visible, .dq-all:focus-visible, .decide-in-orgx:focus-visible, .dq-q a:focus-visible, .decision-evidence__toggle:focus-visible, .dq-q-more:focus-visible, .dq-detail a:focus-visible {
       outline: 2px solid var(--ox-focus); outline-offset: 2px;
     }
 
@@ -279,19 +317,21 @@
     }
     .dq-row:hover { background: var(--ox-hover); }
     .dq-row:disabled { cursor: default; opacity: 0.6; }
-    .dq-row .dot { width: 7px; height: 7px; border-radius: 999px; background: var(--ox-warning); flex: none; }
+    .dq-row .dot { display: grid; place-items: center; width: 18px; color: var(--ox-warning); flex: none; }
     .dq-row .ttl { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .dq-row .meta, .dq-meta { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .dq-row .meta, .dq-meta { font-size: 12.5px; line-height: 1.3; color: var(--ox-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
     .dq-row .chev { width: 14px; height: 14px; color: var(--ox-text-muted); flex: none; }
-    .dq-more { padding: 6px 14px; }
+    .dq-more { margin: 6px 0 0 14px; }
 
     /* Approve N ready: one quiet line, then one result row per item. */
     .dq-batch {
-      display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; min-height: 44px;
-      padding: 4px 4px 4px 14px; border-radius: 12px; border: 1px dashed var(--ox-border-strong);
+      display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; min-height: 56px;
+      padding: 6px 6px 6px 16px; border-radius: 14px; border: 1px solid var(--ox-border);
+      background: var(--ox-surface-subtle, rgba(127, 127, 127, .06));
     }
-    .dq-batch-copy { flex: 1 1 0; min-width: 0; font-size: 12.5px; color: var(--ox-text-2); }
-    .dq-batch-btn { color: var(--ox-text); }
+    .dq-batch-copy { flex: 1 1 0; min-width: 0; font-size: 13px; color: var(--ox-text-2); }
+    .dq-batch-btn { color: var(--ox-text); border-color: var(--ox-border-strong); background: var(--ox-panel); }
+    .dq-batch-btn:hover { border-color: var(--ox-text-muted); }
     .dq-batch.is-result { display: block; padding: 6px 14px 4px; border-style: solid; }
     .dq-batch-head { display: flex; align-items: center; gap: 8px; min-height: 44px; }
     .dq-batch-head .dq-batch-copy { font-weight: 600; color: var(--ox-text); }
@@ -310,7 +350,7 @@
     .dq-calm { padding: 18px 24px 20px; display: flex; flex-direction: column; gap: 4px; }
     .dq-calm-title { font-size: 17px; font-weight: 650; letter-spacing: -0.015em; }
     .dq-calm-copy { font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2); }
-    .dq-calm-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; }
+    .dq-calm-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
     /* Loading: the card's own footprint */
     .sk { display: block; border-radius: 6px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.12)); }
@@ -323,10 +363,14 @@
       .dq-body { padding: 16px 16px 18px; gap: 16px; }
       .dq-calm { padding: 16px; }
       .dq-q { font-size: 21px; -webkit-line-clamp: 4; line-clamp: 4; }
+      .dq-facts { grid-template-columns: minmax(0, 1fr); gap: 0 0; }
+      .dq-facts dd + dt { margin-top: 6px; }
       .dq-cons { grid-template-columns: minmax(0, 1fr); gap: 10px; }
       .dq-head { --ox-attention-padding: 0 4px 0 16px; }
       .dq-status .ctx-wrap { display: none; }
-      .dq-head-link .long, .dq-row .long { display: none; }
+      .dq-row .long, .dq-head-link .long { display: none; }
+      /* Phone: the header link is a 36px outlined icon button (44px hit area). */
+      .dq-head-link { width: 36px; padding: 0; justify-content: center; }
       .dq-row { padding: 10px 12px; }
     }
 
@@ -384,9 +428,11 @@
     };
 
     var _svg = function(c,s){var sz=typeof s==='number'?s+'px':(s||'1em');return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true">'+c+'</svg>';};
+    // One icon set (OrgXIcons) for entities, statuses and actions; the option tick and the row chevron stay local.
+    var oxIcon = (name, size, cls) => (window.OrgXIcons ? window.OrgXIcons.icon(name, { size: size || 16, className: cls }) : '');
     var icons = {
       check: function(s){return _svg('<polyline points="20 6 9 17 4 12"></polyline>',s);},
-      ext: function(s){return _svg('<path d="M14 4h6v6"></path><path d="M20 4l-9 9"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path>',s);},
+      ext: function(s){return oxIcon('open-external', s || 14);},
       chevron: function(s){return _svg('<polyline points="9 6 15 12 9 18"></polyline>',s);},
     };
 
@@ -661,6 +707,9 @@
     var decisionStateTimer = null;
     // Per-decision footer state after the person acts: sending, confirming, done, waiting, failed, unsettled.
     var actionStates = {};
+    // "More context" open per decision, and headlines the person asked to see whole.
+    var openDetails = {};
+    var wholeHeadlines = {};
 
     var restoredDecisionState = window.openai && window.openai.widgetState;
     if (restoredDecisionState && typeof restoredDecisionState === 'object') {
@@ -959,9 +1008,11 @@
       return { text, empty: !text, unverified: status === 'unverified' };
     };
 
-    // The headline: the title when the item has its own, else the first sentence, kept to about
-    // three lines. Whatever does not fit reads as body text underneath; nothing is dropped.
+    // The headline: the title when the item has its own, else the first sentence, whole. A first
+    // sentence that runs long splits at its label ("Production verification of PR #424: …");
+    // otherwise CSS clamps it and "Show the whole request" lifts the clamp. Never "…" + an orphan.
     var HEADLINE_MAX = 96;
+    var HEADLINE_LONG = 110;
     var NOT_A_SENTENCE_END = /(?:\b(?:e\.g|i\.e|vs|etc|approx|incl|No|Mr|Ms|Dr|St|Inc|Ltd)|\b[A-Z])$/;
     var firstSentence = (text) => {
       const re = /[.!?](?=\s+["“(]?[A-Z0-9])/g;
@@ -980,14 +1031,77 @@
         return { headline: own, body: full.startsWith(own) ? full.slice(own.length).trim() : full };
       }
       let { head, rest } = firstSentence(full || own);
-      if (head.length > HEADLINE_MAX) {
-        const cut = head.slice(0, HEADLINE_MAX);
-        const space = cut.lastIndexOf(' ');
-        const at = space > HEADLINE_MAX * 0.6 ? space : HEADLINE_MAX;
-        rest = '…' + head.slice(at).trim() + (rest ? ' ' + rest : '');
-        head = head.slice(0, at).replace(/[\s,;:–—-]+$/, '') + '…';
+      if (head.length > HEADLINE_LONG) {
+        // "Label: the long rest" reads as a headline and its body.
+        const colon = head.indexOf(': ');
+        if (colon >= 16 && colon <= HEADLINE_MAX) {
+          const after = head.slice(colon + 2).trim();
+          rest = sentence(after.charAt(0).toUpperCase() + after.slice(1)) + (rest ? ' ' + rest : '');
+          head = head.slice(0, colon).trim();
+        }
       }
       return { headline: head, body: rest };
+    };
+
+    /* ------------------------------------------------------------- body -- */
+    // Decision text arrives as one paragraph holding a reason, a command, a URL and what approving
+    // does. Sentences are sorted into a short lede, labelled facts ("Agent’s reason: …"),
+    // commands (set as code), and the approve consequence and recommendation (shown where those
+    // belong on the card). Inline: URLs become links, `code` and long hashes become code.
+    var CLI_RE = /^(?:gh|git|pnpm|npm|npx|yarn|curl|kubectl|docker|terraform|make|psql|python3?|node|bash|sh|orgx)\s+\S/;
+    var URL_RE = /\bhttps?:\/\/[^\s<>"')\]]+[^\s<>"')\].,;:!?]/g;
+    var sentencesOf = (text) => {
+      const out = [];
+      let rest = String(text || '').replace(/\s+/g, ' ').trim();
+      while (rest) {
+        const { head, rest: tail } = firstSentence(rest);
+        out.push(head);
+        if (!tail || tail === rest) break;
+        rest = tail;
+      }
+      return out;
+    };
+    var inlineHtml = (text) => {
+      const raw = String(text || '');
+      let html = '';
+      let last = 0;
+      raw.replace(URL_RE, (url, at) => {
+        html += inlineText(raw.slice(last, at));
+        const label = url.replace(/^https?:\/\/(www\.)?/, '');
+        html += `<a ${linkAttrs(window.OrgXLinks.normalize(url) || url)}>${escapeHtml(label.length > 48 ? label.slice(0, 46) + '…' : label)}</a>`;
+        last = at + url.length;
+        return url;
+      });
+      return html + inlineText(raw.slice(last));
+    };
+    var inlineText = (text) => escapeHtml(text)
+      .replace(/`([^`]{1,200})`/g, (m, code) => `<code>${code}</code>`)
+      .replace(/\b([0-9a-f]{12,64})\b/g, (m, hash) => `<code title="${hash}">${hash.slice(0, 10)}</code>`);
+    var structureBody = (text) => {
+      const parts = { lede: [], facts: [], commands: [], ifApproved: '', recommendation: '' };
+      sentencesOf(text).forEach((line) => {
+        const bare = line.replace(/[.!]$/, '');
+        const labelled = /^([A-Z][\w’' -]{2,28}?)\s*:\s+(.+)$/.exec(line);
+        const label = labelled ? labelled[1].trim() : '';
+        if (labelled && /^(?:command|run|cmd|shell)$/i.test(label)) { parts.commands.push(labelled[2].replace(/[.]$/, '')); return; }
+        if (CLI_RE.test(bare) && !/\s(?:the|to|and|because)\s/i.test(bare)) { parts.commands.push(bare); return; }
+        if (labelled && /^(?:recommendation|recommended|suggestion)$/i.test(label)) { if (!parts.recommendation) parts.recommendation = sentence(labelled[2]); return; }
+        if (/^(?:approve|approving|approval)\b.{0,40}\b(?:to|lets?|will|runs?)\b/i.test(line) && !parts.ifApproved) {
+          parts.ifApproved = sentence(line.replace(/^(?:approve|approving|approval)\s+(?:to\s+)?/i, '').replace(/^\w/, (c) => c.toUpperCase()));
+          return;
+        }
+        if (labelled && label.length <= 24 && !/^https?$/i.test(label)) { parts.facts.push({ k: label, v: labelled[2].replace(/^[a-z]/, (c) => c.toUpperCase()) }); return; }
+        parts.lede.push(line);
+      });
+      return parts;
+    };
+    var bodyHtml = (parts) => {
+      const lede = parts.lede.length ? `<p class="dq-lede">${inlineHtml(parts.lede.join(' '))}</p>` : '';
+      const facts = parts.facts.length
+        ? `<dl class="dq-facts">${parts.facts.map((f) => `<dt>${escapeHtml(f.k)}</dt><dd>${inlineHtml(f.v)}</dd>`).join('')}</dl>`
+        : '';
+      const commands = parts.commands.map((c) => `<div class="dq-cmd"><span class="k">Command</span><pre><code>${escapeHtml(c)}</code></pre></div>`).join('');
+      return lede + facts + commands;
     };
 
     // Evidence lists become receipt rows: one line of proof each.
@@ -1591,8 +1705,10 @@
       if (line) {
         line.setAttribute('count', String(pending.length));
         line.setAttribute('tone', pending.length ? 'needs-you' : 'calm');
-        const oldest = oldestAge(pending);
-        if (oldest) line.setAttribute('oldest', oldest); else line.removeAttribute('oldest');
+        const label = line.querySelector(':scope > span:not([slot])');
+        const sentence = scopeLabel(pending.length) || (pending.length ? `${pending.length} need${pending.length === 1 ? 's' : ''} your decision` : '');
+        if (label && sentence) label.textContent = sentence;
+        else if (label && !sentence) label.remove();
       }
       document.querySelectorAll('[data-status-for]').forEach((node) => {
         const d = getDecisionById(node.getAttribute('data-status-for'));
@@ -1632,13 +1748,13 @@
         ? '<span class="urg urg-critical">Critical</span>'
         : d.urgency === 'high' ? '<span class="urg">High</span>' : '';
       if (st && st.phase === 'done') {
-        return `<span class="done"><ox-glyph kind="decision" tone="teal"></ox-glyph>${escapeHtml(pastTense(d, st.action))} by you · just now</span>${ctxHtml}`;
+        return `<span class="done">${oxIcon('done', 16)}${escapeHtml(pastTense(d, st.action))} by you · just now</span>${ctxHtml}`;
       }
       if (st && st.phase === 'elsewhere') {
-        return `<span class="done"><ox-glyph kind="decision" tone="teal"></ox-glyph>Settled in OrgX</span>${ctxHtml}`;
+        return `<span class="done">${oxIcon('done', 16)}Settled in OrgX</span>${ctxHtml}`;
       }
       const age = shortAge(d.created_at);
-      return `<span class="need"><ox-glyph kind="decision" tone="amber"></ox-glyph>Needs you${age && age !== 'now' ? ' · ' + age : ''}</span>${ctxHtml}${urgency}`;
+      return `<span class="need">${oxIcon('decision', 16)}Needs you${age && age !== 'now' ? ' · ' + age + ' waiting' : ''}</span>${ctxHtml}${urgency}`;
     };
 
     /* --------------------------------------------------------------- actions -- */
@@ -2296,6 +2412,23 @@
       </div>`;
     };
     document.getElementById('content').addEventListener('click', (event) => {
+      const toggle = event.target && event.target.closest ? event.target.closest('[data-action="toggle-details"], [data-action="whole-headline"]') : null;
+      if (!toggle) return;
+      const id = toggle.getAttribute('data-decision-id');
+      if (toggle.getAttribute('data-action') === 'whole-headline') {
+        wholeHeadlines[id] = true;
+        const h = document.querySelector(`.dq-q[data-headline-for="${CSS.escape(id)}"]`);
+        if (h) { h.classList.add('is-whole'); if (rt() && rt().motion) rt().motion.enter(h); }
+        toggle.hidden = true;
+        const link = h && h.querySelector('a');
+        if (link) link.focus();
+        return;
+      }
+      // Opens in place: the panel animates by CSS (.ox-collapse), nothing re-renders.
+      openDetails[id] = toggle.getAttribute('aria-expanded') !== 'true';
+      toggle.setAttribute('aria-expanded', String(openDetails[id]));
+    });
+    document.getElementById('content').addEventListener('click', (event) => {
       const button = event.target && event.target.closest ? event.target.closest('[data-action="approve-ready"], [data-action="batch-dismiss"]') : null;
       if (!button || button.disabled) return;
       if (button.getAttribute('data-action') === 'approve-ready') { void window.approveReady(); return; }
@@ -2323,12 +2456,30 @@
       };
     };
 
+    // pending_decisions_scope (optional): what the app counted. The header says it honestly:
+    // "3 in this initiative" or "2 here · 25 across the workspace", never a page length as the total.
+    var queueScope = () => {
+      const raw = data && data.pending_decisions_scope;
+      if (!raw || typeof raw !== 'object') return null;
+      const total = Number(raw.total);
+      if (!Number.isFinite(total) || total < 0) return null;
+      return { level: raw.level === 'initiative' ? 'initiative' : 'workspace', total: Math.floor(total), capped: raw.capped === true };
+    };
+    var scopeLabel = (pendingCount) => {
+      const scoped = queueScope();
+      if (!scoped || !pendingCount) return '';
+      const where = scoped.level === 'initiative' ? 'in this initiative' : 'across the workspace';
+      const total = scoped.total + (scoped.capped ? '+' : '');
+      if (scoped.total <= pendingCount) return `${pendingCount} need${pendingCount === 1 ? 's' : ''} your decision ${where}`;
+      return `${pendingCount} here · ${total} ${where}`;
+    };
     var attentionHtml = (pendingCount, oldest, label, tone) => {
       const decisionsUrl = buildDecisionsUrl();
+      const sentence = label || scopeLabel(pendingCount) || (pendingCount ? `${pendingCount} need${pendingCount === 1 ? 's' : ''} your decision` : '');
       return `<div class="dq-head">
-        <ox-attention-line id="dqAttention" tone="${tone || (pendingCount ? 'needs-you' : 'calm')}" count="${tone && !pendingCount ? 1 : pendingCount}"${oldest ? ` oldest="${escapeHtml(oldest)}"` : ''}>${
-          label ? `<span>${escapeHtml(label)}</span>` : ''}${
-          syncedAt ? `<span slot="meta">${window.OrgXTime.html(syncedAt, 'synced')}</span>` : ''}<a slot="action" id="queueDecisionsLink" class="dq-head-link" ${linkAttrs(decisionsUrl)} aria-label="View all decisions in OrgX"><span class="long">All in </span>OrgX ${icons.ext(12)}</a></ox-attention-line>
+        <ox-attention-line id="dqAttention" tone="${tone || (pendingCount ? 'needs-you' : 'calm')}" count="${tone && !pendingCount ? 1 : pendingCount}">${
+          sentence ? `<span>${escapeHtml(sentence)}</span>` : ''}${
+          syncedAt ? `<span slot="meta">${window.OrgXTime.html(syncedAt, 'synced')}</span>` : ''}<a slot="action" id="queueDecisionsLink" class="dq-head-link" ${linkAttrs(decisionsUrl)} aria-label="All decisions in OrgX"><span class="long">All in OrgX</span>${icons.ext(14)}</a></ox-attention-line>
       </div>`;
     };
 
@@ -2342,11 +2493,16 @@
       const canDecideHere = isOgDecisionEmbed || Boolean(getApprovalToken(d.id));
       const evidence = d.evidence_items || [];
       const shownEvidence = evidence.slice(0, 2);
-      const hasCons = Boolean(d.if_approved || d.if_rejected);
-      let recLine = d.recommendation
+      // The body, sorted: lede, facts and commands here; what approving does and a stated
+      // recommendation go to their own places on the card.
+      const parts = structureBody(d.headline_body);
+      const recommendation = d.recommendation || parts.recommendation;
+      const ifApproved = d.if_approved || parts.ifApproved;
+      const hasCons = Boolean(ifApproved || d.if_rejected);
+      let recLine = recommendation
         ? `<div>
             <div class="dq-rec">${renderAvatar(owner.isSystem ? 'OrgX System' : owner.label, 'inline', owner.isSystem, d)}<span>${escapeHtml(owner.name)} recommends</span>${owner.role ? `<span class="role">· ${escapeHtml(owner.role)} agent</span>` : ''}${d.recommendation_unverified ? '<span class="role">· unverified</span>' : ''}</div>
-            <div class="dq-why">${escapeHtml(d.recommendation)}</div>
+            <div class="dq-why">${inlineHtml(recommendation)}</div>
           </div>`
         : d.recommendation_missing && kindFromType(d) === 'decision'
         // The app could not make one: say so once, quietly.
@@ -2360,35 +2516,45 @@
       const evidenceHtml = shownEvidence.length
         ? `<div class="dq-evidence" role="list">
             ${shownEvidence.map((item) => `<ox-receipt-row status="${escapeHtml(item.status)}" label="${escapeHtml(item.label)}"${item.at ? ` value="${escapeHtml(timeAgo(item.at))}"` : ''}${item.url ? ` href="${escapeHtml(item.url)}"` : ''}>${escapeHtml(item.label)}</ox-receipt-row>`).join('')}
-            ${isOgDecisionEmbed ? '' : `<a class="dq-all" ${linkAttrs(decisionUrl)}>All ${evidence.length} evidence item${evidence.length === 1 ? '' : 's'} in OrgX ${icons.ext(12)}</a>`}
+            ${isOgDecisionEmbed || evidence.length <= shownEvidence.length ? '' : `<a class="dq-all" ${linkAttrs(decisionUrl)}>All ${evidence.length} evidence items in OrgX ${icons.ext(14)}</a>`}
           </div>`
         : '';
       const consHtml = hasCons
         ? `<div class="dq-cons">
-            ${d.if_approved ? `<div><div class="k">If approved</div><div class="v">${escapeHtml(d.if_approved)}</div></div>` : ''}
-            ${d.if_rejected ? `<div><div class="k">If rejected</div><div class="v">${escapeHtml(d.if_rejected)}</div></div>` : ''}
+            ${ifApproved ? `<div><div class="k" data-tone="approve">${oxIcon('done', 14)}If approved</div><div class="v">${inlineHtml(ifApproved)}</div></div>` : ''}
+            ${d.if_rejected ? `<div><div class="k">${oxIcon('retry', 14)}If sent back</div><div class="v">${inlineHtml(d.if_rejected)}</div></div>` : ''}
           </div>`
         : d.impact
-        ? `<div class="dq-cons is-single"><div><div class="k">If it waits</div><div class="v">${escapeHtml(d.impact)}</div></div></div>`
+        ? `<div class="dq-cons is-single"><div><div class="k">${oxIcon('time', 14)}If it waits</div><div class="v">${inlineHtml(d.impact)}</div></div></div>`
         : '';
+      // Why it matters, trade-offs and the record, in one disclosure that opens in place.
+      const ignored = hasCons ? formatDecisionField(d.impact_if_ignored || d.risk_if_ignored) : '';
+      const hasTradeoffs = Boolean(d.tradeoffs && d.tradeoffs.length);
+      const hasWhy = Boolean(d.context_lines && d.context_lines.length);
+      const detailsOpen = Boolean(openDetails[d.id]);
+      const raised = timeAgo(d.created_at);
+      const cost = Number(d.expected_cost_usd) > 0 ? formatUsd(d.expected_cost_usd) : '';
+      const hint = [hasWhy ? 'why it matters' : '', hasTradeoffs ? 'trade-offs' : '', ignored ? 'if it waits' : ''].filter(Boolean).join(', ') || (raised ? 'raised ' + raised : 'how it was raised');
       const detailsHtml = isOgDecisionEmbed ? '' : `
-        <details class="decision-evidence">
-          <summary>Evidence and consequence</summary>
+        <div class="decision-evidence">
+          <button type="button" class="decision-evidence__toggle" data-action="toggle-details" data-decision-id="${escapeHtml(d.id)}" aria-expanded="${detailsOpen}" aria-controls="details-${escapeHtml(d.id)}">More context<span class="hint">· ${escapeHtml(hint)}</span>${oxIcon('expand', 16)}</button>
+          <div class="ox-collapse" id="details-${escapeHtml(d.id)}" role="region" aria-label="More context"><div>
           <div class="decision-evidence__body">
-            ${d.context_lines && d.context_lines.length ? `<div class="decision-evidence__item"><div class="k">Why it matters</div><div class="decision-evidence__copy">${d.context_lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}</div></div>` : ''}
-            ${hasCons && formatDecisionField(d.impact_if_ignored || d.risk_if_ignored) ? `<div class="decision-evidence__item"><div class="k">If ignored</div><div class="decision-evidence__copy">${escapeHtml(formatDecisionField(d.impact_if_ignored || d.risk_if_ignored))}</div></div>` : ''}
-            ${d.tradeoffs && d.tradeoffs.length ? `<div class="decision-tradeoffs">${d.tradeoffs.map(t => `<div class="decision-tradeoff"><strong>${escapeHtml(t.option)}</strong>${escapeHtml(t.detail)}</div>`).join('')}</div>` : ''}
+            ${hasWhy ? `<div class="decision-evidence__item"><div class="k">Why it matters</div><div class="decision-evidence__copy">${d.context_lines.map((line) => `<p>${inlineHtml(line)}</p>`).join('')}</div></div>` : ''}
+            ${ignored ? `<div class="decision-evidence__item"><div class="k">If it waits</div><div class="decision-evidence__copy">${inlineHtml(ignored)}</div></div>` : ''}
+            ${hasTradeoffs ? `<div class="decision-evidence__item"><div class="k">Trade-offs</div><div class="decision-tradeoffs">${d.tradeoffs.map(t => `<div class="decision-tradeoff"><strong>${escapeHtml(t.option)}</strong>${escapeHtml(t.detail)}</div>`).join('')}</div></div>` : ''}
             <div class="params-well">
-              ${d.packet_id ? `<span class="param-chip" title="${escapeHtml(d.packet_id)}">From review packet <strong>${escapeHtml(d.packet_id.slice(-18))}</strong></span>` : ''}
-              <span class="param-chip">Type <strong>${escapeHtml(d.type_label || 'Decision')}</strong></span>
-              <span class="param-chip">Raised <strong>${escapeHtml(timeAgo(d.created_at) || '—')}</strong></span>
-              ${d.provider && d.model ? `<span class="param-chip">Model <strong>${escapeHtml(d.provider + '/' + d.model)}</strong></span>` : ''}
-              ${d.duplicate_count ? `<span class="param-chip">Collapsed <strong>${escapeHtml(String(d.duplicate_count))} duplicate${d.duplicate_count === 1 ? '' : 's'}</strong></span>` : ''}
-              ${d.expected_cost_usd !== undefined && formatUsd(d.expected_cost_usd) ? `<span class="param-chip">Cost <strong>${formatUsd(d.expected_cost_usd)}</strong></span>` : ''}
-              ${d.required_trust_level ? `<span class="param-chip">Rule <strong>${escapeHtml(humanizeDecisionKey(d.required_trust_level))}</strong></span>` : ''}
+              ${d.type_label ? `<span class="param-chip"><strong>${escapeHtml(d.type_label)}</strong></span>` : ''}
+              ${raised ? `<span class="param-chip">Raised ${escapeHtml(raised)}</span>` : ''}
+              ${d.required_trust_level ? `<span class="param-chip">Rule: ${escapeHtml(humanizeDecisionKey(d.required_trust_level).toLowerCase())}</span>` : ''}
+              ${cost ? `<span class="param-chip">Est. cost <strong>${cost}</strong></span>` : ''}
+              ${d.duplicate_count ? `<span class="param-chip">${escapeHtml(String(d.duplicate_count))} duplicate${d.duplicate_count === 1 ? '' : 's'} merged</span>` : ''}
+              ${d.provider && d.model ? `<span class="param-chip">Recommended by <code>${escapeHtml(d.provider + '/' + d.model)}</code></span>` : ''}
+              ${d.packet_id ? `<span class="param-chip" title="${escapeHtml(d.packet_id)}">Packet <code>${escapeHtml(d.packet_id.slice(-8))}</code></span>` : ''}
             </div>
           </div>
-        </details>`;
+          </div></div>
+        </div>`;
       const choices = choicesFor(d);
       const sel = choices.selection;
       const st = actionStates[d.id];
@@ -2486,12 +2652,14 @@
         <div class="dq-body">
           <div>
             <div class="dq-status" data-status-for="${escapeHtml(d.id)}">${statusLineHtml(d)}</div>
-            <h1 class="dq-q" style="margin-top:8px"><a ${linkAttrs(decisionUrl)} title="Open in OrgX">${escapeHtml(d.headline || d.summary)}</a></h1>
-            ${d.headline_body ? `<p class="dq-detail">${escapeHtml(d.headline_body)}</p>` : ''}
+            <h1 class="dq-q${wholeHeadlines[d.id] ? ' is-whole' : ''}" style="margin-top:10px" data-headline-for="${escapeHtml(d.id)}"><a ${linkAttrs(decisionUrl)} title="Open in OrgX">${escapeHtml(d.headline || d.summary)}</a></h1>
+            <button type="button" class="dq-q-more" data-action="whole-headline" data-decision-id="${escapeHtml(d.id)}" hidden>Show the whole request</button>
+            ${parts.lede.length || parts.facts.length || parts.commands.length ? `<div class="dq-detail">${bodyHtml(parts)}</div>` : ''}
           </div>
           ${recLine}
-          ${evidenceHtml || (isOgDecisionEmbed ? '' : `<a class="dq-all decision-open-link" ${linkAttrs(decisionUrl)}>Open in OrgX ${icons.ext(12)}</a>`)}
+          ${evidenceHtml}
           ${consHtml}
+          ${evidenceHtml || isOgDecisionEmbed || !canDecideHere ? '' : `<a class="dq-all decision-open-link" ${linkAttrs(decisionUrl)}>Open in OrgX ${icons.ext(14)}</a>`}
           ${optionsHtml}
           ${answerHtml}
           ${approveNoteHtml}
@@ -2506,19 +2674,23 @@
     var queueHtml = (current) => {
       if (isOgDecisionEmbed) return '';
       const others = pendingDecisions().filter((d) => d.id !== current.id);
-      if (!others.length) return '';
+      const scopedMore = queueScope() ? queueScope().total - pendingDecisions().length : 0;
+      if (!others.length && scopedMore <= 0) return '';
       const shown = others.slice(0, 4);
       const rows = shown.map((d) => {
         const age = shortAge(d.created_at);
         return `<button type="button" class="dq-row page-btn" onclick="selectDecision('${escapeHtml(d.id)}')" aria-label="Open: ${escapeHtml(d.headline || d.summary)}">
-          <span class="dot" aria-hidden="true"></span>
+          <span class="dot" aria-hidden="true">${oxIcon('decision', 16)}</span>
           <span class="ttl">${escapeHtml(d.headline || d.summary)}</span>
-          <span class="meta">${age && age !== 'now' ? '<span class="long">Needs you · </span>' + age : 'Needs you'}</span>
+          <span class="meta">${age && age !== 'now' ? age + '<span class="long"> waiting</span>' : 'New'}</span>
           <span class="chev">${icons.chevron(14)}</span>
         </button>`;
       }).join('');
-      const more = others.length - shown.length;
-      return `<nav class="dq-queue" aria-label="Other decisions waiting on you">${rows}${more > 0 ? `<a class="dq-all dq-more" ${linkAttrs(buildDecisionsUrl())}>${more} more in OrgX ${icons.ext(12)}</a>` : ''}</nav>`;
+      // Beyond this page: what the app says is pending in scope, not just what this result carried.
+      const scoped = queueScope();
+      const more = Math.max(others.length - shown.length, scoped ? scoped.total - pendingDecisions().length : 0);
+      const where = scoped ? (scoped.level === 'initiative' ? ' in this initiative' : ' across the workspace') : '';
+      return `<nav class="dq-queue" aria-label="Other decisions waiting on you">${rows}${more > 0 ? `<a class="dq-all dq-more" ${linkAttrs(buildDecisionsUrl())}>${more} more${escapeHtml(where)} in OrgX ${icons.ext(14)}</a>` : ''}</nav>`;
     };
 
     var historyHtml = (current) => {
@@ -2549,7 +2721,28 @@
     };
     var pendingFocusId = null;
     var lastRenderedId = null;
+    // A headline that overflows its clamp by about a line shows whole; a longer one keeps the
+    // clamp and offers "Show the whole request". Never a "…" plus an orphaned continuation.
+    var fitHeadlines = () => {
+      document.querySelectorAll('.dq-q[data-headline-for]').forEach((h) => {
+        if (h.classList.contains('is-whole') || !h.clientHeight) return;
+        const over = h.scrollHeight - h.clientHeight;
+        const line = parseFloat(getComputedStyle(h).lineHeight) || 28;
+        const more = h.parentElement.querySelector('.dq-q-more');
+        if (over > 2 && over <= line * 1.25) h.classList.add('is-whole');
+        if (more) more.hidden = !(over > line * 1.25);
+      });
+    };
+    var fitTimer = 0;
+    var scheduleFit = () => {
+      if (fitTimer) window.cancelAnimationFrame(fitTimer);
+      fitTimer = window.requestAnimationFrame(() => { fitTimer = 0; fitHeadlines(); });
+    };
+    window.addEventListener('resize', scheduleFit);
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(scheduleFit).observe(document.getElementById('content'));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleFit);
     var afterRender = () => {
+      scheduleFit();
       if (!pendingFocusId) return;
       const footer = document.querySelector(`ox-footer[data-decision-id="${CSS.escape(pendingFocusId)}"]`);
       pendingFocusId = null;
