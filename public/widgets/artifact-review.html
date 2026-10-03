@@ -256,7 +256,10 @@
       .hd-link { width: 44px; padding: 0; }
     }
     @media (max-width: 420px) {
-      .ft-btn { padding: 0 8px; gap: 4px; font-size: 12px; }
+      /* The kit gives its actions 62% of the footer: both controls fit at 375 px. */
+      .ft-btn { padding: 0 6px; gap: 4px; font-size: 12px; letter-spacing: -.01em; }
+      .ft-btn--primary { padding: 0 6px; }
+      .ft-btn--text[disabled] { padding: 0 4px; }
     }
     @media (prefers-reduced-motion: reduce) {
       .stage.is-resolving { animation: none; }
