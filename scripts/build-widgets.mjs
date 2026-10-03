@@ -132,7 +132,6 @@ const RUNTIME_INLINED_PATHS = new Set([
   'shared/live-machine.js',
   'shared/live-store.js',
   'shared/live-panel.js',
-  'shared/icons.js',
   'shared/orgx-icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',

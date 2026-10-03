@@ -340,15 +340,18 @@ describe('B4 · short headlines', () => {
     expect(document.body.textContent).not.toMatch(/status:\s*unavailable/i);
   });
 
-  it('morning brief: a long priority title becomes a headline plus body text', async () => {
+  it('morning brief: a priority is a scannable row — the title, one line of why', async () => {
     mountBrief({
       generated_at: new Date().toISOString(),
       summary: 'One priority.',
       top_priorities: [{ domain: 'Engineering', title: LONG, reason: 'Blocks the release.' }],
     });
     await vi.waitFor(() => expect(document.querySelector('.priority-title')).not.toBeNull());
-    expect(document.querySelector('.priority-title')!.textContent).toBe('The OrgX floor stopped a merge action in an agent-cli session and is waiting for you.');
-    expect(document.querySelector('.priority-more')!.textContent).toMatch(/^Agent's reason/);
+    const title = document.querySelector('.priority-title')!;
+    expect(title.textContent).toBe('The OrgX floor stopped a merge action in an agent-cli session and is waiting for you.');
+    // The whole text stays reachable; the row never grows a paragraph under the title.
+    expect(title.getAttribute('title')).toBe(LONG);
+    expect(document.querySelector('.priority-more')).toBeNull();
     expect(document.querySelector('.priority-note')!.textContent).toBe('Blocks the release.');
   });
 });
@@ -531,7 +534,7 @@ describe('B7 · artifact-review: codes read as words', () => {
 });
 
 function mountBrief(payload: Record<string, unknown>) {
-  window.eval(readSharedScript('icons.js'));
+  window.eval(readSharedScript('orgx-icons.js'));
   mountWidget('morning-brief', { payload });
 }
 
@@ -554,6 +557,41 @@ describe('B8 · morning brief: one degraded notice, inside the card', () => {
     expect(footer.getAttribute('heading')).not.toBe('Partial brief');
     expect(footer.getAttribute('detail')).not.toContain('refreshing');
     expect(visibleText().match(/partial/gi)).toHaveLength(1);
+  });
+
+  it('names each source degraded_sources lists, and drops a status line posing as a summary', async () => {
+    mountBrief({
+      generated_at: new Date().toISOString(),
+      message: 'Morning brief ready',
+      pending_decisions: 25,
+      pending_decisions_scope: { level: 'workspace', workspace_id: 'w', initiative_id: null, kinds: ['decision'], urgency: 'all', includes_system: false, unit: 'review_packet', total: 25, capped: false },
+      degraded: ['operator_chronicle_unavailable'],
+      degraded_sources: [
+        { source: 'pending_decision_count', label: 'Pending decision count', reason: 'query_failed' },
+        { source: 'operator_chronicle', label: 'Operator chronicle', reason: 'unavailable' },
+      ],
+    });
+    await vi.waitFor(() => expect(document.querySelector('.brief-partial')).not.toBeNull());
+    expect(document.querySelector('.brief-partial')!.textContent).toBe(
+      'Partial brief. Couldn’t load the pending decision count and the operator chronicle for this brief. Counts may be low until the next refresh.'
+    );
+    expect(document.querySelector('.brief-summary')).toBeNull();
+    expect(document.querySelector('.app-action-card-title')!.textContent).toBe('25 decisions across the workspace need you');
+    // Empty sections are not offered: no "Output –", no "Receipts $0.00".
+    expect(document.querySelector('#section-output')).toBeNull();
+    expect(document.querySelector('#section-receipts')).toBeNull();
+    expect(visibleText()).not.toMatch(/\$0\.00|–\s*$/m);
+  });
+
+  it('counts receipts instead of showing $0.00 when they carry no value', async () => {
+    mountBrief({
+      generated_at: new Date().toISOString(),
+      summary: 'Quiet night.',
+      top_receipts: [{ intent: 'Closed QA loop', attributed_value_usd: 0 }, { intent: 'Fixed routing', attributed_value_usd: 0 }],
+    });
+    await vi.waitFor(() => expect(document.querySelector('#section-receipts')).not.toBeNull());
+    expect(document.querySelector('#section-receipts .app-accordion-trigger-badge')!.textContent).toBe('2');
+    expect(document.querySelector('#section-receipts')!.innerHTML).not.toContain('$0');
   });
 
   it('says some sources are missing when the payload does not name one', async () => {

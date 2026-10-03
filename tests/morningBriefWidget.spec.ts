@@ -13,7 +13,7 @@ describe('morning brief widget', () => {
     'utf8'
   );
   const iconSource = readFileSync(
-    resolve(process.cwd(), 'public/widgets/shared/icons.js'),
+    resolve(process.cwd(), 'public/widgets/shared/orgx-icons.js'),
     'utf8'
   );
 
@@ -22,22 +22,25 @@ describe('morning brief widget', () => {
     // inside a <style> block does not survive Claude's MCP Apps sandbox.
     expect(widgetSource).toMatch(/<link[^>]+href=("|')shared\/tokens\.css\1/);
     expect(widgetSource).not.toContain("@import url('./shared/tokens.css');");
-    expect(widgetSource).toContain('<script src="shared/icons.js"></script>');
-    expect(widgetSource).toContain('const icons = window.OrgXWidgetIcons;');
-    expect(widgetSource).not.toContain("from './shared/icons.js'");
+    expect(widgetSource).toContain('<script src="shared/orgx-icons.js"></script>');
+    expect(widgetSource).toContain('window.OrgXIcons.icon(name, { size })');
+    expect(widgetSource).not.toContain('<script src="shared/icons.js"></script>');
     expect(widgetSource).not.toContain("from './shared/utils.js'");
     expect(widgetSource).toContain('class="action-strip app-action-stack"');
-    expect(widgetSource).toContain('class="metric-rail app-metric-rail"');
+    // One way into each section (no tab rail duplicating the section rows).
+    expect(widgetSource).not.toContain('class="metric-rail app-metric-rail"');
     expect(widgetSource).toContain('class="brief-section app-accordion-section');
+    expect(widgetSource).toContain('class="app-accordion-panel ox-collapse"');
     expect(widgetSource).toContain('class="output-list app-list-stack"');
   });
 
   it('ships the interactive morning brief drilldown model', () => {
-    expect(widgetSource).toContain('data-action="open-section"');
+    expect(widgetSource).toContain("const dataAction = action.url ? 'open-link' : 'open-section';");
     expect(widgetSource).toContain('data-action="toggle-section"');
     expect(widgetSource).toContain('data-action="open-link"');
     expect(widgetSource).toContain('function setActiveSection(section, options = {})');
-    expect(widgetSource).toContain('aria-controls="panel-priorities"');
+    expect(widgetSource).toContain('aria-controls="panel-${section}"');
+    expect(widgetSource).toContain('class="priorities" role="list"');
     expect(widgetSource).not.toContain(
       'The team completed the mission and prepped the next one.'
     );
@@ -52,8 +55,7 @@ describe('morning brief widget', () => {
     expect(tokenSource).toContain('.app-accordion-section');
     expect(tokenSource).toContain('.app-accordion-chevron');
     expect(tokenSource).toContain('.app-list-row');
-    expect(iconSource).toContain('chevronDown');
-    expect(iconSource).toContain('chevronRight');
-    expect(iconSource).toContain('global.OrgXWidgetIcons = icons;');
+    expect(iconSource).toContain('global.OrgXIcons = {');
+    expect(iconSource).toContain("expand: '");
   });
 });

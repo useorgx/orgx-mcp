@@ -245,12 +245,11 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 63192,
-      "hash": "0d7c4536cff3",
+      "bytes": 62702,
+      "hash": "12a06d586f7c",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
-        "shared/icons.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
         "shared/kit/ox-elements-avatar.js",
@@ -261,6 +260,7 @@
         "shared/live-panel.js",
         "shared/live-store.js",
         "shared/mcp-apps-sdk.umd.js",
+        "shared/orgx-icons.js",
         "shared/tokens.css",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
