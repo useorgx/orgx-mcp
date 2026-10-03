@@ -190,8 +190,8 @@
     },
     "index": {
       "file": "public/widgets/index.html",
-      "bytes": 26183,
-      "hash": "f2a3730d0371",
+      "bytes": 24911,
+      "hash": "5dd0e3852664",
       "primaryRgb": "17,24,39",
       "sharedRefs": [
         "shared/interaction-kit.css",
