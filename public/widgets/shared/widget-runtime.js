@@ -1634,6 +1634,68 @@
     return setExpanded(target, open, trigger);
   }
 
+  /*
+   * Clamp / unclamp a block that shows a max-height preview ("Show full
+   * section", "All evidence"): the height animates from the clamped preview to
+   * the full content and back instead of snapping, and reduced motion (or no
+   * Web Animations) switches instantly. The element carries
+   * data-ox-clamped="true|false" for the widget's CSS (a fade, a max-height);
+   * options:
+   *   expandedClass  class toggled on while unclamped (for existing CSS)
+   *   max            clamp height in px, set inline while clamped
+   *   beyond         elements past the clamp: inert and hidden from assistive
+   *                  tech while clamped, so the preview's tab order is honest
+   *   instant        apply without animating (first render, re-render)
+   * The trigger's aria-expanded follows (expanded = not clamped).
+   */
+  function setClamped(element, clamped, trigger, options) {
+    if (!element) return Promise.resolve();
+    var o = options || {};
+    clamped = !!clamped;
+    if (trigger) trigger.setAttribute('aria-expanded', clamped ? 'false' : 'true');
+    var running = element.__oxClamp;
+    if (running) running.cancel();
+    var from = element.getBoundingClientRect().height;
+    element.setAttribute('data-ox-clamped', clamped ? 'true' : 'false');
+    if (o.expandedClass) element.classList.toggle(o.expandedClass, !clamped);
+    if (o.max != null) element.style.maxHeight = clamped ? Number(o.max) + 'px' : '';
+    Array.prototype.forEach.call(o.beyond || [], function hide(item) {
+      if (clamped) {
+        item.setAttribute('inert', '');
+        item.setAttribute('aria-hidden', 'true');
+      } else {
+        item.removeAttribute('inert');
+        item.removeAttribute('aria-hidden');
+      }
+    });
+    var to = element.getBoundingClientRect().height;
+    if (o.instant || prefersReducedMotion() || typeof element.animate !== 'function' || Math.abs(to - from) < 1) {
+      reportSize();
+      return Promise.resolve();
+    }
+    var previousOverflow = element.style.overflow;
+    element.style.overflow = 'hidden';
+    // max-height: none during the animation, so a CSS clamp can't cut it short.
+    var animation = element.animate(
+      [
+        { height: from + 'px', maxHeight: 'none' },
+        { height: to + 'px', maxHeight: 'none' },
+      ],
+      { duration: Math.min(320, 160 + Math.abs(to - from) * 0.25), easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
+    );
+    element.__oxClamp = animation;
+    return new Promise(function settle(resolve) {
+      var done = function () {
+        if (element.__oxClamp === animation) element.__oxClamp = null;
+        element.style.overflow = previousOverflow;
+        reportSize();
+        resolve();
+      };
+      animation.onfinish = done;
+      animation.oncancel = done;
+    });
+  }
+
   /** Cross-fade a container's state change (loading -> loaded, pending -> settled). */
   function enterState(element) {
     if (!element || prefersReducedMotion() || typeof element.animate !== 'function') return;
@@ -1646,6 +1708,7 @@
   var motion = {
     reduced: prefersReducedMotion,
     setExpanded: setExpanded,
+    setClamped: setClamped,
     toggle: toggleExpanded,
     enter: enterState,
   };

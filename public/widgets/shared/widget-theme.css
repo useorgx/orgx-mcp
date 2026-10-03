@@ -413,7 +413,8 @@ pre,
 }
 
 /* "Open in OrgX": a clearly tappable link with the open-external icon.
- * Works on <a> and <button>; 44 px target; text colour, not a muted grey. */
+ * Works on <a> and <button>; 44 px target; text colour, not a muted grey;
+ * the icon in the readable lime of the current theme. */
 .ox-open {
   display: inline-flex;
   align-items: center;
@@ -434,7 +435,9 @@ pre,
   flex: none;
   width: 14px;
   height: 14px;
-  background: var(--ox-primary, currentColor);
+  /* --ox-lime is the readable lime in each theme (#4d7c0f on white, about
+     5:1; #d4ed31 on dark). --ox-primary is the bright fill lime, faint on white. */
+  background: var(--ox-lime, currentColor);
   -webkit-mask: var(--ox-icon-ext) center / contain no-repeat;
   mask: var(--ox-icon-ext) center / contain no-repeat;
 }

@@ -102,7 +102,6 @@ const SHARED_ALLOWLIST = new Set([
   'shared/live-store.js',
   'shared/live-panel.js',
   'shared/utils.js',
-  'shared/icons.js',
   'shared/orgx-icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',

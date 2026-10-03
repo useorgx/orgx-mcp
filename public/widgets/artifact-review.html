@@ -241,12 +241,17 @@
       .qv-facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
       .qv-facts dd + dt { margin-top: 6px; }
       .who2 b { display: none; }
-      /* Phone: the link is its icon in a 44px target. */
-      .hd .ox-open span { display: none; }
+      /* Phone: the link keeps a short visible label, "OrgX ↗", in a 44px target. */
+      .hd .ox-open .ox-open__long { display: none; }
       .hd .ox-open { min-width: 44px; justify-content: center; }
+      /* Checks that didn't run are one line each on a phone (the label says it),
+         so the preview starts higher without hiding the verdict. */
+      .qv-check[data-status="not-run"] { padding: 6px 0; align-items: center; }
+      .qv-check[data-status="not-run"] > span > span { display: none; }
+      .review-control { gap: 8px; }
     }
     @media (max-width: 420px) {
-      /* The kit gives its actions 62% of the footer: both controls fit at 375 px. */
+      /* Compact controls so both fit beside the footer text at 375 px (the kit wraps them below otherwise). */
       .ft-btn { padding: 0 6px; gap: 4px; font-size: 12px; letter-spacing: -.01em; }
       .ft-btn--primary { padding: 0 6px; }
       .ft-btn--text[disabled] { padding: 0 4px; }
@@ -1501,7 +1506,7 @@
           (new RegExp('\\bv' + (artifact.version || 1) + '$').test(String(artifact.name || '')) ? '' : ' · v' + escapeHtml(String(artifact.version || 1))) + ' · ' + escapeHtml(status) + '</span>' +
           '<span class="sp"></span>' +
           renderAuthor(artifact, form) +
-          (deepLink ? '<a class="ox-open" data-deeplink href="' + escapeAttribute(deepLink) + '" aria-label="Open in OrgX"><span>Open in OrgX</span></a>' : '') +
+          (deepLink ? '<a class="ox-open" data-deeplink href="' + escapeAttribute(deepLink) + '" aria-label="Open in OrgX" title="Open in OrgX"><span><span class="ox-open__long">Open in </span>OrgX</span></a>' : '') +
           '</div>'
         );
       }
@@ -1551,7 +1556,7 @@
         }
         const frames = {
           decide: held
-            ? { variant: 'confirms-in-orgx', state: 'draft', heading: 'Held', detail: '' }
+            ? { variant: 'confirms-in-orgx', state: 'draft', heading: 'Held', detail: 'approval opens at the bar' }
             : { variant: 'finishes-here', state: 'needs-you', heading: 'Finishes here', detail: 'recorded in OrgX' },
           compose: { variant: 'finishes-here', state: 'needs-you', heading: 'Request changes', detail: 'the author is notified' },
           sending: footerAction === 'changes'
@@ -1841,7 +1846,7 @@
               : !canReview
                 ? '<ox-state-chip state="view_only"></ox-state-chip>'
                 : held
-                  ? '<ox-state-chip state="stale" label="Held below the bar"></ox-state-chip>'
+                  ? '' // The quality verdict says "Held · scored 20 of the 80 needed"; a chip would say it twice.
                   : '<ox-state-chip state="needs_you" label="Needs your sign-off"></ox-state-chip>';
         const footer = canReview
           ? '<ox-footer id="reviewFooter" variant="finishes-here" state="needs-you">' + renderFooterControls(evidence) + '</ox-footer>'
@@ -1869,6 +1874,10 @@
                 : 'Approving releases this version to the next step. Requesting changes sends your note to ' + ((artifact.author && artifact.author.name) || 'the author') + '.';
         // A blocker with no score skips the quality check entirely: there is nothing to grade.
         const showQuality = !(mode === 'resolve' && evidence.score === null) && !(mode === 'inspect' && evidence.state === 'not_scored');
+        // When the verdict below explains a hold, a summary that only restates it ("Quality is below
+        // the bar for this version") is dropped; a summary that says something else stays.
+        const summaryText = humanizeCodes(summary);
+        const restatesVerdict = held && showQuality && !chip && /\b(bar|quality|scor(e|ed|ing))\b/i.test(summaryText);
 
         stage.innerHTML = (
           '<article class="wcard ox-surface" data-edge="' + (tone || 'mute') + '">' +
@@ -1876,9 +1885,9 @@
           '<div class="bd">' +
           '<div class="review-desk animate-in">' +
           '<div class="review-control">' +
-          '<div class="review-status">' + chip + '</div>' +
+          (chip ? '<div class="review-status">' + chip + '</div>' : '') +
           '<h2 class="review-question">' + escapeHtml(question) + '</h2>' +
-          '<p class="review-summary">' + escapeHtml(humanizeCodes(summary)) + '</p>' +
+          (restatesVerdict || !summaryText ? '' : '<p class="review-summary">' + escapeHtml(summaryText) + '</p>') +
           (evidence.rulingNote ? '<p class="ruling-note"><b>Reviewer note</b> · ' + escapeHtml(evidence.rulingNote) + '</p>' : '') +
           (showQuality ? renderQualityGauge(evidence, artifact, activeReviewContract) : '') +
           '<p class="review-consequence">' + escapeHtml(consequence) + '</p>' +

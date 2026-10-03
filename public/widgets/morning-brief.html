@@ -616,6 +616,9 @@
       // pending_decisions_scope (optional): where the pending count was counted.
       const scope = asObject(payload.pending_decisions_scope);
       const scopePhrase = scope.level === 'initiative' ? 'in this initiative' : scope.level === 'workspace' ? 'across the workspace' : '';
+      // Only a review_packet count (or no scope, from older apps) is exact; a fallback scope
+      // (unit 'decision_record': raw rows, may include duplicates) is said approximately.
+      const decisionsExact = !payload.pending_decisions_scope || scope.unit === 'review_packet';
       const sessionSummary = asObject(payload.session_summary);
       const valueDashboard = asObject(payload.value_dashboard);
       const workspacePulse = asObject(payload.workspace_pulse);
@@ -771,8 +774,8 @@
         actions.push({
           tone: 'review',
           icon: 'decision',
-          title: `${pluralize(pendingDecisions, 'decision')} ${scopePhrase ? scopePhrase + ' ' : ''}need${pendingDecisions === 1 ? 's' : ''} you`,
-          detail: 'Decide them before the next autonomous run starts',
+          title: `${decisionsExact ? '' : 'About '}${pluralize(pendingDecisions, 'decision')} ${scopePhrase ? scopePhrase + ' ' : ''}need${pendingDecisions === 1 ? 's' : ''} you`,
+          detail: decisionsExact ? 'Decide them before the next autonomous run starts' : 'Count may include duplicates',
           cta: 'Decide',
           url: window.OrgXLinks.decisions(),
           section: 'attention',
@@ -828,6 +831,7 @@
         footerUrl,
         footerLabel: reviewActionUrl ? 'Review queue' : outputActionUrl !== FALLBACK_REVIEW_URL ? 'Latest output' : 'Open OrgX',
         pendingDecisions,
+        decisionsExact,
         blockedWork,
         isPartial,
         partialNotice: isPartial ? partialNotice(payload) : '',
@@ -1043,13 +1047,14 @@
     // The opening line: amber when something waits on you, red when work is blocked, calm otherwise.
     function attentionLine(brief) {
       const parts = [];
-      if (brief.pendingDecisions > 0) parts.push(pluralize(brief.pendingDecisions, 'decision'));
+      if (brief.pendingDecisions > 0) parts.push((brief.decisionsExact === false ? 'about ' : '') + pluralize(brief.pendingDecisions, 'decision'));
       if (brief.reviewItems.length > 0) parts.push(pluralize(brief.reviewItems.length, 'review'));
       const single = parts.length === 1 && brief.pendingDecisions + brief.reviewItems.length === 1;
       const waiting = parts.length ? `${parts.join(' and ')} ${single ? 'waits' : 'wait'} on you` : '';
       const blocked = brief.blockedWork > 0 ? `${brief.blockedWork} blocked` : '';
       const flagged = !waiting && !blocked && brief.exceptions.length > 0 ? `${pluralize(brief.exceptions.length, 'exception')} flagged` : '';
-      const sentence = [waiting, blocked, flagged].filter(Boolean).join(' · ');
+      const joined = [waiting, blocked, flagged].filter(Boolean).join(' · ');
+      const sentence = joined.charAt(0).toUpperCase() + joined.slice(1);
       const count = brief.pendingDecisions + brief.reviewItems.length + brief.blockedWork + (flagged ? brief.exceptions.length : 0);
       if (!sentence) return { tone: 'calm', count: 0, sentence: '', edge: 'teal' };
       return { tone: brief.blockedWork > 0 ? 'blocking' : 'needs-you', count, sentence, edge: brief.blockedWork > 0 ? 'red' : 'amber' };

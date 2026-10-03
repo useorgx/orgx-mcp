@@ -7,7 +7,6 @@
     "shared/components/domain-accent.js",
     "shared/components/liveness-indicator.js",
     "shared/demo-data.js",
-    "shared/icons.js",
     "shared/interaction-kit.css",
     "shared/interaction-kit.js",
     "shared/kit/ox-elements-avatar.js",
@@ -50,8 +49,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 72823,
-      "hash": "ada7f53c9ac4",
+      "bytes": 73383,
+      "hash": "3226cae92209",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -90,8 +89,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 110551,
-      "hash": "9a62b68c154c",
+      "bytes": 111463,
+      "hash": "e76c196f239e",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -126,8 +125,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 164389,
-      "hash": "01cdd30e6a79",
+      "bytes": 165474,
+      "hash": "86b7cd12bc13",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -198,8 +197,8 @@
     },
     "index": {
       "file": "public/widgets/index.html",
-      "bytes": 24911,
-      "hash": "5dd0e3852664",
+      "bytes": 24955,
+      "hash": "dddb9c2635cd",
       "primaryRgb": "17,24,39",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -214,8 +213,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 92860,
-      "hash": "a0b5a2672963",
+      "bytes": 95145,
+      "hash": "2b56870a4677",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -253,8 +252,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 62532,
-      "hash": "a1099f862506",
+      "bytes": 63043,
+      "hash": "3932978c934e",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -291,8 +290,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 108030,
-      "hash": "00b6a0de5d25",
+      "bytes": 111668,
+      "hash": "520e44f7b401",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -320,8 +319,8 @@
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 52759,
-      "hash": "ace34f999825",
+      "bytes": 53284,
+      "hash": "77a27de8f189",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -376,8 +375,8 @@
     },
     "scaffold-streaming": {
       "file": "public/widgets/scaffold-streaming.html",
-      "bytes": 30623,
-      "hash": "1157d7e48312",
+      "bytes": 30695,
+      "hash": "89deb5886aee",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",

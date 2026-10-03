@@ -116,6 +116,7 @@
     .dq-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 8px 0 20px; }
     /* OrgX links are the shared .ox-open (44px, text colour, open-external icon). */
     .dq-head-link { margin-right: 8px; }
+    .dq-head-link .short, .dq-narrow { display: none; }
     .dq-head [slot="meta"] { font: 500 12px/1.3 var(--ox-font); font-variant-numeric: tabular-nums; }
 
     .dq-body { padding: 20px 24px 22px; display: flex; flex-direction: column; gap: 18px; }
@@ -310,6 +311,8 @@
     .dq-row .meta, .dq-meta { font-size: 12.5px; line-height: 1.3; color: var(--ox-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
     .dq-row .chev { width: 14px; height: 14px; color: var(--ox-text-muted); flex: none; }
     .dq-more { margin: 6px 0 0 14px; }
+    /* Long counts ("About 24 more across the workspace in OrgX") wrap instead of widening the page. */
+    .dq-queue .dq-more { align-self: flex-start; max-width: calc(100% - 14px); white-space: normal; }
 
     /* Approve N ready: one quiet line, then one result row per item. */
     .dq-batch {
@@ -356,8 +359,10 @@
       .dq-cons { grid-template-columns: minmax(0, 1fr); gap: 10px; }
       .dq-head { --ox-attention-padding: 0 4px 0 16px; }
       .dq-status .ctx-wrap { display: none; }
-      .dq-row .long, .dq-head-link .long { display: none; }
-      /* Phone: the header link is its icon in a 44px target. */
+      .dq-row .long, .dq-head-link .long, .dq-wide { display: none; }
+      /* Phone: the header link keeps a short visible label, "OrgX ↗" (44px target),
+         and the scope phrase shortens so the line stays one line at 375. */
+      .dq-head-link .short, .dq-narrow { display: inline; }
       .dq-head-link { min-width: 44px; justify-content: center; }
       .dq-row { padding: 10px 12px; }
     }
@@ -2451,7 +2456,10 @@
       if (!raw || typeof raw !== 'object') return null;
       const total = Number(raw.total);
       if (!Number.isFinite(total) || total < 0) return null;
-      return { level: raw.level === 'initiative' ? 'initiative' : 'workspace', total: Math.floor(total), capped: raw.capped === true };
+      // Only a review_packet count is exact; a fallback scope (unit 'decision_record': raw rows that
+      // may include duplicates and system items) is said approximately, without the capped "+".
+      const exact = raw.unit === 'review_packet';
+      return { level: raw.level === 'initiative' ? 'initiative' : 'workspace', total: Math.floor(total), capped: exact && raw.capped === true, exact };
     };
     var scopeLabel = (pendingCount) => {
       const scoped = queueScope();
@@ -2459,15 +2467,15 @@
       const where = scoped.level === 'initiative' ? 'in this initiative' : 'across the workspace';
       const total = scoped.total + (scoped.capped ? '+' : '');
       if (scoped.total <= pendingCount) return `${pendingCount} need${pendingCount === 1 ? 's' : ''} your decision ${where}`;
-      return `${pendingCount} here · ${total} ${where}`;
+      return `${pendingCount} here · ${scoped.exact ? '' : 'about '}${total} ${where}`;
     };
     var attentionHtml = (pendingCount, oldest, label, tone) => {
       const decisionsUrl = buildDecisionsUrl();
       const sentence = label || scopeLabel(pendingCount) || (pendingCount ? `${pendingCount} need${pendingCount === 1 ? 's' : ''} your decision` : '');
       return `<div class="dq-head">
         <ox-attention-line id="dqAttention" tone="${tone || (pendingCount ? 'needs-you' : 'calm')}" count="${tone && !pendingCount ? 1 : pendingCount}">${
-          sentence ? `<span>${escapeHtml(sentence)}</span>` : ''}${
-          syncedAt ? `<span slot="meta">${window.OrgXTime.html(syncedAt, 'synced')}</span>` : ''}<a slot="action" id="queueDecisionsLink" class="dq-head-link ox-open" ${linkAttrs(decisionsUrl)} aria-label="All decisions in OrgX"><span class="long">All in OrgX</span></a></ox-attention-line>
+          sentence ? `<span>${escapeHtml(sentence).replace(/ across the workspace$/, '<span class="dq-wide"> across the workspace</span><span class="dq-narrow"> in workspace</span>')}</span>` : ''}${
+          syncedAt ? `<span slot="meta">${window.OrgXTime.html(syncedAt, 'synced')}</span>` : ''}<a slot="action" id="queueDecisionsLink" class="dq-head-link ox-open" ${linkAttrs(decisionsUrl)} aria-label="All decisions in OrgX" title="All decisions in OrgX"><span class="long">All in OrgX</span><span class="short">OrgX</span></a></ox-attention-line>
       </div>`;
     };
 
@@ -2678,7 +2686,8 @@
       const scoped = queueScope();
       const more = Math.max(others.length - shown.length, scoped ? scoped.total - pendingDecisions().length : 0);
       const where = scoped ? (scoped.level === 'initiative' ? ' in this initiative' : ' across the workspace') : '';
-      return `<nav class="dq-queue" aria-label="Other decisions waiting on you">${rows}${more > 0 ? `<a class="ox-open dq-more" ${linkAttrs(buildDecisionsUrl())}>${more} more${escapeHtml(where)} in OrgX</a>` : ''}</nav>`;
+      const about = scoped && !scoped.exact && more > others.length - shown.length ? 'About ' : '';
+      return `<nav class="dq-queue" aria-label="Other decisions waiting on you">${rows}${more > 0 ? `<a class="ox-open dq-more" ${linkAttrs(buildDecisionsUrl())}${about ? ' title="The count may include duplicates"' : ''}>${about}${more} more${escapeHtml(where)} in OrgX</a>` : ''}</nav>`;
     };
 
     var historyHtml = (current) => {

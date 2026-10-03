@@ -307,6 +307,24 @@ describe('B4 · short headlines', () => {
     expect(body).toContain('A green deployment alone does not approve marketing.');
   });
 
+  it('decisions: a fallback decision_record scope is said approximately, never as an exact or capped count', async () => {
+    ensureCssEscape();
+    mountWidget('decisions', {
+      payload: {
+        decisions: [plainDecision(D1, 'Ship the pricing page?')],
+        total_pending: 25,
+        pending_decisions_scope: { level: 'workspace', workspace_id: 'w', initiative_id: null, kinds: ['decision'], urgency: 'all', includes_system: true, unit: 'decision_record', total: 25, capped: true },
+      },
+      callTool: vi.fn(() => Promise.resolve({})),
+    });
+    await vi.waitFor(() => expect(document.querySelector('#dqAttention')).not.toBeNull());
+    const sentence = document.querySelector('#dqAttention > span:not([slot])')!.cloneNode(true) as HTMLElement;
+    sentence.querySelectorAll('.dq-narrow').forEach((el) => el.remove());
+    expect(sentence.textContent).toBe('1 here · about 25 across the workspace');
+    expect(document.body.textContent).not.toContain('25+');
+    expect(document.querySelector('.dq-more')!.textContent).toContain('About 24 more across the workspace in OrgX');
+  });
+
   it('decisions: the header counts pending decisions in their scope', async () => {
     ensureCssEscape();
     mountWidget('decisions', {
@@ -318,7 +336,15 @@ describe('B4 · short headlines', () => {
       callTool: vi.fn(() => Promise.resolve({})),
     });
     await vi.waitFor(() => expect(document.querySelector('#dqAttention')).not.toBeNull());
-    expect(document.querySelector('#dqAttention > span:not([slot])')!.textContent).toBe('1 here · 25 across the workspace');
+    // The wide sentence, and its phone form (one line at 375 next to the "OrgX ↗" link).
+    const sentence = document.querySelector('#dqAttention > span:not([slot])')!;
+    const variant = (hide: string) => {
+      const copy = sentence.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll(hide).forEach((el) => el.remove());
+      return copy.textContent;
+    };
+    expect(variant('.dq-narrow')).toBe('1 here · 25 across the workspace');
+    expect(variant('.dq-wide')).toBe('1 here · 25 in workspace');
     expect(document.querySelector('.dq-more')!.textContent).toContain('24 more across the workspace in OrgX');
   });
 
@@ -559,6 +585,18 @@ describe('B8 · morning brief: one degraded notice, inside the card', () => {
     expect(footer.getAttribute('heading')).not.toBe('Partial brief');
     expect(footer.getAttribute('detail')).not.toContain('refreshing');
     expect(visibleText().match(/partial/gi)).toHaveLength(1);
+  });
+
+  it('says a fallback decision_record count approximately', async () => {
+    mountBrief({
+      generated_at: new Date().toISOString(),
+      pending_decisions: 25,
+      pending_decisions_scope: { level: 'workspace', workspace_id: 'w', initiative_id: null, kinds: ['decision'], urgency: 'all', includes_system: true, unit: 'decision_record', total: 25, capped: true },
+    });
+    await vi.waitFor(() => expect(document.querySelector('.app-action-card-title')).not.toBeNull());
+    expect(document.querySelector('.app-action-card-title')!.textContent).toBe('About 25 decisions across the workspace need you');
+    expect(document.body.textContent).toContain('Count may include duplicates');
+    expect(document.body.textContent).not.toContain('25+');
   });
 
   it('names each source degraded_sources lists, and drops a status line posing as a summary', async () => {

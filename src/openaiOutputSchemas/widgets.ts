@@ -268,8 +268,11 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       // linked resource details. Preserve either representation on the wire.
       blockers: z.array(z.union([z.string().min(1), resourceSchema])),
       pending_decisions: z.number(),
-      // The canonical count's scope; null when that count failed to load and
-      // pending_decisions fell back to the pulse's own count.
+      // What pending_decisions counted. Null (or absent) from older app
+      // versions. When the canonical count fails, newer apps send a labelled
+      // fallback scope with unit: 'decision_record' (raw decision rows, which
+      // may include duplicates and system items); only unit: 'review_packet'
+      // is an exact count, so widgets say a fallback total approximately.
       pending_decisions_scope: pendingDecisionsScopeSchema.nullable().optional(),
       continuity: z
         .object({

@@ -9,7 +9,7 @@
  *   OrgXIcons.forStatus('in_progress') -> 'active'
  *
  * Entity types: initiative, workstream, milestone, task, decision, artifact,
- * run, plan, agent, search. Statuses: done, active, needs-you, blocked,
+ * run, plan, agent, person, note, search. Statuses: done, active, needs-you, blocked,
  * waiting, failed, paused, draft. Actions: open-external, expand, collapse,
  * retry, filter, time, cost, close.
  *
@@ -35,6 +35,11 @@
     plan: '<rect x="3" y="3" width="18" height="18" rx="4" ~/><path d="M7.5 7v10"/><circle cx="7.5" cy="7.5" r="1.5" @/><circle cx="7.5" cy="12" r="1.5" @/><circle cx="7.5" cy="16.5" r="1.5" @/><path d="M11 7.5h6M11 12h5M11 16.5h4"/>',
     agent: '<circle cx="12" cy="12" r="9.5" ~/><circle cx="12" cy="9.5" r="3.2"/><path d="M5.8 18.6c1.4-2.5 3.6-3.8 6.2-3.8s4.8 1.3 6.2 3.8"/>',
     search: '<circle cx="10.5" cy="10.5" r="6.5" ~/><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>',
+    /* A person (no photo): head and shoulders, the same shape as the kit's
+       <ox-glyph kind="person">. An agent is this inside a circle. */
+    person: '<circle cx="12" cy="7.6" r="3.6" ~/><circle cx="12" cy="7.6" r="3.6"/><path d="M4.8 20.2c.7-3.7 3.6-6 7.2-6s6.5 2.3 7.2 6z" ~/><path d="M4.8 20.2c.7-3.7 3.6-6 7.2-6s6.5 2.3 7.2 6z"/>',
+    /* A note (guidance, a comment): a card with a folded corner and two lines. */
+    note: '<path d="M5 4h14v10l-5.5 6H5z" ~/><path d="M5 4h14v10l-5.5 6H5z"/><path d="M13.5 20v-6H19M8.5 8.5h7M8.5 12h4.5"/>',
     /* statuses */
     done: '<circle cx="12" cy="12" r="9" ~/><circle cx="12" cy="12" r="9"/><path d="m8.2 12.3 2.6 2.6 5-5.4"/>',
     active: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" @/>',
@@ -70,7 +75,9 @@
     artifacts: 'artifact', document: 'artifact', doc: 'artifact', file: 'artifact', output: 'artifact',
     runs: 'run', agent_run: 'run', session: 'run', execution: 'run',
     plans: 'plan', plan_session: 'plan',
-    agents: 'agent', person: 'agent', owner: 'agent',
+    agents: 'agent', owner: 'agent',
+    people: 'person', human: 'person', user: 'person', you: 'person', member: 'person',
+    notes: 'note', comment: 'note', guidance: 'note', memo: 'note',
     query: 'search',
     // action spellings
     ext: 'open-external', external: 'open-external', open: 'open-external', link: 'open-external',
@@ -133,7 +140,7 @@
   /** Entity type ("Workstream", "agent_run", "plan_session") -> icon name, or null. */
   function forEntity(type) {
     var key = resolve(type);
-    return key && ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'run', 'plan', 'agent', 'search'].indexOf(key) !== -1 ? key : null;
+    return key && ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'run', 'plan', 'agent', 'person', 'note', 'search'].indexOf(key) !== -1 ? key : null;
   }
 
   /** Free-form status ("In progress", "needs_review") -> status icon name (default "draft"). */

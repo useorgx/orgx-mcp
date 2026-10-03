@@ -91,9 +91,18 @@
     .switcher-identity { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
     .switcher-name { font-size: 14px; font-weight: 650; }
     .switcher-role { font-size: 12.5px; color: var(--ox-text-muted); }
-    .switcher-focus { font-size: 12.5px; line-height: 1.4; color: var(--ox-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* The task is the point of the row: two lines before it ellipsizes. */
+    .switcher-focus { font-size: 12.5px; line-height: 1.4; color: var(--ox-text-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
     .switcher-focus .is-stalled { color: var(--ox-warning); font-weight: 600; }
     .switcher-status { display: flex; justify-content: flex-end; }
+    /* Phones: the chip moves up beside the name, so the task line gets the full row width. */
+    @media (max-width: 480px) {
+      .agent-switcher-select { grid-template-areas: "name status" "focus focus"; row-gap: 2px; }
+      .switcher-copy { display: contents; }
+      .switcher-identity { grid-area: name; align-self: center; }
+      .switcher-status { grid-area: status; }
+      .switcher-focus { grid-area: focus; }
+    }
 
     .idle-agent-toggle {
       display: flex; align-items: center; gap: 8px; width: calc(100% - 12px); min-height: 44px; margin: 0 6px 6px;

@@ -83,7 +83,7 @@ describe('agent identity', () => {
 
 describe('OrgX icon set', () => {
   it('covers entity types, statuses and actions', () => {
-    for (const name of ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'run', 'plan', 'agent', 'search']) {
+    for (const name of ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'run', 'plan', 'agent', 'person', 'note', 'search']) {
       expect(icons.forEntity(name)).toBe(name);
     }
     for (const name of ['done', 'active', 'needs-you', 'blocked', 'waiting', 'failed', 'paused', 'draft', 'open-external', 'expand', 'retry', 'filter', 'time', 'cost']) {
@@ -111,6 +111,17 @@ describe('OrgX icon set', () => {
     // No tick mark: the old glyph was a rounded square with a check path.
     expect(task).not.toMatch(/M9 12\.2|l2 2|check/i);
     expect(task).toContain('<rect x="3" y="5" width="18" height="14"');
+  });
+
+  it('has a person (no photo) distinct from an agent, and a note', () => {
+    expect(icons.resolve('person')).toBe('person');
+    expect(icons.resolve('user')).toBe('person');
+    expect(icons.resolve('owner')).toBe('agent');
+    expect(icons.resolve('comment')).toBe('note');
+    // Same head-and-shoulders shape as the kit's <ox-glyph kind="person">.
+    expect(icons.icon('person')).toContain('cy="7.6" r="3.6"');
+    expect(icons.icon('person')).not.toBe(icons.icon('agent'));
+    expect(icons.icon('note')).toContain('data-icon="note"');
   });
 
   it('maps payload spellings and statuses, and renders nothing for unknown names', () => {
