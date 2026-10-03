@@ -9,7 +9,9 @@
   <link rel="stylesheet" href="shared/tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
-  <script src="shared/kit/ox-elements.js"></script>
+  <script src="shared/kit/ox-elements-core.js"></script>
+  <script src="shared/kit/ox-elements-footer.js"></script>
+  <script src="shared/kit/ox-elements-avatar.js"></script>
   <script src="shared/agent-identity.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
@@ -130,7 +132,6 @@
     .priority-row { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 0; }
     .priority-row + .priority-row { border-top: 1px solid var(--ox-border); }
     .priority-who { width: 22px; height: 22px; display: grid; place-items: center; color: var(--ox-text-muted); }
-    .priority-who ox-glyph { --ox-glyph-size: 16px; }
     .priority-domain { font: 500 11.5px/1.3 var(--ox-mono); color: var(--ox-text-muted); }
     /* Priority headline: the title's first sentence, about three lines; the rest reads as body text. */
     .priority-title {
@@ -230,7 +231,7 @@
     const isLoadingOverride = params.get('loading') === 'true' || params.get('state') === 'loading';
     const bootStartedAt = Date.now();
     const MIN_LOADING_MS = 220;
-    const FALLBACK_REVIEW_URL = 'https://useorgx.com/live?view=mission-control';
+    const FALLBACK_REVIEW_URL = window.OrgXLinks.live();
 
     const state = {
       brief: null,
@@ -444,35 +445,25 @@
       }).format(number);
     }
 
+    // Dates and times in the viewer's locale and zone (shared formatter).
+    const T = window.OrgXTime;
+
     function formatDayLabel(value) {
-      const date = value ? new Date(value) : new Date();
-      if (Number.isNaN(date.getTime())) return 'Morning Brief';
-      return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-      });
+      const date = T.toDate(value) || new Date();
+      return date.toLocaleDateString(T.locale(), { weekday: 'short', month: 'short', day: 'numeric', timeZone: T.timeZone() });
     }
 
     function formatTimeLabel(value) {
-      const date = value ? new Date(value) : new Date();
-      if (Number.isNaN(date.getTime())) return 'Generated recently';
-      return `Generated ${date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-      })}`;
+      const date = T.toDate(value) || new Date();
+      return `Generated ${T.clock(date)}`;
     }
 
     function formatShortDay(value) {
-      const date = value ? new Date(value) : new Date();
-      if (Number.isNaN(date.getTime())) return '';
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return T.day(T.toDate(value) || new Date());
     }
 
     function formatClock(value) {
-      const date = value ? new Date(value) : new Date();
-      if (Number.isNaN(date.getTime())) return '';
-      return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+      return T.clock(T.toDate(value) || new Date());
     }
 
     function isOlderThan(value, hours) {
@@ -508,9 +499,7 @@
 
     function artifactUrl(artifact) {
       const row = asObject(artifact);
-      if (typeof row.primary_url === 'string' && row.primary_url) return row.primary_url;
-      if (typeof row.live_url === 'string' && row.live_url) return row.live_url;
-      return null;
+      return window.OrgXLinks.normalize(row.primary_url) || window.OrgXLinks.normalize(row.live_url) || null;
     }
 
     function artifactLabel(artifact, fallback) {
@@ -893,15 +882,16 @@
       return identity && identity.resolveAgentKey ? identity.resolveAgentKey(...values) : null;
     }
 
-    function avatarHtml(agentKey, name, size = 20) {
-      if (!agentKey) return '';
-      return `<ox-avatar agent="${escapeHtml(agentKey)}" form="base" size="${size}"${name ? ` name="${escapeHtml(name)}"` : ''}></ox-avatar>`;
+    // An agent's headshot in its hover card (state, task, Open in OrgX); the
+    // OrgX mark for OrgX/system work; initials for a person.
+    function avatarHtml(agentKey, name, size = 20, extra = {}) {
+      return window.OrgXAgentIdentity.agentCard({ agent: agentKey || name, name, size, ...extra });
     }
 
     function renderSkeleton() {
       content.innerHTML = `
         <div class="brief-shell widget-shell-card" aria-busy="true">
-          <div class="ox-card">
+          <div class="ox-card ox-surface">
             <div class="brief-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 20px">
               <span class="sk" style="width:8px;height:8px;border-radius:50%"></span>
               <span class="sk" style="width:42%;height:12px"></span>
@@ -921,7 +911,7 @@
     function renderEmptyState() {
       content.innerHTML = `
         <div class="brief-shell widget-shell-card animate-in">
-          <div class="ox-card" data-edge="teal">
+          <div class="ox-card ox-surface" data-edge="teal">
             <div class="brief-head"><ox-attention-line tone="calm" count="0"><span>No brief yet</span></ox-attention-line></div>
             <div class="brief-calm">
               <div class="brief-calm-title">Nothing needs you</div>
@@ -944,7 +934,7 @@
           const head = splitHeadline(priority.title || 'Priority item');
           return `
             <div class="priority-row">
-              <div class="priority-who">${agentKey ? avatarHtml(agentKey, '', 22) : '<ox-glyph kind="task"></ox-glyph>'}</div>
+              <div class="priority-who">${avatarHtml(agentKey, agentKey ? '' : (priority.agent_name || 'OrgX'), 22, { task: head.headline })}</div>
               <div class="priority-body">
                 <div class="priority-domain">${escapeHtml(domain)}</div>
                 <div class="priority-title">${escapeHtml(head.headline)}</div>
@@ -993,7 +983,7 @@
               <div class="app-list-row-body">
                 <div class="app-list-row-title">${escapeHtml(row.title || row.name || 'Untitled artifact')}</div>
                 <div class="app-list-row-detail">${escapeHtml(summary)}</div>
-                <div class="output-meta">${avatarHtml(agentKey, author, 16)}<span>${escapeHtml(author)}</span><span aria-hidden="true">·</span><span>${escapeHtml(type)}</span></div>
+                <div class="output-meta">${avatarHtml(agentKey, author, 18, { task: row.title || row.name, state: reviewable ? 'needs_you' : '', statusLabel: reviewable ? 'Your review' : '', label: `<span>${escapeHtml(author)}</span>` })}<span aria-hidden="true">·</span><span>${escapeHtml(type)}</span></div>
               </div>
               ${
                 reviewable && url
@@ -1183,7 +1173,7 @@
     function renderErrorState() {
       content.innerHTML = `
         <div class="brief-shell widget-shell-card animate-in">
-          <div class="ox-card" data-edge="red">
+          <div class="ox-card ox-surface" data-edge="red">
             <div class="brief-calm" role="alert">
               <div class="brief-calm-title">Morning brief unavailable</div>
               <div class="brief-calm-copy">The latest brief could not be loaded. Open live view to retry when the workspace is reachable.</div>

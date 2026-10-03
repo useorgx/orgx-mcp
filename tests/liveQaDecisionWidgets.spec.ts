@@ -6,6 +6,7 @@ import { JSDOM } from 'jsdom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { mountWidget, readSharedScript, WIDGETS_DIR } from './fixtures/live';
+import { installSharedFoundations } from './fixtures/sharedFoundations';
 
 /**
  * Live QA in ChatGPT (2026-10-02, ledger items B1–B8): the decision-facing
@@ -469,6 +470,7 @@ describe('B7 · artifact-review: codes read as words', () => {
 
   it('humanizes the title, summary and preview of a blocker artifact', () => {
     const dom = new JSDOM(html, { url: 'https://example.test/widgets/artifact-review.html?state=blocker', runScripts: 'outside-only', pretendToBeVisual: true });
+    installSharedFoundations(dom.window);
     Object.defineProperty(dom.window, 'OrgXWidgetRuntime', {
       configurable: true,
       value: { detectProtocol: () => 'standalone', reportSize: vi.fn(), callTool: vi.fn(), openWidgetLink: vi.fn(), initWidget: vi.fn() },

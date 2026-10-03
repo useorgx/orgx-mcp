@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import '../public/widgets/shared/agent-identity.js';
@@ -160,5 +163,19 @@ describe('widget link builder', () => {
     document.body.dispatchEvent(event);
     expect(openExternal).toHaveBeenCalledWith({ url: 'https://useorgx.com/command/agents/eli' });
     expect(event.defaultPrevented).toBe(true);
+  });
+});
+
+describe('widgets build OrgX URLs only through the link builder', () => {
+  const dir = resolve(__dirname, '..', 'public', 'widgets');
+  const widgets = readdirSync(dir).filter((f) => f.endsWith('.html') && f !== 'index.html' && f !== 'scaffold-streaming.html');
+
+  it.each(widgets)('%s has no hand-built useorgx.com URL', (file) => {
+    const html = readFileSync(join(dir, file), 'utf8');
+    const handBuilt = [
+      // 'https://useorgx.com/x/' + id, ORGX_BASE_URL + '/x', `${ORGX}/x`
+      ...html.matchAll(/['"`]https:\/\/(?:www\.)?useorgx\.com[^'"`]*['"`]\s*\+|\$\{\s*ORGX[A-Z_]*\s*\}\/|\bORGX(?:_BASE)?(?:_URL)?\s*\+\s*['"`]\//g),
+    ].map((m) => m[0]);
+    expect(handBuilt).toEqual([]);
   });
 });

@@ -90,8 +90,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 107735,
-      "hash": "01f0aff9431f",
+      "bytes": 107788,
+      "hash": "4143fb0acf7b",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -154,8 +154,8 @@
     },
     "entity-card": {
       "file": "public/widgets/entity-card.html",
-      "bytes": 34486,
-      "hash": "706837289765",
+      "bytes": 34667,
+      "hash": "cc8bf6151cad",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -202,8 +202,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 89911,
-      "hash": "e12a99af22c4",
+      "bytes": 89357,
+      "hash": "1384f85fe2c7",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -237,15 +237,17 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 63380,
-      "hash": "ce6409d0ca41",
+      "bytes": 63177,
+      "hash": "9bbe1e0082e1",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
         "shared/icons.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
-        "shared/kit/ox-elements.js",
+        "shared/kit/ox-elements-avatar.js",
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
         "shared/kit/ox-tokens.css",
         "shared/live-machine.js",
         "shared/live-panel.js",
@@ -262,18 +264,19 @@
         "ox-attention-line",
         "ox-receipt-row",
         "ox-footer",
-        "ox-glyph",
         "ox-avatar"
       ],
       "kitBundles": [
-        "shared/kit/ox-elements.js"
+        "shared/kit/ox-elements-core.js",
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-avatar.js"
       ],
       "demoOnly": false
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 102177,
-      "hash": "0c89c60517e3",
+      "bytes": 102129,
+      "hash": "9ef2c515eb13",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -301,8 +304,8 @@
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 47717,
-      "hash": "4b8fcf9be32c",
+      "bytes": 47726,
+      "hash": "bd389b93e033",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -333,8 +336,8 @@
     },
     "proof-receipt": {
       "file": "public/widgets/proof-receipt.html",
-      "bytes": 29304,
-      "hash": "6c4f03c80560",
+      "bytes": 29232,
+      "hash": "0d0d3509680b",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -359,8 +362,8 @@
     },
     "scaffold-streaming": {
       "file": "public/widgets/scaffold-streaming.html",
-      "bytes": 42641,
-      "hash": "f53ad60e2b3b",
+      "bytes": 42719,
+      "hash": "c8ffe00c03f4",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/mcp-apps-sdk.umd.js",
@@ -436,8 +439,8 @@
     },
     "task-spawned": {
       "file": "public/widgets/task-spawned.html",
-      "bytes": 56330,
-      "hash": "3fe08a92408c",
+      "bytes": 55398,
+      "hash": "cf86fb37baa8",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -469,8 +472,8 @@
     },
     "work-ledger": {
       "file": "public/widgets/work-ledger.html",
-      "bytes": 45556,
-      "hash": "5f1098d03d31",
+      "bytes": 45244,
+      "hash": "08cfa549f7a0",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -503,8 +506,8 @@
     },
     "workspace-map": {
       "file": "public/widgets/workspace-map.html",
-      "bytes": 22521,
-      "hash": "816ab6c5a4dc",
+      "bytes": 22713,
+      "hash": "2318cc4f8ef5",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",

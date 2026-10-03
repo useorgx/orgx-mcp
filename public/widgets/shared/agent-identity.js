@@ -28,7 +28,7 @@
   var BY_KEY = {};
   AGENTS.forEach(function (agent) { BY_KEY[agent.key] = agent; });
 
-  var SYSTEM = /^(orgx|orgx[\s_-]*system|system|automation|automatic|auto|scheduler|orgx[\s_-]*automation)$/i;
+  var SYSTEM = /^(orgx([\s_-]*(system|agent|automation|bot))?|system|automation|automatic|auto|scheduler)$/i;
 
   function resolveAgentKey() {
     for (var i = 0; i < arguments.length; i += 1) {

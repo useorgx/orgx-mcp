@@ -276,7 +276,7 @@
 <body>
   <div class="widget-shell-card">
     <div class="stage" data-stage>
-      <article class="wcard" aria-busy="true" aria-label="Loading artifact review">
+      <article class="wcard ox-surface" aria-busy="true" aria-label="Loading artifact review">
         <div class="hd"><span class="sk" style="width:44%"></span></div>
         <div class="bd">
           <span class="sk" style="width:80%;height:22px"></span>
@@ -364,7 +364,9 @@
 
       function openWidgetLink(url) {
         if (!isAllowedArtifactLinkUrl(url)) return false;
-        return window.OrgXWidgetRuntime.openWidgetLink(url);
+        // OrgX app links go through the shared builder's normalizer (legacy
+        // shapes rewritten to real routes); other allowed origins pass as is.
+        return window.OrgXWidgetRuntime.openWidgetLink(window.OrgXLinks.normalize(url) || url);
       }
 
       function reportSize() {
@@ -538,17 +540,8 @@
       }
 
       function formatRelative(iso) {
-        if (!iso) return '';
-        const then = new Date(iso).getTime();
-        const now = Date.now();
-        const delta = Math.max(0, now - then);
-        const min = Math.round(delta / 60000);
-        if (min < 1) return 'just now';
-        if (min < 60) return min + 'm ago';
-        const hr = Math.round(min / 60);
-        if (hr < 24) return hr + 'h ago';
-        const d = Math.round(hr / 24);
-        return d + 'd ago';
+        // Shared formatter: "2m ago", "Yesterday", then the date in the viewer's locale.
+        return window.OrgXTime.relative(iso, { inline: true });
       }
 
       function asRecord(value) {
@@ -1408,12 +1401,20 @@
         const author = artifact.author || {};
         const name = firstString([author.name]) || '';
         const identity = window.OrgXAgentIdentity;
-        const key = identity ? identity.resolveAgentKey(author.id, name, author.domain, author.role) : null;
-        if (!name && !key) return '';
+        const who = identity.profile(author.id, name, author.domain, author.role);
+        if (!name && !who) return '';
+        // Agents: headshot + hover card (state, the artifact, Open in OrgX). People: initials.
+        const state = { asking: 'needs_you', verifying: 'verifying', proactive: 'succeeded', working: 'running' }[form] || '';
         return (
           '<span class="who2">' +
-          (key ? '<ox-avatar agent="' + key + '" form="' + escapeAttribute(form || 'base') + '" size="20" name="' + escapeAttribute(name || key) + '"></ox-avatar>' : '') +
-          (name ? '<b>' + escapeHtml(name) + '</b>' : '') +
+          identity.agentCard({
+            agent: who ? who.key : '',
+            name: who ? who.name : name,
+            size: 20,
+            state: state,
+            task: firstString([artifact.title, artifact.name]),
+            label: '<b>' + escapeHtml(who ? who.name : name) + '</b>',
+          }) +
           '</span>'
         );
       }
@@ -1531,11 +1532,8 @@
       }
 
       function buildArtifactLink(artifact) {
-        const artifactId = encodeURIComponent(artifact.id);
-        if (artifact.entity_type === 'initiative' && artifact.entity_id) {
-          return 'https://useorgx.com/live/' + encodeURIComponent(artifact.entity_id) + '?artifactId=' + artifactId;
-        }
-        return 'https://useorgx.com/artifacts/' + artifactId;
+        // The artifact page (the live room has no ?artifactId= focus).
+        return window.OrgXLinks.artifact(artifact.id);
       }
 
       function renderHeader(artifact, tone, form) {
@@ -1806,7 +1804,7 @@
 
         if (artifact && artifact.__loading) {
           stage.innerHTML = (
-            '<article class="wcard" aria-busy="true" aria-label="Loading artifact review">' +
+            '<article class="wcard ox-surface" aria-busy="true" aria-label="Loading artifact review">' +
             '<div class="hd"><span class="sk" style="width:44%"></span></div>' +
             '<div class="bd"><span class="sk" style="width:80%;height:22px"></span><span class="sk" style="width:100%;height:8px"></span><span class="sk" style="width:100%;height:132px;border-radius:12px"></span></div>' +
             '<ox-footer variant="reads" state="loading"></ox-footer>' +
@@ -1818,7 +1816,7 @@
 
         if (artifact && artifact.__error) {
           stage.innerHTML = (
-            '<article class="wcard" data-edge="red">' +
+            '<article class="wcard ox-surface" data-edge="red">' +
             '<div class="hd"><ox-glyph kind="artifact" tone="red"></ox-glyph><span class="kind">Artifact</span></div>' +
             '<div class="bd"><h2 class="review-question">Evidence disconnected</h2>' +
             '<p class="empty-copy">' + escapeHtml(artifact.__error) + ' Restore the evidence before signing off.</p></div>' +
@@ -1833,7 +1831,7 @@
 
         if (!artifact || !artifact.id) {
           stage.innerHTML = (
-            '<article class="wcard" data-edge="teal">' +
+            '<article class="wcard ox-surface" data-edge="teal">' +
             '<div class="hd"><ox-glyph kind="artifact" tone="teal"></ox-glyph><span class="kind">Artifact review</span></div>' +
             '<div class="bd"><h2 class="review-question">Inbox clear</h2>' +
             '<p class="empty-copy">No artifacts waiting for review. Nothing to sign off on right now.</p></div>' +
@@ -1859,7 +1857,7 @@
         if (isResolved) {
           const approved = artifact.status === 'approved';
           stage.innerHTML = (
-            '<article class="wcard" data-edge="teal">' +
+            '<article class="wcard ox-surface" data-edge="teal">' +
             renderHeader(artifact, 'teal', 'proactive') +
             '<div class="bd">' +
             '<h2 class="review-question">' + (approved ? 'Approval recorded' : 'Revision requested') + '</h2>' +
@@ -1890,7 +1888,7 @@
             : '<ox-footer variant="confirms-in-orgx" state="waiting" heading="Decided in OrgX" detail="you can read the evidence here" action-label=""></ox-footer>';
 
         stage.innerHTML = (
-          '<article class="wcard" data-edge="' + (tone || 'mute') + '">' +
+          '<article class="wcard ox-surface" data-edge="' + (tone || 'mute') + '">' +
           renderHeader(artifact, tone, 'verifying') +
           '<div class="bd">' +
           '<div class="review-desk animate-in">' +

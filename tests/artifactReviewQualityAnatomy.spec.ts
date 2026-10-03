@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import { JSDOM } from 'jsdom';
 import { describe, expect, it, vi } from 'vitest';
+import { installSharedFoundations } from './fixtures/sharedFoundations';
 
 const widgetPath = join(
   process.cwd(),
@@ -27,6 +28,7 @@ function createWidget(
     runScripts: 'outside-only',
     pretendToBeVisual: true,
   });
+  installSharedFoundations(dom.window);
   Object.defineProperty(dom.window, 'OrgXWidgetRuntime', {
     configurable: true,
     value: {

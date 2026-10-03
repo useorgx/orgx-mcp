@@ -190,7 +190,7 @@
 </head>
 <body>
   <div class="container" id="content">
-    <article class="rc" data-edge="mute" aria-busy="true" aria-label="Loading the receipt">
+    <article class="rc ox-surface" data-edge="mute" aria-busy="true" aria-label="Loading the receipt">
       <div class="hd"><span class="sk" style="width:40%"></span></div>
       <div class="bd">
         <span class="sk" style="width:55%"></span>
@@ -207,7 +207,6 @@
       if (theme) document.documentElement.setAttribute('data-theme', theme);
     })();
 
-    var ORGX = 'https://useorgx.com';
     var EVIDENCE_LIMIT = 12;
     // Four rows inline (K1); the rest open in place, beyond twelve in OrgX.
     var INLINE_EVIDENCE = 4;
@@ -250,20 +249,18 @@
       return UUID_RE.test(value) ? value.slice(0, 8) : value.slice(0, 12);
     };
 
-    // The anchored work in OrgX: the entity the receipt proves, else its artifact.
+    // The anchored work in OrgX: the entity the receipt proves, else its
+    // artifact, else the work ledger. Built by the shared link builder.
     var anchorUrl = function (anchor) {
+      var links = window.OrgXLinks;
       var type = str(anchor.entity_type).toLowerCase();
       var id = str(anchor.entity_id);
-      if (id && UUID_RE.test(id)) {
-        if (type === 'initiative') return ORGX + '/live/' + encodeURIComponent(id);
-        if (type === 'decision') return ORGX + '/decisions/' + encodeURIComponent(id);
-        if (type === 'task' || type === 'workstream' || type === 'milestone') {
-          return ORGX + '/live?view=mission-control&' + type + '=' + encodeURIComponent(id);
-        }
+      if (id && UUID_RE.test(id) && ['initiative', 'decision', 'task', 'workstream', 'milestone'].indexOf(type) !== -1) {
+        return type === 'initiative' ? links.live(id) : links.entity(type, id);
       }
       var artifact = str(anchor.artifact_id);
-      if (artifact && UUID_RE.test(artifact)) return ORGX + '/artifacts/' + encodeURIComponent(artifact);
-      return ORGX + '/work-ledger';
+      if (artifact && UUID_RE.test(artifact)) return links.artifact(artifact);
+      return links.workLedger();
     };
 
     var anchorLabel = function (anchor, proof) {
@@ -311,13 +308,13 @@
       return text ? text.charAt(0).toUpperCase() + text.slice(1).replace(/\.$/, '') : '';
     };
 
+    // Today: the clock in the viewer's locale ("5:05 PM" / "17:05"); else the date.
     var shortTime = function (value) {
       if (typeof value !== 'string') return '';
-      var date = new Date(value);
-      if (isNaN(date.getTime())) return '';
-      return new Date().toDateString() === date.toDateString()
-        ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
-        : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      var T = window.OrgXTime;
+      var date = T.toDate(value);
+      if (!date) return '';
+      return new Date().toDateString() === date.toDateString() ? T.clock(date) : T.day(date);
     };
 
     var row = function (attrs) {
@@ -419,7 +416,7 @@
     };
 
     var lastPayload = null;
-    var currentAnchorUrl = ORGX + '/work-ledger';
+    var currentAnchorUrl = window.OrgXLinks.workLedger();
 
     var render = function (payload) {
       var content = document.getElementById('content');
@@ -427,7 +424,7 @@
       lastPayload = payload;
       var hasRecord = str(payload.receipt_id) || str(payload.id) || payload.receipt || payload.data;
       if (!hasRecord && !payload.proof) {
-        content.innerHTML = '<article class="rc" data-edge="mute"><div class="empty"><b>No receipt recorded</b>' +
+        content.innerHTML = '<article class="rc ox-surface" data-edge="mute"><div class="empty"><b>No receipt recorded</b>' +
           '<span>OrgX did not return a receipt for this request, so nothing here claims the work was proven.</span></div></article>';
         return;
       }
@@ -453,13 +450,20 @@
       var next = nextMove(view, record(payload.loop_validation));
 
       content.innerHTML =
-        '<article class="rc" data-edge="' + view.edge + '" data-verdict="' + escapeHtml(view.verification || 'unreported') + '" aria-label="OrgX receipt">' +
+        '<article class="rc ox-surface" data-edge="' + view.edge + '" data-verdict="' + escapeHtml(view.verification || 'unreported') + '" aria-label="OrgX receipt">' +
         '<div class="hd"><ox-glyph kind="receipt"' + (view.tone ? ' tone="' + view.tone + '"' : '') + '></ox-glyph>' +
         '<span class="kind">Receipt</span>' +
         '<span class="src"><b>' + escapeHtml(typeLabel) + '</b>' + (where ? ' · ' + escapeHtml(where) : '') + '</span>' +
         '<span class="sp"></span>' +
         (displayAgent
-          ? '<span class="who">' + (agentKey ? '<ox-avatar agent="' + agentKey + '" form="' + (view.edge === 'teal' ? 'proactive' : 'verifying') + '" size="20" name="' + escapeHtml(displayAgent) + '"></ox-avatar>' : '') + '<b>' + escapeHtml(displayAgent) + '</b></span>'
+          ? '<span class="who">' + window.OrgXAgentIdentity.agentCard({
+              agent: agentKey || displayAgent,
+              name: displayAgent,
+              size: 20,
+              state: view.edge === 'teal' ? 'succeeded' : 'verifying',
+              task: where,
+              label: '<b>' + escapeHtml(displayAgent) + '</b>',
+            }) + '</span>'
           : '') +
         '</div>' +
         '<div class="bd">' +

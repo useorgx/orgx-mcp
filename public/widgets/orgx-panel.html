@@ -268,7 +268,7 @@
     var params = new URLSearchParams(window.location.search);
     var isGallery = params.get('gallery') === 'true';
     var APPROVAL_META_KEY = 'orgx/widgetApproval';
-    var ORGX_HOME = 'https://useorgx.com/command';
+    var ORGX_HOME = window.OrgXLinks.command();
     var EVIDENCE_VISIBLE = 2;
 
     var ui = {
@@ -323,10 +323,9 @@
       var a = ago(iso);
       return !a || a === 'just now' ? a : a + ' ago';
     }
+    // The viewer's locale and zone: "5:05 PM" (en-US), "17:05" (en-GB).
     function clock(date) {
-      var d = date instanceof Date ? date : new Date(date);
-      if (!isFinite(d.getTime())) return '';
-      return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      return window.OrgXTime.clock(date);
     }
     function urgencyLabel(u) {
       return u === 'critical' ? 'Urgent' : u === 'high' ? 'High' : u === 'low' ? 'Low' : 'Normal';
@@ -899,7 +898,7 @@
         '<p class="sub">' + esc(ui.auth && ui.auth.code === 'insufficient_scope'
           ? 'Reconnect OrgX and allow it to read your initiatives.'
           : 'Connect OrgX in ChatGPT, then open this panel again.') + '</p>' +
-        '<button type="button" class="secondary-btn" data-action="open" data-url="https://useorgx.com">Open OrgX ↗</button>';
+        '<button type="button" class="secondary-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>';
     }
 
     function limitedHtml(tag) {
@@ -1403,6 +1402,8 @@
 
     // --------------------------------------------------------------- events
     function openUrl(url, event) {
+      // Payload URLs go through the shared normalizer: real app routes only.
+      url = window.OrgXLinks.normalize(url);
       if (!url) return;
       if (isGallery) return;
       R.openWidgetLink(url, event);
@@ -1510,7 +1511,7 @@
       if (!id) return;
       var detail = event.detail || {};
       if (detail.action === 'check_now') checkNow(id);
-      else if (detail.action === 'receipt') { var item = findItem(id); openUrl(item ? item.url : 'https://useorgx.com/decisions/' + id); }
+      else if (detail.action === 'receipt') { var item = findItem(id); openUrl(item ? item.url : window.OrgXLinks.decision(id)); }
     });
     root.addEventListener('ox-open', function onReceiptOpen(event) {
       event.preventDefault();
@@ -1567,7 +1568,7 @@
       d3: 'b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e',
       art: 'e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b',
     };
-    function decisionUrl(id) { return 'https://useorgx.com/initiatives/' + IDS.init + '?focus=decisions&decision=' + id; }
+    function decisionUrl(id) { return window.OrgXLinks.decision(id); }
     var FIXTURE_QUEUE = [
       { id: IDS.d1, version: isoAgo(2 * D), title: 'Ship release 4.2 to production?', urgency: 'critical', waiting_since: isoAgo(2 * D), initiative_title: 'Release initiative', blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', widget_actions: null, url: decisionUrl(IDS.d1) },
       { id: IDS.d2, version: isoAgo(5 * H), title: 'Rotate billing API keys?', urgency: 'high', waiting_since: isoAgo(5 * H), initiative_title: 'Billing hardening', blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', widget_actions: null, url: decisionUrl(IDS.d2) },
@@ -1579,7 +1580,7 @@
         question: 'Ship release 4.2 to production?',
         recommendation: { status: 'ready', action: 'Approve' },
         evidence: [
-          { title: 'CI run 1182 · passed', source_url: 'https://useorgx.com/artifacts/' + IDS.art },
+          { title: 'CI run 1182 · passed', source_url: window.OrgXLinks.artifact(IDS.art) },
           { title: 'Rollback plan · v3', source_url: null },
           { title: 'Load test · p95 212 ms', source_url: null },
           { title: 'Security review · no findings', source_url: null },
@@ -1622,7 +1623,7 @@
         focus: galleryFocus(FIXTURE_QUEUE[0]),
         selection: { requested_id: null, status: 'default' },
         proof: {
-          last_accepted: { artifact_id: IDS.art, title: 'Release checklist v3', accepted_at: isoAgo(2 * D), accepted_by: 'you', url: 'https://useorgx.com/artifacts/' + IDS.art },
+          last_accepted: { artifact_id: IDS.art, title: 'Release checklist v3', accepted_at: isoAgo(2 * D), accepted_by: 'you', url: window.OrgXLinks.artifact(IDS.art) },
           completed_unaccepted: 2,
         },
         degraded: [],

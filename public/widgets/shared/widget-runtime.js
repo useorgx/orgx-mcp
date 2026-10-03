@@ -1326,7 +1326,7 @@
    * One link builder for every OrgX URL a widget shows. Every output matches a
    * real route in the OrgX app (tests/widgetLinks.spec.ts checks each against
    * tests/fixtures/orgx-app-routes.json, generated from the app tree by
-   * scripts/generate-app-routes.mjs). Base: https://useorgx.com.
+   * scripts/generate-app-routes.mjs). Base: https://useorgx.com (ORGX_ORIGIN).
    */
   var ORGX_ORIGIN = 'https://useorgx.com';
   var LINK_ORIGINS = ['https://useorgx.com', 'https://www.useorgx.com', 'https://mcp.useorgx.com'];
@@ -1558,6 +1558,8 @@
       if (anchor) currentRuntime().links.open(anchor.getAttribute('href'), event);
     });
     global.document.addEventListener('ox-open', function onCardOpen(event) {
+      // A widget that routes ox-open itself (and cancels it) has handled it.
+      if (event.defaultPrevented) return;
       var href = event.detail && event.detail.href;
       if (!href) return;
       var rt = currentRuntime();
