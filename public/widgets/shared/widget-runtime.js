@@ -15,6 +15,8 @@
 
   var protocol = null;
   var bridge = null;
+  var hostLocale = null;
+  var hostTimeZone = null;
   var chatGptActionsFallback = false;
   var explicitTheme = null;
   var themeSource = 'system';
@@ -319,6 +321,10 @@
 
   function applyHostContext(context) {
     if (!context) return;
+    // MCP Apps hosts report the viewer's locale and time zone here; the time
+    // formatter prefers them over the browser's.
+    if (typeof context.locale === 'string' && context.locale) hostLocale = context.locale;
+    if (typeof context.timeZone === 'string' && context.timeZone) hostTimeZone = context.timeZone;
     if (context.theme && global.McpApps && global.McpApps.applyDocumentTheme) {
       global.McpApps.applyDocumentTheme(context.theme);
     }
@@ -1112,11 +1118,529 @@
     return Promise.resolve(null);
   }
 
+  /* ------------------------------------------------------------ time -- */
+  /*
+   * One formatter for every time a widget shows. Absolute times and dates use
+   * the viewer's locale (ChatGPT's window.openai.locale, then the MCP Apps
+   * host context, then navigator.language) and the browser's time zone (or the
+   * host's), so en-US reads "5:05 PM" and en-GB / de-DE read "17:05".
+   * Relative phrases ("2m ago", "Yesterday") follow the widgets' UI language,
+   * English, so a sentence never mixes two languages.
+   */
+  var MINUTE = 60000;
+  var HOUR = 60 * MINUTE;
+  var DAY = 24 * HOUR;
+  var formatterCache = {};
+
+  function viewerLocale() {
+    var candidates = [
+      global.openai && global.openai.locale,
+      hostLocale,
+      global.navigator && global.navigator.language,
+    ];
+    for (var i = 0; i < candidates.length; i += 1) {
+      var value = candidates[i];
+      if (typeof value !== 'string' || !value) continue;
+      try {
+        // Validate: an unsupported tag throws; "en_US" style is normalized.
+        return Intl.getCanonicalLocales(value.replace(/_/g, '-'))[0];
+      } catch (_) {
+        // Try the next source.
+      }
+    }
+    return 'en-US';
+  }
+
+  function viewerTimeZone() {
+    if (hostTimeZone) return hostTimeZone;
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+    } catch (_) {
+      return undefined;
+    }
+  }
+
+  function dateFormatter(options) {
+    var locale = viewerLocale();
+    var zone = viewerTimeZone();
+    var key = locale + '|' + zone + '|' + JSON.stringify(options);
+    if (!formatterCache[key]) {
+      var resolved = Object.assign({}, options);
+      if (zone) resolved.timeZone = zone;
+      try {
+        formatterCache[key] = new Intl.DateTimeFormat(locale, resolved);
+      } catch (_) {
+        delete resolved.timeZone;
+        formatterCache[key] = new Intl.DateTimeFormat(locale, resolved);
+      }
+    }
+    return formatterCache[key];
+  }
+
+  /** Date, epoch ms (or seconds), ISO string -> Date; null when unparseable. */
+  function toDate(value) {
+    if (value === null || value === undefined || value === '') return null;
+    var date;
+    if (value instanceof Date) date = new Date(value.getTime());
+    else if (typeof value === 'number') date = new Date(value < 1e11 ? value * 1000 : value);
+    else if (typeof value === 'string') date = new Date(/^\d+$/.test(value) ? Number(value) : value);
+    else return null;
+    return Number.isFinite(date.getTime()) ? date : null;
+  }
+
+  /** The calendar day (in the viewer's zone) as YYYY-MM-DD, for day comparisons. */
+  function dayKey(date) {
+    var parts = dateFormatter({ year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+    var get = function (type) {
+      for (var i = 0; i < parts.length; i += 1) if (parts[i].type === type) return parts[i].value;
+      return '';
+    };
+    return get('year') + '-' + get('month') + '-' + get('day');
+  }
+
+  function daysBetween(date, now) {
+    var a = dayKey(date).split('-');
+    var b = dayKey(now).split('-');
+    return Math.round((Date.UTC(+b[0], +b[1] - 1, +b[2]) - Date.UTC(+a[0], +a[1] - 1, +a[2])) / DAY);
+  }
+
+  function nowDate(options) {
+    return (options && toDate(options.now)) || new Date();
+  }
+
+  /** "5:05 PM" (en-US), "17:05" (en-GB, de-DE). */
+  function formatClock(value) {
+    var date = toDate(value);
+    if (!date) return '';
+    // 24-hour locales pad the hour ("09:30"); 12-hour ones do not ("9:30 AM").
+    var cycle = dateFormatter({ hour: 'numeric', minute: '2-digit' }).resolvedOptions().hourCycle;
+    var hour = cycle === 'h23' || cycle === 'h24' ? '2-digit' : 'numeric';
+    return dateFormatter({ hour: hour, minute: '2-digit' }).format(date);
+  }
+
+  /** "Oct 2" (this year), "Oct 2, 2025" (other years); "2 Oct", "2. Okt." in other locales. */
+  function formatDay(value, options) {
+    var date = toDate(value);
+    if (!date) return '';
+    var sameYear = dayKey(date).slice(0, 4) === dayKey(nowDate(options)).slice(0, 4);
+    return dateFormatter(sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+  }
+
+  /**
+   * Absolute, as short as reads unambiguously: today "5:05 PM", yesterday
+   * "Yesterday, 5:05 PM", this year "Oct 2, 5:05 PM", older "Oct 2, 2025".
+   */
+  function formatWhen(value, options) {
+    var date = toDate(value);
+    if (!date) return '';
+    var now = nowDate(options);
+    var days = daysBetween(date, now);
+    if (days === 0) return formatClock(date);
+    if (days === 1) return 'Yesterday, ' + formatClock(date);
+    if (dayKey(date).slice(0, 4) !== dayKey(now).slice(0, 4)) return formatDay(date, options);
+    return formatDay(date, options) + ', ' + formatClock(date);
+  }
+
+  /**
+   * Relative: "Just now", "2m ago", "3h ago", "Yesterday", "4d ago", then the
+   * date ("Oct 2"). Future times read "in 5m", "Tomorrow", "in 3d".
+   * options.inline lower-cases a leading word for mid-sentence use
+   * ("updated yesterday"); options.now pins the clock (tests).
+   */
+  function formatRelative(value, options) {
+    var date = toDate(value);
+    if (!date) return '';
+    var now = nowDate(options);
+    var diff = now.getTime() - date.getTime();
+    var future = diff < 0;
+    var abs = Math.abs(diff);
+    var days = daysBetween(date, now);
+    var text;
+    if (abs < 45 * 1000) text = 'Just now';
+    else if (abs < HOUR) text = unit(Math.max(1, Math.round(abs / MINUTE)), 'm', future);
+    else if (abs < DAY && (days === 0 || abs < 6 * HOUR)) text = unit(Math.round(abs / HOUR), 'h', future);
+    else if (days === 1) text = 'Yesterday';
+    else if (days === -1) text = 'Tomorrow';
+    else if (Math.abs(days) < 7) text = unit(Math.abs(days), 'd', future);
+    else text = formatDay(date, options);
+    if (options && options.inline && /^(Just|Yesterday|Tomorrow)/.test(text)) {
+      text = text.charAt(0).toLowerCase() + text.slice(1);
+    }
+    return text;
+  }
+
+  function unit(count, suffix, future) {
+    return future ? 'in ' + count + suffix : count + suffix + ' ago';
+  }
+
+  /** Full date and time for title attributes and screen readers. */
+  function formatFull(value) {
+    var date = toDate(value);
+    return date
+      ? dateFormatter({ weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(date)
+      : '';
+  }
+
+  /** "synced just now", "synced 4m ago", "synced 5:05 PM", "synced yesterday, 5:05 PM". */
+  function formatSynced(value, options) {
+    var date = toDate(value);
+    if (!date) return '';
+    var age = nowDate(options).getTime() - date.getTime();
+    var label = age >= 0 && age < HOUR ? formatRelative(date, Object.assign({}, options, { inline: true })) : formatWhen(date, options);
+    return 'synced ' + (/^Yesterday/.test(label) ? 'y' + label.slice(1) : label);
+  }
+
+  /**
+   * <time datetime title> markup. mode: "relative" (default), "when",
+   * "clock", "day" or "synced". The title carries the full local date and time.
+   */
+  function timeHtml(value, mode, options) {
+    var date = toDate(value);
+    if (!date) return '';
+    var fns = { relative: formatRelative, when: formatWhen, clock: formatClock, day: formatDay, synced: formatSynced };
+    var label = (fns[mode] || formatRelative)(date, options);
+    return '<time datetime="' + date.toISOString() + '" title="' + escapeAttr(formatFull(date)) + '">' + escapeAttr(label) + '</time>';
+  }
+
+  function escapeAttr(value) {
+    return String(value).replace(/[&<>"']/g, function (c) {
+      return '&#' + c.charCodeAt(0) + ';';
+    });
+  }
+
+  var time = {
+    locale: viewerLocale,
+    timeZone: viewerTimeZone,
+    toDate: toDate,
+    clock: formatClock,
+    day: formatDay,
+    when: formatWhen,
+    relative: formatRelative,
+    synced: formatSynced,
+    full: formatFull,
+    html: timeHtml,
+  };
+
+  /* ----------------------------------------------------------- links -- */
+  /*
+   * One link builder for every OrgX URL a widget shows. Every output matches a
+   * real route in the OrgX app (tests/widgetLinks.spec.ts checks each against
+   * tests/fixtures/orgx-app-routes.json, generated from the app tree by
+   * scripts/generate-app-routes.mjs). Base: https://useorgx.com.
+   */
+  var ORGX_ORIGIN = 'https://useorgx.com';
+  var LINK_ORIGINS = ['https://useorgx.com', 'https://www.useorgx.com', 'https://mcp.useorgx.com'];
+  var AGENT_SLUGS = ['pace', 'eli', 'mark', 'sage', 'orion', 'dana', 'xandy'];
+
+  function cleanId(value) {
+    if (value === null || value === undefined) return '';
+    var text = String(value).trim();
+    return text && text !== 'undefined' && text !== 'null' ? text : '';
+  }
+
+  function orgxUrl(path, query) {
+    var url = ORGX_ORIGIN + path;
+    var parts = [];
+    if (query) {
+      Object.keys(query).forEach(function (key) {
+        var value = cleanId(query[key]);
+        if (value) parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+      });
+    }
+    return parts.length ? url + '?' + parts.join('&') : url;
+  }
+
+  function seg(id) {
+    return encodeURIComponent(cleanId(id));
+  }
+
+  function agentSlug(value) {
+    var identity = global.OrgXAgentIdentity;
+    var key = identity && identity.resolveAgentKey ? identity.resolveAgentKey(value) : null;
+    if (key) return key;
+    var slug = cleanId(value).toLowerCase();
+    return AGENT_SLUGS.indexOf(slug) !== -1 ? slug : '';
+  }
+
+  var links = {
+    origin: ORGX_ORIGIN,
+    /** Command: what needs you now. */
+    command: function () {
+      return orgxUrl('/command');
+    },
+    /** Initiative detail; no id -> the initiatives index. */
+    initiative: function (id) {
+      return cleanId(id) ? orgxUrl('/initiatives/' + seg(id)) : orgxUrl('/initiatives');
+    },
+    /**
+     * Live view. With an initiative: its execution room, optionally focused on
+     * a workstream, task, decision or artifact. Without: mission control,
+     * optionally focused on a workstream, milestone, task, run or session.
+     */
+    live: function (initiativeId, focus) {
+      focus = focus || {};
+      if (cleanId(initiativeId)) {
+        return orgxUrl('/live/' + seg(initiativeId), {
+          workstream: focus.workstream,
+          task: focus.task,
+          decision: focus.decision,
+          artifact: focus.artifact,
+        });
+      }
+      return orgxUrl('/live', {
+        view: 'mission-control',
+        workstream: focus.workstream,
+        milestone: focus.milestone,
+        task: focus.task,
+        run: focus.run,
+        session: focus.session,
+      });
+    },
+    /** In the initiative's live room when known, else the workstream page. */
+    workstream: function (id, options) {
+      if (!cleanId(id)) return links.live(options && options.initiativeId);
+      if (options && cleanId(options.initiativeId)) return links.live(options.initiativeId, { workstream: id });
+      return orgxUrl('/workstreams/' + seg(id));
+    },
+    /** The milestone page (the live room has no milestone focus). */
+    milestone: function (id) {
+      return cleanId(id) ? orgxUrl('/milestones/' + seg(id)) : links.live();
+    },
+    /** In the initiative's live room when known, else the task page. */
+    task: function (id, options) {
+      if (!cleanId(id)) return links.live(options && options.initiativeId);
+      if (options && cleanId(options.initiativeId)) return links.live(options.initiativeId, { task: id });
+      return orgxUrl('/tasks/' + seg(id));
+    },
+    /** The decision page; no id -> the decisions queue (pending by default). */
+    decision: function (id) {
+      return cleanId(id) ? orgxUrl('/decisions/' + seg(id)) : links.decisions();
+    },
+    decisions: function (options) {
+      return orgxUrl('/decisions', { status: (options && options.status) || 'pending' });
+    },
+    artifact: function (id) {
+      return cleanId(id) ? orgxUrl('/artifacts/' + seg(id)) : orgxUrl('/workspace-hub');
+    },
+    run: function (id) {
+      return cleanId(id) ? orgxUrl('/runs/' + seg(id)) : orgxUrl('/runs');
+    },
+    /** The agent's desk (/command/agents/eli); unknown agents -> the roster. */
+    agent: function (keyOrName) {
+      var slug = agentSlug(keyOrName);
+      return slug ? orgxUrl('/command/agents/' + slug) : orgxUrl('/command/agents');
+    },
+    /**
+     * OrgX has no plan-session page. A plan with an initiative opens that
+     * initiative; otherwise mission control carries the session id.
+     */
+    planSession: function (id, options) {
+      if (options && cleanId(options.initiativeId)) return links.initiative(options.initiativeId);
+      return links.live(null, { session: id });
+    },
+    /**
+     * OrgX has no search page: decisions search in the decisions queue,
+     * everything else opens Command (its palette searches the workspace).
+     */
+    search: function (query, options) {
+      var type = options && options.type;
+      if (type === 'decision' && cleanId(query)) return orgxUrl('/decisions', { status: 'all', search: query });
+      return links.command();
+    },
+    workLedger: function () {
+      return orgxUrl('/work-ledger');
+    },
+    /** Dispatch on an entity type ("task", "Workstream", "agent_run", ...). */
+    entity: function (type, id, options) {
+      var kind = String(type || '').toLowerCase().replace(/[\s-]+/g, '_');
+      switch (kind) {
+        case 'initiative':
+          return links.initiative(id);
+        case 'workstream':
+          return links.workstream(id, options);
+        case 'milestone':
+          return links.milestone(id);
+        case 'task':
+          return links.task(id, options);
+        case 'decision':
+          return links.decision(id);
+        case 'artifact':
+          return links.artifact(id);
+        case 'run':
+        case 'agent_run':
+          return links.run(id);
+        case 'agent':
+          return links.agent(id);
+        case 'plan':
+        case 'plan_session':
+          return links.planSession(id, options);
+        default:
+          return options && cleanId(options.initiativeId) ? links.live(options.initiativeId) : links.command();
+      }
+    },
+    normalize: normalizeLink,
+    open: function (url, event) {
+      var target = normalizeLink(url);
+      if (!target) {
+        if (event && event.preventDefault) event.preventDefault();
+        return false;
+      }
+      return openWidgetLink(target, event);
+    },
+    /** href/target/rel attributes for an <a> fallback that the runtime routes through the host. */
+    attrs: function (url) {
+      var target = normalizeLink(url);
+      return target
+        ? 'href="' + escapeAttr(target) + '" target="_blank" rel="noopener noreferrer" data-ox-link'
+        : '';
+    },
+  };
+
+  /**
+   * Make a server- or payload-provided URL safe and current: relative OrgX
+   * paths resolve against useorgx.com; only OrgX origins (and GitHub) pass;
+   * legacy shapes that no longer reach the right page are rewritten
+   * (/settings/agents?agent=, /planning/sessions/, /agents/runs/,
+   * /initiatives/:id?focus=decisions&decision=, /live/:id?milestone= and
+   * ?artifactId=). Returns '' for anything else.
+   */
+  function normalizeLink(url) {
+    var raw = cleanId(url);
+    if (!raw) return '';
+    var parsed;
+    try {
+      if (/^\/[^/\\]/.test(raw)) parsed = new URL(raw, ORGX_ORIGIN);
+      else parsed = new URL(raw);
+    } catch (_) {
+      return '';
+    }
+    if (parsed.protocol !== 'https:') return '';
+    if (parsed.origin === 'https://github.com') return parsed.toString();
+    if (LINK_ORIGINS.indexOf(parsed.origin) === -1) return '';
+    if (parsed.origin === 'https://mcp.useorgx.com') return parsed.toString();
+    var path = parsed.pathname.replace(/\/+$/, '') || '/';
+    var q = parsed.searchParams;
+    var match;
+    if (path === '/settings/agents') return links.agent(q.get('agent'));
+    if ((match = path.match(/^\/planning\/sessions\/([^/]+)$/))) return links.planSession(decodeURIComponent(match[1]));
+    if (path === '/planning') return links.live();
+    if ((match = path.match(/^\/agents\/runs\/([^/]+)$/))) return links.run(decodeURIComponent(match[1]));
+    if ((match = path.match(/^\/initiatives\/([^/]+)$/)) && q.get('decision')) return links.decision(q.get('decision'));
+    if ((match = path.match(/^\/live\/([^/]+)$/))) {
+      if (q.get('milestone')) return links.milestone(q.get('milestone'));
+      if (q.get('artifactId')) return links.artifact(q.get('artifactId'));
+    }
+    return ORGX_ORIGIN + path + (parsed.search || '') + (parsed.hash || '');
+  }
+
+  // Anchors marked data-ox-link (links.attrs) and <ox-agent-card> "Open in
+  // OrgX" links open through the host: window.openai.openExternal in ChatGPT,
+  // ui/open-link in MCP Apps hosts; the plain <a> is the standalone fallback.
+  if (global.document && !global.document.__oxLinks) {
+    global.document.__oxLinks = 1;
+    global.document.addEventListener('click', function onLinkClick(event) {
+      if (event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey) return;
+      var anchor = event.target && event.target.closest ? event.target.closest('a[data-ox-link]') : null;
+      if (anchor) links.open(anchor.getAttribute('href'), event);
+    });
+    global.document.addEventListener('ox-open', function onCardOpen(event) {
+      var href = event.detail && event.detail.href;
+      if (!href) return;
+      var target = normalizeLink(href);
+      if (!target) {
+        event.preventDefault();
+        return;
+      }
+      if (openWidgetLink(target, event) === false) event.preventDefault();
+    });
+  }
+
+  /* ---------------------------------------------------------- motion -- */
+  /*
+   * Expand / collapse without layout jank: the panel animates height and
+   * opacity (Web Animations, compositor-friendly opacity, one height
+   * animation) and ends on `hidden` so collapsed content leaves the
+   * accessibility tree and the tab order. Reduced motion, or no Web
+   * Animations, switches instantly. The trigger's aria-expanded follows.
+   */
+  function prefersReducedMotion() {
+    try {
+      return !!(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function setExpanded(panel, open, trigger) {
+    if (!panel) return Promise.resolve();
+    if (trigger) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    panel.setAttribute('data-ox-expanded', open ? 'true' : 'false');
+    var running = panel.__oxExpand;
+    if (running) running.cancel();
+    var isOpen = !panel.hidden;
+    if (isOpen === !!open && !running) return Promise.resolve();
+    if (prefersReducedMotion() || typeof panel.animate !== 'function') {
+      panel.hidden = !open;
+      reportSize();
+      return Promise.resolve();
+    }
+    var from = panel.hidden ? 0 : panel.getBoundingClientRect().height;
+    panel.hidden = false;
+    var to = open ? panel.scrollHeight : 0;
+    var previousOverflow = panel.style.overflow;
+    panel.style.overflow = 'hidden';
+    var animation = panel.animate(
+      [
+        { height: from + 'px', opacity: open ? 0 : 1 },
+        { height: to + 'px', opacity: open ? 1 : 0 },
+      ],
+      { duration: Math.min(320, 160 + Math.abs(to - from) * 0.25), easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
+    );
+    panel.__oxExpand = animation;
+    return new Promise(function settle(resolve) {
+      var done = function (finished) {
+        if (panel.__oxExpand === animation) panel.__oxExpand = null;
+        panel.style.overflow = previousOverflow;
+        if (finished && !open) panel.hidden = true;
+        reportSize();
+        resolve();
+      };
+      animation.onfinish = function () { done(true); };
+      animation.oncancel = function () { done(false); };
+    });
+  }
+
+  /** Toggle a disclosure: the panel is document.getElementById(trigger's aria-controls) unless given. */
+  function toggleExpanded(trigger, panel) {
+    var target = panel || (trigger && global.document.getElementById(trigger.getAttribute('aria-controls') || ''));
+    var open = trigger ? trigger.getAttribute('aria-expanded') !== 'true' : !!(target && target.hidden);
+    return setExpanded(target, open, trigger);
+  }
+
+  /** Cross-fade a container's state change (loading -> loaded, pending -> settled). */
+  function enterState(element) {
+    if (!element || prefersReducedMotion() || typeof element.animate !== 'function') return;
+    element.animate([{ opacity: 0, transform: 'translateY(2px)' }, { opacity: 1, transform: 'none' }], {
+      duration: 180,
+      easing: 'ease-out',
+    });
+  }
+
+  var motion = {
+    reduced: prefersReducedMotion,
+    setExpanded: setExpanded,
+    toggle: toggleExpanded,
+    enter: enterState,
+  };
+
   function resetForTests() {
     if (bridge && bridge.destroy) bridge.destroy();
     bridge = null;
     protocol = null;
     lastResultMeta = null;
+    hostLocale = null;
+    hostTimeZone = null;
+    formatterCache = {};
     hostContextListeners = [];
     toolInputListeners = [];
     toolCallState = { inputSeen: false, resultSeen: false, inputAt: null, resultAt: null };
@@ -1151,6 +1675,9 @@
     requestDisplayMode: requestDisplayMode,
     sendFollowUpMessage: sendFollowUpMessage,
     updateModelContext: updateModelContext,
+    time: time,
+    links: links,
+    motion: motion,
     __resetForTests: resetForTests,
   };
 
@@ -1158,4 +1685,6 @@
   global.callTool = callTool;
   global.initWidget = initWidget;
   global.openWidgetLink = openWidgetLink;
+  global.OrgXTime = time;
+  global.OrgXLinks = links;
 })(window);

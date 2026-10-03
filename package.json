@@ -24,6 +24,7 @@
     "widget:theme": "node scripts/generate-widget-theme.mjs",
     "widget:build": "node scripts/build-widgets.mjs",
     "kit:sync": "node scripts/sync-ui-kit.mjs",
+    "app:routes": "node scripts/generate-app-routes.mjs",
     "widget:verify-payloads": "node scripts/verify-widget-payloads.mjs",
     "widget:payload": "tsx scripts/widget-payload-sizes.ts",
     "widget:verify-rendering": "tsx scripts/verify-widget-rendering.ts",
