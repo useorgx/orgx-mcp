@@ -71,11 +71,28 @@ export const chronicleSchema = z.object({
   dataGaps: z.array(z.string()),
 });
 
+/**
+ * The app's canonical ArtifactReviewContract (lib/artifacts/reviewContractTypes.ts),
+ * read by review_artifact from GET /api/artifacts/:id. Only the fields the
+ * worker and widget read are declared; the rest pass through. Nullable where
+ * the app emits null: an unscored artifact has `quality.score: null` and a
+ * ruling without a note has `ruling.note: null`.
+ */
 export const reviewContractSchema = z.object({
   schemaVersion: z.string(),
+  purpose: z
+    .object({
+      kind: z.string().optional(),
+      label: z.string().optional(),
+      reviewRequired: z.boolean().optional(),
+      // What a reviewer is asked to do: `sign` a current deliverable,
+      // `resolve` a blocker (never sign it), `inspect` evidence and records.
+      reviewAction: z.enum(['sign', 'resolve', 'inspect']).optional(),
+    })
+    .optional(),
   quality: z.object({
     state: z.string().optional(),
-    score: z.number().optional(),
+    score: nullableNumber.optional(),
     summary: z.string().optional(),
   }),
   workflow: z.object({
@@ -84,7 +101,7 @@ export const reviewContractSchema = z.object({
     nextAction: z.string().optional(),
   }),
   ruling: z
-    .object({ state: z.string().optional(), note: z.string().optional() })
+    .object({ state: z.string().optional(), note: nullableString.optional() })
     .optional(),
   outcome: z
     .object({ state: z.string().optional(), summary: z.string().optional() })

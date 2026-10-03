@@ -25,6 +25,9 @@ function projectTask(value: unknown): unknown {
     milestone_id: task.milestone_id ?? task.milestoneId ?? null,
     updated_at: task.updated_at ?? task.updatedAt ?? null,
     blocker: task.blocker ?? null,
+    // Set by the app when it reports a live task as stalled or blocked
+    // because its agent's run is; the value workstream_tasks still holds.
+    ...(typeof task.stored_status === 'string' ? { stored_status: task.stored_status } : {}),
   };
 }
 
