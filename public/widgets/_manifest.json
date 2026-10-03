@@ -89,8 +89,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 111438,
-      "hash": "72f289cf7f66",
+      "bytes": 111463,
+      "hash": "e76c196f239e",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -290,8 +290,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 110806,
-      "hash": "fee52d5a6b9f",
+      "bytes": 111668,
+      "hash": "520e44f7b401",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",

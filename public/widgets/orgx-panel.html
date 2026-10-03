@@ -270,10 +270,14 @@
     @media (max-width: 420px) {
       .fact { grid-template-columns: minmax(0, 1fr); }
     }
-    /* Only when the pair can't sit beside a readable title do they drop below it. */
-    @media (max-width: 339px) {
-      .row { grid-template-columns: minmax(0, 1fr); }
-      .row-acts { justify-content: flex-start; }
+    /* Phones: the title keeps the full row width; the pair sits at the end of the
+       meta line, which is tall enough to hold its 44 px targets (--acts-w is the
+       pair's measured width, set after render). */
+    @media (max-width: 520px) {
+      .row { display: block; position: relative; }
+      .row-meta { display: flex; align-items: center; min-height: 44px; padding-right: var(--acts-w, 168px); }
+      .row-meta > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+      .row-acts { position: absolute; right: 0; bottom: 8px; }
     }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
@@ -746,6 +750,14 @@
       var options = { max: max, beyond: items.slice(EVIDENCE_VISIBLE), instant: !animate };
       if (R && R.motion && R.motion.setClamped) R.motion.setClamped(list, clamped, toggle, options);
     }
+    // Phones: each queue row's meta line reserves the width of its own decision pair.
+    function fitRowActions() {
+      Array.prototype.forEach.call(root.querySelectorAll('.row'), function fit(row) {
+        var acts = row.querySelector('.row-acts');
+        if (acts && acts.offsetWidth) row.style.setProperty('--acts-w', (acts.offsetWidth + 10) + 'px');
+      });
+    }
+    window.addEventListener('resize', function onResizeRows() { window.requestAnimationFrame(fitRowActions); });
     function toggleEvidence(open) {
       ui.evidenceOpen = open;
       applyEvidenceClamp(true);
@@ -967,7 +979,7 @@
       var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
       var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : '';
       return '<li class="row" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '" aria-label="' + esc(item.title + '. ' + meta) + '">' +
-        '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span><span class="row-meta">' + esc(kindTag + meta) + '</span></button>' + acts +
+        '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span><span class="row-meta"><span>' + esc(kindTag + meta) + '</span></span></button>' + acts +
         (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
     }
 
@@ -1108,6 +1120,7 @@
       }
       root.setAttribute('aria-busy', ui.snapshot || ui.auth ? 'false' : 'true');
       applyEvidenceClamp(false);
+      fitRowActions();
       if (focusKey && focusKey !== 'null||') {
         var parts = focusKey.split('|');
         var selector = '[data-action="' + parts[0] + '"]' + (parts[1] ? '[data-id="' + parts[1] + '"]' : '') +
