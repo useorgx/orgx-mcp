@@ -311,6 +311,8 @@
     .dq-row .meta, .dq-meta { font-size: 12.5px; line-height: 1.3; color: var(--ox-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
     .dq-row .chev { width: 14px; height: 14px; color: var(--ox-text-muted); flex: none; }
     .dq-more { margin: 6px 0 0 14px; }
+    /* Long counts ("About 24 more across the workspace in OrgX") wrap instead of widening the page. */
+    .dq-queue .dq-more { align-self: flex-start; max-width: calc(100% - 14px); white-space: normal; }
 
     /* Approve N ready: one quiet line, then one result row per item. */
     .dq-batch {
