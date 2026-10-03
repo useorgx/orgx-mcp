@@ -60,9 +60,8 @@
     .hd > ox-glyph { --ox-glyph-size: 18px; flex: none; }
     .kind {
       flex: none;
-      font-size: 11px; font-weight: 600; line-height: 1;
-      letter-spacing: .04em; text-transform: uppercase;
-      color: var(--ox-text-muted);
+      font-size: 12.5px; font-weight: 600; line-height: 1.3;
+      color: var(--ox-text-2);
     }
     .src {
       min-width: 0;
@@ -85,15 +84,15 @@
 
     /* The ladder: how far the claim got. */
     .rail {
-      display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px 5px;
       margin: 0; padding: 0; list-style: none;
-      font: 600 11.5px/1 var(--ox-mono);
+      font: 500 12px/1.2 var(--ox-font);
       color: var(--ox-text-muted);
     }
-    .rail li { display: inline-flex; align-items: center; gap: 6px; }
+    .rail li { display: inline-flex; align-items: center; gap: 5px; }
     .rail li + li::before {
       content: '';
-      width: 12px; height: 1px;
+      width: 10px; height: 1px;
       background: var(--ox-border-strong);
     }
     .rail .d {
@@ -115,11 +114,6 @@
       letter-spacing: -.025em;
       text-wrap: balance; overflow-wrap: anywhere;
     }
-    .prov {
-      margin: -6px 0 0;
-      font: 500 11.5px/1.45 var(--ox-mono);
-      color: var(--ox-text-muted);
-    }
     .claim {
       margin: 0;
       font-size: 14px; line-height: 1.5;
@@ -128,8 +122,7 @@
     }
     .lbl {
       margin: 0;
-      font: 600 10.5px/1.2 var(--ox-mono);
-      letter-spacing: .12em; text-transform: uppercase;
+      font-size: var(--ox-type-label-size); font-weight: 500; line-height: 1.3;
       color: var(--ox-text-muted);
     }
     .sec { display: flex; flex-direction: column; gap: 4px; }
@@ -175,6 +168,7 @@
 
     .sk { display: block; height: 10px; border-radius: 4px; background: var(--ox-skeleton); }
     .empty { padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+    .empty > ox-glyph { --ox-glyph-size: 22px; margin-bottom: 4px; align-self: flex-start; }
     .empty b { font-size: 15px; }
     .empty span { font-size: 13px; line-height: 1.45; color: var(--ox-text-muted); }
 
@@ -308,14 +302,6 @@
       return text ? text.charAt(0).toUpperCase() + text.slice(1).replace(/\.$/, '') : '';
     };
 
-    // Today: the clock in the viewer's locale ("5:05 PM" / "17:05"); else the date.
-    var shortTime = function (value) {
-      if (typeof value !== 'string') return '';
-      var T = window.OrgXTime;
-      var date = T.toDate(value);
-      if (!date) return '';
-      return new Date().toDateString() === date.toDateString() ? T.clock(date) : T.day(date);
-    };
 
     var row = function (attrs) {
       return '<ox-receipt-row' + Object.keys(attrs).map(function (key) {
@@ -424,8 +410,8 @@
       lastPayload = payload;
       var hasRecord = str(payload.receipt_id) || str(payload.id) || payload.receipt || payload.data;
       if (!hasRecord && !payload.proof) {
-        content.innerHTML = '<article class="rc ox-surface" data-edge="mute"><div class="empty"><b>No receipt recorded</b>' +
-          '<span>OrgX did not return a receipt for this request, so nothing here claims the work was proven.</span></div></article>';
+        content.innerHTML = '<article class="rc ox-surface" data-edge="mute"><div class="empty"><ox-glyph kind="receipt"></ox-glyph><b>No receipt recorded</b>' +
+          '<span>OrgX did not return a receipt for this request, so nothing here claims the work was proven. Ask the agent to submit one when the work is done.</span></div></article>';
         return;
       }
       var view = describe(payload);
@@ -441,19 +427,17 @@
       var proofCount = view.evidence.length - notes.length;
       var hidden = Math.max(0, view.total - view.evidence.length);
       var folded = showAllEvidence ? 0 : Math.max(0, proofCount - INLINE_EVIDENCE);
-      var recordedAt = shortTime(payload.imported_at || payload.created_at);
-      var id = str(payload.receipt_id) || str(payload.id);
-      var provParts = [
-        displayAgent ? 'Made by ' + displayAgent + (str(proof.model_tier) ? ' on the ' + str(proof.model_tier) + ' tier' : '') : '',
-        str(proof.artifact_type) ? str(proof.artifact_type).replace(/_/g, ' ') : ''
-      ].filter(Boolean);
+      // What was made, in words ("Pull request"); ids and tiers stay in OrgX.
+      var artifactWord = str(proof.artifact_type) ? sentence(str(proof.artifact_type).replace(/_/g, ' ')) : '';
+      var summaryLine = str(payload.summary);
+      var anchorType = str(view.anchor.entity_type).toLowerCase();
+      var at = window.OrgXTime.toDate(payload.imported_at || payload.created_at);
       var next = nextMove(view, record(payload.loop_validation));
 
       content.innerHTML =
         '<article class="rc ox-surface" data-edge="' + view.edge + '" data-verdict="' + escapeHtml(view.verification || 'unreported') + '" aria-label="OrgX receipt">' +
         '<div class="hd"><ox-glyph kind="receipt"' + (view.tone ? ' tone="' + view.tone + '"' : '') + '></ox-glyph>' +
-        '<span class="kind">Receipt</span>' +
-        '<span class="src"><b>' + escapeHtml(typeLabel) + '</b>' + (where ? ' · ' + escapeHtml(where) : '') + '</span>' +
+        '<span class="kind src">' + escapeHtml([typeLabel === 'Receipt' ? 'Receipt' : typeLabel + ' receipt', artifactWord.toLowerCase()].filter(Boolean).join(' · ')) + '</span>' +
         '<span class="sp"></span>' +
         (displayAgent
           ? '<span class="who">' + window.OrgXAgentIdentity.agentCard({
@@ -461,7 +445,7 @@
               name: displayAgent,
               size: 'inline',
               state: view.edge === 'teal' ? 'succeeded' : 'verifying',
-              task: where,
+              task: summaryLine || where,
               label: '<b>' + escapeHtml(displayAgent) + '</b>',
             }) + '</span>'
           : '') +
@@ -472,7 +456,6 @@
             '<span class="visually-hidden">' + (step[1] === 'ok' ? ', done' : step[1] === 'fail' ? ', failed' : step[1] === 'warn' ? ', partly' : ', not yet') + '</span></li>';
         }).join('') + '</ol>' +
         '<h1 class="pk-q">' + escapeHtml(view.headline) + '</h1>' +
-        (provParts.length ? '<p class="prov">' + escapeHtml(provParts.join(' · ')) + '</p>' : '') +
         (str(payload.summary) ? '<p class="claim">' + escapeHtml(str(payload.summary)) + '</p>' : '') +
         (proofCount
           ? '<div class="sec"><p class="lbl">Evidence</p><div class="rows" role="list">' + evidenceRows(view) + '</div>' +
@@ -487,11 +470,12 @@
         (str(proof.business_outcome) ? '<p class="next"><b>Outcome:</b> ' + escapeHtml(str(proof.business_outcome)) + '</p>' : '') +
         (next ? '<p class="next"><b>Next:</b> ' + escapeHtml(next) + '</p>' : '') +
         '</div>' +
-        '<ox-footer variant="reads" state="fresh" heading="' + escapeHtml(recordedAt ? 'Recorded ' + recordedAt : 'Recorded') + '" detail="' +
+        // A check only when the receipt counts as proof; otherwise a neutral clock.
+        '<ox-footer variant="reads" state="' + (view.edge === 'teal' ? 'fresh' : 'stale') + '" heading="' +
+        escapeHtml(at ? 'Recorded ' + window.OrgXTime.relative(at, { inline: true }) : 'Recorded') + '" detail="' +
         escapeHtml([
-          payload.idempotent === true ? 'already on file' : '',
-          payload.path === 'v1' ? 'hash-chained' : payload.path === 'legacy' ? 'receipts ledger' : '',
-          id ? 'receipt ' + shortId(id) : ''
+          payload.idempotent === true ? 'Already on file' : '',
+          anchorType && str(view.anchor.entity_id) ? 'On the ' + anchorType : 'In the Work Ledger'
         ].filter(Boolean).join(' · ')) + '" action-label="Open in OrgX ↗"></ox-footer>' +
         '</article>';
     };

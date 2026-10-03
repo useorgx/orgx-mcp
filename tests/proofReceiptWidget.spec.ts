@@ -121,7 +121,8 @@ describe('proof receipt widget', () => {
   it('opens the anchored work and other evidence through the host', async () => {
     const { openExternal } = await mount(payload());
     const footer = document.querySelector('ox-footer')!;
-    expect(footer.getAttribute('detail')).toBe('hash-chained · receipt 3f9c1d2e');
+    // No hash-chain jargon or ids: where the receipt lives, in words.
+    expect(footer.getAttribute('detail')).toBe('On the task');
     footer.dispatchEvent(new CustomEvent('ox-action', { bubbles: true, composed: true }));
     expect(openExternal).toHaveBeenCalledWith({
       url: `https://useorgx.com/tasks/${TASK_ID}`,
