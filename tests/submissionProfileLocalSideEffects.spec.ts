@@ -243,10 +243,7 @@ async function createSubmissionProfileHarness(
     profile,
     userId: 'directory-reviewer',
     orgxUserId: '33333333-3333-4333-8333-333333333333',
-    scope:
-      profile === 'chatgpt'
-        ? AUTHORIZATION_PRESETS.operate.scopes.join(' ')
-        : AUTHORIZATION_PRESETS.read.scopes.join(' '),
+    scope: AUTHORIZATION_PRESETS.operate.scopes.join(' '),
     workspace_id: WORKSPACE_ID,
   };
   worker.ctx = {
@@ -454,16 +451,21 @@ async function expectNoWorkerLocalSideEffects(params: {
 }
 
 describe('submission profile worker-local side-effect suppression', () => {
-  // Drives seven tools through the full worker surface; see the note in
+  // Drives informational tools through the full worker surface; see the note in
   // tests/widgetSharedComponentInlining.spec.ts on why the budget is explicit.
-  it('executes all seven Claude directory tools without worker-local persistence or logging', async () => {
+  it('keeps Claude informational reads free of worker-local persistence and logging on the broader surface', async () => {
     const directoryTools = new Set<string>(CLAUDE_DIRECTORY_SURFACE);
+    const calls = CHATGPT_INFORMATIONAL_TOOL_CALLS.filter((call) =>
+      directoryTools.has(call.name)
+    );
+    expect(calls.map((call) => call.name)).toEqual(expect.arrayContaining([
+      'orgx_search', 'orgx_inspect', 'orgx_recommend', 'get_agent_status',
+      'get_initiative_pulse', 'get_morning_brief', 'get_operator_chronicle',
+    ]));
     await expectNoWorkerLocalSideEffects({
       profile: 'claude-directory',
       expectedSurface: CLAUDE_DIRECTORY_SURFACE,
-      calls: CHATGPT_INFORMATIONAL_TOOL_CALLS.filter((call) =>
-        directoryTools.has(call.name)
-      ),
+      calls,
     });
   }, 20000);
 
