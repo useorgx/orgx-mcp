@@ -7,6 +7,8 @@ import { describe, expect, it, vi } from 'vitest';
 import serverManifest from '../server.json';
 import { V2_PUBLIC_TOOL_IDS } from '../src/bootstrapPayload';
 import { PRIMARY_AUTHENTICATED_TOOLS } from '../src/publicMcpDiscovery';
+import { getKnownToolContract } from '../src/contractTools';
+import { getClaudeDirectoryToolContract } from '../src/claudeDirectoryTools';
 import {
   CHATGPT_PUBLIC_SURFACE,
   CLAUDE_DIRECTORY_SURFACE,
@@ -15,6 +17,32 @@ import {
   resolveProfileToolSet,
   resolveToolProfile,
 } from '../src/toolProfiles';
+
+// These are separate compatibility contracts. Expanding the connector
+// directory must never grant writes to an unknown profile or silently widen
+// an already-installed Claude Code plugin.
+const INFORMATIONAL_BASELINE = [
+  'orgx_search',
+  'orgx_inspect',
+  'orgx_recommend',
+  'get_agent_status',
+  'get_initiative_pulse',
+  'get_morning_brief',
+  'get_operator_chronicle',
+] as const;
+
+const CLAUDE_PLUGIN_BASELINE = [
+  ...INFORMATIONAL_BASELINE,
+  'orgx_command_status',
+  'orgx_controller_status',
+  'orgx_emit_activity',
+  'orgx_submit_receipt',
+  'orgx_attach',
+  'orgx_decide',
+  'orgx_expect',
+  'orgx_bootstrap',
+  'orgx_tail',
+] as const;
 
 describe('toolProfiles backward compatibility', () => {
   it('resolveProfileToolSet returns null only for explicit full profile', () => {
@@ -52,62 +80,42 @@ describe('toolProfiles backward compatibility', () => {
     expect(chatgptTools!.has('track_project_progress')).toBe(false);
   });
 
-  it('keeps the Anthropic directory profile focused, non-destructive, and truthfully annotated', () => {
-    const claudeDirectoryTools = resolveProfileToolSet('claude-directory');
+  it('exposes broader Claude workflows through operation-specific contracts', () => {
+    const directoryTools = resolveProfileToolSet('claude-directory');
+    expect([...(directoryTools ?? [])]).toEqual([...CLAUDE_DIRECTORY_SURFACE]);
+    expect(directoryTools?.size).toBe(29);
 
-    expect([...(claudeDirectoryTools ?? [])]).toEqual([
-      ...CLAUDE_DIRECTORY_SURFACE,
-    ]);
-    expect(claudeDirectoryTools?.size).toBe(7);
-
-    const readOnlyByTool = new Map<string, boolean>([
-      ['orgx_search', false],
-      ['orgx_inspect', true],
-      ['orgx_recommend', false],
-      ['get_agent_status', false],
-      ['get_initiative_pulse', false],
-      ['get_morning_brief', true],
-      ['get_operator_chronicle', true],
-    ]);
-
-    for (const toolName of claudeDirectoryTools ?? []) {
-      const manifestTool = serverManifest.tools.find(
-        (tool) => tool.name === toolName
-      );
-      expect(manifestTool, `${toolName} must be published`).toBeDefined();
-      expect(manifestTool?.title, `${toolName} must have a title`).toEqual(
-        expect.any(String)
-      );
-      expect(toolName.length, `${toolName} exceeds Anthropic's name limit`).toBeLessThanOrEqual(
-        64
-      );
-      expect(manifestTool?.annotations, `${toolName} annotation drift`).toEqual({
-        readOnlyHint: readOnlyByTool.get(toolName),
-        openWorldHint: false,
-        destructiveHint: false,
+    for (const toolName of directoryTools ?? []) {
+      const tool = getClaudeDirectoryToolContract(toolName) ?? getKnownToolContract(toolName);
+      expect(tool, `${toolName} must have an authorization contract`).toBeDefined();
+      expect(toolName.length, `${toolName} exceeds Anthropic's name limit`).toBeLessThanOrEqual(64);
+      expect(tool?.title?.trim(), `${toolName} is missing a title`).toBeTruthy();
+      expect(tool?.annotations).toMatchObject({
+        readOnlyHint: expect.any(Boolean),
+        destructiveHint: expect.any(Boolean),
+        openWorldHint: expect.any(Boolean),
       });
+      expect(tool?.securitySchemes?.length, `${toolName} is missing authorization`).toBeGreaterThan(0);
     }
 
-    for (const excludedTool of [
-      'orgx_bootstrap',
-      'orgx_write',
-      'orgx_attach',
-      'orgx_act',
-      'manage_lifecycle',
-      'orgx_plan',
-      'orgx_spawn',
-      'orgx_decide',
-      'orgx_submit_receipt',
-      'approve_decision',
-      'reject_decision',
-      'handoff_task',
-      'scaffold_initiative',
+    for (const workflowTool of [
+      'orgx_bootstrap', 'orgx_create_entity', 'orgx_update_entity',
+      'orgx_start_plan', 'orgx_read_plan', 'orgx_improve_plan',
+      'orgx_record_plan_edit', 'orgx_complete_plan', 'orgx_check_delegation',
+      'orgx_delegate_work', 'orgx_list_pending_decisions', 'orgx_record_decision',
+      'orgx_open_decision_review', 'orgx_attach', 'orgx_submit_receipt',
+      'orgx_complete_with_proof', 'orgx_change_entity_state', 'manage_lifecycle',
     ]) {
-      expect(
-        claudeDirectoryTools?.has(excludedTool),
-        `${excludedTool} must stay off the directory review profile`
-      ).toBe(false);
+      expect(directoryTools?.has(workflowTool), workflowTool).toBe(true);
     }
+    // Read and write branches of these routers have distinct directory tools.
+    for (const router of ['orgx_write', 'orgx_act', 'orgx_plan', 'orgx_spawn', 'orgx_decide']) {
+      expect(directoryTools?.has(router), router).toBe(false);
+    }
+    expect(getClaudeDirectoryToolContract('orgx_read_plan')?.annotations.readOnlyHint).toBe(true);
+    expect(getClaudeDirectoryToolContract('orgx_start_plan')?.annotations.readOnlyHint).toBe(false);
+    expect(getClaudeDirectoryToolContract('orgx_check_delegation')?.annotations.readOnlyHint).toBe(true);
+    expect(getClaudeDirectoryToolContract('orgx_delegate_work')?.annotations.readOnlyHint).toBe(false);
   });
 
   it('resolveProfileToolSet defaults omitted profiles to the compact v2 surface', () => {
@@ -129,7 +137,8 @@ describe('toolProfiles backward compatibility', () => {
   it('fails unknown profiles closed to the read-only fallback surface', () => {
     const fallbackTools = resolveProfileToolSet('typo-admin');
     expect(fallbackTools).toEqual(resolveProfileToolSet('read-only'));
-    expect([...(fallbackTools ?? [])]).toEqual([...CLAUDE_DIRECTORY_SURFACE]);
+    expect([...(fallbackTools ?? [])]).toEqual([...INFORMATIONAL_BASELINE]);
+    expect(fallbackTools?.size).toBe(7);
     expect(resolveToolProfile('typo-admin')).toMatchObject({
       name: 'read-only',
       requestedName: 'typo-admin',
@@ -166,11 +175,13 @@ describe('toolProfiles backward compatibility', () => {
     }
   });
 
-  it('gives the claude-plugin profile the directory reads plus the lean write set', () => {
+  it('preserves the installed claude-plugin inventory independently of the directory', () => {
     const pluginTools = resolveProfileToolSet('claude-plugin');
 
-    expect([...(pluginTools ?? [])]).toEqual([...CLAUDE_PLUGIN_SURFACE]);
-    for (const readTool of CLAUDE_DIRECTORY_SURFACE) {
+    expect(CLAUDE_PLUGIN_SURFACE).toEqual(CLAUDE_PLUGIN_BASELINE);
+    expect([...(pluginTools ?? [])]).toEqual([...CLAUDE_PLUGIN_BASELINE]);
+    expect(pluginTools?.size).toBe(16);
+    for (const readTool of INFORMATIONAL_BASELINE) {
       expect(
         pluginTools?.has(readTool),
         `${readTool} must stay on the claude-plugin profile`

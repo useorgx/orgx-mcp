@@ -5,12 +5,15 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import serverManifest from '../server.json';
+import { getKnownToolContract } from '../src/contractTools';
+import { getClaudeDirectoryToolContract } from '../src/claudeDirectoryTools';
 import {
   ORGX_TOOL_PROFILE_HEADER,
   withRequestToolProfile,
 } from '../src/requestToolProfile';
 import {
   CLAUDE_DIRECTORY_SURFACE,
+  INFORMATIONAL_SURFACE,
   resolveProfileToolSet,
 } from '../src/toolProfiles';
 
@@ -47,7 +50,11 @@ function createInMemoryMcpHandler() {
       const profile = String(ctx.props?.profile ?? '');
       const selected = resolveProfileToolSet(profile);
       const names = selected ? [...selected] : serverManifest.tools.map((tool) => tool.name);
-      const tools = names.map((name) => toolsByName.get(name)).filter(Boolean);
+      const tools = names.map((name) => {
+        const directory = profile === 'claude-directory' ? getClaudeDirectoryToolContract(name) : undefined;
+        const contract = directory ?? getKnownToolContract(name);
+        return contract ? { name, annotations: contract.annotations } : toolsByName.get(name);
+      }).filter(Boolean);
 
       return Response.json({
         jsonrpc: '2.0',
@@ -147,7 +154,7 @@ describe('request tool-profile propagation', () => {
     expect(ctx.props?.profile).toBe('claude-directory');
   });
 
-  it('serves the seven-tool non-destructive directory profile with truthful read-only hints', async () => {
+  it('propagates the broader directory operation profile', async () => {
     const handler = createInMemoryMcpHandler();
     const ctx: TestContext = { props: { userId: 'reviewer-1' } };
     const request = new Request(
@@ -184,26 +191,12 @@ describe('request tool-profile propagation', () => {
     expect(body.result.tools.map((tool) => tool.name)).toEqual([
       ...CLAUDE_DIRECTORY_SURFACE,
     ]);
-    expect(body.result.tools).toHaveLength(7);
-    expect(body.result.tools.map((tool) => tool.name)).not.toContain(
-      'orgx_bootstrap'
-    );
+    expect(body.result.tools).toHaveLength(29);
+    expect(body.result.tools.map((tool) => tool.name)).toContain('orgx_bootstrap');
     expect(body.result.tools.map((tool) => tool.name)).not.toContain('orgx_write');
-    const readOnlyByTool = new Map<string, boolean>([
-      ['orgx_search', false],
-      ['orgx_inspect', true],
-      ['orgx_recommend', false],
-      ['get_agent_status', false],
-      ['get_initiative_pulse', false],
-      ['get_morning_brief', true],
-      ['get_operator_chronicle', true],
-    ]);
     for (const tool of body.result.tools) {
-      expect(tool.annotations, tool.name).toEqual({
-        readOnlyHint: readOnlyByTool.get(tool.name),
-        destructiveHint: false,
-        openWorldHint: false,
-      });
+      const contract = getClaudeDirectoryToolContract(tool.name) ?? getKnownToolContract(tool.name);
+      expect(tool.annotations, tool.name).toEqual(contract?.annotations);
     }
   });
 
@@ -224,11 +217,11 @@ describe('request tool-profile propagation', () => {
     };
 
     // Unknown names resolve to the dedicated read-only fallback: the same
-    // seven read tools as claude-directory, but under a distinct name so the
+    // seven original informational tools, under a distinct name so the
     // directory profile's review-mode suppression semantics do not apply.
     expect(ctx.props?.profile).toBe('read-only');
     expect(body.result.tools.map((tool) => tool.name)).toEqual([
-      ...CLAUDE_DIRECTORY_SURFACE,
+      ...INFORMATIONAL_SURFACE,
     ]);
     expect(body.result.tools.map((tool) => tool.name)).not.toEqual(
       serverManifest.tools.map((tool) => tool.name)
@@ -255,7 +248,7 @@ describe('request tool-profile propagation', () => {
 
     expect(ctx.props?.profile).toBe('read-only');
     expect(body.result.tools.map((tool) => tool.name)).toEqual([
-      ...CLAUDE_DIRECTORY_SURFACE,
+      ...INFORMATIONAL_SURFACE,
     ]);
   });
 

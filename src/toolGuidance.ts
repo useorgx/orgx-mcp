@@ -1,11 +1,19 @@
 import { z } from 'zod';
 
 import { getKnownToolContract } from './contractTools';
-import { V2_CORE_PUBLIC_SURFACE } from './toolProfiles';
+import { getClaudeDirectoryToolContract } from './claudeDirectoryTools';
+import { CLAUDE_DIRECTORY_SURFACE, V2_CORE_PUBLIC_SURFACE } from './toolProfiles';
+import { isWidgetOnlyTool } from './widgetToolContract';
 
 type JsonRecord = Record<string, unknown>;
 
 const CANONICAL_GUIDANCE_TOOLS = new Set<string>(V2_CORE_PUBLIC_SURFACE);
+const DIRECTORY_GUIDANCE_TOOLS = new Set<string>(
+  CLAUDE_DIRECTORY_SURFACE.filter((tool) => !isWidgetOnlyTool(tool))
+);
+const guidanceTools = (directoryProfile: boolean) => directoryProfile
+  ? DIRECTORY_GUIDANCE_TOOLS
+  : CANONICAL_GUIDANCE_TOOLS;
 const CALL_LIST_KEYS = new Set([
   'safe_first_calls',
   'suggested_next_calls',
@@ -33,7 +41,8 @@ function copyDefined(
 
 function canonicalizeAlias(
   tool: string,
-  args: JsonRecord
+  args: JsonRecord,
+  directoryProfile = false
 ): { tool: string; args: JsonRecord } | null {
   switch (tool) {
     case 'list_entities':
@@ -163,28 +172,31 @@ function canonicalizeAlias(
         },
       };
     default:
-      return CANONICAL_GUIDANCE_TOOLS.has(tool) ? { tool, args } : null;
+      return guidanceTools(directoryProfile).has(tool) ? { tool, args } : null;
   }
 }
 
-function callSatisfiesAdvertisedSchema(tool: string, args: JsonRecord): boolean {
-  const contract = getKnownToolContract(tool);
+function callSatisfiesAdvertisedSchema(tool: string, args: JsonRecord, directoryProfile: boolean): boolean {
+  const adapter = directoryProfile ? getClaudeDirectoryToolContract(tool) : undefined;
+  const contract = adapter ?? getKnownToolContract(tool);
   if (!contract?.inputSchema) return false;
-  return z.object(contract.inputSchema).passthrough().safeParse(args).success;
+  const schema = z.object(contract.inputSchema);
+  return (adapter ? schema.strict() : schema.passthrough()).safeParse(args).success;
 }
 
 export function canonicalizeToolCallGuidance(
   value: unknown,
-  visibleTools: ReadonlySet<string> | null
+  visibleTools: ReadonlySet<string> | null,
+  directoryProfile = false
 ): JsonRecord | null {
   const record = asRecord(value);
   if (!record || typeof record.tool !== 'string') return null;
   const rawArgs = asRecord(record.args) ?? asRecord(record.arguments) ?? {};
-  const canonical = canonicalizeAlias(record.tool, rawArgs);
+  const canonical = canonicalizeAlias(record.tool, rawArgs, directoryProfile);
   if (!canonical) return null;
-  if (!CANONICAL_GUIDANCE_TOOLS.has(canonical.tool)) return null;
+  if (!guidanceTools(directoryProfile).has(canonical.tool)) return null;
   if (visibleTools !== null && !visibleTools.has(canonical.tool)) return null;
-  if (!callSatisfiesAdvertisedSchema(canonical.tool, canonical.args)) return null;
+  if (!callSatisfiesAdvertisedSchema(canonical.tool, canonical.args, directoryProfile)) return null;
 
   const { arguments: _arguments, args: _args, tool: _tool, ...rest } = record;
   return { ...rest, tool: canonical.tool, args: canonical.args };
@@ -193,15 +205,16 @@ export function canonicalizeToolCallGuidance(
 function sanitizeValue(
   value: unknown,
   visibleTools: ReadonlySet<string> | null,
+  directoryProfile: boolean,
   parentKey?: string
 ): unknown {
   if (Array.isArray(value)) {
     if (parentKey && CALL_LIST_KEYS.has(parentKey)) {
       return value
-        .map((item) => canonicalizeToolCallGuidance(item, visibleTools))
+        .map((item) => canonicalizeToolCallGuidance(item, visibleTools, directoryProfile))
         .filter((item): item is JsonRecord => item !== null);
     }
-    return value.map((item) => sanitizeValue(item, visibleTools));
+    return value.map((item) => sanitizeValue(item, visibleTools, directoryProfile));
   }
 
   const record = asRecord(value);
@@ -212,7 +225,7 @@ function sanitizeValue(
   // recommendation as a call erased valid next-action data to null.
   if (parentKey && CALL_KEYS.has(parentKey) &&
     (parentKey === 'next_call' || Object.hasOwn(record, 'tool'))) {
-    return canonicalizeToolCallGuidance(record, visibleTools);
+    return canonicalizeToolCallGuidance(record, visibleTools, directoryProfile);
   }
 
   const result: JsonRecord = {};
@@ -227,7 +240,7 @@ function sanitizeValue(
             ? tools.filter(
                 (tool): tool is string =>
                   typeof tool === 'string' &&
-                  CANONICAL_GUIDANCE_TOOLS.has(tool) &&
+                  guidanceTools(directoryProfile).has(tool) &&
                   (visibleTools === null || visibleTools.has(tool))
               )
             : [],
@@ -235,7 +248,7 @@ function sanitizeValue(
       );
       continue;
     }
-    result[key] = sanitizeValue(child, visibleTools, key);
+    result[key] = sanitizeValue(child, visibleTools, directoryProfile, key);
   }
   return result;
 }
@@ -248,11 +261,11 @@ function sanitizeValue(
  */
 export function sanitizeToolResultGuidance<
   T extends { structuredContent?: unknown } | null | undefined,
->(result: T, visibleTools: ReadonlySet<string> | null): T {
+>(result: T, visibleTools: ReadonlySet<string> | null, directoryProfile = false): T {
   if (!result || typeof result !== 'object') return result;
   if (result.structuredContent === undefined) return result;
   return {
     ...result,
-    structuredContent: sanitizeValue(result.structuredContent, visibleTools),
+    structuredContent: sanitizeValue(result.structuredContent, visibleTools, directoryProfile),
   } as T;
 }

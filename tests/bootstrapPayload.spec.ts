@@ -4,11 +4,15 @@ import { readFileSync } from 'node:fs';
 import {
   BOOTSTRAP_RECOMMENDED_WORKFLOWS,
   BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE,
+  CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS,
   V2_PUBLIC_TOOL_IDS,
+  buildBootstrapToolRouting,
+  getBootstrapRecommendedWorkflows,
   getBootstrapSafeFirstCalls,
   pickBootstrapWorkspaceFallback,
   resolveBootstrapSessionContext,
 } from '../src/bootstrapPayload';
+import { CLAUDE_DIRECTORY_SURFACE } from '../src/toolProfiles';
 
 const DEPRECATED_BOOTSTRAP_GUIDANCE = [
   'workspace',
@@ -26,6 +30,42 @@ const DEPRECATED_BOOTSTRAP_GUIDANCE = [
 ];
 
 describe('bootstrap payload routing hints', () => {
+  it('routes directory planning, execution, decisions, and proof through its visible operation contracts', () => {
+    const visibleTools = CLAUDE_DIRECTORY_SURFACE.filter((tool) => tool !== 'resume_agent_run');
+    const routing = buildBootstrapToolRouting({
+      requestedProfile: 'claude-directory', visibleTools,
+      widgetOnlyTools: ['resume_agent_run'],
+    });
+    expect(routing.recommended_workflows).toEqual(CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS);
+    expect(routing.recommended_workflows.execute_task).toContain('orgx_delegate_work');
+    expect(routing.recommended_workflows.plan_feature).toContain('orgx_complete_plan');
+    expect(routing.recommended_workflows.human_decision_review).toEqual([
+      'orgx_list_pending_decisions', 'orgx_open_decision_review',
+    ]);
+    expect(Object.values(routing.recommended_workflows).flat()).not.toContain('resume_agent_run');
+    for (const call of routing.safe_first_calls) {
+      expect(['orgx_search', 'orgx_recommend']).toContain(call.tool);
+    }
+  });
+
+  it('omits unauthorized directory writes from every bootstrap workflow', () => {
+    const visible = new Set(['orgx_search', 'orgx_inspect', 'orgx_read_plan', 'orgx_list_pending_decisions']);
+    const workflows = getBootstrapRecommendedWorkflows(visible, 'claude-directory');
+    expect(workflows.plan_feature).toEqual(['orgx_read_plan']);
+    expect(workflows.human_decision_review).toEqual(['orgx_list_pending_decisions']);
+    expect(workflows.control_execution).toEqual([]);
+    for (const tool of Object.values(workflows).flat()) expect(visible.has(tool)).toBe(true);
+  });
+
+  it('keeps canonical and plugin workflow guidance independent of directory aliases', () => {
+    const canonical = getBootstrapRecommendedWorkflows();
+    for (const profile of ['chatgpt', 'v2', 'claude-plugin', 'read-only']) {
+      expect(getBootstrapRecommendedWorkflows(null, profile)).toEqual(canonical);
+    }
+    expect(Object.values(canonical).flat()).not.toContain('orgx_delegate_work');
+    expect(Object.values(canonical).flat()).not.toContain('orgx_start_plan');
+  });
+
   it('advertises only v2 tools in safe first calls', () => {
     const publicTools = new Set<string>(V2_PUBLIC_TOOL_IDS);
 

@@ -87,6 +87,10 @@ import {
   type McpOriginValidationEnv,
 } from './mcpOriginValidation';
 import { installToolResultGuidanceWrapper } from './toolResultRegistration';
+import {
+  CLAUDE_DIRECTORY_TOOL_ADAPTERS,
+  getClaudeDirectoryToolContract,
+} from './claudeDirectoryTools';
 import { buildSearchDiagnosticsContext, handleSearchWidgetDiagnostics } from './searchWidgetDiagnostics';
 import { withRequestToolProfile } from './requestToolProfile';
 import {
@@ -1916,7 +1920,9 @@ export class OrgXMcp extends McpAgent<
 
     return new Set(
       candidates.filter((toolId) => {
-        const contract = getKnownToolContract(toolId);
+        const contract = (this.isDirectoryReviewProfile()
+          ? getClaudeDirectoryToolContract(toolId)
+          : null) ?? getKnownToolContract(toolId);
         if (!contract?.securitySchemes) return false;
         return checkAuthRequirements(
           contract.securitySchemes,
@@ -3803,6 +3809,11 @@ export class OrgXMcp extends McpAgent<
   private withClientContext<T extends Record<string, unknown>>(
     inputSchema: T
   ): T & { _context: typeof CLIENT_CONTEXT_SCHEMA } {
+    // Directory operations accept business inputs, without requesting the
+    // client's conversation title, local working directory, or tracking IDs.
+    if (this.isDirectoryReviewProfile()) {
+      return inputSchema as T & { _context: typeof CLIENT_CONTEXT_SCHEMA };
+    }
     return {
       ...inputSchema,
       _context: CLIENT_CONTEXT_SCHEMA,
@@ -4971,6 +4982,7 @@ export class OrgXMcp extends McpAgent<
       surfaces: buildSurfaceMap({
         visibleTools,
         webUrl: this.env.ORGX_WEB_URL,
+        profile: resolveToolProfile(this.props?.profile).name,
       }),
       accepted_id_forms: {
         plan_session: PLAN_SESSION_ACCEPTED_ID_FORMS,
@@ -7418,6 +7430,30 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  /** Directory operations reuse the canonical execution and scope checks. */
+  private registerClaudeDirectoryTools(allowedTools: Set<string> | null) {
+    if (!this.isDirectoryReviewProfile()) return;
+    for (const tool of CLAUDE_DIRECTORY_TOOL_ADAPTERS) {
+      if (allowedTools && !allowedTools.has(tool.id)) continue;
+      this.server.registerTool(
+        tool.id,
+        {
+          title: tool.title,
+          description: tool.description,
+          inputSchema: this.withClientContext(tool.inputSchema),
+          annotations: tool.annotations,
+          _meta: { 'mcp/securitySchemes': tool.securitySchemes },
+        },
+        async (args: Record<string, unknown>) => this.executeContractTool(
+          tool.canonicalToolId,
+          tool.toCanonicalArgs(args),
+          tool.securitySchemes,
+          allowedTools
+        )
+      );
+    }
+  }
+
   /**
    * Run a legacy tool name as a thin alias of the v2-core tool that fully
    * covers it (LEGACY_TOOL_ALIASES in src/deprecatedTools.ts). Only the
@@ -7552,6 +7588,7 @@ export class OrgXMcp extends McpAgent<
 
     // Register additive contract/introspection tools and safe wrappers
     this.registerContractTools(allowedTools);
+    this.registerClaudeDirectoryTools(allowedTools);
 
     // OrgX panel (ChatGPT sidebar + thread entrypoints): src/panelSurface.ts.
     registerPanelSurface(this.server, allowedTools, this.panelSurfaceHost(), (shape) => this.withClientContext(shape));
@@ -13214,8 +13251,8 @@ export class OrgXMcp extends McpAgent<
           'Widget-only: resumes a paused or auto-closed agent run after the person clicks Resume in the agent-status widget. Flips status back to running, clears TTL auto-close markers, and appends a resume_history entry. USE WHEN: the agent-status widget sends a Resume click. NEXT: the widget polls orgx_command_status until the run settles. DO NOT USE: from a model (use manage_lifecycle level=run action=resume), or to restart a completed/failed/cancelled run — those are terminal.',
         annotations: {
           readOnlyHint: false,
-          destructiveHint: false,
-          openWorldHint: false,
+          destructiveHint: this.isDirectoryReviewProfile(),
+          openWorldHint: this.isDirectoryReviewProfile(),
         },
         inputSchema: {
           run_id: z.string().min(1).describe('Agent run UUID to resume'),
@@ -13227,8 +13264,8 @@ export class OrgXMcp extends McpAgent<
         _meta: {
           'openai/toolInvocation/invoking': 'Resuming run...',
           'openai/toolInvocation/invoked': 'Run resumed',
-          securitySchemes: SECURITY_SCHEMES.authRequired,
-          'mcp/securitySchemes': SECURITY_SCHEMES.authRequired,
+          securitySchemes: this.isDirectoryReviewProfile() ? SECURITY_SCHEMES.agentRequiresAuth : SECURITY_SCHEMES.authRequired,
+          'mcp/securitySchemes': this.isDirectoryReviewProfile() ? SECURITY_SCHEMES.agentRequiresAuth : SECURITY_SCHEMES.authRequired,
         },
       },
       async (args) =>
@@ -13237,12 +13274,70 @@ export class OrgXMcp extends McpAgent<
             this.props?.userId ?? this.sessionAuth?.userId;
           const authResponse = this.buildAuthRequiredResponse({
             toolId: 'resume_agent_run',
-            securitySchemes: SECURITY_SCHEMES.authRequired,
+            securitySchemes: this.isDirectoryReviewProfile() ? SECURITY_SCHEMES.agentRequiresAuth : SECURITY_SCHEMES.authRequired,
             userId: resolvedUserId,
             serverUrl: this.env.MCP_SERVER_URL,
             featureDescription: 'resume an agent run',
           });
           if (authResponse) return authResponse;
+
+          const runId = args.run_id.trim();
+          if (!ORGX_UUID_RE.test(runId)) {
+            return this.toolError('run_id must be an agent run UUID', {
+              code: 'invalid_input',
+              status: 400,
+            });
+          }
+
+          // The legacy resume route authenticates the gateway service, but
+          // does not bind its run lookup to the caller. Authorize against the
+          // owner-scoped entities read before sending any mutation. For runs,
+          // that API filters requester_id by the verified gateway identity.
+          // Both requests stay on the primary origin so a read or ambiguous
+          // write cannot be replayed against another data plane.
+          const actor = {
+            userId: resolvedUserId,
+            userEmail: this.resolveUserEmail(),
+            ...this.delegationClaims(),
+            orgxUserId: this.resolveOrgxUserId(resolvedUserId),
+            allowFallback: false,
+          };
+          let ownedRun: Record<string, unknown> | null;
+          try {
+            const params = new URLSearchParams({ type: 'run', id: runId, limit: '1' });
+            const ownershipResponse = await callOrgxApiJson(
+              this.env,
+              `/api/entities?${params.toString()}`,
+              undefined,
+              actor
+            );
+            const ownership = (await ownershipResponse.json()) as { data?: unknown } | null;
+            if (!ownership || !Array.isArray(ownership.data) || ownership.data.length > 1) {
+              throw new Error('Invalid owner-scoped run response');
+            }
+            const row = ownership.data[0];
+            ownedRun = row && typeof row === 'object' && !Array.isArray(row)
+              ? row as Record<string, unknown>
+              : null;
+          } catch {
+            return this.toolError('Unable to verify agent run ownership. No resume was sent.', {
+              code: 'run_ownership_verification_unavailable',
+              status: 503,
+              details: { retryable: true },
+            });
+          }
+          const expectedRequester = actor.orgxUserId ??
+            (resolvedUserId && ORGX_UUID_RE.test(resolvedUserId) ? resolvedUserId : null);
+          if (
+            !ownedRun || ownedRun.id !== runId ||
+            (expectedRequester && typeof ownedRun.requester_id === 'string' &&
+              ownedRun.requester_id !== expectedRequester)
+          ) {
+            return this.toolError('Agent run not found for the authenticated owner.', {
+              code: 'entity_not_found',
+              status: 404,
+            });
+          }
 
           const body: Record<string, unknown> = {};
           if (
@@ -13254,22 +13349,22 @@ export class OrgXMcp extends McpAgent<
 
           const response = await callOrgxApiJson(
             this.env,
-            `/api/agent-runs/${encodeURIComponent(args.run_id)}/resume`,
+            `/api/agent-runs/${encodeURIComponent(runId)}/resume`,
             {
               method: 'POST',
               body: JSON.stringify(body),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+            actor
           );
           const result = (await response.json()) as Record<string, unknown>;
           const noop = result.noop === true;
           const wasAutoClosed = result.was_auto_closed === true;
           const priorStatus = result.prior_status;
           const summary = noop
-            ? `Run ${args.run_id} is already running.`
+            ? `Run ${runId} is already running.`
             : wasAutoClosed
-            ? `Resumed run ${args.run_id} (was auto-closed from '${priorStatus}').`
-            : `Resumed run ${args.run_id} (was '${priorStatus}').`;
+            ? `Resumed run ${runId} (was auto-closed from '${priorStatus}').`
+            : `Resumed run ${runId} (was '${priorStatus}').`;
 
           return {
             content: [{ type: 'text' as const, text: summary }],

@@ -4,9 +4,19 @@ import {
   CLAUDE_DIRECTORY_WIDGET_URIS,
   resolveProfileDiscoveryPolicy,
 } from '../src/profileDiscoveryPolicy';
+import { WIDGET_URIS } from '../src/toolDefinitions';
+
+const INFORMATIONAL_WIDGET_BASELINE = [
+  WIDGET_URIS.agentStatus,
+  WIDGET_URIS.searchResults,
+  WIDGET_URIS.initiativePulse,
+  WIDGET_URIS.morningBrief,
+  WIDGET_URIS.entityCard,
+  WIDGET_URIS.workLedger,
+];
 
 describe('profile auxiliary discovery policy', () => {
-  it('limits the Anthropic directory profile to coherent informational widgets', () => {
+  it('limits the broader Anthropic directory to widgets its tools can serve', () => {
     const policy = resolveProfileDiscoveryPolicy('claude-directory');
 
     expect(policy).toMatchObject({
@@ -17,8 +27,29 @@ describe('profile auxiliary discovery policy', () => {
     expect([...(policy.widgetUris ?? [])]).toEqual([
       ...CLAUDE_DIRECTORY_WIDGET_URIS,
     ]);
-    expect(policy.widgetUris?.size).toBe(6);
+    expect([...(policy.widgetUris ?? [])]).toEqual([
+      ...INFORMATIONAL_WIDGET_BASELINE,
+      WIDGET_URIS.workspaceMap,
+      WIDGET_URIS.proofReceipt,
+    ]);
+    expect(policy.widgetUris?.size).toBe(8);
+    for (const uri of INFORMATIONAL_WIDGET_BASELINE) {
+      expect(policy.widgetUris).toContain(uri);
+    }
   });
+
+  it.each(['read-only', 'unrecognized-profile'])(
+    '%s preserves the six informational widgets independently of the directory',
+    (profile) => {
+      const policy = resolveProfileDiscoveryPolicy(profile);
+      expect(policy).toMatchObject({
+        includeInitiativeResource: false,
+        includeSkillResources: false,
+        includePrompts: false,
+      });
+      expect([...(policy.widgetUris ?? [])]).toEqual(INFORMATIONAL_WIDGET_BASELINE);
+    }
+  );
 
   it('preserves the established auxiliary surface for general profiles', () => {
     for (const profileName of ['v2', 'full', 'claude-plugin', undefined]) {

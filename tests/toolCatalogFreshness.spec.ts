@@ -29,6 +29,7 @@ describe('tool catalog freshness', () => {
       'src/toolProfiles.ts',
       'src/authorizationPolicy.ts',
       'src/contractTools.ts',
+      'src/claudeDirectoryTools.ts',
       'scripts/generate-tool-catalog.ts',
     ]) {
       hash.update(readFileSync(path.join(rootDir, file), 'utf-8'));

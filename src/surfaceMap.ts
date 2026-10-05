@@ -108,6 +108,50 @@ export const ORGX_SURFACES: readonly OrgxSurface[] = [
   },
 ];
 
+/** Only directory sessions project the operation-specific workflow controls. */
+const DIRECTORY_SURFACE_TOOLS: Readonly<Record<string, Pick<OrgxSurface, 'read' | 'control'>>> = {
+  command: {
+    read: ['orgx_recommend', 'get_morning_brief', 'orgx_command_status'],
+    control: ['orgx_change_entity_state', 'manage_lifecycle'],
+  },
+  decisions: {
+    read: ['orgx_search', 'orgx_inspect', 'orgx_list_pending_decisions', 'orgx_open_decision_review'],
+    control: ['orgx_record_decision'],
+  },
+  initiatives: {
+    read: ['orgx_inspect', 'get_initiative_pulse', 'orgx_read_plan'],
+    control: [
+      'orgx_start_plan', 'orgx_improve_plan', 'orgx_record_plan_edit', 'orgx_complete_plan',
+      'orgx_create_entity', 'orgx_update_entity', 'orgx_change_entity_state',
+      'orgx_complete_with_proof', 'manage_lifecycle',
+    ],
+  },
+  live: {
+    read: ['get_agent_status', 'orgx_command_status'],
+    control: ['manage_lifecycle'],
+  },
+  agents: {
+    read: ['get_agent_status', 'orgx_check_delegation', 'check_execution_readiness'],
+    control: ['orgx_delegate_work', 'manage_lifecycle'],
+  },
+  'work-ledger': {
+    read: ['orgx_search', 'get_operator_chronicle'],
+    control: ['orgx_submit_receipt', 'orgx_attach'],
+  },
+  quality: {
+    read: ['orgx_inspect', 'review_artifact'],
+    control: ['orgx_attach', 'orgx_complete_with_proof', 'orgx_submit_receipt'],
+  },
+  execution: {
+    read: ['check_execution_readiness', 'orgx_check_delegation', 'orgx_command_status'],
+    control: [],
+  },
+  goals: {
+    read: ['orgx_search', 'orgx_inspect'],
+    control: ['orgx_create_entity', 'orgx_update_entity'],
+  },
+};
+
 export interface OrgxSurfaceEntry {
   id: string;
   name: string;
@@ -128,6 +172,7 @@ const DEFAULT_WEB_URL = 'https://useorgx.com';
 export function buildSurfaceMap(params: {
   visibleTools: readonly string[];
   webUrl?: string | null;
+  profile?: string | null;
 }): OrgxSurfaceEntry[] {
   const visible = new Set(params.visibleTools);
   let base: URL;
@@ -136,12 +181,17 @@ export function buildSurfaceMap(params: {
   } catch {
     base = new URL(DEFAULT_WEB_URL);
   }
-  return ORGX_SURFACES.map((surface) => ({
-    id: surface.id,
-    name: surface.name,
-    url: new URL(surface.path, base).toString(),
-    purpose: surface.purpose,
-    read: surface.read.filter((tool) => visible.has(tool)),
-    control: surface.control.filter((tool) => visible.has(tool)),
-  }));
+  return ORGX_SURFACES.map((surface) => {
+    const tools = params.profile === 'claude-directory'
+      ? DIRECTORY_SURFACE_TOOLS[surface.id] ?? surface
+      : surface;
+    return {
+      id: surface.id,
+      name: surface.name,
+      url: new URL(surface.path, base).toString(),
+      purpose: surface.purpose,
+      read: tools.read.filter((tool) => visible.has(tool)),
+      control: tools.control.filter((tool) => visible.has(tool)),
+    };
+  });
 }

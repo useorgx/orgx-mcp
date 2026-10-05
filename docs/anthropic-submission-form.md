@@ -2,8 +2,7 @@
 
 Paste-ready answers for the submission form at
 <https://claude.ai/directory/manage> (Submit new → MCP connector).
-Keep this file in sync with `server.json` and `docs/anthropic-reviewer-runbook.md` — if
-either changes, update this doc the same day.
+Keep the submitted profile aligned with `src/toolProfiles.ts`, the operation registry, and the reviewer runbook.
 
 ## Server basics
 
@@ -20,9 +19,9 @@ either changes, update this doc the same day.
 | Documentation | <https://github.com/useorgx/orgx-mcp#readme> |
 | Support URL | <https://useorgx.com/support> |
 | Primary review contact | reviewers@useorgx.com |
-| Directory surface | 7 focused, non-destructive, closed-world tools; 3 strictly read-only and 4 that record metered MCP allowance usage |
-| Read scopes used | `decisions:read` · `agents:read` · `initiatives:read` · `memory:read` |
-| Capabilities | 7 informational tools and 6 read-only widget families; no prompts, skill packs, or generic initiative resource on this profile |
+| Directory surface | 29 captured tools: 28 model-visible operations and one app-only resume action; separate reads, writes, and execution controls |
+| OAuth scopes | Read scopes: `decisions:read`, `agents:read`, `initiatives:read`, `memory:read`. Operate adds `decisions:write`, `agents:write`, `initiatives:write`. |
+| Capabilities | Memory, planning, work creation/update, delegation, human decision review, artifact attachment, receipts, and proof completion; 8 coherent widget families; no prompts or skill packs |
 | HTTPS Origin validation | Yes — every present MCP transport `Origin` is exact-allowlisted before auth/dispatch; invalid origins return `403`; no-`Origin` CLI traffic remains supported |
 | Publisher | OrgX (`com.useorgx/orgx-mcp` in the official MCP Registry) |
 | Support email | reviewers@useorgx.com |
@@ -69,24 +68,18 @@ The task outlives the chat. OrgX lets the next agent continue from the
 decisions, artifacts, approvals, owners, and proof the last agent left behind.
 Make AI work resumable, reviewable, and provable across agents.
 
-From any MCP client — Claude, Cursor, ChatGPT, Cline — agents can retrieve
-decisions and artifacts, query organizational memory, read operator proof,
-and watch initiative health in real time. The scoped Anthropic Directory
-endpoint intentionally exposes only non-destructive, closed-world capabilities;
-the broader OrgX service supports separately reviewed write workflows on other
-profiles. Three directory tools are strictly read-only. Four record metered
-MCP allowance usage on a successful mode but do not change business records.
+Claude can retrieve prior decisions and artifacts, plan work, create and update
+owned tasks, check execution readiness and delegation costs, delegate specialist
+work, monitor progress, and preserve deliverables with linked proof and receipts.
+Separate tools expose reads and writes. Decision approval remains a human review
+in OrgX. Launch, delegation, resume, and retry can dispatch paid work under the
+workspace's routing and budget controls. Four informational operations record
+metered MCP usage without changing business records. Optional worker analytics
+and session persistence are suppressed on the directory profile.
 
-Unlike a project-management CRUD surface, OrgX is built around urgency-driven
-hierarchy and surveillance calm: healthy state collapses to near-silence, the
-blocker reshapes the interface when it matters. Every write is observable in
-the user's live view at `useorgx.com/live/<initiative_id>`. On the submitted
-profile, widgets render read-only results and may deep-link to OrgX; they do
-not expose an in-chat mutation or scaffold example.
-
-Target user: a founder or operator delegating to autonomous agents, who wants
-organizational memory, decision queues, artifact recall, and initiative pulses available
-wherever they think.
+Target users are founders and operators coordinating AI work across sessions,
+clients, and teammates. OrgX retains owners, decisions, artifacts, blockers,
+and evidence so another agent can continue with the same organizational context.
 
 ## Use-case prompts to include in the submission
 
@@ -98,8 +91,10 @@ These match the reviewer runbook and the seeded reviewer workspace baseline.
    Expected: initiative-pulse widget with health + milestones + recent activity.
 3. *"Show me what the OrgX agents are doing right now."*
    Expected: agent-status widget with the seeded roster.
-4. *"Give me today's morning brief."*
-   Expected: morning-brief widget with current decisions, risks, and initiative context.
+4. *"Create a reviewer test task, record a plan, attach the verification URL, and complete it with proof."*
+   Expected: scoped durable records, linked artifact, and verified completion.
+5. *"Estimate engineering delegation for the reviewer test task without starting work."*
+   Expected: candidate routes and cost context, no dispatched run.
 
 ## OAuth callback support
 
@@ -116,7 +111,7 @@ current Claude client rather than copying a stale URL from this document.
 
 The authorization server's well-known metadata is shared across profiles and
 advertises the full server scope vocabulary. The directory endpoint itself
-exposes only informational tools with read-scoped security schemes.
+filters the operation-specific tool surface by the connection's granted read and write scopes.
 Profile-specific
 well-known scope reduction is not claimed because query-scoped issuer metadata
 would be unsafe with a shared, cacheable OAuth issuer.
@@ -139,17 +134,17 @@ See `docs/reviewer-invite-template.md` for the full email copy.
 
 - [ ] `pnpm type-check && pnpm test:anthropic-review && pnpm build && pnpm directory:preflight` green locally.
 - [ ] `MCP_BASE_URL=https://mcp.useorgx.com pnpm directory:preflight` green against production.
-- [ ] An authenticated `tools/list` for `?profile=claude-directory` returns exactly the documented seven tools, with three `readOnlyHint: true` and four `readOnlyHint: false`.
+- [ ] An authenticated `tools/list` for `?profile=claude-directory` returns exactly the 29 documented tools for an Operate grant, with titles and accurate safety hints; a Read grant excludes write operations.
 - [ ] Every submitted tool has a current human-readable `title`, matching `annotations.title`, and all
   applicable tool hints in the portal scan.
-- [ ] `prompts/list` is empty and `resources/list` contains only the six documented read-only widget families (including their version/host compatibility variants).
+- [ ] `prompts/list` is empty and `resources/list` contains only the eight documented widget families (including their version/host compatibility variants).
 - [ ] Invalid-Origin POST returns `403`; trusted Claude Origin is echoed (not `*`); a no-Origin CLI request reaches the normal OAuth flow.
 - [ ] Every branding asset URL in the table above returns 200 (curl -I).
 - [ ] Three to five authenticated response PNGs, each at least 1000 px wide,
   were captured after deployment from real Claude runs, cropped to the app
   response only, matched to their exact prompts, and stored as private
   provider-upload evidence; no local fixture, video, or GIF is used.
-- [ ] Reviewer session minted via `tsx scripts/review-session.ts mint` and tested end-to-end.
+- [ ] Existing dedicated reviewer session is active, owner-bound, populated, and tested end-to-end; new credentials are not required unless the existing account fails.
 - [ ] Reviewer URL + password delivered out of band and confirmation captured.
 - [ ] server.json version matches the latest deployed worker version.
 - [ ] Permanent slug, 1–5 categories, documentation URL, company website,
