@@ -39,18 +39,18 @@ const workflowCalls = [
   }, fixed: { operation: 'update' } },
   { name: 'orgx_start_plan', target: 'orgx_plan', arguments: {
     feature_name: 'Directory review', initial_plan: '# Review plan',
-    workspace_id: WORKSPACE_ID, idempotency_key: 'directory-plan-fixture',
+    workspace_id: WORKSPACE_ID,
   }, fixed: { action: 'start' } },
   { name: 'orgx_read_plan', target: 'orgx_plan', arguments: { session_id: ENTITY_ID }, fixed: { action: 'resume' } },
   { name: 'orgx_improve_plan', target: 'orgx_plan', arguments: {
-    session_id: ENTITY_ID, plan_content: '# Improved review plan', idempotency_key: 'directory-improve-fixture',
+    session_id: ENTITY_ID, plan_content: '# Improved review plan',
   }, fixed: { action: 'improve' } },
   { name: 'orgx_record_plan_edit', target: 'orgx_plan', arguments: {
-    session_id: ENTITY_ID, edit_summary: 'Added verification evidence', idempotency_key: 'directory-edit-fixture',
+    session_id: ENTITY_ID, edit_summary: 'Added verification evidence',
   }, fixed: { action: 'record_edit' } },
   { name: 'orgx_complete_plan', target: 'orgx_plan', arguments: {
     session_id: ENTITY_ID, plan_content: '# Accepted review plan',
-    attach_to: { entity_type: 'task', entity_id: ENTITY_ID }, idempotency_key: 'directory-complete-plan-fixture',
+    attach_to: { entity_type: 'task', entity_id: ENTITY_ID },
   }, fixed: { action: 'complete' } },
   { name: 'orgx_check_delegation', target: 'orgx_spawn', arguments: {
     action: 'estimate', title: 'Review fixture only', workspace_id: WORKSPACE_ID,
@@ -74,7 +74,7 @@ const workflowCalls = [
   { name: 'orgx_complete_with_proof', target: 'orgx_act', arguments: {
     type: 'task', id: ENTITY_ID,
     artifact: { artifact_type: 'eng.pull_request', external_url: 'https://github.com/useorgx/orgx-mcp/pull/462' },
-    verification: ['Fixture verification only'], idempotency_key: 'directory-proof-fixture',
+    verification: ['Fixture verification only'],
   }, fixed: { action: 'complete_with_proof' } },
   { name: 'orgx_change_entity_state', target: 'orgx_act', arguments: {
     type: 'task', id: ENTITY_ID, action: 'block', note: 'Review fixture prerequisite missing',
@@ -147,6 +147,27 @@ afterAll(async () => {
 });
 
 describe('Claude directory canonical workflow adapters', () => {
+  it.each(['orgx_start_plan', 'orgx_improve_plan', 'orgx_record_plan_edit', 'orgx_complete_plan'])(
+    '%s omits unsupported retry keys before its canonical handler', async (name) => {
+      canonicalCalls.mockClear();
+      const call = workflowCalls.find((entry) => entry.name === name)!;
+      const adapter = CLAUDE_DIRECTORY_TOOL_ADAPTERS.find((tool) => tool.id === name)!;
+      expect(adapter.inputSchema).not.toHaveProperty('idempotency_key');
+      const result = await client.callTool({
+        name, arguments: { ...call.arguments, idempotency_key: 'unsupported-retry-key' },
+      });
+      expect(result.isError).not.toBe(true);
+      expect(canonicalCalls.mock.calls[0]?.[1]).not.toHaveProperty('idempotency_key');
+    }
+  );
+
+  it('declares AI plan improvement as an external model operation', () => {
+    const adapter = CLAUDE_DIRECTORY_TOOL_ADAPTERS.find((tool) => tool.id === 'orgx_improve_plan')!;
+    expect(adapter.annotations).toMatchObject({ readOnlyHint: false, openWorldHint: true });
+    expect(adapter.description).toContain('model costs');
+    expect(adapter.description).not.toContain('idempotency');
+  });
+
   it('covers every new operation adapter with a bounded SDK call', () => {
     expect(workflowCalls.map((call) => call.name).sort()).toEqual(
       CLAUDE_DIRECTORY_TOOL_ADAPTERS.map((tool) => tool.id).sort()
@@ -193,10 +214,16 @@ describe('Claude directory canonical workflow adapters', () => {
     { name: 'orgx_update_entity', arguments: { type: 'decision', id: ENTITY_ID, fields: { title: 'Bypassed approval' } } },
     { name: 'orgx_update_entity', arguments: { type: 'blocker', id: ENTITY_ID, fields: { description: 'Unsupported patch' } } },
     { name: 'orgx_create_entity', arguments: { type: 'decision', title: 'Bypassed decision workflow' } },
+    { name: 'orgx_create_entity', arguments: { type: 'workspace', title: 'Unexpected default workspace change' } },
     { name: 'orgx_create_entity', arguments: { type: 'studio_content', title: 'Unreviewed studio workflow' } },
     { name: 'orgx_start_plan', arguments: {} },
+    { name: 'orgx_read_plan', arguments: {} },
+    { name: 'orgx_read_plan', arguments: { session_id: '   ' } },
     { name: 'orgx_improve_plan', arguments: { session_id: ENTITY_ID } },
     { name: 'orgx_complete_with_proof', arguments: { type: 'task', id: ENTITY_ID } },
+    { name: 'orgx_complete_with_proof', arguments: { type: 'task', id: ENTITY_ID, artifact: {} } },
+    { name: 'orgx_complete_with_proof', arguments: { type: 'task', id: ENTITY_ID, artifact: { artifact_type: 'eng.pull_request' } } },
+    { name: 'orgx_complete_with_proof', arguments: { type: 'task', id: ENTITY_ID, artifact: { artifact_type: 'eng.pull_request', external_url: 'https://github.com/useorgx/orgx-mcp/pull/463', status: 'approved' } } },
   ])('$name rejects an invalid operation before entering its canonical handler', async (call) => {
     canonicalCalls.mockClear();
     backendEntry.mockClear();

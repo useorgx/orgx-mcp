@@ -2563,6 +2563,38 @@ export class OrgXMcp extends McpAgent<
     return payload.data?.[0] ?? null;
   }
 
+  private async fetchPrimaryEntityRecord(
+    type: string,
+    id: string,
+    userId: string | null
+  ): Promise<Record<string, unknown> | null> {
+    const params = new URLSearchParams({ type, id, limit: '1' });
+    const response = await callOrgxApiJson(
+      this.env,
+      `/api/entities?${params.toString()}`,
+      undefined,
+      {
+        userId,
+        userEmail: this.resolveUserEmail(),
+        ...this.delegationClaims(),
+        orgxUserId: this.resolveOrgxUserId(userId),
+        allowFallback: false,
+      }
+    );
+    const payload = (await response.json()) as { data?: unknown } | null;
+    if (
+      !payload ||
+      !Array.isArray(payload.data) ||
+      payload.data.length > 1
+    ) {
+      throw new Error('Invalid actor-scoped entity response');
+    }
+    const row = payload.data[0];
+    return row && typeof row === 'object' && !Array.isArray(row) && row.id === id
+      ? row as Record<string, unknown>
+      : null;
+  }
+
   private async fetchEntityCollection(params: {
     type: string;
     userId: string | null;
@@ -5166,6 +5198,7 @@ export class OrgXMcp extends McpAgent<
           userId: resolvedUserId ?? null,
           userEmail: this.resolveUserEmail(), ...this.delegationClaims(),
           orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null),
+          ...(this.isDirectoryReviewProfile() ? { allowFallback: false } : {}),
         });
         return (await response.json()) as Record<string, unknown>;
       },
@@ -5323,7 +5356,7 @@ export class OrgXMcp extends McpAgent<
               };
             }
           }
-          if (requestedWorkspaceId) {
+          if (requestedWorkspaceId && !this.isDirectoryReviewProfile()) {
             const workspace = await this.fetchEntityRecord(
               'workspace',
               requestedWorkspaceId,
@@ -5368,6 +5401,48 @@ export class OrgXMcp extends McpAgent<
                     error instanceof Error ? error.message : String(error),
                 });
               }
+            }
+          }
+          if (this.isDirectoryReviewProfile()) {
+            const workspaceId =
+              typeof bootstrapArgs.workspace_id === 'string' &&
+              bootstrapArgs.workspace_id.trim()
+                ? bootstrapArgs.workspace_id.trim()
+                : typeof bootstrapArgs.command_center_id === 'string' &&
+                  bootstrapArgs.command_center_id.trim()
+                ? bootstrapArgs.command_center_id.trim()
+                : this.sessionContext.workspaceId?.trim() ?? null;
+            if (workspaceId) {
+              let workspace: Record<string, unknown> | null;
+              try {
+                workspace = await this.fetchPrimaryEntityRecord(
+                  'workspace',
+                  workspaceId,
+                  resolvedUserId
+                );
+              } catch {
+                return this.toolError(
+                  'Unable to verify workspace access. Session context was not changed.',
+                  {
+                    code: 'workspace_access_verification_unavailable',
+                    status: 503,
+                    details: { retryable: true },
+                  }
+                );
+              }
+              if (!workspace || workspace.id !== workspaceId) {
+                return this.toolError('Workspace not found for the authenticated account.', {
+                  code: 'entity_not_found',
+                  status: 404,
+                });
+              }
+              fetchedWorkspaceName =
+                typeof workspace.name === 'string'
+                  ? workspace.name
+                  : typeof workspace.title === 'string'
+                  ? workspace.title
+                  : null;
+              bootstrapArgs = { ...bootstrapArgs, workspace_id: workspaceId };
             }
           }
           const resolvedContext = resolveBootstrapSessionContext(
@@ -13304,21 +13379,11 @@ export class OrgXMcp extends McpAgent<
           };
           let ownedRun: Record<string, unknown> | null;
           try {
-            const params = new URLSearchParams({ type: 'run', id: runId, limit: '1' });
-            const ownershipResponse = await callOrgxApiJson(
-              this.env,
-              `/api/entities?${params.toString()}`,
-              undefined,
-              actor
+            ownedRun = await this.fetchPrimaryEntityRecord(
+              'run',
+              runId,
+              resolvedUserId ?? null
             );
-            const ownership = (await ownershipResponse.json()) as { data?: unknown } | null;
-            if (!ownership || !Array.isArray(ownership.data) || ownership.data.length > 1) {
-              throw new Error('Invalid owner-scoped run response');
-            }
-            const row = ownership.data[0];
-            ownedRun = row && typeof row === 'object' && !Array.isArray(row)
-              ? row as Record<string, unknown>
-              : null;
           } catch {
             return this.toolError('Unable to verify agent run ownership. No resume was sent.', {
               code: 'run_ownership_verification_unavailable',

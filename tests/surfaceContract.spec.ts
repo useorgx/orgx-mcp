@@ -218,6 +218,12 @@ beforeAll(() => {
       if (path === '/api/tools/execute' && body.tool_id === 'get_pending_decisions') {
         return Response.json({ ok: true, data: structuredClone(pendingDecisionsPayload) });
       }
+      const url = new URL(path, 'https://api.useorgx.test');
+      if (url.pathname === '/api/entities' && url.searchParams.get('type') === 'workspace') {
+        return Response.json({
+          data: [{ id: WORKSPACE_ID, name: 'Surface contract workspace' }],
+        });
+      }
       return Response.json({ ok: true, data: {} });
     }
   );
