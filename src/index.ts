@@ -13281,6 +13281,64 @@ export class OrgXMcp extends McpAgent<
           });
           if (authResponse) return authResponse;
 
+          const runId = args.run_id.trim();
+          if (!ORGX_UUID_RE.test(runId)) {
+            return this.toolError('run_id must be an agent run UUID', {
+              code: 'invalid_input',
+              status: 400,
+            });
+          }
+
+          // The legacy resume route authenticates the gateway service, but
+          // does not bind its run lookup to the caller. Authorize against the
+          // owner-scoped entities read before sending any mutation. For runs,
+          // that API filters requester_id by the verified gateway identity.
+          // Both requests stay on the primary origin so a read or ambiguous
+          // write cannot be replayed against another data plane.
+          const actor = {
+            userId: resolvedUserId,
+            userEmail: this.resolveUserEmail(),
+            ...this.delegationClaims(),
+            orgxUserId: this.resolveOrgxUserId(resolvedUserId),
+            allowFallback: false,
+          };
+          let ownedRun: Record<string, unknown> | null;
+          try {
+            const params = new URLSearchParams({ type: 'run', id: runId, limit: '1' });
+            const ownershipResponse = await callOrgxApiJson(
+              this.env,
+              `/api/entities?${params.toString()}`,
+              undefined,
+              actor
+            );
+            const ownership = (await ownershipResponse.json()) as { data?: unknown } | null;
+            if (!ownership || !Array.isArray(ownership.data) || ownership.data.length > 1) {
+              throw new Error('Invalid owner-scoped run response');
+            }
+            const row = ownership.data[0];
+            ownedRun = row && typeof row === 'object' && !Array.isArray(row)
+              ? row as Record<string, unknown>
+              : null;
+          } catch {
+            return this.toolError('Unable to verify agent run ownership. No resume was sent.', {
+              code: 'run_ownership_verification_unavailable',
+              status: 503,
+              details: { retryable: true },
+            });
+          }
+          const expectedRequester = actor.orgxUserId ??
+            (resolvedUserId && ORGX_UUID_RE.test(resolvedUserId) ? resolvedUserId : null);
+          if (
+            !ownedRun || ownedRun.id !== runId ||
+            (expectedRequester && typeof ownedRun.requester_id === 'string' &&
+              ownedRun.requester_id !== expectedRequester)
+          ) {
+            return this.toolError('Agent run not found for the authenticated owner.', {
+              code: 'entity_not_found',
+              status: 404,
+            });
+          }
+
           const body: Record<string, unknown> = {};
           if (
             typeof args.note === 'string' &&
@@ -13291,22 +13349,22 @@ export class OrgXMcp extends McpAgent<
 
           const response = await callOrgxApiJson(
             this.env,
-            `/api/agent-runs/${encodeURIComponent(args.run_id)}/resume`,
+            `/api/agent-runs/${encodeURIComponent(runId)}/resume`,
             {
               method: 'POST',
               body: JSON.stringify(body),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+            actor
           );
           const result = (await response.json()) as Record<string, unknown>;
           const noop = result.noop === true;
           const wasAutoClosed = result.was_auto_closed === true;
           const priorStatus = result.prior_status;
           const summary = noop
-            ? `Run ${args.run_id} is already running.`
+            ? `Run ${runId} is already running.`
             : wasAutoClosed
-            ? `Resumed run ${args.run_id} (was auto-closed from '${priorStatus}').`
-            : `Resumed run ${args.run_id} (was '${priorStatus}').`;
+            ? `Resumed run ${runId} (was auto-closed from '${priorStatus}').`
+            : `Resumed run ${runId} (was '${priorStatus}').`;
 
           return {
             content: [{ type: 'text' as const, text: summary }],
