@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-05T12:46:16.029Z",
-  "sourceHash": "62df85471ac0aa5c",
+  "generatedAt": "2026-10-05T15:26:29.026Z",
+  "sourceHash": "35e9f723b4027bfb",
   "version": "1.0.0",
-  "totalTools": 93,
+  "totalTools": 107,
   "categories": [
     "Agents",
     "Billing",
@@ -1488,7 +1488,8 @@
       "source": "inline",
       "profiles": [
         "v2",
-        "chatgpt"
+        "chatgpt",
+        "claude-directory"
       ]
     },
     {
@@ -3220,6 +3221,7 @@
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-directory",
         "claude-plugin",
         "memory",
         "commander",
@@ -3278,6 +3280,7 @@
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-directory",
         "claude-plugin",
         "memory",
         "commander",
@@ -4165,6 +4168,7 @@
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-directory",
         "claude-plugin",
         "memory",
         "commander",
@@ -4651,6 +4655,7 @@
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-directory",
         "commander",
         "executor"
       ]
@@ -4824,7 +4829,8 @@
       "source": "stream",
       "profiles": [
         "v2",
-        "chatgpt"
+        "chatgpt",
+        "claude-directory"
       ]
     },
     {
@@ -4903,6 +4909,186 @@
       ]
     },
     {
+      "id": "orgx_change_entity_state",
+      "title": "Change OrgX Entity State",
+      "description": "Change the workflow state of an OrgX initiative, workstream, milestone, task, objective, or playbook. Supports starting or launching work, blocking or unblocking, reopening, flagging risk, archiving, activating, or reassigning workstreams where valid for the entity type. Launching can dispatch connected agent work and incur costs. Records a supplied rationale in audit history.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "initiative",
+              "workstream",
+              "milestone",
+              "task",
+              "objective",
+              "playbook"
+            ],
+            "description": "Entity type whose workflow state should change."
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Target entity UUID or short ID prefix (8+ hex chars)."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "launch",
+              "start",
+              "block",
+              "unblock",
+              "reopen",
+              "flag_risk",
+              "archive",
+              "reassign_streams",
+              "activate"
+            ],
+            "description": "Workflow state change. Must be valid for the selected entity type."
+          },
+          "note": {
+            "type": "string",
+            "description": "Strongly recommended for destructive or blocking actions (block, flag_risk, decline, supersede, cancel, delete). Free-text rationale shown in audit history and downstream agent context."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Optional client-supplied retry key. Update requests transport it outside validated entity fields; lifecycle endpoints deduplicate where supported."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional OrgX session identifier."
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "action"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
+      ]
+    },
+    {
+      "id": "orgx_check_delegation",
+      "title": "Check OrgX Delegation",
+      "description": "Classify task complexity or estimate candidate model routes and cost for OrgX agent work. Requires a title or task ID. These operations do not create a task, consume a dispatch rate-limit allowance, or dispatch a run.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "classify",
+              "estimate"
+            ],
+            "description": "Task classification or route and cost estimate."
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title. REQUIRED for ad-hoc spawn (action=spawn without task_id) or action=classify without task_id. Used as the human-readable label of the spawned task."
+          },
+          "task_id": {
+            "type": "string",
+            "description": "Existing task UUID. REQUIRED for action=handoff. REQUIRED for action=spawn when spawning work for an already-created task. Either task_id or title (with instructions) must be provided for action=spawn."
+          },
+          "initiative_id": {
+            "type": "string",
+            "description": "Optional initiative UUID to scope the spawned task. Inferred from task_id when omitted."
+          },
+          "workspace_id": {
+            "type": "string",
+            "description": "Optional workspace UUID to scope the spawned task. Defaults to the MCP session's workspace."
+          },
+          "agent_type": {
+            "type": "string",
+            "description": "Target agent type/domain (e.g. \"engineering\", \"marketing\", \"design\"). REQUIRED for action=guard or action=handoff. Strongly recommended for action=spawn so the work routes to the right specialist."
+          },
+          "instructions": {
+            "type": "string",
+            "description": "Delegation instructions for the agent. REQUIRED for action=spawn when spawning ad-hoc (without task_id). Used to override the task description for action=handoff."
+          },
+          "model_tier": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "balanced",
+              "precision",
+              "local",
+              "sonnet",
+              "opus"
+            ],
+            "description": "Optional model tier override. Omit to let OrgX auto-route from task complexity. Legacy local/sonnet/opus are accepted for older clients."
+          },
+          "model": {
+            "type": "string",
+            "description": "Optional exact model identifier when the user explicitly selects one. Otherwise OrgX resolves the model from task, tier, provider, policy, and budget."
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "openai",
+              "anthropic",
+              "openrouter",
+              "groq",
+              "local"
+            ],
+            "description": "Optional provider preference. Use auto unless the user asks for a specific provider or a cost comparison selects one."
+          },
+          "runtime": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "cloud_claude",
+              "cloud_openai",
+              "managed_openai",
+              "managed_anthropic",
+              "local"
+            ],
+            "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
+          },
+          "budget_mode": {
+            "type": "string",
+            "enum": [
+              "cheapest_valid",
+              "balanced",
+              "highest_quality"
+            ],
+            "description": "Optional budget posture. Use cheapest_valid for controlled validation runs while reliability is being proven."
+          },
+          "max_cost_usd": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Optional hard cost ceiling in USD for this dispatch. If the estimate exceeds it, OrgX blocks, downgrades, or requests approval before dispatch."
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "agents:read"
+      ],
+      "readOnly": true,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
+      ]
+    },
+    {
       "id": "orgx_command_status",
       "title": "Check status of started work",
       "description": "Read the current state of something already started: a decision waiting on a person, an agent run, or a work command. Also known as: is it done yet, did it go through, run status, poll. USE WHEN: a widget or the user needs to know whether a decision, run or command has settled. NEXT: when next_poll_after_ms is a number, check again after that many milliseconds; when it is null the state is final. DO NOT USE: to start or change work. Read-only.",
@@ -4940,11 +5126,523 @@
       "profiles": [
         "v2",
         "chatgpt",
+        "claude-directory",
         "claude-plugin",
         "commander",
         "planner",
         "executor",
         "observer"
+      ]
+    },
+    {
+      "id": "orgx_complete_plan",
+      "title": "Complete OrgX Plan",
+      "description": "Save the final markdown plan and complete its durable OrgX planning session. Can attach the completed plan to one or more initiatives, workstreams, milestones, or tasks. Does not dispatch execution.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Plan session UUID or orgx://plan_session/<uuid> URI."
+          },
+          "plan_content": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Final accepted markdown plan."
+          },
+          "attach_to": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "entity_type": {
+                    "type": "string",
+                    "enum": [
+                      "initiative",
+                      "workstream",
+                      "milestone",
+                      "task"
+                    ]
+                  },
+                  "entity_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "section": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "relevance": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "entity_type",
+                  "entity_id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/properties/attach_to/anyOf/0"
+                },
+                "minItems": 1
+              }
+            ],
+            "description": "Optional target or targets to link the completed plan to when action=complete. A single { entity_type, entity_id } object is accepted and normalized to the API array contract."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state."
+          }
+        },
+        "required": [
+          "session_id",
+          "plan_content"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
+      ]
+    },
+    {
+      "id": "orgx_complete_with_proof",
+      "title": "Complete OrgX Work With Proof",
+      "description": "Complete an OrgX task, milestone, workstream, or initiative with a linked proof artifact and verification evidence. Requires an artifact type and artifact URL or external URL. Records durable evidence and applies completion checks before changing the work state.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "task",
+              "milestone",
+              "workstream",
+              "initiative"
+            ],
+            "description": "Work entity type to complete with proof."
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Target entity UUID or short ID prefix (8+ hex chars)."
+          },
+          "artifact": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Proof artifact with artifact_type and artifact_url or external_url; optional name, description, and preview_markdown."
+          },
+          "verification": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of verification evidence URLs/IDs for completion flows."
+          },
+          "quality_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 5,
+            "description": "Quality score (0-5) attached to the action when used in proof/completion flows."
+          },
+          "note": {
+            "type": "string",
+            "description": "Strongly recommended for destructive or blocking actions (block, flag_risk, decline, supersede, cancel, delete). Free-text rationale shown in audit history and downstream agent context."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Optional client-supplied retry key. Update requests transport it outside validated entity fields; lifecycle endpoints deduplicate where supported."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional OrgX session identifier."
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "artifact"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
+      ]
+    },
+    {
+      "id": "orgx_create_entity",
+      "title": "Create OrgX Entity",
+      "description": "Create one OrgX workspace, initiative, workstream, milestone, task, objective, skill, or blocker record in its default initial workflow state. Accepts per-type parent IDs, titles, and metadata. Initiative creation can publish a public live link when explicitly requested. Reusing an idempotency key returns the existing record instead of creating a duplicate.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "workspace",
+              "initiative",
+              "workstream",
+              "milestone",
+              "task",
+              "objective",
+              "skill",
+              "blocker"
+            ],
+            "description": "Work record type to create."
+          },
+          "title": {
+            "type": "string",
+            "description": "REQUIRED on create (provide either \"title\" or \"name\" — they are aliases). Display title of the new entity."
+          },
+          "name": {
+            "type": "string",
+            "description": "Alternative to \"title\" on create. REQUIRED on create when \"title\" is not provided."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Short description shown in lists and previews. Recommended on create."
+          },
+          "description": {
+            "type": "string",
+            "description": "Longer-form description used in detail views."
+          },
+          "initiative_id": {
+            "type": "string",
+            "description": "Parent initiative UUID. REQUIRED when type=\"workstream\". Optional context for tasks/milestones/artifacts to associate them with an initiative."
+          },
+          "workstream_id": {
+            "type": "string",
+            "description": "Parent workstream UUID. REQUIRED when type=\"milestone\" or type=\"task\"."
+          },
+          "milestone_id": {
+            "type": "string",
+            "description": "Parent milestone UUID for tasks. Some workspaces require an explicit backlog milestone under the workstream; create/resolve that milestone first instead of relying on auto-resolution."
+          },
+          "workspace_id": {
+            "type": "string",
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when omitted."
+          },
+          "goal_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Objective UUIDs. Required when the workspace enforces a primary objective."
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ],
+            "description": "Record urgency. Only low|medium|high|urgent are accepted here; do not send portfolio/live labels such as active, critical, maintenance, or hold. \"urgent\" is normalized to \"high\" server-side."
+          },
+          "due_date": {
+            "type": "string",
+            "description": "Due date as YYYY-MM-DD for supported entity types. Do not send due_date when type=\"initiative\"; put initiative target dates in metadata."
+          },
+          "run_id": {
+            "type": "string",
+            "description": "REQUIRED when type=\"blocker\". Agent run UUID the blocker applies to."
+          },
+          "step_id": {
+            "type": "string",
+            "description": "Optional agent run step UUID for blocker creation."
+          },
+          "blocker_type": {
+            "type": "string",
+            "description": "Blocker category/type when type=\"blocker\" (e.g. \"missing_input\", \"permission\", \"external_dependency\")."
+          },
+          "live_visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "public"
+            ],
+            "description": "Initiative live-link visibility. Only applies when type=\"initiative\"."
+          },
+          "live_public": {
+            "type": "boolean",
+            "description": "Shortcut to publish an initiative live link (sets live_visibility=\"public\"). Only applies when type=\"initiative\"."
+          },
+          "live_reveal_title": {
+            "type": "boolean",
+            "description": "When true, public live-link visitors see the initiative title. Only applies when type=\"initiative\" with live_visibility=\"public\"."
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Free-form object for type-specific metadata. Schema varies per entity type (e.g. for skills: { capabilities, guardrails, channels }; for studio_brand: { tokens, voice, exemplars })."
+          },
+          "tagline": {
+            "type": "string",
+            "description": "Workspace tagline when type=\"workspace\"."
+          },
+          "narrative": {
+            "type": "string",
+            "description": "Workspace identity narrative when type=\"workspace\"."
+          },
+          "key_metrics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Workspace identity metrics when type=\"workspace\"."
+          },
+          "roadmap_url": {
+            "type": "string",
+            "description": "Workspace roadmap URL when type=\"workspace\"."
+          },
+          "source_links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Workspace source links when type=\"workspace\"."
+          },
+          "set_active": {
+            "type": "boolean",
+            "description": "For workspace create, make the new workspace active. Defaults true."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Client-generated retry key. Creates deduplicate by key; updates transport the key outside validated entity fields."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional OrgX session identifier."
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "decisions:write",
+        "agents:write",
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
+      ]
+    },
+    {
+      "id": "orgx_delegate_work",
+      "title": "Delegate OrgX Work",
+      "description": "Dispatch OrgX specialist agent work for an existing task or a new task with a title and instructions. spawn creates or runs delegated work; handoff reassigns an existing task to an agent type. Delegation can incur model costs and interact with connected services. Applies durable assignment, deadline, budget, acceptance, permission, and idempotency constraints.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "spawn",
+              "handoff"
+            ],
+            "default": "spawn",
+            "description": "Dispatch new agent work or hand off an existing task."
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title. REQUIRED for ad-hoc spawn (action=spawn without task_id) or action=classify without task_id. Used as the human-readable label of the spawned task."
+          },
+          "task_id": {
+            "type": "string",
+            "description": "Existing task UUID. REQUIRED for action=handoff. REQUIRED for action=spawn when spawning work for an already-created task. Either task_id or title (with instructions) must be provided for action=spawn."
+          },
+          "initiative_id": {
+            "type": "string",
+            "description": "Optional initiative UUID to scope the spawned task. Inferred from task_id when omitted."
+          },
+          "workspace_id": {
+            "type": "string",
+            "description": "Optional workspace UUID to scope the spawned task. Defaults to the MCP session's workspace."
+          },
+          "agent_type": {
+            "type": "string",
+            "description": "Target agent type/domain (e.g. \"engineering\", \"marketing\", \"design\"). REQUIRED for action=guard or action=handoff. Strongly recommended for action=spawn so the work routes to the right specialist."
+          },
+          "instructions": {
+            "type": "string",
+            "description": "Delegation instructions for the agent. REQUIRED for action=spawn when spawning ad-hoc (without task_id). Used to override the task description for action=handoff."
+          },
+          "model_tier": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "balanced",
+              "precision",
+              "local",
+              "sonnet",
+              "opus"
+            ],
+            "description": "Optional model tier override. Omit to let OrgX auto-route from task complexity. Legacy local/sonnet/opus are accepted for older clients."
+          },
+          "model": {
+            "type": "string",
+            "description": "Optional exact model identifier when the user explicitly selects one. Otherwise OrgX resolves the model from task, tier, provider, policy, and budget."
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "openai",
+              "anthropic",
+              "openrouter",
+              "groq",
+              "local"
+            ],
+            "description": "Optional provider preference. Use auto unless the user asks for a specific provider or a cost comparison selects one."
+          },
+          "runtime": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "cloud_claude",
+              "cloud_openai",
+              "managed_openai",
+              "managed_anthropic",
+              "local"
+            ],
+            "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
+          },
+          "deadline": {
+            "type": "string",
+            "description": "Optional ISO-8601 instant by which the work must finish (e.g. \"2026-09-28T17:00:00Z\"). Validated and recorded; free text is rejected because a constraint that cannot be evaluated is not a constraint."
+          },
+          "max_cost_usd": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Optional hard cost ceiling in USD for this dispatch. If the estimate exceeds it, OrgX blocks, downgrades, or requests approval before dispatch."
+          },
+          "budget_mode": {
+            "type": "string",
+            "enum": [
+              "cheapest_valid",
+              "balanced",
+              "highest_quality"
+            ],
+            "description": "Optional budget posture. Use cheapest_valid for controlled validation runs while reliability is being proven."
+          },
+          "max_parallel": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16,
+            "description": "Optional cap on concurrent workers for this dispatch. Work that shares a repository is usually integration-bound well below this: more workers add merge contention, not throughput."
+          },
+          "expected_artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional expected final-output labels. Declaring at least one adds an artifact contract to the run."
+          },
+          "effects": {
+            "type": "object",
+            "properties": {
+              "allowed": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+              },
+              "approval_required": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+              }
+            },
+            "additionalProperties": false,
+            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+          },
+          "acceptance": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Stable identifier for this check, referenced by the receipt. Reuse it across retries so the verdict stays comparable."
+                },
+                "statement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "description": "What must become true. One falsifiable sentence."
+                },
+                "verify": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "description": "How the check is evaluated. One of: { kind: \"command\", command, expect_exit } | { kind: \"http\", url, expect_status } | { kind: \"artifact\", artifact_type } | { kind: \"manual\", reviewer }."
+                },
+                "must_fail_before": {
+                  "type": "boolean",
+                  "description": "Default true. A check that already passes before the work starts is non-discriminating and is excluded from the acceptance verdict."
+                }
+              },
+              "required": [
+                "id",
+                "statement",
+                "verify"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 20,
+            "description": "Optional acceptance checks that define what counts as done. Declared BEFORE the work and hashed at dispatch. A check that already passes on the pre-state is reported as non-discriminating and excluded from the verdict."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Optional client-supplied idempotency key for safe retries. The same key returns the same dispatch result without re-running the work."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional OrgX session identifier."
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "agents:write"
+      ],
+      "readOnly": false,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
       ]
     },
     {
@@ -5444,6 +6142,132 @@
       "profiles": []
     },
     {
+      "id": "orgx_improve_plan",
+      "title": "Improve OrgX Plan",
+      "description": "Submit the current draft of a durable OrgX plan for critique and improvement. Updates planning session state using the supplied session ID and markdown plan content. Supports an idempotency key for retries.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Plan session UUID or orgx://plan_session/<uuid> URI."
+          },
+          "plan_content": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Current markdown plan draft to improve."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state."
+          }
+        },
+        "required": [
+          "session_id",
+          "plan_content"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
+      ]
+    },
+    {
+      "id": "orgx_list_pending_decisions",
+      "title": "List Pending OrgX Decisions",
+      "description": "Read pending OrgX decisions awaiting human review, optionally scoped to an initiative or workspace. Returns the decision context and review information without resolving decisions or dispatching work.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "initiative_id": {
+            "type": "string",
+            "description": "Optional initiative UUID to scope the decision. Used as filter when action=list_pending; used as parent when action=create."
+          },
+          "workspace_id": {
+            "type": "string",
+            "description": "Optional workspace UUID to scope the decision. Defaults to the MCP session's workspace."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional OrgX session identifier."
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "decisions:read"
+      ],
+      "readOnly": true,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
+      ]
+    },
+    {
+      "id": "orgx_open_decision_review",
+      "title": "Open OrgX Decision Review",
+      "description": "Return the authenticated human review URL for a pending OrgX decision, with an approval or rejection intent. Requires a decision ID; rejection also requires a reason. This operation does not submit the rationale, settle the decision, approve agent work, or resume a run. Final judgment remains in the human review session.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "description": "Requested review intent, without resolving the decision."
+          },
+          "decision_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Pending decision UUID."
+          },
+          "reason": {
+            "type": "string",
+            "description": "REQUIRED for action=reject before returning the human-session review URL. MCP does not persist or submit this reason."
+          },
+          "note": {
+            "type": "string",
+            "description": "Optional compatibility field for action=approve. MCP does not persist it; enter the final rationale in the human review session."
+          },
+          "workspace_id": {
+            "type": "string",
+            "description": "Optional workspace UUID to scope the decision. Defaults to the MCP session's workspace."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional OrgX session identifier."
+          }
+        },
+        "required": [
+          "action",
+          "decision_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "decisions:write"
+      ],
+      "readOnly": true,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
+      ]
+    },
+    {
       "id": "orgx_poll_attention",
       "title": "Poll OrgX Attention",
       "description": "Read the durable owner response and continuation state for orgx_request_attention. USE WHEN: the client has a preserved attention_id and must determine whether the owner answered without creating another request. When resolved=true, apply the answer to the preserved session. NEXT: call orgx_ack_attention with state=resuming, then state=resumed only after native execution actually restarts. Read-only.",
@@ -5507,6 +6331,136 @@
         "planner",
         "executor",
         "observer"
+      ]
+    },
+    {
+      "id": "orgx_read_plan",
+      "title": "Read OrgX Plan",
+      "description": "Read a durable OrgX plan session by UUID or plan URI. When no session ID is supplied, returns the most recent active session in the authenticated workspace. Does not edit or complete the plan.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "Plan session UUID or orgx://plan_session/<uuid> URI. Defaults to the most recent active session."
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:read"
+      ],
+      "readOnly": true,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
+      ]
+    },
+    {
+      "id": "orgx_record_decision",
+      "title": "Record OrgX Decision",
+      "description": "Create or remember a durable OrgX decision with its rationale and provenance. create requires a title and decision text; remember accepts decision text and an optional title. Can associate the record with an initiative and deduplicate retries with an idempotency key. Does not approve a pending decision.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "create",
+              "remember"
+            ],
+            "default": "create",
+            "description": "Create a named decision or remember decision text."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short title for the decision. REQUIRED for action=create."
+          },
+          "decision": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Decision text to record."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Optional one-line summary used in lists. Falls back to title when omitted."
+          },
+          "context": {
+            "type": "string",
+            "description": "Background context / rationale that led to the decision. Recommended for action=create to capture provenance."
+          },
+          "initiative_id": {
+            "type": "string",
+            "description": "Optional initiative UUID to scope the decision. Used as filter when action=list_pending; used as parent when action=create."
+          },
+          "workspace_id": {
+            "type": "string",
+            "description": "Optional workspace UUID to scope the decision. Defaults to the MCP session's workspace."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Strongly recommended client-supplied idempotency key for action=create or action=remember. Same key returns the same result without duplicating state."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional OrgX session identifier."
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "decisions:write"
+      ],
+      "readOnly": false,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
+      ]
+    },
+    {
+      "id": "orgx_record_plan_edit",
+      "title": "Record OrgX Plan Edit",
+      "description": "Append an edit summary to a durable OrgX planning session. Records the change history without completing the plan. Requires the session ID and a description of the edit.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Plan session UUID or orgx://plan_session/<uuid> URI."
+          },
+          "edit_summary": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Summary of the planning change."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state."
+          }
+        },
+        "required": [
+          "session_id",
+          "edit_summary"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
       ]
     },
     {
@@ -6009,6 +6963,47 @@
       ]
     },
     {
+      "id": "orgx_start_plan",
+      "title": "Start OrgX Plan",
+      "description": "Create a durable OrgX planning session for a named feature or initiative, optionally seeded with markdown plan content. The plan remains available across sessions and agents. Supports an idempotency key to avoid duplicate sessions.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "feature_name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Feature or plan name."
+          },
+          "initial_plan": {
+            "type": "string",
+            "description": "Markdown plan content to seed the new session. Optional on action=start; the session can also be started empty and filled via improve/record_edit."
+          },
+          "workspace_id": {
+            "type": "string",
+            "description": "Workspace UUID to scope action=start plan sessions. Defaults to current session workspace when omitted."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state."
+          }
+        },
+        "required": [
+          "feature_name"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
+      ]
+    },
+    {
       "id": "orgx_tail",
       "title": "Tail Material Context Changes",
       "description": "Use during a long-running session to read accepted material state changes since orgx_bootstrap. Pass the exact capsule_id and as_of_global_sequence returned by bootstrap. Returns only the currently ledger-backed allowlist in ascending global-sequence order: accepted/superseded decisions, authority lease changes, blocker changes, and metric-expectation registration/resolution. It explicitly reports material classes that are not ledger-backed yet. Read-only. USE WHEN: the session may have outlived its bootstrap context. NEXT: use next_after_sequence while has_more=true to inspect the feed, then bootstrap current context before consequential action. The capsule base is not verified; this feed cannot establish complete or coherent current state. DO NOT USE: as a substitute for orgx_bootstrap or to infer applied learning, constraints, or incidents that the coverage boundary marks unavailable.",
@@ -6061,6 +7056,103 @@
         "commander",
         "executor",
         "observer"
+      ]
+    },
+    {
+      "id": "orgx_update_entity",
+      "title": "Update OrgX Entity",
+      "description": "Update the content of one existing OrgX workspace, initiative, workstream, milestone, task, objective, or skill selected by type and ID. Supports titles, summaries, descriptions, priority, due date, objectives, and metadata. The patch overwrites only supplied fields. It cannot change workflow status, approve work, or mark completion.",
+      "category": "Other",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "workspace",
+              "initiative",
+              "workstream",
+              "milestone",
+              "task",
+              "objective",
+              "skill"
+            ],
+            "description": "Work record type whose content should change."
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Existing entity UUID."
+          },
+          "fields": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "summary": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "priority": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "urgent"
+                ]
+              },
+              "due_date": {
+                "type": "string"
+              },
+              "goal_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "metadata": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            },
+            "additionalProperties": false,
+            "description": "Nonempty content patch. Workflow status, approval, ownership, and completion fields are not accepted."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Client-generated retry key. Creates deduplicate by key; updates transport the key outside validated entity fields."
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Optional OrgX session identifier."
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "fields"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "decisions:write",
+        "agents:write",
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "claude_directory",
+      "profiles": [
+        "claude-directory"
       ]
     },
     {
@@ -6266,7 +7358,8 @@
       "source": "inline",
       "profiles": [
         "v2",
-        "chatgpt"
+        "chatgpt",
+        "claude-directory"
       ]
     },
     {

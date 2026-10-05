@@ -131,15 +131,10 @@ const LIVE_REFRESH_ONLY =
 export const WIDGET_CALL_PROFILE_EXCEPTIONS: Readonly<
   Record<string, Readonly<Record<string, string>>>
 > = Object.freeze({
-  'claude-directory': {
-    orgx_command_status:
-      'Anthropic directory review surface stays at its seven reviewed read tools.',
-    resume_agent_run:
-      'Directory review surface is non-destructive; resuming a run is a write.',
-  },
+  'claude-directory': {},
   'read-only': {
     orgx_command_status:
-      'Fail-closed fallback mirrors the seven-tool directory surface.',
+      'Fail-closed fallback keeps its seven informational tools.',
     resume_agent_run: 'Fail-closed fallback has no write tools.',
   },
   'claude-plugin': {

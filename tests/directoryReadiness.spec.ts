@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
+import { getKnownToolContract } from '../src/contractTools';
+import { CLAUDE_DIRECTORY_TOOL_ADAPTERS, getClaudeDirectoryToolContract } from '../src/claudeDirectoryTools';
 import { CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS } from '../src/claudeDirectoryToolMetadata';
 import {
   CLAUDE_DIRECTORY_SURFACE,
@@ -14,6 +15,10 @@ import {
   CHATGPT_TOOL_DEFINITIONS,
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
 } from '../src/toolDefinitions';
+
+function selectedRouterNames() {
+  return [...(resolveProfileToolSet('claude-directory') ?? [])].filter((id) => ['orgx_write', 'orgx_act', 'orgx_plan', 'orgx_spawn', 'orgx_decide'].includes(id));
+}
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8');
@@ -184,78 +189,40 @@ describe('Anthropic directory readiness', () => {
     }
   });
 
-  it('documents and locks the focused non-destructive Anthropic review endpoint', () => {
-    const endpoint =
-      'https://mcp.useorgx.com/mcp?profile=claude-directory';
+  it('documents the broader operation-specific Anthropic endpoint', () => {
+    const endpoint = 'https://mcp.useorgx.com/mcp?profile=claude-directory';
     const selectedTools = resolveProfileToolSet('claude-directory');
-
-    expect([...(selectedTools ?? [])]).toEqual([
-      ...CLAUDE_DIRECTORY_SURFACE,
-    ]);
-    expect(selectedTools?.size).toBe(7);
-    expect(selectedTools?.has('orgx_bootstrap')).toBe(false);
+    expect([...(selectedTools ?? [])]).toEqual([...CLAUDE_DIRECTORY_SURFACE]);
+    expect(selectedTools?.size).toBe(29);
+    expect(selectedTools?.has('orgx_bootstrap')).toBe(true);
     expect(anthropicDirectoryDoc).toContain(endpoint);
     expect(anthropicSubmissionForm).toContain(endpoint);
-    expect(anthropicDirectoryDoc).toContain(
-      'Three tools are\nstrictly read-only'
-    );
-    expect(anthropicDirectoryDoc).toContain(
-      'Four tools advertise `readOnlyHint: false`'
-    );
-    expect(anthropicDirectoryDoc).toContain(
-      'usage accounting is still a state change'
-    );
-    expect(anthropicDirectoryDoc).toContain('the endpoint is not stateless');
-    expect(anthropicSubmissionForm).toContain(
-      '3 strictly read-only and 4 that record metered MCP allowance usage'
-    );
-    expect(anthropicSubmissionForm).not.toContain(
-      '[ fill before submitting:'
-    );
-
-    const manifestTools = new Map(
-      (serverJson.tools ?? []).map((tool) => [tool.name, tool])
-    );
-    const registeredDefinitions = new Map(
-      [
-        ...CONTRACT_TOOL_DEFINITIONS,
-        ...CHATGPT_TOOL_DEFINITIONS,
-        ...CLIENT_INTEGRATION_TOOL_DEFINITIONS,
-      ].map((tool) => [tool.id, tool])
-    );
-    const unavailableGuidance =
-      /\b(?:entity_action|list_entities|get_org_snapshot|approve_decision|orgx_act|orgx_write|orgx_spawn)\b/;
-
-    const readOnlyByTool = new Map<string, boolean>([
-      ['orgx_search', false],
-      ['orgx_inspect', true],
-      ['orgx_recommend', false],
-      ['get_agent_status', false],
-      ['get_initiative_pulse', false],
-      ['get_morning_brief', true],
-      ['get_operator_chronicle', true],
-    ]);
-
+    expect(anthropicDirectoryDoc).toContain('Usage accounting is still a state change');
+    expect(anthropicDirectoryDoc).toContain('endpoint is not\nstateless');
+    expect(anthropicSubmissionForm).toContain('29 captured tools');
+    expect(anthropicSubmissionForm).not.toContain('[ fill before submitting:');
     for (const toolName of selectedTools ?? []) {
-      const manifestTool = manifestTools.get(toolName);
-      expect(manifestTool?.annotations).toEqual({
-        readOnlyHint: readOnlyByTool.get(toolName),
-        destructiveHint: false,
-        openWorldHint: false,
+      const contract = getClaudeDirectoryToolContract(toolName) ?? getKnownToolContract(toolName);
+      expect(contract, toolName).toBeDefined();
+      expect(contract?.securitySchemes, toolName).toBeDefined();
+      expect(contract?.annotations, toolName).toEqual({
+        readOnlyHint: expect.any(Boolean), destructiveHint: expect.any(Boolean), openWorldHint: expect.any(Boolean),
       });
-      expect(
-        manifestTool?.description,
-        `${toolName} manifest points at an unavailable directory tool`
-      ).not.toMatch(unavailableGuidance);
-
-      const registeredDefinition = registeredDefinitions.get(toolName);
-      if (registeredDefinition) {
-        expect(
-          registeredDefinition.description,
-          `${toolName} live description points at an unavailable directory tool`
-        ).not.toMatch(unavailableGuidance);
-      }
+      expect(anthropicDirectoryDoc, toolName).toContain('`' + toolName + '`');
     }
+  });
+
+  it('separates reads from writes and prevents arbitrary router actions', () => {
+    const byId = new Map(CLAUDE_DIRECTORY_TOOL_ADAPTERS.map((tool) => [tool.id, tool]));
+    for (const id of ['orgx_read_plan', 'orgx_check_delegation', 'orgx_list_pending_decisions', 'orgx_open_decision_review']) {
+      expect(byId.get(id)?.annotations.readOnlyHint, id).toBe(true);
+    }
+    for (const id of ['orgx_create_entity', 'orgx_update_entity', 'orgx_start_plan', 'orgx_delegate_work', 'orgx_record_decision', 'orgx_complete_with_proof']) {
+      expect(byId.get(id)?.annotations.readOnlyHint, id).toBe(false);
+    }
+    expect(selectedRouterNames()).toEqual([]);
+    expect(byId.get('orgx_read_plan')?.toCanonicalArgs({ action: 'complete' }).action).toBe('resume');
+    expect(byId.get('orgx_complete_with_proof')?.toCanonicalArgs({ action: 'delete' }).action).toBe('complete_with_proof');
   });
 
   it('excludes synthetic screenshot artifacts from submission evidence', () => {

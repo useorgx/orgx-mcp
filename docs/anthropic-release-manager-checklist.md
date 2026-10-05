@@ -34,17 +34,15 @@ Then verify the reviewer environment:
 3. Confirm `workspaceIsClean === true`
 4. Confirm the seeded counts still match the expected baseline
 5. Connect to `https://mcp.useorgx.com/mcp?profile=claude-directory`
-6. Confirm `tools/list` exposes exactly the seven documented tools, with three
-   `readOnlyHint: true` and four `readOnlyHint: false`
-7. Confirm `prompts/list` is empty and `resources/list` exposes only the six
-   selected read-only widget families
+6. Confirm `tools/list` exposes the 29 documented tools for an Operate grant, with titles and correct hints; a Read grant excludes writes
+7. Confirm `prompts/list` is empty and `resources/list` exposes only the eight selected widget families
 8. Confirm an invalid-Origin POST returns `403`, trusted Claude Origin receives
    `Access-Control-Allow-Origin: https://claude.ai`, and no-Origin CLI traffic
    reaches the normal OAuth challenge
 
 ## Claude smoke
 
-Use the reviewer account in Claude and run the informational prompt matrix from
+Use the reviewer account in Claude and run the full workflow prompt matrix from
 [docs/anthropic-reviewer-runbook.md](./anthropic-reviewer-runbook.md).
 
 Capture authenticated post-deploy evidence for:
@@ -70,10 +68,13 @@ Confirm all of the following are ready:
 - privacy, support, and security docs reachable
 - reviewer runbook linked in the internal handoff
 - one support owner assigned during the review window
-- directory scan contains no business-record mutation, dispatch, external-action,
-  or destructive tools; the four documented usage-recording tools remain
-  `readOnlyHint: false`
-- directory scan contains no mutation prompts, skill packs, or unrelated widgets
+- directory scan separates reads from writes, entity creation from update,
+  delegation checks from dispatch, and human decision review from recording;
+  safety hints and OAuth checks match the real side effects
+- directory scan contains no incompatible prompts, skill packs, or unrelated widgets
+- every advertised operation has an authenticated functional receipt, including
+  bounded reviewer writes, scope denial, idempotent retries, and proof readback
+- paid execution tests have an explicit cap; estimates are not dispatch proof
 - HTTPS Origin validation receipt captured for invalid, trusted, and no-Origin requests
 - 3–5 authenticated post-deploy response PNGs have been captured from real
   Claude runs, are at least 1000 px wide, are cropped to the app response only,

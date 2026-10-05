@@ -32,7 +32,11 @@ import { AUTHORIZATION_PRESETS } from '../src/authorizationPolicy';
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
 import { OPENAI_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas';
 import { WIDGET_RESOURCES } from '../src/toolDefinitions';
-import { CHATGPT_PUBLIC_SURFACE, TOOL_PROFILE_NAMES } from '../src/toolProfiles';
+import {
+  CHATGPT_PUBLIC_SURFACE,
+  CLAUDE_DIRECTORY_SURFACE,
+  TOOL_PROFILE_NAMES,
+} from '../src/toolProfiles';
 import { isModelVisibleToolMeta } from '../src/toolVisibility';
 import {
   CHATGPT_REACHABLE_PROFILES,
@@ -107,7 +111,7 @@ const INITIATIVE_ID = '22222222-2222-4222-8222-222222222222';
 
 /** Profiles a client can connect with (full is internal-only). */
 const EXTERNAL_PROFILES = TOOL_PROFILE_NAMES.filter((name) => name !== 'full');
-const READ_PRESET_PROFILES = new Set(['claude-directory', 'read-only']);
+const READ_PRESET_PROFILES = new Set(['read-only']);
 
 type ListedTool = {
   name: string;
@@ -115,20 +119,25 @@ type ListedTool = {
   description?: string;
   annotations?: Record<string, unknown>;
   outputSchema?: unknown;
+  inputSchema?: { properties?: Record<string, unknown> };
   _meta?: Record<string, unknown>;
 };
 
-async function connectProfile(profile: string, clientName = 'surface-contract') {
+async function connectProfile(
+  profile: string,
+  clientName = 'surface-contract',
+  grantedScopes?: readonly string[]
+) {
   const { OrgXMcp } = await import('../src/index');
   const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
   worker.props = {
     profile,
     userId: 'surface-contract-user',
     orgxUserId: '33333333-3333-4333-8333-333333333333',
-    scope: (READ_PRESET_PROFILES.has(profile)
+    scope: (grantedScopes ?? (READ_PRESET_PROFILES.has(profile)
       ? AUTHORIZATION_PRESETS.read.scopes
       : AUTHORIZATION_PRESETS.operate.scopes
-    ).join(' '),
+    )).join(' '),
     workspace_id: WORKSPACE_ID,
   };
   worker.ctx = {
@@ -261,6 +270,11 @@ async function listProfile(profile: string): Promise<ListedTool[]> {
 }
 
 describe('one public contract per profile', () => {
+  it('does not request conversation tracking metadata on the directory profile', async () => {
+    for (const tool of await listProfile('claude-directory')) {
+      expect(tool.inputSchema?.properties, tool.name).not.toHaveProperty('_context');
+    }
+  });
   it.each(EXTERNAL_PROFILES)(
     '%s: bootstrap reports exactly the tools/list, split by who may call them',
     async (profile) => {
@@ -298,6 +312,14 @@ describe('one public contract per profile', () => {
         for (const tool of tools) {
           expect(payload.visible_tools, `${profile} ${workflow}`).toContain(tool);
         }
+      }
+      if (profile === 'claude-directory') {
+        expect(payload.recommended_workflows.plan_feature).toContain('orgx_start_plan');
+        expect(payload.recommended_workflows.execute_task).toContain('orgx_delegate_work');
+        expect(payload.recommended_workflows.human_decision_review).toEqual([
+          'orgx_list_pending_decisions', 'orgx_open_decision_review',
+        ]);
+        expect(payload.recommended_workflows.review_and_prove_work).toContain('orgx_complete_with_proof');
       }
     },
     30000
@@ -385,12 +407,40 @@ describe('one public contract per profile', () => {
 
   it('claude-directory: every listed tool supplies the title annotation required by the directory scanner', async () => {
     const listed = await listProfile('claude-directory');
-    expect(listed).toHaveLength(7);
+    expect(listed.map((tool) => tool.name).sort()).toEqual(
+      [...CLAUDE_DIRECTORY_SURFACE].sort()
+    );
     for (const tool of listed) {
       expect(tool.title?.trim(), tool.name).toBeTruthy();
       expect(tool.annotations?.title, tool.name).toBe(tool.title);
       expect(tool.description?.length, tool.name).toBeGreaterThan(0);
       expect(tool.description, tool.name).not.toMatch(/NEXT:|DO NOT USE|USE WHEN:|use `?orgx_/i);
+    }
+  }, 30000);
+
+  it('claude-directory: a read grant discovers only informational and non-dispatching operations', async () => {
+    const { client, worker } = await connectProfile(
+      'claude-directory', 'directory-read-grant', AUTHORIZATION_PRESETS.read.scopes
+    );
+    try {
+      const listed = (await client.listTools()).tools.map((tool) => tool.name).sort();
+      expect(listed).toEqual([
+        'orgx_search', 'orgx_inspect', 'orgx_recommend', 'get_agent_status',
+        'get_initiative_pulse', 'get_morning_brief', 'get_operator_chronicle',
+        'orgx_bootstrap', 'check_execution_readiness', 'orgx_command_status',
+        'review_artifact', 'orgx_read_plan', 'orgx_check_delegation',
+        'orgx_list_pending_decisions',
+      ].sort());
+      for (const name of [
+        'orgx_create_entity', 'orgx_update_entity', 'orgx_start_plan',
+        'orgx_delegate_work', 'orgx_record_decision', 'orgx_attach',
+        'orgx_submit_receipt', 'orgx_complete_with_proof', 'manage_lifecycle',
+        'resume_agent_run', 'orgx_open_decision_review',
+      ]) {
+        expect(listed, `${name} must require a write grant`).not.toContain(name);
+      }
+    } finally {
+      await Promise.allSettled([client.close(), worker.server.close()]);
     }
   }, 30000);
 

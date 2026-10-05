@@ -16,6 +16,7 @@
  */
 
 import serverManifest from '../server.json';
+import { CLAUDE_DIRECTORY_ADAPTER_IDS } from './claudeDirectoryTools';
 
 export interface ToolProfile {
   /** Human-readable profile purpose */
@@ -129,14 +130,10 @@ export const CHATGPT_PUBLIC_SURFACE = [
 ] as const;
 
 /**
- * Anthropic Connector Directory review surface.
- *
- * Each exposed operation is non-destructive and closed-world. Three tools are
- * strictly read-only; four read data while recording metered MCP allowance
- * usage. Keep business-record writes, lifecycle mutations, delegation, and approval
- * operations on the general-purpose profiles instead of this review endpoint.
+ * Stable informational baseline shared by the fail-closed fallback and the
+ * Claude Code plugin. Directory expansion must not widen either profile.
  */
-export const CLAUDE_DIRECTORY_SURFACE = [
+export const INFORMATIONAL_SURFACE = [
   'orgx_search',
   'orgx_inspect',
   'orgx_recommend',
@@ -147,13 +144,32 @@ export const CLAUDE_DIRECTORY_SURFACE = [
 ] as const;
 
 /**
- * Claude Code plugin surface: the directory read set plus the lean write set
+ * Anthropic directory workflows. Read and write branches of canonical routers
+ * are exposed through operation-specific adapters. Compatibility aliases and
+ * internal coordination transports stay outside the model-facing inventory.
+ */
+export const CLAUDE_DIRECTORY_SURFACE = [
+  ...INFORMATIONAL_SURFACE,
+  'orgx_bootstrap',
+  'check_execution_readiness',
+  'orgx_command_status',
+  'review_artifact',
+  'orgx_attach',
+  'orgx_submit_receipt',
+  'manage_lifecycle',
+  ...CLAUDE_DIRECTORY_ADAPTER_IDS,
+  // Human Resume button only; hidden from model discovery.
+  'resume_agent_run',
+] as const;
+
+/**
+ * Claude Code plugin surface: the stable informational set plus the lean write set
  * the plugin needs to report real work (activity, receipts, artifacts,
- * decisions) and bind a session via bootstrap. Unlike `claude-directory`,
- * this profile keeps normal session persistence and telemetry.
+ * decisions) and bind a session via bootstrap. This profile keeps normal
+ * session persistence and telemetry.
  */
 export const CLAUDE_PLUGIN_SURFACE = [
-  ...CLAUDE_DIRECTORY_SURFACE,
+  ...INFORMATIONAL_SURFACE,
   'orgx_command_status',
   'orgx_controller_status',
   'orgx_emit_activity',
@@ -166,8 +182,8 @@ export const CLAUDE_PLUGIN_SURFACE = [
 ] as const;
 
 /**
- * Fail-closed fallback for unknown profile names. Same seven read tools as
- * the Anthropic directory surface, but WITHOUT the directory profile's
+ * Fail-closed fallback for unknown profile names. Seven informational tools,
+ * WITHOUT the directory profile's
  * review-mode side effects (suppressed session persistence and telemetry),
  * so misconfigured clients stay attributable while gaining no write access.
  */
@@ -190,18 +206,18 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
   },
   'claude-directory': {
     description:
-      'Anthropic Connector Directory review surface: seven focused, non-destructive, closed-world tools; three are read-only and four record metered MCP allowance usage',
+      'Anthropic Connector Directory workflows: information retrieval, durable planning, entity creation and updates, bounded delegation, human decision review, linked artifacts, proof receipts, and lifecycle control with separate read and write operations',
     tools: [...CLAUDE_DIRECTORY_SURFACE],
   },
   'claude-plugin': {
     description:
-      'Claude Code plugin surface: the directory read set plus lean writes for activity, receipts, artifact attach, decisions, and session bootstrap',
+      'Claude Code plugin surface: the informational read set plus lean writes for activity, receipts, artifact attach, decisions, and session bootstrap',
     tools: [...CLAUDE_PLUGIN_SURFACE],
   },
   [READ_ONLY_FALLBACK_PROFILE]: {
     description:
       'Most restrictive read-only surface. Unknown profile names fail closed here so a typo never widens tool access',
-    tools: [...CLAUDE_DIRECTORY_SURFACE],
+    tools: [...INFORMATIONAL_SURFACE],
   },
   memory: {
     description:

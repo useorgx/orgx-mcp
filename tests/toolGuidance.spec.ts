@@ -4,8 +4,52 @@ import {
   canonicalizeToolCallGuidance,
   sanitizeToolResultGuidance,
 } from '../src/toolGuidance';
+import { buildBootstrapToolRouting } from '../src/bootstrapPayload';
+import { CLAUDE_DIRECTORY_SURFACE } from '../src/toolProfiles';
 
 describe('tool result guidance', () => {
+  it('preserves only validated directory operation calls when explicitly enabled', () => {
+    const visible = new Set(['orgx_read_plan', 'orgx_update_entity', 'orgx_check_delegation']);
+    const result = sanitizeToolResultGuidance({ structuredContent: {
+      suggested_next_calls: [
+        { tool: 'orgx_read_plan', args: {} },
+        { tool: 'orgx_update_entity', args: { type: 'task', id: 'task-1', fields: { title: 'Revised' } } },
+        { tool: 'orgx_update_entity', args: { type: 'task', id: 'task-1', fields: { status: 'done' } } },
+        { tool: 'orgx_check_delegation', args: { action: 'guard', agent_type: 'engineering' } },
+        { tool: 'orgx_delegate_work', args: { action: 'spawn', title: 'Hidden write', instructions: 'Do work' } },
+        { tool: 'orgx_read_plan', args: { action: 'complete', plan_content: 'Cannot widen read' } },
+      ],
+    } }, visible, true);
+    expect(result.structuredContent.suggested_next_calls).toEqual([
+      { tool: 'orgx_read_plan', args: {} },
+      { tool: 'orgx_update_entity', args: { type: 'task', id: 'task-1', fields: { title: 'Revised' } } },
+    ]);
+  });
+
+  it('keeps directory bootstrap workflows intact through the result sanitizer', () => {
+    const visible = CLAUDE_DIRECTORY_SURFACE.filter((tool) => tool !== 'resume_agent_run');
+    const routing = buildBootstrapToolRouting({ requestedProfile: 'claude-directory', visibleTools: visible });
+    const result = sanitizeToolResultGuidance({ structuredContent: routing }, new Set(visible), true);
+    expect(result.structuredContent.recommended_workflows).toEqual(routing.recommended_workflows);
+    expect(result.structuredContent.recommended_workflows.plan_feature).toContain('orgx_start_plan');
+    expect(result.structuredContent.recommended_workflows.execute_task).toContain('orgx_delegate_work');
+  });
+
+  it('never advertises directory-only operations or widget-only calls in other profile guidance', () => {
+    const result = { structuredContent: {
+      recommended_workflows: { continue: ['orgx_search', 'orgx_start_plan', 'resume_agent_run'] },
+      next_call: { tool: 'orgx_read_plan', args: {} },
+    } };
+    const visible = new Set(['orgx_search', 'orgx_start_plan', 'orgx_read_plan', 'resume_agent_run']);
+    expect(sanitizeToolResultGuidance(result, visible).structuredContent).toEqual({
+      recommended_workflows: { continue: ['orgx_search'] }, next_call: null,
+    });
+    expect(sanitizeToolResultGuidance(result, visible, true).structuredContent).toEqual({
+      recommended_workflows: { continue: ['orgx_search', 'orgx_start_plan'] },
+      next_call: { tool: 'orgx_read_plan', args: {} },
+    });
+  });
+
   it('preserves scored next actions while sanitizing their nested call breadcrumbs', () => {
     const recommendation = { key: 'task:42', label: 'Review the release', ready: false,
       initiativeId: 'initiative-1', nextTaskId: 'task-42', score: 13.5,

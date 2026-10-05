@@ -11,6 +11,7 @@ import {
   STREAM_TOOL_DEFINITIONS,
 } from '../src/toolDefinitions';
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
+import { CLAUDE_DIRECTORY_TOOL_ADAPTERS } from '../src/claudeDirectoryTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
 import { PANEL_SNAPSHOT_TOOL_CONTRACT } from '../src/panelSurface';
 import {
@@ -45,6 +46,7 @@ const ALL_DEFINITIONS: ReadonlyArray<ReadonlyArray<unknown>> = [
   STREAM_TOOL_DEFINITIONS,
   CLIENT_INTEGRATION_TOOL_DEFINITIONS,
   CONTRACT_TOOL_DEFINITIONS,
+  CLAUDE_DIRECTORY_TOOL_ADAPTERS,
   FLYWHEEL_TOOL_DEFINITIONS,
 ];
 
@@ -158,11 +160,10 @@ describe('tool discovery snapshot', () => {
   });
 
   it('keeps bootstrap on stateful profiles and off the read-only surfaces', () => {
-    // Bootstrap persists workspace/session continuity, so the independently
-    // focused Anthropic review profile and the fail-closed read-only fallback
-    // must both exclude it.
+    // The fail-closed fallback excludes bootstrap. Claude directory now
+    // binds explicit workflow context while suppressing optional persistence.
     const REQUIRED = ['orgx_bootstrap'];
-    const READ_ONLY_PROFILES = new Set(['claude-directory', 'read-only']);
+    const READ_ONLY_PROFILES = new Set(['read-only']);
     const profileNames = Object.keys(TOOL_PROFILES).filter((n) => n !== 'full');
     for (const profileName of profileNames) {
       const allowed = resolveProfileToolSet(profileName);

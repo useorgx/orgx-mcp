@@ -6,6 +6,20 @@ import { sanitizeToolResultGuidance } from './toolGuidance';
 import { prepareSearchResult, type SearchDeliveryObservation } from './searchResultDelivery';
 import { withConsistentToolVisibility } from './toolVisibility';
 
+function directoryToolMeta(name: string, meta: Record<string, unknown> | undefined) {
+  if (name !== 'review_artifact') return meta;
+  // This profile returns the review envelope without an interactive widget:
+  // its shared widget calls broad mutation routers that Claude does not list.
+  const next = { ...meta };
+  delete next['openai/outputTemplate'];
+  delete next['ui/resourceUri'];
+  if (next.ui && typeof next.ui === 'object') {
+    next.ui = { ...(next.ui as Record<string, unknown>) };
+    delete (next.ui as Record<string, unknown>).resourceUri;
+  }
+  return next;
+}
+
 /**
  * Apply profile-aware guidance filtering to subsequently registered tools.
  *
@@ -52,7 +66,9 @@ export function installToolResultGuidanceWrapper(
         : {}),
       _meta: withConsistentToolVisibility(
         name,
-        config._meta as Record<string, unknown> | undefined
+        includeDirectoryMetadata
+          ? directoryToolMeta(name, config._meta as Record<string, unknown> | undefined)
+          : config._meta as Record<string, unknown> | undefined
       ),
     };
     const nextConfig =
@@ -65,7 +81,8 @@ export function installToolResultGuidanceWrapper(
           | { structuredContent?: unknown }
           | null
           | undefined,
-        allowedTools
+        allowedTools,
+        includeDirectoryMetadata
       ), (observation) => onSearchResult?.(name, observation));
       if (!result || !searchContext || !['orgx_search', 'query_org_memory'].includes(name)) return result;
       try {

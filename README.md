@@ -831,9 +831,11 @@ pnpm directory:preflight
 ```
 
 Directory review endpoint:
-`https://mcp.useorgx.com/mcp?profile=claude-directory` (focused,
-non-destructive, closed-world surface). The general MCP endpoint retains the
-broader OrgX capabilities.
+`https://mcp.useorgx.com/mcp?profile=claude-directory` exposes 28 model-visible
+operations plus one human widget action. Reads and writes have separate tools
+for planning, work records, delegation, decisions, artifacts, and proof.
+An OAuth Read grant excludes write operations; Operate grants permit the full
+workflow. Decision approval remains in the human OrgX review session.
 
 Operational reviewer check:
 

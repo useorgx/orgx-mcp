@@ -1,4 +1,5 @@
 import {
+  CLAUDE_DIRECTORY_SURFACE,
   SERVER_MANIFEST_VERSION,
   V2_CORE_PUBLIC_SURFACE,
   V2_PUBLIC_SURFACE,
@@ -108,6 +109,7 @@ export function resolveBootstrapSessionContext(
 export const V2_PUBLIC_TOOL_IDS = V2_PUBLIC_SURFACE;
 
 const CANONICAL_GUIDANCE_TOOL_IDS = new Set<string>(V2_CORE_PUBLIC_SURFACE);
+const DIRECTORY_GUIDANCE_TOOL_IDS = new Set<string>(CLAUDE_DIRECTORY_SURFACE);
 
 export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
   string,
@@ -176,12 +178,36 @@ export const BOOTSTRAP_RECOMMENDED_WORKFLOWS = {
   ],
 } as const;
 
+/** Directory workflows use its operation-specific read/write contracts. */
+export const CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS = {
+  plan_feature: [
+    'orgx_bootstrap', 'orgx_read_plan', 'orgx_start_plan', 'orgx_improve_plan',
+    'orgx_record_plan_edit', 'orgx_complete_plan', 'orgx_create_entity',
+  ],
+  scaffold_hierarchy: [
+    'orgx_bootstrap', 'orgx_search', 'orgx_create_entity', 'orgx_inspect',
+    'orgx_update_entity', 'orgx_submit_receipt',
+  ],
+  execute_task: [
+    'orgx_bootstrap', 'orgx_search', 'orgx_inspect', 'check_execution_readiness',
+    'orgx_check_delegation', 'orgx_delegate_work', 'get_agent_status',
+    'orgx_attach', 'orgx_complete_with_proof', 'orgx_submit_receipt',
+  ],
+  record_decision: ['orgx_search', 'orgx_record_decision', 'orgx_inspect'],
+  human_decision_review: ['orgx_list_pending_decisions', 'orgx_open_decision_review'],
+  review_and_prove_work: [
+    'review_artifact', 'orgx_attach', 'orgx_complete_with_proof', 'orgx_submit_receipt',
+  ],
+  control_execution: ['get_agent_status', 'manage_lifecycle', 'orgx_command_status'],
+} as const;
+
 function isVisibleCanonicalTool(
   tool: string,
-  visibleTools: ReadonlySet<string> | null
+  visibleTools: ReadonlySet<string> | null,
+  profile?: string
 ): boolean {
   return (
-    CANONICAL_GUIDANCE_TOOL_IDS.has(tool) &&
+    (profile === 'claude-directory' ? DIRECTORY_GUIDANCE_TOOL_IDS : CANONICAL_GUIDANCE_TOOL_IDS).has(tool) &&
     (visibleTools === null || visibleTools.has(tool))
   );
 }
@@ -193,16 +219,20 @@ export function getBootstrapSafeFirstCalls(
   const calls =
     BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE[profile] ??
     BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE.v2;
-  return calls.filter((call) => isVisibleCanonicalTool(call.tool, visibleTools));
+  return calls.filter((call) => isVisibleCanonicalTool(call.tool, visibleTools, profile));
 }
 
 export function getBootstrapRecommendedWorkflows(
-  visibleTools: ReadonlySet<string> | null = null
+  visibleTools: ReadonlySet<string> | null = null,
+  profile?: string
 ): Record<string, string[]> {
+  const workflows = profile === 'claude-directory'
+    ? CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS
+    : BOOTSTRAP_RECOMMENDED_WORKFLOWS;
   return Object.fromEntries(
-    Object.entries(BOOTSTRAP_RECOMMENDED_WORKFLOWS).map(([name, tools]) => [
+    Object.entries(workflows).map(([name, tools]) => [
       name,
-      tools.filter((tool) => isVisibleCanonicalTool(tool, visibleTools)),
+      tools.filter((tool: string) => isVisibleCanonicalTool(tool, visibleTools, profile)),
     ])
   );
 }
@@ -242,7 +272,7 @@ export function buildBootstrapToolRouting(params: {
       resolved.name,
       visibleToolSet
     ),
-    recommended_workflows: getBootstrapRecommendedWorkflows(visibleToolSet),
+    recommended_workflows: getBootstrapRecommendedWorkflows(visibleToolSet, resolved.name),
     visible_tools_count: visibleTools.length,
     visible_tools: visibleTools,
     // visible_tools + widget_only_tools is exactly this connection's tools/list.

@@ -29,6 +29,7 @@ import {
   LIFECYCLE_ENTITY_TYPES,
 } from '../src/toolDefinitions';
 import { DISPATCH_CONTRACT_SHAPE } from '../src/dispatchContract';
+import { CLAUDE_DIRECTORY_TOOL_ADAPTERS } from '../src/claudeDirectoryTools';
 
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
 import {
@@ -64,6 +65,7 @@ interface CatalogTool {
     | 'stream'
     | 'flywheel'
     | 'contract'
+    | 'claude_directory'
     | 'inline';
   profiles: string[];
   deprecated?: { replacement: string; note: string };
@@ -857,6 +859,7 @@ function computeSourceHash(): string {
     path.join(rootDir, 'src/toolProfiles.ts'),
     path.join(rootDir, 'src/authorizationPolicy.ts'),
     path.join(rootDir, 'src/contractTools.ts'),
+    path.join(rootDir, 'src/claudeDirectoryTools.ts'),
     path.join(rootDir, 'scripts/generate-tool-catalog.ts'),
   ];
   const hash = createHash('sha256');
@@ -1356,6 +1359,9 @@ function main() {
     if (V2_ORGX_TOOL_ID_SET.has(def.id)) {
       addTool(processToolDef(def, 'contract'));
     }
+  }
+  for (const def of CLAUDE_DIRECTORY_TOOL_ADAPTERS) {
+    addTool(processToolDef(def, 'claude_directory'));
   }
 
   // Inline-registered tools

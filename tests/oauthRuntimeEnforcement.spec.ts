@@ -7,7 +7,7 @@ import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
 import { OrgXApiError } from '../src/orgxApi';
 import { attachRequestToolProfile } from '../src/requestToolProfile';
 import { createEmptySessionToolStats } from '../src/sessionSummary';
-import { CLAUDE_DIRECTORY_SURFACE } from '../src/toolProfiles';
+import { INFORMATIONAL_SURFACE } from '../src/toolProfiles';
 import { createEmptyMcpSessionReentryState } from '../src/welcomeBackContext';
 import {
   buildControllerStatusEnvelope,
@@ -881,7 +881,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
         (tool) => tool.name
       );
       expect(external.worker.props.profile).toBe('read-only');
-      expect(names.sort()).toEqual([...CLAUDE_DIRECTORY_SURFACE].sort());
+      expect(names.sort()).toEqual([...INFORMATIONAL_SURFACE].sort());
       expect(names).not.toContain('account_status');
     } finally {
       await closeHarness(external);

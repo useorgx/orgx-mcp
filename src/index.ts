@@ -86,6 +86,10 @@ import {
   type McpOriginValidationEnv,
 } from './mcpOriginValidation';
 import { installToolResultGuidanceWrapper } from './toolResultRegistration';
+import {
+  CLAUDE_DIRECTORY_TOOL_ADAPTERS,
+  getClaudeDirectoryToolContract,
+} from './claudeDirectoryTools';
 import { buildSearchDiagnosticsContext, handleSearchWidgetDiagnostics } from './searchWidgetDiagnostics';
 import { withRequestToolProfile } from './requestToolProfile';
 import {
@@ -1915,7 +1919,9 @@ export class OrgXMcp extends McpAgent<
 
     return new Set(
       candidates.filter((toolId) => {
-        const contract = getKnownToolContract(toolId);
+        const contract = (this.isDirectoryReviewProfile()
+          ? getClaudeDirectoryToolContract(toolId)
+          : null) ?? getKnownToolContract(toolId);
         if (!contract?.securitySchemes) return false;
         return checkAuthRequirements(
           contract.securitySchemes,
@@ -3802,6 +3808,11 @@ export class OrgXMcp extends McpAgent<
   private withClientContext<T extends Record<string, unknown>>(
     inputSchema: T
   ): T & { _context: typeof CLIENT_CONTEXT_SCHEMA } {
+    // Directory operations accept business inputs, without requesting the
+    // client's conversation title, local working directory, or tracking IDs.
+    if (this.isDirectoryReviewProfile()) {
+      return inputSchema as T & { _context: typeof CLIENT_CONTEXT_SCHEMA };
+    }
     return {
       ...inputSchema,
       _context: CLIENT_CONTEXT_SCHEMA,
@@ -4970,6 +4981,7 @@ export class OrgXMcp extends McpAgent<
       surfaces: buildSurfaceMap({
         visibleTools,
         webUrl: this.env.ORGX_WEB_URL,
+        profile: resolveToolProfile(this.props?.profile).name,
       }),
       accepted_id_forms: {
         plan_session: PLAN_SESSION_ACCEPTED_ID_FORMS,
@@ -7417,6 +7429,30 @@ export class OrgXMcp extends McpAgent<
     }
   }
 
+  /** Directory operations reuse the canonical execution and scope checks. */
+  private registerClaudeDirectoryTools(allowedTools: Set<string> | null) {
+    if (!this.isDirectoryReviewProfile()) return;
+    for (const tool of CLAUDE_DIRECTORY_TOOL_ADAPTERS) {
+      if (allowedTools && !allowedTools.has(tool.id)) continue;
+      this.server.registerTool(
+        tool.id,
+        {
+          title: tool.title,
+          description: tool.description,
+          inputSchema: this.withClientContext(tool.inputSchema),
+          annotations: tool.annotations,
+          _meta: { 'mcp/securitySchemes': tool.securitySchemes },
+        },
+        async (args: Record<string, unknown>) => this.executeContractTool(
+          tool.canonicalToolId,
+          tool.toCanonicalArgs(args),
+          tool.securitySchemes,
+          allowedTools
+        )
+      );
+    }
+  }
+
   /**
    * Run a legacy tool name as a thin alias of the v2-core tool that fully
    * covers it (LEGACY_TOOL_ALIASES in src/deprecatedTools.ts). Only the
@@ -7551,6 +7587,7 @@ export class OrgXMcp extends McpAgent<
 
     // Register additive contract/introspection tools and safe wrappers
     this.registerContractTools(allowedTools);
+    this.registerClaudeDirectoryTools(allowedTools);
 
     // OrgX panel (ChatGPT sidebar + thread entrypoints): src/panelSurface.ts.
     registerPanelSurface(this.server, allowedTools, this.panelSurfaceHost(), (shape) => this.withClientContext(shape));
@@ -13214,8 +13251,8 @@ export class OrgXMcp extends McpAgent<
           'Widget-only: resumes a paused or auto-closed agent run after the person clicks Resume in the agent-status widget. Flips status back to running, clears TTL auto-close markers, and appends a resume_history entry. USE WHEN: the agent-status widget sends a Resume click. NEXT: the widget polls orgx_command_status until the run settles. DO NOT USE: from a model (use manage_lifecycle level=run action=resume), or to restart a completed/failed/cancelled run — those are terminal.',
         annotations: {
           readOnlyHint: false,
-          destructiveHint: false,
-          openWorldHint: false,
+          destructiveHint: this.isDirectoryReviewProfile(),
+          openWorldHint: this.isDirectoryReviewProfile(),
         },
         inputSchema: {
           run_id: z.string().min(1).describe('Agent run UUID to resume'),
@@ -13227,8 +13264,8 @@ export class OrgXMcp extends McpAgent<
         _meta: {
           'openai/toolInvocation/invoking': 'Resuming run...',
           'openai/toolInvocation/invoked': 'Run resumed',
-          securitySchemes: SECURITY_SCHEMES.authRequired,
-          'mcp/securitySchemes': SECURITY_SCHEMES.authRequired,
+          securitySchemes: this.isDirectoryReviewProfile() ? SECURITY_SCHEMES.agentRequiresAuth : SECURITY_SCHEMES.authRequired,
+          'mcp/securitySchemes': this.isDirectoryReviewProfile() ? SECURITY_SCHEMES.agentRequiresAuth : SECURITY_SCHEMES.authRequired,
         },
       },
       async (args) =>
@@ -13237,7 +13274,7 @@ export class OrgXMcp extends McpAgent<
             this.props?.userId ?? this.sessionAuth?.userId;
           const authResponse = this.buildAuthRequiredResponse({
             toolId: 'resume_agent_run',
-            securitySchemes: SECURITY_SCHEMES.authRequired,
+            securitySchemes: this.isDirectoryReviewProfile() ? SECURITY_SCHEMES.agentRequiresAuth : SECURITY_SCHEMES.authRequired,
             userId: resolvedUserId,
             serverUrl: this.env.MCP_SERVER_URL,
             featureDescription: 'resume an agent run',

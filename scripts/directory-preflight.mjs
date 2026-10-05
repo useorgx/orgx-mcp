@@ -44,24 +44,11 @@ const staleOrgPattern =
   /github\.com\/(?:OrgX-ai|orgx-ai)\/|https?:\/\/(?:[^/]+\.)?orgx\.ai/i;
 const claudeDirectoryEndpoint =
   'https://mcp.useorgx.com/mcp?profile=claude-directory';
-const claudeDirectoryTools = [
-  'orgx_search',
-  'orgx_inspect',
-  'orgx_recommend',
-  'get_agent_status',
-  'get_initiative_pulse',
-  'get_morning_brief',
-  'get_operator_chronicle',
-].sort();
-const claudeDirectoryReadOnlyHints = new Map([
-  ['orgx_search', false],
-  ['orgx_inspect', true],
-  ['orgx_recommend', false],
-  ['get_agent_status', false],
-  ['get_initiative_pulse', false],
-  ['get_morning_brief', true],
-  ['get_operator_chronicle', true],
-]);
+// Runtime profile tests pin the operation set. The generated catalog is the
+// shared source for this plain-Node preflight, avoiding another copied registry.
+const claudeDirectoryTools = (toolCatalog.tools ?? []).filter(
+  (tool) => tool?.profiles?.includes('claude-directory')
+);
 
 function assert(condition, message) {
   if (!condition) {
@@ -158,21 +145,15 @@ async function main() {
     'Anthropic submission form must confirm HTTPS Origin validation'
   );
 
-  const catalogClaudeTools = (toolCatalog.tools ?? [])
-    .filter((tool) => tool?.profiles?.includes('claude-directory'))
-    .map((tool) => tool.id)
-    .sort();
-  assert(
-    JSON.stringify(catalogClaudeTools) ===
-      JSON.stringify(claudeDirectoryTools),
-    `claude-directory profile drift: expected ${claudeDirectoryTools.join(', ')}, found ${catalogClaudeTools.join(', ')}`
-  );
-  for (const tool of toolCatalog.tools ?? []) {
-    if (!tool?.profiles?.includes('claude-directory')) continue;
-    assert(
-      tool.readOnly === claudeDirectoryReadOnlyHints.get(tool.id),
-      `claude-directory readOnlyHint drift for ${tool.id}: expected ${claudeDirectoryReadOnlyHints.get(tool.id)}, found ${tool.readOnly}`
-    );
+  assert(claudeDirectoryTools.length === 29,
+    `Expected the broader 29-tool Claude directory contract, found ${claudeDirectoryTools.length}`);
+  const toolNames = new Set(claudeDirectoryTools.map((tool) => tool.id));
+  for (const mixedRouter of ['orgx_write', 'orgx_act', 'orgx_plan', 'orgx_spawn', 'orgx_decide']) {
+    assert(!toolNames.has(mixedRouter), `Mixed router must not be submitted: ${mixedRouter}`);
+  }
+  for (const tool of claudeDirectoryTools) {
+    assert(tool.title && tool.securityScopes?.length, `${tool.id} must have a title and OAuth contract`);
+    assert(typeof tool.readOnly === 'boolean', `${tool.id} must have a safety hint`);
   }
 
   const configuredBaseUrl =
