@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
+import { CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS } from '../src/claudeDirectoryToolMetadata';
 import {
   CLAUDE_DIRECTORY_SURFACE,
   resolveProfileToolSet,
@@ -54,6 +55,16 @@ const anthropicSubmissionForm = readFileSync(
 );
 
 describe('Anthropic directory readiness', () => {
+  it('covers every submitted tool with a narrow description of its own function', () => {
+    expect(Object.keys(CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS).sort()).toEqual([...CLAUDE_DIRECTORY_SURFACE].sort());
+    for (const [name, description] of Object.entries(CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS)) {
+      expect(description.length, name).toBeGreaterThan(0);
+      expect(description, name).not.toMatch(/NEXT:|DO NOT USE|USE WHEN:|https?:\/\//i);
+      for (const otherTool of CLAUDE_DIRECTORY_SURFACE) {
+        if (otherTool !== name) expect(description, name).not.toContain(otherTool);
+      }
+    }
+  });
   it('includes reviewer-facing docs and README sections', () => {
     const requiredDocs = [
       'docs/privacy-policy.md',

@@ -17,7 +17,7 @@ Use this when you need to:
 - Production `orgx-mcp` is already deployed at `https://mcp.useorgx.com/mcp`.
 - The directory connection uses
   `https://mcp.useorgx.com/mcp?profile=claude-directory`.
-- The connection advertises no prompts or skill packs, and only the four
+- The connection advertises no prompts or skill packs, and only the six
   widget families needed by the seven informational tools.
 - The reviewer account has a dedicated workspace named `Anthropic Review Workspace`.
 

@@ -1,7 +1,7 @@
 # Anthropic MCP Directory — Submission Form Copy
 
 Paste-ready answers for the submission form at
-<https://claude.ai/admin-settings/directory/submissions/new>.
+<https://claude.ai/directory/manage> (Submit new → MCP connector).
 Keep this file in sync with `server.json` and `docs/anthropic-reviewer-runbook.md` — if
 either changes, update this doc the same day.
 
@@ -22,7 +22,7 @@ either changes, update this doc the same day.
 | Primary review contact | reviewers@useorgx.com |
 | Directory surface | 7 focused, non-destructive, closed-world tools; 3 strictly read-only and 4 that record metered MCP allowance usage |
 | Read scopes used | `decisions:read` · `agents:read` · `initiatives:read` · `memory:read` |
-| Capabilities | 7 informational tools and 4 read-only widget families; no prompts, skill packs, or generic initiative resource on this profile |
+| Capabilities | 7 informational tools and 6 read-only widget families; no prompts, skill packs, or generic initiative resource on this profile |
 | HTTPS Origin validation | Yes — every present MCP transport `Origin` is exact-allowlisted before auth/dispatch; invalid origins return `403`; no-`Origin` CLI traffic remains supported |
 | Publisher | OrgX (`com.useorgx/orgx-mcp` in the official MCP Registry) |
 | Support email | reviewers@useorgx.com |
@@ -140,9 +140,9 @@ See `docs/reviewer-invite-template.md` for the full email copy.
 - [ ] `pnpm type-check && pnpm test:anthropic-review && pnpm build && pnpm directory:preflight` green locally.
 - [ ] `MCP_BASE_URL=https://mcp.useorgx.com pnpm directory:preflight` green against production.
 - [ ] An authenticated `tools/list` for `?profile=claude-directory` returns exactly the documented seven tools, with three `readOnlyHint: true` and four `readOnlyHint: false`.
-- [ ] Every submitted tool has a current human-readable `title` and all
+- [ ] Every submitted tool has a current human-readable `title`, matching `annotations.title`, and all
   applicable tool hints in the portal scan.
-- [ ] `prompts/list` is empty and `resources/list` contains only the four documented read-only widget families (including their version/host compatibility variants).
+- [ ] `prompts/list` is empty and `resources/list` contains only the six documented read-only widget families (including their version/host compatibility variants).
 - [ ] Invalid-Origin POST returns `403`; trusted Claude Origin is echoed (not `*`); a no-Origin CLI request reaches the normal OAuth flow.
 - [ ] Every branding asset URL in the table above returns 200 (curl -I).
 - [ ] Three to five authenticated response PNGs, each at least 1000 px wide,

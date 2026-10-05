@@ -383,6 +383,23 @@ describe('one public contract per profile', () => {
     }
   });
 
+  it('claude-directory: every listed tool supplies the title annotation required by the directory scanner', async () => {
+    const listed = await listProfile('claude-directory');
+    expect(listed).toHaveLength(7);
+    for (const tool of listed) {
+      expect(tool.title?.trim(), tool.name).toBeTruthy();
+      expect(tool.annotations?.title, tool.name).toBe(tool.title);
+      expect(tool.description?.length, tool.name).toBeGreaterThan(0);
+      expect(tool.description, tool.name).not.toMatch(/NEXT:|DO NOT USE|USE WHEN:|use `?orgx_/i);
+    }
+  }, 30000);
+
+  it.each(['chatgpt', 'v2'])('%s: directory title annotations do not change the OpenAI review descriptors', async (profile) => {
+    for (const tool of await listProfile(profile)) {
+      expect(tool.annotations, tool.name).not.toHaveProperty('title');
+    }
+  }, 30000);
+
   it('chatgpt: tools/list == profile == submission manifest == output schemas', async () => {
     const listed = await listProfile('chatgpt');
     const names = listed.map((tool) => tool.name).sort();
@@ -676,4 +693,3 @@ describe('argument aliases reach the real handler (A5)', () => {
     expect(result.structuredContent).toMatchObject({ initiative: { id: INITIATIVE_ID } });
   }, 30000);
 });
-

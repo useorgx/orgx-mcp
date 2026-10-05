@@ -118,7 +118,7 @@ Reviewers should be able to perform all of these on the provided account:
 4. Tool scan: only the seven documented non-destructive, closed-world tools are
    advertised, with three `readOnlyHint: true` and four `readOnlyHint: false`.
 5. Prompt/resource scan: no prompts or skill packs are advertised, and only
-   the four documented read-only widget families are visible.
+   the six documented read-only widget families are visible.
 6. Origin check: a POST with `Origin: https://attacker.example` returns `403`,
    while the same unauthenticated request without `Origin` reaches the normal
    OAuth challenge instead of the origin guard.
