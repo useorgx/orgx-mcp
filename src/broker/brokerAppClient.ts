@@ -167,7 +167,7 @@ export class BrokerAppClient {
     const upstream = json.upstream as { url?: unknown; headers?: unknown } | undefined;
     if (status !== 200 || !upstream || typeof upstream.url !== 'string') {
       this.cache.upstream.delete(key);
-      return { error: typeof json.error === 'string' ? json.error : 'upstream_unavailable', status: status === 200 ? 502 : status };
+      return { error: typeof json.error === 'string' ? json.error : 'upstream_unavailable', status: status === 200 ? 503 : status };
     }
     const headers: Record<string, string> = {};
     if (upstream.headers && typeof upstream.headers === 'object') {

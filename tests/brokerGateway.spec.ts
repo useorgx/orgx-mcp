@@ -375,7 +375,7 @@ describe('vendor token refresh', () => {
   it('never hands the vendor auth challenge to the harness', async () => {
     setup({ acceptToken: 'nothing-works' });
     const res = (await handleBrokerRequest(call(mint(), { jsonrpc: '2.0', id: 1, method: 'initialize' }), env, deps))!;
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(424);
     expect(res.headers.get('www-authenticate')).toBeNull();
     expect((await res.json()).error).toBe('vendor_auth_failed');
   });

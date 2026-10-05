@@ -199,6 +199,8 @@ export async function handleBrokerRequest(
               result: own?.result ?? refusedCallResult(String(m.method), { allow: false, code: 'not_allowed', risk: null }),
             };
           });
+        // Only notifications in it: nothing to answer, nothing was sent.
+        if (answers.length === 0) return withSecurityHeaders(new Response(null, { status: 202 }));
         return json(200, Array.isArray(JSON.parse(body)) ? answers : answers[0]);
       }
     }
@@ -219,14 +221,14 @@ export async function handleBrokerRequest(
       }
     }
   } catch {
-    log({ ...who, method: methodsOf(messages), status: 502, reason: 'upstream_unreachable', duration_ms: now() - started });
-    return json(502, { error: 'upstream_unreachable' });
+    log({ ...who, method: methodsOf(messages), status: 503, reason: 'upstream_unreachable', duration_ms: now() - started });
+    return json(503, { error: 'upstream_unreachable' });
   }
   if (response.status === 401 || response.status === 403) {
     // Never hand the vendor's auth challenge to the harness: it would start
     // an OAuth flow against the vendor with OrgX's connection.
-    log({ ...who, method: methodsOf(messages), status: 502, reason: `vendor_${response.status}`, duration_ms: now() - started });
-    return json(502, {
+    log({ ...who, method: methodsOf(messages), status: 424, reason: `vendor_${response.status}`, duration_ms: now() - started });
+    return json(424, {
       error: 'vendor_auth_failed',
       message: 'The vendor refused OrgX’s credential for this connection. Reconnect it in OrgX.',
     });
