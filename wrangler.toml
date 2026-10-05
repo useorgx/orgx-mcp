@@ -16,7 +16,10 @@ run_worker_first = ["/consent.html"]
 
 # Non-secret variables (secrets like ORGX_SERVICE_KEY, MCP_JWT_SECRET,
 # ORGX_INTERNAL_SECRET, OPENAI_APPS_CHALLENGE_TOKEN should be set via
-# `wrangler secret put`)
+# `wrangler secret put`). The MCP broker (/c/<connection>, src/broker/) also
+# needs ORGX_RUN_MCP_TOKEN_SECRET (same value as the app) and
+# ORGX_BROKER_SERVICE_KEY (the app's `mcp-broker` scoped service key); without
+# both it answers 503. ORGX_MCP_BROKER=off is its kill switch.
 # Canonical production API origin. Keep the fallback configured separately;
 # reviewer traffic must not wait on the retired API origin.
 [vars]

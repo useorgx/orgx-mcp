@@ -35,6 +35,7 @@ import {
   runMcpTokenSecret,
   verifyRunMcpToken,
 } from './runMcpToken';
+import { handleBrokerRequest } from './broker/brokerProxy';
 
 // Import extracted modules for DRY code
 import {
@@ -11243,7 +11244,6 @@ export class OrgXMcp extends McpAgent<
             fallback_agent_dispatch,
           } = followups;
 
-
               // ── Scaffold stream session ──
               // Push created entities as SSE events into ScaffoldSessionDO so the
               // widget can replay them as an animated tree. Fire-and-forget.
@@ -15095,7 +15095,7 @@ const worker = {
       if (invalidOrigin) return withSecurityHeaders(invalidOrigin);
     }
 
-    const runTokenResponse = await tryRunTokenAuth(request, env, ctx);
+    const runTokenResponse = (await handleBrokerRequest(request, env)) ?? (await tryRunTokenAuth(request, env, ctx));
     if (runTokenResponse) return runTokenResponse;
 
     const diagnosticRequest = request.clone();
