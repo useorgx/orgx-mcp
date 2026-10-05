@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
+import { CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS } from './claudeDirectoryToolMetadata';
 import { getToolOutputSchema } from './openaiOutputSchemas';
 import { sanitizeToolResultGuidance } from './toolGuidance';
 import { prepareSearchResult, type SearchDeliveryObservation } from './searchResultDelivery';
@@ -11,7 +12,8 @@ import { withConsistentToolVisibility } from './toolVisibility';
  * Every registration also gets the one visibility rule from
  * ./toolVisibility (model-visible unless widget-only). Tool configuration and
  * result envelopes are otherwise preserved verbatim, except that directory
- * submissions can opt into mirroring the existing title in annotations.title.
+ * submissions can opt into narrow descriptions and mirroring the existing
+ * title in annotations.title.
  * In particular, this wrapper never invents an outputSchema: it attaches one
  * only for a tool with a verified contract in the reviewed ChatGPT registry or
  * the v2 registry (see ./openaiOutputSchemas/v2.ts). An explicit schema on a
@@ -22,7 +24,7 @@ export function installToolResultGuidanceWrapper(
   allowedTools: ReadonlySet<string> | null,
   onSearchResult?: (toolId: string, observation: SearchDeliveryObservation) => void,
   searchContext?: () => Promise<{ meta: Record<string, unknown> } | null>,
-  includeAnnotationTitles = false
+  includeDirectoryMetadata = false
 ) {
   const server = mcpServer as unknown as {
     registerTool: (
@@ -42,7 +44,10 @@ export function installToolResultGuidanceWrapper(
     // One visibility rule for every registration path (src/toolVisibility.ts).
     const visibleConfig = {
       ...config,
-      ...(includeAnnotationTitles && typeof config.title === 'string' && config.title.trim()
+      ...(includeDirectoryMetadata && CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS[name]
+        ? { description: CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS[name] }
+        : {}),
+      ...(includeDirectoryMetadata && typeof config.title === 'string' && config.title.trim()
         ? { annotations: { title: config.title, ...(config.annotations as Record<string, unknown> | undefined) } }
         : {}),
       _meta: withConsistentToolVisibility(

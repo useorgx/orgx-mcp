@@ -36,7 +36,7 @@ Then verify the reviewer environment:
 5. Connect to `https://mcp.useorgx.com/mcp?profile=claude-directory`
 6. Confirm `tools/list` exposes exactly the seven documented tools, with three
    `readOnlyHint: true` and four `readOnlyHint: false`
-7. Confirm `prompts/list` is empty and `resources/list` exposes only the four
+7. Confirm `prompts/list` is empty and `resources/list` exposes only the six
    selected read-only widget families
 8. Confirm an invalid-Origin POST returns `403`, trusted Claude Origin receives
    `Access-Control-Allow-Origin: https://claude.ai`, and no-Origin CLI traffic

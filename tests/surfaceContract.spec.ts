@@ -389,6 +389,8 @@ describe('one public contract per profile', () => {
     for (const tool of listed) {
       expect(tool.title?.trim(), tool.name).toBeTruthy();
       expect(tool.annotations?.title, tool.name).toBe(tool.title);
+      expect(tool.description?.length, tool.name).toBeGreaterThan(0);
+      expect(tool.description, tool.name).not.toMatch(/NEXT:|DO NOT USE|USE WHEN:|use `?orgx_/i);
     }
   }, 30000);
 

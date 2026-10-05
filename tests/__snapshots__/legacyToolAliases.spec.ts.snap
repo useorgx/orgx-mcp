@@ -34,13 +34,13 @@ exports[`listed tool surfaces > profile "chatgpt" lists byte-identical tool desc
 
 exports[`listed tool surfaces > profile "claude-directory" lists byte-identical tool descriptors 1`] = `
 {
-  "get_agent_status": "85e11088853b1657",
-  "get_initiative_pulse": "6d2e161a4b72b9d7",
-  "get_morning_brief": "6695cad90425bcae",
-  "get_operator_chronicle": "e6387b859bca411c",
-  "orgx_inspect": "7e92f28b982d02cb",
-  "orgx_recommend": "34b37a15edfec3bc",
-  "orgx_search": "b76a863268b8a4ff",
+  "get_agent_status": "b8fea39ec02147a2",
+  "get_initiative_pulse": "280fa4d85a67884a",
+  "get_morning_brief": "6f1a713d54d8db9d",
+  "get_operator_chronicle": "454b13f55d81a8b1",
+  "orgx_inspect": "cb6dea67bc764dc1",
+  "orgx_recommend": "2da4e79583c2606a",
+  "orgx_search": "19322390850cb2d2",
 }
 `;
 
