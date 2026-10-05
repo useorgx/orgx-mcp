@@ -7504,7 +7504,7 @@ export class OrgXMcp extends McpAgent<
           extra: { ...observation.telemetry },
         });
       }
-    }, () => this.isDirectoryReviewProfile() ? Promise.resolve(null) : buildSearchDiagnosticsContext(this.env));
+    }, () => this.isDirectoryReviewProfile() ? Promise.resolve(null) : buildSearchDiagnosticsContext(this.env), this.isDirectoryReviewProfile());
   }
 
   private registerTools() {

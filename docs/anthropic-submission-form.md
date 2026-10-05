@@ -1,7 +1,7 @@
 # Anthropic MCP Directory — Submission Form Copy
 
 Paste-ready answers for the submission form at
-<https://claude.ai/admin-settings/directory/submissions/new>.
+<https://claude.ai/directory/manage> (Submit new → MCP connector).
 Keep this file in sync with `server.json` and `docs/anthropic-reviewer-runbook.md` — if
 either changes, update this doc the same day.
 
@@ -140,7 +140,7 @@ See `docs/reviewer-invite-template.md` for the full email copy.
 - [ ] `pnpm type-check && pnpm test:anthropic-review && pnpm build && pnpm directory:preflight` green locally.
 - [ ] `MCP_BASE_URL=https://mcp.useorgx.com pnpm directory:preflight` green against production.
 - [ ] An authenticated `tools/list` for `?profile=claude-directory` returns exactly the documented seven tools, with three `readOnlyHint: true` and four `readOnlyHint: false`.
-- [ ] Every submitted tool has a current human-readable `title` and all
+- [ ] Every submitted tool has a current human-readable `title`, matching `annotations.title`, and all
   applicable tool hints in the portal scan.
 - [ ] `prompts/list` is empty and `resources/list` contains only the four documented read-only widget families (including their version/host compatibility variants).
 - [ ] Invalid-Origin POST returns `403`; trusted Claude Origin is echoed (not `*`); a no-Origin CLI request reaches the normal OAuth flow.
