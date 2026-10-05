@@ -678,7 +678,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
   },
   {
     id: 'approve_decision',
-    title: 'Approve Decision',
+    title: 'Open Decision Approval Review',
     description:
       'Use when the user asks to approve a pending decision. Also known as: sign off, approve AI work, unblock agent, accept decision. A model cannot settle a decision: this returns where the person decides, either the Approve button in the decisions widget (ordinary decisions) or the decision page in OrgX (review_url). USE WHEN: user says to approve a decision returned from list_entities with type=decision and status=pending (or the legacy get_pending_decisions alias). NEXT: Show the decisions widget or give the user the review_url; never say the decision was approved. DO NOT USE: to claim an approval happened. Requires decisions:write.',
     inputSchema: {
@@ -702,7 +702,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
   },
   {
     id: 'reject_decision',
-    title: 'Reject Decision',
+    title: 'Open Decision Rejection Review',
     description:
       'Use when the user wants to reject a pending decision or send the agent back with revisions. Also known as: request revisions, send feedback, decline decision. A model cannot settle a decision: this returns where the person decides, either the decisions widget (ordinary decisions) or the decision page in OrgX (review_url). USE WHEN: user wants to reject or request revisions on a decision. NEXT: Show the decisions widget or give the user the review_url; never say the decision was rejected. DO NOT USE: without a reason, and never to claim a rejection happened. Requires decisions:write.',
     inputSchema: {

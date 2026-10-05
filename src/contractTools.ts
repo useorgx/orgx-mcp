@@ -759,7 +759,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
   },
   {
     id: 'approve_agent_work',
-    title: 'Approve Agent Work',
+    title: 'Review Pending Agent Work',
     description:
       'Use when agent work is paused waiting for a human yes — list pending decisions and open the human review surface. Listing may record usage or session state, so this tool is not read-only. Approval and rejection are human-session-only: those actions return a review URL and never resolve the item or resume work from MCP. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.\n\n' +
       'Per-action input requirements:\n' +

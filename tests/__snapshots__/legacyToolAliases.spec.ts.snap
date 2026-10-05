@@ -2,8 +2,8 @@
 
 exports[`listed tool surfaces > profile "chatgpt" lists byte-identical tool descriptors 1`] = `
 {
-  "approve_agent_work": "824cdcf465992d0c",
-  "approve_decision": "e9413cc4b36c009e",
+  "approve_agent_work": "2718b8476741870b",
+  "approve_decision": "2a9ae7a11e969b29",
   "check_execution_readiness": "8654b94408726684",
   "get_agent_status": "eba1f783b17f3c16",
   "get_initiative_pulse": "42dec172c29ecbe0",
@@ -25,7 +25,7 @@ exports[`listed tool surfaces > profile "chatgpt" lists byte-identical tool desc
   "orgx_submit_receipt": "386f213902732845",
   "orgx_widget_decide": "75098f2ae324724f",
   "orgx_write": "83d98b5670c2e8b9",
-  "reject_decision": "10f45ee017900ba8",
+  "reject_decision": "c5bedfd37dd63ed2",
   "resume_agent_run": "5c016323dee7914e",
   "review_artifact": "326e48293c3f656d",
   "scaffold_initiative": "93f1b3c5eda771cc",
@@ -128,8 +128,8 @@ exports[`listed tool surfaces > profile "executor" lists byte-identical tool des
 
 exports[`listed tool surfaces > profile "full" lists byte-identical tool descriptors 1`] = `
 {
-  "approve_agent_work": "824cdcf465992d0c",
-  "approve_decision": "e9413cc4b36c009e",
+  "approve_agent_work": "2718b8476741870b",
+  "approve_decision": "2a9ae7a11e969b29",
   "check_execution_readiness": "8654b94408726684",
   "check_spawn_guard": "e5224687a58937f5",
   "classify_task_model": "ca122096a65b7b90",
@@ -195,7 +195,7 @@ exports[`listed tool surfaces > profile "full" lists byte-identical tool descrip
   "record_outcome": "ee4624f4f5b7513b",
   "record_plan_edit": "707737413b3c4ba5",
   "record_quality_score": "e99358b33099cc14",
-  "reject_decision": "10f45ee017900ba8",
+  "reject_decision": "c5bedfd37dd63ed2",
   "remember_decision": "ab09b087806033a2",
   "request_independent_artifact_review": "57cf65c7729ecfd4",
   "resume_agent_run": "5c016323dee7914e",
@@ -280,8 +280,8 @@ exports[`listed tool surfaces > profile "read-only" lists byte-identical tool de
 
 exports[`listed tool surfaces > profile "v2" lists byte-identical tool descriptors 1`] = `
 {
-  "approve_agent_work": "824cdcf465992d0c",
-  "approve_decision": "e9413cc4b36c009e",
+  "approve_agent_work": "2718b8476741870b",
+  "approve_decision": "2a9ae7a11e969b29",
   "check_execution_readiness": "8654b94408726684",
   "consolidate_pr": "6abba9a7b56106c6",
   "delegate_agent_task": "ae624f12057af3f8",
@@ -318,7 +318,7 @@ exports[`listed tool surfaces > profile "v2" lists byte-identical tool descripto
   "query_org_memory": "b992a8515583399b",
   "recall_memory": "6092409b0d5bc26b",
   "recommend_next_action": "3916a8a4d2c7525d",
-  "reject_decision": "10f45ee017900ba8",
+  "reject_decision": "c5bedfd37dd63ed2",
   "request_independent_artifact_review": "57cf65c7729ecfd4",
   "resume_agent_run": "5c016323dee7914e",
   "review_artifact": "326e48293c3f656d",
