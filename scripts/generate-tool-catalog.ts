@@ -351,7 +351,7 @@ const INLINE_TOOL_METADATA: Array<{
   },
   {
     id: 'approve_agent_work',
-    title: 'Approve Agent Work',
+    title: 'Review Pending Agent Work',
     description:
       'Use when agent work is paused waiting for a human yes — review pending decisions, then approve or reject them. Also known as: pending approvals, agent blocked, sign off, review decisions, approve AI work.',
     inputSchema: z.object({

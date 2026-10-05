@@ -56,11 +56,10 @@ Before opening review, confirm all of the following in the portal:
   `_meta.ui.domain=https://mcp.useorgx.com` on that profile;
 - no other version of this MCP-backed plugin is already under review.
 
-There is no general first-party requirement for a demo MP4 in the current
-published review documentation. If the live portal marks media as required,
-follow that field's current contract. For a plugin with UI, use authentic
-captures from enabled review surfaces; do not substitute local fixtures or
-synthetic renders.
+Current first-party submission requirements require a reviewer-accessible
+demo-recording URL for remote MCP submissions. Provide a walkthrough of the
+main use cases and tools across the supported platforms. For a plugin with UI, use authentic captures from
+enabled review surfaces; do not substitute local fixtures or synthetic renders.
 
 Current first-party references: [plugin submission](https://developers.openai.com/plugins/deploy/submission),
 [app review requirements](https://developers.openai.com/plugins/deploy/app-review),
@@ -96,9 +95,11 @@ The consolidated `orgx_decide` and `approve_agent_work` routers also use
 Their create/remember/list paths can write private state or record usage, while
 approve/reject only validate the request and return the human-session review
 URL; they never resolve a decision or resume execution from MCP. The legacy
-`approve_decision` and `reject_decision` tools remain separate
-explicit-confirmation actions for compatibility. Do not describe the consolidated
-routers as aliases for those direct actions.
+`approve_decision` and `reject_decision` tools remain compatibility entrypoints
+that open the human decision surface. Without a widget approval token, they
+return `direct_human_decision_action_required`; a model cannot settle a decision.
+Their display titles explicitly say they open approval or rejection review.
+Keep their action IDs and input schemas stable for already-approved clients.
 
 Widget resource metadata is profile-aware. The explicit `chatgpt` profile
 publishes the standard MCP Apps `ui.domain` for `https://mcp.useorgx.com`.
