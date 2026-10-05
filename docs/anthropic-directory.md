@@ -44,6 +44,25 @@ operations. The app-only resume action requires `agents:write` on this profile.
 Unknown profile names still fail closed to the original seven informational
 tools; the Claude Code plugin and OpenAI profiles retain their own contracts.
 
+Directory bootstrap binds a requested, inferred, or previously bound workspace
+only after an authenticated primary-upstream lookup returns that exact workspace.
+Missing or inaccessible workspaces return `404`; lookup failures return `503`.
+Neither result changes the prior session binding. The current upstream workspace
+lookup is owner-scoped, so collaborator membership alone cannot establish this
+binding. A successful generic bootstrap without a workspace does not prove
+access to the reviewer fixture.
+
+Plan reads require an explicit session ID. Plan writes do not support an
+idempotency key in the current upstream API: creation can produce another
+session, edit/completion retries can append another history row, and improvement
+can call an external model again and incur costs. Inspect the returned session
+before retrying an uncertain response.
+
+Directory entity creation stays within existing workspaces. Workspace creation
+is excluded because the current API ignores retry keys and can change the
+account's default workspace. Completion requires a typed linked artifact and
+cannot mark its proof approved; its ineffective retry-key parameter is omitted.
+
 The worker suppresses optional session persistence, activation/reentry writes,
 analytics, diagnostics, and success logs in this profile. Intended business
 writes and documented upstream usage accounting remain enabled. The underlying
@@ -68,6 +87,9 @@ Use the existing dedicated Anthropic reviewer account and populated reviewer
 workspace. Credentials belong only in Anthropic's private test instructions,
 with authorized secure delivery, never in this repository. Confirm the reviewer
 session's expiry, owner binding, baselineReady, and workspaceIsClean before QA.
+Check every workspace accessible to that identity before sharing its credentials;
+the directory profile selects tools, and does not isolate the account to a single
+review workspace.
 Use the authenticated review status route; bootstrap/reset are separate fixture
 operations and require deliberate authorization.
 

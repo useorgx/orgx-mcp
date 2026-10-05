@@ -81,7 +81,9 @@ const createFields = Object.keys(entityWriteShape).filter((field) => ![
   'task_id', 'artifact_type', 'artifact_url', 'external_url', 'preview_markdown',
 ].includes(field));
 const dispatchFields = Object.keys(canonicalContract('orgx_spawn').inputSchema).filter((field) => field !== 'action');
-const createEntityType = z.enum(['workspace', 'initiative', 'workstream', 'milestone', 'task', 'objective', 'skill', 'blocker']);
+// Workspace creation ignores retry keys and can replace the account default.
+// Keep directory writes within existing workspaces until that API is bounded.
+const createEntityType = z.enum(['initiative', 'workstream', 'milestone', 'task', 'objective', 'skill', 'blocker']);
 // The generic API rejects direct blocker PATCHes. Decisions and artifacts have
 // dedicated contracts; content editing cannot change approval or work status.
 const updateEntityType = z.enum(['workspace', 'initiative', 'workstream', 'milestone', 'task', 'objective', 'skill']);
@@ -95,11 +97,22 @@ const contentPatch = z.object({
   goal_ids: z.array(z.string()).optional(),
   metadata: z.record(z.unknown()).optional(),
 }).strict().refine((fields) => Object.keys(fields).length > 0, 'At least one content field is required.');
+const linkedProofArtifact = z.object({
+  artifact_type: z.string().trim().min(1),
+  artifact_url: z.string().url().optional(),
+  external_url: z.string().url().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  preview_markdown: z.string().optional(),
+}).strict().refine(
+  (artifact) => Boolean(artifact.artifact_url || artifact.external_url),
+  'A proof artifact URL or external URL is required.'
+);
 
 export const CLAUDE_DIRECTORY_TOOL_ADAPTERS: readonly ClaudeDirectoryToolAdapter[] = [
   adapter(
     'orgx_create_entity', 'orgx_write', 'Create OrgX Entity',
-    'Create one OrgX workspace, initiative, workstream, milestone, task, objective, skill, or blocker record in its default initial workflow state. Accepts per-type parent IDs, titles, and metadata. Initiative creation can publish a public live link when explicitly requested. Reusing an idempotency key returns the existing record instead of creating a duplicate.',
+    'Create one OrgX initiative, workstream, milestone, task, objective, skill, or blocker record within an existing workspace, in its default initial workflow state. Accepts per-type parent IDs, titles, and metadata. Initiative creation can publish a public live link when explicitly requested. Reusing an idempotency key returns the existing record instead of creating a duplicate.',
     inputProjection('orgx_write', createFields, {
       type: createEntityType.describe('Work record type to create.'),
     }),
@@ -119,33 +132,33 @@ export const CLAUDE_DIRECTORY_TOOL_ADAPTERS: readonly ClaudeDirectoryToolAdapter
   ),
   adapter(
     'orgx_start_plan', 'orgx_plan', 'Start OrgX Plan',
-    'Create a durable OrgX planning session for a named feature or initiative, optionally seeded with markdown plan content. The plan remains available across sessions and agents. Supports an idempotency key to avoid duplicate sessions.',
-    inputProjection('orgx_plan', ['feature_name', 'initial_plan', 'workspace_id', 'idempotency_key'], {
+    'Create a durable OrgX planning session for a named feature or initiative, optionally seeded with markdown plan content. The plan remains available across sessions and agents. Each successful call creates a new session; read back its returned session ID before retrying an uncertain response.',
+    inputProjection('orgx_plan', ['feature_name', 'initial_plan', 'workspace_id'], {
       feature_name: z.string().min(1).describe('Feature or plan name.'),
     }),
     appendOnly, SECURITY_SCHEMES.entityWriteRequiresAuth, { action: 'start' }
   ),
   adapter(
     'orgx_read_plan', 'orgx_plan', 'Read OrgX Plan',
-    'Read a durable OrgX plan session by UUID or plan URI. When no session ID is supplied, returns the most recent active session in the authenticated workspace. Does not edit or complete the plan.',
+    'Read one durable OrgX plan session by its explicit UUID or plan URI. Does not edit or complete the plan, or select another session automatically.',
     inputProjection('orgx_plan', ['session_id'], {
-      session_id: z.string().optional().describe('Plan session UUID or orgx://plan_session/<uuid> URI. Defaults to the most recent active session.'),
+      session_id: z.string().trim().min(1).describe('Required plan session UUID or orgx://plan_session/<uuid> URI.'),
     }),
     readOnly, SECURITY_SCHEMES.entityReadRequiresAuth, { action: 'resume' }
   ),
   adapter(
     'orgx_improve_plan', 'orgx_plan', 'Improve OrgX Plan',
-    'Submit the current draft of a durable OrgX plan for critique and improvement. Updates planning session state using the supplied session ID and markdown plan content. Supports an idempotency key for retries.',
-    inputProjection('orgx_plan', ['session_id', 'plan_content', 'idempotency_key'], {
+    'Request AI critique and improvement of a durable OrgX plan using its session ID and current markdown draft. Updates planning session state and can incur model costs. Each call can invoke the model again; read back the session before retrying an uncertain response.',
+    inputProjection('orgx_plan', ['session_id', 'plan_content'], {
       session_id: z.string().min(1).describe('Plan session UUID or orgx://plan_session/<uuid> URI.'),
       plan_content: z.string().min(1).describe('Current markdown plan draft to improve.'),
     }),
-    modifiesRecords, SECURITY_SCHEMES.entityWriteRequiresAuth, { action: 'improve' }
+    { ...modifiesRecords, openWorldHint: true }, SECURITY_SCHEMES.entityWriteRequiresAuth, { action: 'improve' }
   ),
   adapter(
     'orgx_record_plan_edit', 'orgx_plan', 'Record OrgX Plan Edit',
     'Append an edit summary to a durable OrgX planning session. Records the change history without completing the plan. Requires the session ID and a description of the edit.',
-    inputProjection('orgx_plan', ['session_id', 'edit_summary', 'idempotency_key'], {
+    inputProjection('orgx_plan', ['session_id', 'edit_summary'], {
       session_id: z.string().min(1).describe('Plan session UUID or orgx://plan_session/<uuid> URI.'),
       edit_summary: z.string().min(1).describe('Summary of the planning change.'),
     }),
@@ -154,7 +167,7 @@ export const CLAUDE_DIRECTORY_TOOL_ADAPTERS: readonly ClaudeDirectoryToolAdapter
   adapter(
     'orgx_complete_plan', 'orgx_plan', 'Complete OrgX Plan',
     'Save the final markdown plan and complete its durable OrgX planning session. Can attach the completed plan to one or more initiatives, workstreams, milestones, or tasks. Does not dispatch execution.',
-    inputProjection('orgx_plan', ['session_id', 'plan_content', 'attach_to', 'idempotency_key'], {
+    inputProjection('orgx_plan', ['session_id', 'plan_content', 'attach_to'], {
       session_id: z.string().min(1).describe('Plan session UUID or orgx://plan_session/<uuid> URI.'),
       plan_content: z.string().min(1).describe('Final accepted markdown plan.'),
     }),
@@ -204,9 +217,9 @@ export const CLAUDE_DIRECTORY_TOOL_ADAPTERS: readonly ClaudeDirectoryToolAdapter
   adapter(
     'orgx_complete_with_proof', 'orgx_act', 'Complete OrgX Work With Proof',
     'Complete an OrgX task, milestone, workstream, or initiative with a linked proof artifact and verification evidence. Requires an artifact type and artifact URL or external URL. Records durable evidence and applies completion checks before changing the work state.',
-    inputProjection('orgx_act', ['type', 'id', 'artifact', 'verification', 'quality_score', 'note', 'idempotency_key', 'session_id'], {
+    inputProjection('orgx_act', ['type', 'id', 'artifact', 'verification', 'quality_score', 'note', 'session_id'], {
       type: z.enum(['task', 'milestone', 'workstream', 'initiative']).describe('Work entity type to complete with proof.'),
-      artifact: z.record(z.unknown()).describe('Proof artifact with artifact_type and artifact_url or external_url; optional name, description, and preview_markdown.'),
+      artifact: linkedProofArtifact.describe('Proof artifact with artifact_type and artifact_url or external_url; optional name, description, and preview_markdown. Attached proof remains in review; this operation cannot approve it.'),
     }),
     modifiesRecords, SECURITY_SCHEMES.entityWriteRequiresAuth,
     { action: 'complete_with_proof' }

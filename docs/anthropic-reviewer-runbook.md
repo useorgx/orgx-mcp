@@ -19,6 +19,14 @@ Use this when you need to:
   `https://mcp.useorgx.com/mcp?profile=claude-directory`.
 - The connection advertises no prompts or skill packs, and only the eight widget families needed by the selected workflows.
 - The reviewer account has a dedicated workspace marked `reviewer_only: true` (currently `Anthropic Reviewer Demo`).
+- Confirm all data accessible to the reviewer identity is safe to share. A
+  `reviewer_only` workspace does not restrict the account's other workspaces, and
+  the directory URL does not provide workspace isolation.
+- Bootstrap the exact reviewer workspace and read back its seeded initiatives.
+  Directory bootstrap requires the existing owner-scoped primary workspace read;
+  inaccessible workspaces return `404`, upstream failures return `503`, and the
+  previous binding remains intact. A generic readiness message or empty search
+  alone is insufficient evidence of reviewer access.
 
 Before review, request `https://mcp.useorgx.com/healthz?check=upstream` and
 confirm the primary upstream is healthy at `https://useorgx.com`. A
