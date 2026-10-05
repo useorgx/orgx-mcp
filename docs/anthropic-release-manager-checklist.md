@@ -39,6 +39,11 @@ Then verify the reviewer environment:
 8. Confirm an invalid-Origin POST returns `403`, trusted Claude Origin receives
    `Access-Control-Allow-Origin: https://claude.ai`, and no-Origin CLI traffic
    reaches the normal OAuth challenge
+9. Bootstrap the exact reviewer workspace and read back its seeded initiatives.
+   Confirm an inaccessible workspace returns `404` without replacing the previous
+   binding; primary lookup failure must return `503`.
+10. Verify every workspace accessible to the reviewer identity is safe for
+    external review; the directory profile does not isolate workspace access.
 
 ## Claude smoke
 
