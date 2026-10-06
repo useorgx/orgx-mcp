@@ -36,16 +36,46 @@ export interface RunMcpTokenPayload {
   iat?: number;
 }
 
-/** Shared signing secret: a dedicated key if configured, else the service key. */
-export function runMcpTokenSecret(env: {
+type RunMcpTokenSecretEnv = {
   ORGX_RUN_MCP_TOKEN_SECRET?: string;
   ORGX_SERVICE_KEY?: string;
-}): string | null {
-  const dedicated = env.ORGX_RUN_MCP_TOKEN_SECRET?.trim();
-  if (dedicated && dedicated.length >= MIN_SECRET_LENGTH) return dedicated;
-  const serviceKey = env.ORGX_SERVICE_KEY?.trim();
-  if (serviceKey && serviceKey.length >= MIN_SECRET_LENGTH) return serviceKey;
-  return null;
+};
+
+function usableSecret(value: string | undefined): string | null {
+  const secret = value?.trim();
+  return secret && secret.length >= MIN_SECRET_LENGTH ? secret : null;
+}
+
+/**
+ * The secret new tokens are signed with: the dedicated key if configured, else
+ * the service key. (The worker only verifies today; the app mints.)
+ */
+export function runMcpTokenSecret(env: RunMcpTokenSecretEnv): string | null {
+  return usableSecret(env.ORGX_RUN_MCP_TOKEN_SECRET) ?? usableSecret(env.ORGX_SERVICE_KEY);
+}
+
+/**
+ * Every secret an OrgX MCP run token may be signed with, in the order to try:
+ * the dedicated ORGX_RUN_MCP_TOKEN_SECRET first, then ORGX_SERVICE_KEY.
+ *
+ * TEMPORARY: the service-key entry exists only so the switch to the dedicated
+ * secret has no downtime. Apps deployed before ORGX_RUN_MCP_TOKEN_SECRET
+ * reached them still sign with ORGX_SERVICE_KEY, and their tokens (1h for OrgX
+ * MCP run tokens) must keep verifying while the app redeploys. Remove the
+ * service-key fallback here (and in runMcpTokenSecret) once the app signs only
+ * with the dedicated secret (orgx PR #3328 drops its fallback) and tokens
+ * minted before that have expired.
+ *
+ * Broker tokens never use this list: they verify with the dedicated secret
+ * alone (broker/brokerToken.ts, brokerTokenSecret).
+ */
+export function runMcpTokenVerificationSecrets(env: RunMcpTokenSecretEnv): string[] {
+  const secrets: string[] = [];
+  for (const candidate of [env.ORGX_RUN_MCP_TOKEN_SECRET, env.ORGX_SERVICE_KEY]) {
+    const secret = usableSecret(candidate);
+    if (secret && !secrets.includes(secret)) secrets.push(secret);
+  }
+  return secrets;
 }
 
 export function isRunMcpToken(token: string | null | undefined): boolean {
@@ -92,27 +122,42 @@ function timingSafeEqual(a: string, b: string): boolean {
   return result === 0;
 }
 
+async function signedByAny(
+  body: string,
+  signature: string,
+  secrets: readonly string[]
+): Promise<boolean> {
+  for (const secret of secrets) {
+    let expected: string;
+    try {
+      expected = bytesToB64url(await hmacSha256(body, secret));
+    } catch {
+      return false;
+    }
+    if (timingSafeEqual(expected, signature)) return true;
+  }
+  return false;
+}
+
 /**
  * Verify a run-scoped MCP token. Returns the payload when the signature is
- * valid, issuer matches, and it has not expired; otherwise null. Never throws.
+ * valid under one of `secrets` (tried in order; see
+ * runMcpTokenVerificationSecrets), issuer matches, and it has not expired;
+ * otherwise null. Never throws.
  */
 export async function verifyRunMcpToken(
   token: string | null | undefined,
-  secret: string | null | undefined,
+  secrets: string | readonly string[] | null | undefined,
   nowMs: number
 ): Promise<RunMcpTokenPayload | null> {
-  if (!isRunMcpToken(token) || !secret) return null;
+  const candidates = (typeof secrets === 'string' ? [secrets] : secrets ?? []).filter(
+    (secret) => secret.length > 0
+  );
+  if (!isRunMcpToken(token) || candidates.length === 0) return null;
   const parts = (token as string).split('.');
   if (parts.length !== 3) return null;
 
-  const body = `${parts[0]}.${parts[1]}`;
-  let expected: string;
-  try {
-    expected = bytesToB64url(await hmacSha256(body, secret));
-  } catch {
-    return null;
-  }
-  if (!timingSafeEqual(expected, parts[2])) return null;
+  if (!(await signedByAny(`${parts[0]}.${parts[1]}`, parts[2], candidates))) return null;
 
   let payload: RunMcpTokenPayload;
   try {
