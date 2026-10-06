@@ -191,6 +191,40 @@ jobs:
           pnpm wrangler deploy --env "$DEPLOY_ENV" --outdir dist
           --upload-source-maps --var "SENTRY_RELEASE:$SENTRY_RELEASE"
 
+      # Run-token and broker secrets sync AFTER the code deploy, never before:
+      # the Worker that verifies run tokens with the dedicated secret OR the
+      # service key (src/runMcpToken.ts) must be live before the dedicated
+      # secret appears. Synced before, the previous Worker would briefly
+      # verify with the dedicated secret alone and refuse tokens the app still
+      # signs with ORGX_SERVICE_KEY. Same repository secrets as the OrgX app;
+      # empty values are skipped, so an unset secret leaves the Worker as is.
+      - name: Sync run-token and broker Worker secrets
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          DEPLOY_ENV: ${{ env.DEPLOY_ENV }}
+          ORGX_RUN_MCP_TOKEN_SECRET: ${{ secrets.ORGX_RUN_MCP_TOKEN_SECRET }}
+          ORGX_BROKER_SERVICE_KEY: ${{ secrets.ORGX_BROKER_SERVICE_KEY }}
+        run: |
+          set -euo pipefail
+          secrets_file="$(mktemp)"
+          trap 'rm -f "$secrets_file"' EXIT
+          python3 - <<'PY' > "$secrets_file"
+          import json
+          import os
+
+          payload = {
+              "ORGX_RUN_MCP_TOKEN_SECRET": os.environ.get("ORGX_RUN_MCP_TOKEN_SECRET"),
+              "ORGX_BROKER_SERVICE_KEY": os.environ.get("ORGX_BROKER_SERVICE_KEY"),
+          }
+          print(json.dumps({k: v for k, v in payload.items() if v}))
+          PY
+          if [[ "$(cat "$secrets_file")" == "{}" ]]; then
+            echo "No run-token or broker secrets configured; Worker secrets left unchanged"
+            exit 0
+          fi
+          pnpm wrangler secret bulk "$secrets_file" --env "$DEPLOY_ENV"
+
       - name: Upload Sentry source maps
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

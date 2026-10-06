@@ -32,7 +32,7 @@ import {
 // Per-run, user-scoped bearer verification (detached agent runtimes)
 import {
   isRunMcpToken,
-  runMcpTokenSecret,
+  runMcpTokenVerificationSecrets,
   verifyRunMcpToken,
 } from './runMcpToken';
 import { handleBrokerRequest } from './broker/brokerProxy';
@@ -15091,7 +15091,7 @@ async function tryRunTokenAuth(
 
   const payload = await verifyRunMcpToken(
     token,
-    runMcpTokenSecret(env),
+    runMcpTokenVerificationSecrets(env),
     Date.now()
   );
   if (!payload) return null;
