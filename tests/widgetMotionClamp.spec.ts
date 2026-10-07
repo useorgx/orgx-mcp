@@ -2,6 +2,7 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { readWidgetSource } from './fixtures/live';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -82,7 +83,7 @@ describe('motion.setClamped', () => {
   it('is what plan-session-live and orgx-panel use for their disclosures', () => {
     const read = (name: string) => readFileSync(resolve(__dirname, `../public/widgets/${name}.html`), 'utf8');
     expect(read('plan-session-live')).toContain("motion.setClamped(wrap, expanded, expand, { expandedClass: 'is-expanded' })");
-    const panel = read('orgx-panel');
+    const panel = readWidgetSource('orgx-panel');
     expect(panel).toContain('R.motion.setClamped(list, clamped, toggle, options)');
     expect(panel).not.toContain("case 'evidence': ui.evidenceOpen = !ui.evidenceOpen; render();");
   });

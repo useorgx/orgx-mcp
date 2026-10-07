@@ -13,7 +13,10 @@ import {
   PANEL_TITLE_MAX,
   normalizeAppProof,
   summarizePanelProof,
+  type PanelSnapshot,
   type PanelSurfaceHost,
+  panelAsker,
+  buildPanelWork,
 } from '../src/panelSurface';
 import { createEmptyMcpSessionReentryState } from '../src/welcomeBackContext';
 
@@ -147,14 +150,14 @@ const ART_REVIEW = 'a4444444-4444-4444-8444-444444444444';
 const ART_MEMBER = 'a5555555-5555-4555-8555-555555555555';
 
 describe('buildPanelSnapshot', () => {
-  it('orders the queue by urgency, keeps three, and focuses the most urgent', () => {
+  it('orders the whole queue by urgency and focuses the most urgent', () => {
     const snapshot = buildPanelSnapshot({
       workspace: { id: SESSION_WS, name: 'Acme' },
       decisions: DECISIONS,
       artifacts: [],
     });
     expect(snapshot.schema).toBe('orgx.panel.v1');
-    expect(snapshot.queue.map((item) => item.id)).toEqual([D2, D3, D1]);
+    expect(snapshot.queue.map((item) => item.id)).toEqual([D2, D3, D1, D4]);
     expect(snapshot.attention).toEqual({ pending: 4, oldest_at: '2026-09-20T10:00:00.000Z', blocking: false });
     expect(snapshot.focus?.id).toBe(D2);
     // The decision page (the initiative page never read ?decision=).
@@ -459,6 +462,9 @@ describe('panel proof from the app acceptance ledger', () => {
   });
 });
 
+// A token for a decision the snapshot does not carry must never reach the widget.
+const OTHER_DECISION = 'd9999999-9999-4999-8999-999999999999';
+
 function fakeHost(overrides: Partial<PanelSurfaceHost> = {}) {
   const host: PanelSurfaceHost = {
     authRequired: vi.fn(() => null),
@@ -469,7 +475,7 @@ function fakeHost(overrides: Partial<PanelSurfaceHost> = {}) {
       ok: true,
       data: {
         decisions: DECISIONS,
-        _widget_meta: { approval_tokens: { [D2]: SECRET_TOKEN, [D4]: 'tok-not-visible' }, token_ttl_seconds: 900 },
+        _widget_meta: { approval_tokens: { [D2]: SECRET_TOKEN, [OTHER_DECISION]: 'tok-not-visible' }, token_ttl_seconds: 900 },
       },
     })),
     fetchArtifacts: vi.fn(async () => [artifact(ART_HUMAN, 'approved', ORGX_USER, '2026-09-30T00:00:00.000Z')]),
@@ -700,4 +706,71 @@ describe('orgx_widget_decide refusals on the worker', () => {
     });
     expect(result.structuredContent).toMatchObject({ error: { code: 'decision_already_resolved' } });
   }, 20000);
+});
+
+describe('panel asker and work view', () => {
+  it('names the asking agent in the decisions widget order and drops OrgX itself', () => {
+    expect(panelAsker({ agent_name: 'Eli - Engineering' })).toBe('Eli - Engineering');
+    expect(panelAsker({ agent_name: 'Eli' }, { owner: 'Pace' })).toBe('Pace');
+    expect(panelAsker({ domain: 'design' })).toBe('design');
+    expect(panelAsker({ agent_name: 'OrgX System' })).toBeNull();
+    expect(panelAsker({})).toBeNull();
+    expect(panelAsker({ domain: 'engineering', source: 'system' })).toBeNull();
+  });
+
+  it('carries the asker on queue items and the focus, valid against the output schema', () => {
+    const decisions = [{ ...(DECISIONS[0] as Record<string, unknown>), agent_name: 'Mark - Marketing' }, ...DECISIONS.slice(1)];
+    const snapshot = buildPanelSnapshot({ workspace: { id: SESSION_WS, name: 'Acme' }, decisions, artifacts: [] });
+    const item = snapshot.queue.find((q) => q.id === (decisions[0] as { id: string }).id)!;
+    expect(item.asker).toBe('Mark - Marketing');
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(snapshot).success).toBe(true);
+  });
+
+  it('builds In progress rows, blocked first, without idle or system agents', () => {
+    const work = buildPanelWork({
+      agents: [
+        { agent_name: 'Pace', status: 'idle' },
+        { agent_name: 'OrgX ChatGPT App', status: 'running' },
+        { agent_name: 'Eli', status: 'running', current_tasks: [
+          { id: '11111111-1111-4111-8111-111111111111', title: 'Reconcile telemetry', status: 'in_progress' },
+          { id: 'task-done', title: 'Shipped repair', status: 'completed' },
+        ] },
+        { agent_name: 'Dana', status: 'blocked', current_activity: 'Waiting on a decision' },
+        { agent_name: 'Sage', status: 'queued', current_tasks: [{ id: 'q1', title: 'ICP list' }] },
+      ],
+    });
+    expect(work.status).toBe('ok');
+    expect(work.items.map((i) => [i.agent, i.state, i.title])).toEqual([
+      ['Dana', 'blocked', 'Waiting on a decision'],
+      ['Eli', 'running', 'Reconcile telemetry'],
+      ['Sage', 'queued', 'ICP list'],
+    ]);
+    expect(work.items[1]!.url).toBe('https://useorgx.com/tasks/11111111-1111-4111-8111-111111111111');
+  });
+
+  it('reports a failed agent-status read as unavailable, not as nothing running', () => {
+    expect(buildPanelWork(null)).toEqual({ status: 'unavailable', items: [], total: 0 });
+    expect(buildPanelWork({ agents: 'nope' } as unknown as Record<string, unknown>).status).toBe('unavailable');
+  });
+
+  it('reads agent status only when the panel asks for the work view', async () => {
+    const fetchAgentStatus = vi.fn(async () => ({ agents: [{ agent_name: 'Eli', status: 'running', current_tasks: [{ id: 't', title: 'Build' }] }] }));
+    const host = fakeHost({ fetchAgentStatus });
+    const plain = await handlePanelSnapshot(host, {});
+    expect(fetchAgentStatus).not.toHaveBeenCalled();
+    expect((plain.structuredContent as Record<string, unknown>).work).toBeUndefined();
+    const withWork = await handlePanelSnapshot(host, { view: 'work' });
+    expect(fetchAgentStatus).toHaveBeenCalledWith({ workspaceId: SESSION_WS });
+    const snap = withWork.structuredContent as unknown as PanelSnapshot;
+    expect(snap.work).toMatchObject({ status: 'ok', total: 1 });
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(snap).success).toBe(true);
+  });
+
+  it('keeps the decision queue when the agent-status read fails', async () => {
+    const host = fakeHost({ fetchAgentStatus: vi.fn(async () => { throw new Error('down'); }) });
+    const snap = (await handlePanelSnapshot(host, { view: 'work' })).structuredContent as unknown as PanelSnapshot;
+    expect(snap.state).toBe('ok');
+    expect(snap.queue.length).toBeGreaterThan(0);
+    expect(snap.work).toEqual({ status: 'unavailable', items: [], total: 0 });
+  });
 });

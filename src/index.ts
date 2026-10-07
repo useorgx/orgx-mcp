@@ -3116,6 +3116,31 @@ export class OrgXMcp extends McpAgent<
           workspaceId,
           limit,
         }),
+      // Read only when the person opens In progress; the same read
+      // get_agent_status uses, normalized the same way.
+      fetchAgentStatus: async ({ workspaceId }) => {
+        const id = userId();
+        try {
+          const response = await callOrgxApiJson(
+            this.env,
+            '/api/tools/execute',
+            {
+              method: 'POST',
+              body: JSON.stringify({
+                tool_id: 'get_agent_status',
+                args: { workspace_id: workspaceId },
+                user_id: id ? this.resolveOrgxUserId(id) ?? id : null,
+              }),
+            },
+            actor(id)
+          );
+          const body = (await response.json()) as { ok?: boolean; data?: Record<string, unknown> };
+          if (body?.ok === false || !body?.data || typeof body.data !== 'object') return null;
+          return normalizeAgentStatusPayload(body.data);
+        } catch {
+          return null;
+        }
+      },
       run: (runner) => this.withOrgx(runner, 'orgx_panel_snapshot'),
     };
   }

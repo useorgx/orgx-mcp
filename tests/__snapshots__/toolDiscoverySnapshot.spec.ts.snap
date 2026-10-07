@@ -193,7 +193,7 @@ exports[`tool discovery snapshot > full tool catalog description hashes are lock
   "orgx_lease": "e3b0c44298fc",
   "orgx_list_pending_decisions": "fd66baab06d6",
   "orgx_open_decision_review": "af40c0cf86c3",
-  "orgx_panel_snapshot": "6384928f3a02",
+  "orgx_panel_snapshot": "e31bfa7df77e",
   "orgx_plan": "a88ff09069ca",
   "orgx_poll_attention": "778df6f9ab53",
   "orgx_poll_question": "aa8c88d3a5ac",

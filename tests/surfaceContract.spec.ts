@@ -246,8 +246,11 @@ function templateUrisOf(tool: ListedTool): string[] {
   );
 }
 
+/** The widget's HTML plus its own modules (shared/panel/*), as served. */
 function widgetSource(stem: string): string {
-  return readFileSync(resolve(root, 'public/widgets', `${stem}.html`), 'utf8');
+  const html = readFileSync(resolve(root, 'public/widgets', `${stem}.html`), 'utf8');
+  const modules = [...html.matchAll(/\b(?:src|href)="(shared\/panel\/[^"]+)"/g)].map((m) => m[1]!);
+  return [html, ...modules.map((path) => readFileSync(resolve(root, 'public/widgets', path), 'utf8'))].join('\n');
 }
 
 /** callTool / callToolResult / callServerTool names written as literals. */

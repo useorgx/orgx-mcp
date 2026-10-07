@@ -2,7 +2,7 @@
  * OrgX panel — the ChatGPT sidebar (global) and thread entrypoint.
  *
  * One app-only tool, `orgx_panel_snapshot`, returns `orgx.panel.v1`: what
- * needs the owner's decision (at most three, most urgent first), the review
+ * needs the owner's decision (the whole queue, most urgent first), the review
  * packet for one of them, and one line of accepted proof. The panel resource
  * (`ui://widget/orgx-panel.html`) renders it.
  *
@@ -41,10 +41,15 @@ import { normalizeArtifactRecord } from './widgetArtifactProof';
 export const PANEL_SNAPSHOT_SCHEMA = 'orgx.panel.v1' as const;
 export const PANEL_TOOL_ID = 'orgx_panel_snapshot' as const;
 
-export const PANEL_QUEUE_LIMIT = 3;
+/** Pending items sent per snapshot: the whole queue a person can work through. */
+export const PANEL_QUEUE_LIMIT = 25;
 export const PANEL_EVIDENCE_LIMIT = 5;
 export const PANEL_TITLE_MAX = 160;
-export const PANEL_QUESTION_MAX = 500;
+/** Long enough that an approval's scope is never cut mid-sentence. */
+export const PANEL_QUESTION_MAX = 1600;
+export const PANEL_ASKER_MAX = 60;
+/** Work items in the In progress view. */
+export const PANEL_WORK_LIMIT = 20;
 export const PANEL_EVIDENCE_TITLE_MAX = 80;
 export const PANEL_TEXT_MAX = 280;
 /** Options the panel can render as buttons for one decision. */
@@ -78,11 +83,15 @@ export const PANEL_SNAPSHOT_TOOL_CONTRACT = {
   id: PANEL_TOOL_ID,
   title: 'OrgX panel',
   description:
-    'App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (at most three, most urgent first), the review packet for one of them, and the last output a person accepted. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only.',
+    'App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only.',
   inputSchema: {
     focus: PANEL_FOCUS_SCHEMA.optional().describe(
       'Optional decision to show as the review packet. Defaults to the most urgent pending decision.'
     ),
+    view: z
+      .enum(['work'])
+      .optional()
+      .describe('Optional extra view. "work" adds what agents are running and what waits on you.'),
   },
   annotations: {
     readOnlyHint: true,
@@ -127,6 +136,8 @@ export interface PanelQueueItem {
   kind: PanelItemKind;
   /** What the person can do here, as the server lists it (null: Decide in OrgX or an older app). */
   widget_actions: PanelWidgetActions | null;
+  /** The agent or person asking, as OrgX names them; null for OrgX itself. */
+  asker: string | null;
   url: string;
 }
 
@@ -196,7 +207,24 @@ export interface PanelFocus {
   multiselect: boolean;
   /** What the person can do here, as the server lists it; preferred over options. */
   widget_actions: PanelWidgetActions | null;
+  asker: string | null;
   url: string;
+}
+
+export type PanelWorkState = 'blocked' | 'running' | 'queued';
+
+export interface PanelWorkItem {
+  id: string;
+  agent: string;
+  title: string;
+  state: PanelWorkState;
+  url: string;
+}
+
+export interface PanelWork {
+  status: 'ok' | 'unavailable';
+  items: PanelWorkItem[];
+  total: number;
 }
 
 export interface PanelSnapshot {
@@ -222,6 +250,8 @@ export interface PanelSnapshot {
     completed_unaccepted: number;
   };
   degraded: string[];
+  /** Present only when the snapshot was asked for view "work". */
+  work?: PanelWork;
 }
 
 // ---------------------------------------------------------------------------
@@ -295,6 +325,7 @@ interface NormalizedDecision {
   kind: PanelItemKind;
   runId: string | null;
   widgetActions: PanelWidgetActions | null;
+  asker: string | null;
   packet: Record<string, unknown> | null;
 }
 
@@ -479,6 +510,19 @@ export function normalizePanelWidgetActions(
   return list ? fromProvisional(list, kind, context.multiselect === true) : null;
 }
 
+const SYSTEM_ASKER = /^(orgx([\s_-]*(system|agent|automation|bot))?|system|automation|automatic|auto|scheduler)$/i;
+
+/** Who is asking, in the decisions widget's order; OrgX itself is null. */
+export function panelAsker(record: Record<string, unknown>, current: Record<string, unknown> = {}): string | null {
+  const raw = clipText(
+    str(current.owner) ?? str(record.agent_name) ?? str(record.owner_agent) ?? str(record.assigned_agent) ?? str(record.domain),
+    PANEL_ASKER_MAX
+  );
+  if (!raw || SYSTEM_ASKER.test(raw)) return null;
+  const source = (str(record.source) ?? str(record.created_by_type) ?? '').toLowerCase();
+  return source === 'system' && !str(current.owner) && !str(record.agent_name) ? null : raw;
+}
+
 function normalizeDecision(input: unknown): NormalizedDecision | null {
   const record = asRecord(input);
   if (!record) return null;
@@ -500,6 +544,7 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
   const widgetActions = normalizePanelWidgetActions(record.widget_actions, { kind: typeKind, multiselect });
   const runId = str(context.run_id);
   return {
+    asker: panelAsker(record, current),
     id,
     version: str(packet?.updatedAt) ?? str(record.updated_at) ?? createdAt ?? id,
     title: summary,
@@ -545,6 +590,7 @@ function toQueueItem(decision: NormalizedDecision): PanelQueueItem {
       : decision.options.length,
     kind: decision.kind,
     widget_actions: decision.widgetActions,
+    asker: decision.asker,
     url: decisionUrl(decision),
   };
 }
@@ -587,6 +633,7 @@ function toFocus(decision: NormalizedDecision): PanelFocus {
     options: decision.options,
     multiselect: decision.multiselect,
     widget_actions: decision.widgetActions,
+    asker: decision.asker,
     url: decisionUrl(decision),
   };
 }
@@ -704,6 +751,60 @@ export function normalizeAppProof(value: unknown): PanelSnapshot['proof'] | null
     },
     completed_unaccepted: completedUnaccepted,
   };
+}
+
+const WORK_STATE: Record<string, PanelWorkState> = {
+  running: 'running', in_progress: 'running', active: 'running', working: 'running', executing: 'running', verifying: 'running',
+  blocked: 'blocked', stalled: 'blocked', waiting: 'blocked', paused_for_input: 'blocked', needs_input: 'blocked', needs_you: 'blocked', held: 'blocked',
+  queued: 'queued', pending: 'queued', scheduled: 'queued', todo: 'queued',
+};
+const WORK_RANK: Record<PanelWorkState, number> = { blocked: 0, running: 1, queued: 2 };
+
+function workState(value: unknown): PanelWorkState | null {
+  const slug = typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s-]+/g, '_') : '';
+  return WORK_STATE[slug] ?? null;
+}
+
+/**
+ * The In progress view from the agent-status read: one row per active task
+ * (or per busy agent with no task list), blocked first. Idle agents, OrgX's
+ * own system agents and finished tasks are left out. Null input (the read
+ * failed) is reported as unavailable, never as "nothing running".
+ */
+export function buildPanelWork(data: Record<string, unknown> | null): PanelWork {
+  if (!data || !Array.isArray(data.agents)) return { status: 'unavailable', items: [], total: 0 };
+  const items: PanelWorkItem[] = [];
+  for (const raw of data.agents) {
+    const agent = asRecord(raw);
+    if (!agent) continue;
+    const name = clipText(str(agent.agent_name) ?? str(agent.name) ?? str(agent.domain), PANEL_ASKER_MAX);
+    if (!name || SYSTEM_ASKER.test(name) || /chatgpt app/i.test(name)) continue;
+    const agentState = workState(agent.status);
+    const tasks = ['current_tasks', 'active_tasks', 'tasks']
+      .flatMap((key) => (Array.isArray(agent[key]) ? (agent[key] as unknown[]) : []))
+      .map(asRecord)
+      .filter((task): task is Record<string, unknown> => Boolean(task && str(task.title)));
+    const seen = new Set<string>();
+    for (const task of tasks) {
+      const state = workState(task.status) ?? (task.status === undefined ? agentState : null);
+      const id = str(task.id) ?? `${name}:${str(task.title)}`;
+      if (!state || seen.has(id)) continue;
+      seen.add(id);
+      items.push({
+        id,
+        agent: name,
+        title: clipText(task.title, PANEL_TITLE_MAX) ?? 'Task',
+        state,
+        url: UUID_RE.test(id) ? buildEntityLink('task', id).url : 'https://useorgx.com/live',
+      });
+    }
+    if (!tasks.length && agentState) {
+      const current = clipText(str(asRecord(agent.current_task)?.title) ?? str(agent.current_activity) ?? str(agent.status_detail), PANEL_TITLE_MAX);
+      items.push({ id: `agent:${str(agent.agent_id) ?? name}`, agent: name, title: current ?? 'Working', state: agentState, url: 'https://useorgx.com/live' });
+    }
+  }
+  items.sort((a, b) => WORK_RANK[a.state] - WORK_RANK[b.state]);
+  return { status: 'ok', items: items.slice(0, PANEL_WORK_LIMIT), total: items.length };
 }
 
 export interface BuildPanelSnapshotInput {
@@ -883,6 +984,11 @@ export interface PanelSurfaceHost {
     workspaceId: string;
     limit: number;
   }): Promise<Array<Record<string, unknown>>>;
+  /**
+   * The agent-status read, asked for only when the panel opens In progress.
+   * Returns the app payload's data, or null when the read fails.
+   */
+  fetchAgentStatus?(params: { workspaceId: string }): Promise<Record<string, unknown> | null>;
   /** The worker's tool wrapper (error mapping, session bookkeeping). */
   run(runner: () => Promise<CallToolResult>): Promise<CallToolResult>;
   now?(): Date;
@@ -898,6 +1004,7 @@ export async function handlePanelSnapshot(
   return host.run(async () => {
     const parsedFocus = PANEL_FOCUS_SCHEMA.safeParse(args?.focus);
     const focus = parsedFocus.success ? parsedFocus.data : null;
+    const wantsWork = args?.view === 'work';
 
     let workspace = host.sessionWorkspace();
     if (!workspace) {
@@ -913,12 +1020,17 @@ export async function handlePanelSnapshot(
     let approvalMeta: Record<string, unknown> | null = null;
     let appProof: unknown = undefined;
 
+    let work: PanelWork | undefined;
     if (workspace) {
       const workspaceId = workspace.id;
-      const [decisionRead, artifactRead] = await Promise.allSettled([
+      const [decisionRead, artifactRead, workRead] = await Promise.allSettled([
         host.fetchPendingDecisions({ workspaceId, limit: PANEL_DECISION_READ_LIMIT }),
         host.fetchArtifacts({ workspaceId, limit: PANEL_ARTIFACT_READ_LIMIT }),
+        wantsWork && host.fetchAgentStatus ? host.fetchAgentStatus({ workspaceId }) : Promise.resolve(undefined),
       ]);
+      if (wantsWork) {
+        work = buildPanelWork(workRead.status === 'fulfilled' ? workRead.value ?? null : null);
+      }
       if (decisionRead.status === 'fulfilled' && decisionRead.value?.ok !== false) {
         const split = splitWidgetApprovalMeta(asRecord(decisionRead.value?.data) ?? {});
         decisions = Array.isArray(split.data.decisions) ? split.data.decisions : [];
@@ -939,6 +1051,7 @@ export async function handlePanelSnapshot(
       focus,
       viewerUserIds: host.viewerUserIds(),
     });
+    if (work) snapshot.work = work;
     const widgetMeta = selectPanelApprovalMeta(approvalMeta, snapshot);
 
     return {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-05T15:26:29.026Z",
+  "generatedAt": "2026-10-07T18:35:24.050Z",
   "sourceHash": "35e9f723b4027bfb",
   "version": "1.0.0",
   "totalTools": 107,
@@ -1676,7 +1676,7 @@
     {
       "id": "orgx_panel_snapshot",
       "title": "OrgX panel",
-      "description": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (at most three, most urgent first), the review packet for one of them, and the last output a person accepted. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only.",
+      "description": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only.",
       "category": "Decisions",
       "inputSchema": {
         "type": "object",
@@ -1701,6 +1701,13 @@
             ],
             "additionalProperties": false,
             "description": "Optional decision to show as the review packet. Defaults to the most urgent pending decision."
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "work"
+            ],
+            "description": "Optional extra view. \"work\" adds what agents are running and what waits on you."
           }
         },
         "additionalProperties": false,
