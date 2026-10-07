@@ -148,6 +148,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             option_count: z.number(),
             kind: panelItemKindSchema,
             widget_actions: panelWidgetActionsSchema.nullable(),
+            asker: z.string().nullable(),
             url: z.string(),
           })
           .strict()
@@ -182,6 +183,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           options: z.array(z.object({ id: z.string(), label: z.string() }).strict()),
           multiselect: z.boolean(),
           widget_actions: panelWidgetActionsSchema.nullable(),
+          asker: z.string().nullable(),
           url: z.string(),
         })
         .strict()
@@ -208,6 +210,24 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         })
         .strict(),
       degraded: z.array(z.string()),
+      work: z
+        .object({
+          status: z.enum(['ok', 'unavailable']),
+          items: z.array(
+            z
+              .object({
+                id: z.string(),
+                agent: z.string(),
+                title: z.string(),
+                state: z.enum(['blocked', 'running', 'queued']),
+                url: z.string(),
+              })
+              .strict()
+          ),
+          total: z.number(),
+        })
+        .strict()
+        .optional(),
     })
     .strict(),
 

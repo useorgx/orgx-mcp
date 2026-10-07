@@ -374,6 +374,15 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   // OrgX panel only. See the file header for its package source.
   'shared/openai-extensions.js',
   'shared/panel-interaction-state.js',
+  // The OrgX panel, split into focused modules (styles, brand and boot,
+  // start-work prompts, first-use tour, tab views, controller). The
+  // controller loads last.
+  'shared/panel/panel.css',
+  'shared/panel/panel-brand.js',
+  'shared/panel/panel-launch.js',
+  'shared/panel/panel-tour.js',
+  'shared/panel/panel-views.js',
+  'shared/panel/panel-app.js',
 ];
 
 /**

@@ -22,6 +22,12 @@
     "shared/openai-extensions.js",
     "shared/orgx-icons.js",
     "shared/panel-interaction-state.js",
+    "shared/panel/panel-app.js",
+    "shared/panel/panel-brand.js",
+    "shared/panel/panel-launch.js",
+    "shared/panel/panel-tour.js",
+    "shared/panel/panel-views.js",
+    "shared/panel/panel.css",
     "shared/tokens.css",
     "shared/utils.js",
     "shared/widget-foundation.css",
@@ -291,18 +297,26 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 112420,
-      "hash": "a37f8fece798",
+      "bytes": 1416,
+      "hash": "df5f0ef7a95d",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
+        "shared/agent-identity.js",
         "shared/interaction-kit.css",
         "shared/interaction-kit.js",
+        "shared/kit/ox-elements-avatar.js",
         "shared/kit/ox-elements-core.js",
         "shared/kit/ox-elements-footer.js",
         "shared/kit/ox-tokens.css",
         "shared/mcp-apps-sdk.umd.js",
         "shared/openai-extensions.js",
         "shared/panel-interaction-state.js",
+        "shared/panel/panel-app.js",
+        "shared/panel/panel-brand.js",
+        "shared/panel/panel-launch.js",
+        "shared/panel/panel-tour.js",
+        "shared/panel/panel-views.js",
+        "shared/panel/panel.css",
         "shared/widget-runtime.js",
         "shared/widget-theme.css"
       ],
@@ -311,11 +325,13 @@
         "ox-state-chip",
         "ox-attention-line",
         "ox-receipt-row",
-        "ox-footer"
+        "ox-footer",
+        "ox-avatar"
       ],
       "kitBundles": [
         "shared/kit/ox-elements-core.js",
-        "shared/kit/ox-elements-footer.js"
+        "shared/kit/ox-elements-footer.js",
+        "shared/kit/ox-elements-avatar.js"
       ],
       "demoOnly": false
     },

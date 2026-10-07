@@ -115,6 +115,12 @@ const SHARED_ALLOWLIST = new Set([
   'shared/widget-runtime.js',
   'shared/openai-extensions.js',
   'shared/panel-interaction-state.js',
+  'shared/panel/panel.css',
+  'shared/panel/panel-brand.js',
+  'shared/panel/panel-launch.js',
+  'shared/panel/panel-tour.js',
+  'shared/panel/panel-views.js',
+  'shared/panel/panel-app.js',
   'shared/demo-data.js',
 ]);
 
@@ -145,6 +151,12 @@ const RUNTIME_INLINED_PATHS = new Set([
   'shared/widget-runtime.js',
   'shared/openai-extensions.js',
   'shared/panel-interaction-state.js',
+  'shared/panel/panel.css',
+  'shared/panel/panel-brand.js',
+  'shared/panel/panel-launch.js',
+  'shared/panel/panel-tour.js',
+  'shared/panel/panel-views.js',
+  'shared/panel/panel-app.js',
 ]);
 
 // ── Contract 4: design-kit bundles ───────────────────────────────
@@ -246,8 +258,19 @@ function smallestKit(used) {
   return kitBytes(split) < kitBytes([KIT_FULL]) ? split : [KIT_FULL];
 }
 
-function validateKitBundles(widgetName, html, errors, warnings) {
-  const used = usedKitElements(html);
+/**
+ * A widget's own modules (shared/panel/*.js) render markup too, so the kit
+ * check reads them along with the HTML.
+ */
+function widgetModuleSource(sharedRefs) {
+  return sharedRefs
+    .filter((ref) => ref.startsWith('shared/panel/') && ref.endsWith('.js'))
+    .map((ref) => readFileSync(join(WIDGETS_DIR, ref), 'utf8'))
+    .join('\n');
+}
+
+function validateKitBundles(widgetName, html, errors, warnings, moduleSource = '') {
+  const used = usedKitElements(html + '\n' + moduleSource);
   const scripts = kitScripts(html);
   const fix = () => `Load: ${smallestKit(used).map((p) => `<script src="${p}"></script>`).join(' ') || 'nothing from shared/kit/ox-elements*'}`;
   if (!used.length) {
@@ -417,7 +440,7 @@ function main() {
     const sharedRefs = extractSharedRefs(html);
     validateSharedRefs(widgetName, sharedRefs, errors);
     validateProtocolBridge(widgetName, html, sharedRefs, errors);
-    const kit = validateKitBundles(widgetName, html, errors, warnings);
+    const kit = validateKitBundles(widgetName, html, errors, warnings, widgetModuleSource(sharedRefs));
 
     entries[widgetName] = {
       file: relative(REPO_ROOT, full),

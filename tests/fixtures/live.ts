@@ -31,6 +31,13 @@ export function readWidgetHtml(name: string): string {
   return readFileSync(join(WIDGETS_DIR, `${name}.html`), 'utf8');
 }
 
+/** A widget's HTML plus the source of its own modules (shared/panel/*). */
+export function readWidgetSource(name: string): string {
+  const html = readWidgetHtml(name);
+  const modules = [...html.matchAll(/\b(?:src|href)="(shared\/panel\/[^"]+)"/g)].map((m) => m[1]!);
+  return [html, ...modules.map((path) => readFileSync(join(WIDGETS_DIR, path), 'utf8'))].join('\n');
+}
+
 // ── Fake EventSource ────────────────────────────────────────────────────────
 
 export interface SseFrame {
@@ -187,10 +194,12 @@ export function mountWidget(name: string, options: MountOptions = {}): void {
   // daily-brief's inline script was a module; match both spellings so the
   // harness does not silently pick the wrong <script> for such a widget.
   const scripts = html.match(/<script(?:\s+type="module")?>[\s\S]*?<\/script>/g) ?? [];
-  const widgetScript = scripts[scripts.length - 1]!.replace(
-    /<script(?:\s+type="module")?>|<\/script>/g,
-    ''
-  );
+  // A widget split into its own modules (shared/panel/*.js) runs them in
+  // document order, the way the served document inlines them.
+  const modules = [...html.matchAll(/<script\b[^>]*\bsrc="(shared\/panel\/[^"]+\.js)"/g)].map((m) => m[1]!);
+  const widgetScript = modules.length
+    ? modules.map((path) => readFileSync(join(WIDGETS_DIR, path), 'utf8')).join('\n;\n')
+    : scripts[scripts.length - 1]!.replace(/<script(?:\s+type="module")?>|<\/script>/g, '');
 
   // Some widgets bootstrap on DOMContentLoaded. In a real page their listener is
   // registered while the document is still parsing, so the event follows; here
