@@ -2,6 +2,13 @@ import type { z } from 'zod';
 import type { WIDGET_OUTPUT_SCHEMAS } from './openaiOutputSchemas/widgets';
 
 type CommandStatus = z.infer<(typeof WIDGET_OUTPUT_SCHEMAS)['orgx_command_status']>;
+export type PanelReadState = { phase: 'idle' } | { phase: 'loading' | 'failed'; focusId: string | null };
+type ReadEvent = { type: 'requested' | 'completed' | 'failed'; focusId: string | null };
+export function readTransition(state: PanelReadState, event: ReadEvent): PanelReadState {
+  if (event.type === 'requested') return { phase: 'loading', focusId: event.focusId };
+  if (state.phase !== 'idle' && state.focusId !== event.focusId) return state;
+  return event.type === 'failed' ? { phase: 'failed', focusId: event.focusId } : { phase: 'idle' };
+}
 export type RulingPhase = 'saving' | 'waiting' | 'recorded' | 'confirmed' | 'rejected' | 'failed' | 'elsewhere';
 export type RulingAction = 'approve' | 'reject';
 export type StatusTransition =

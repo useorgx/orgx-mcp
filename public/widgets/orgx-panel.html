@@ -140,6 +140,7 @@
     .ev-open:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); color: var(--ox-text); }
 
     .actions { margin-top: 14px; }
+    ox-footer[variant="reads"]::part(action) { min-height: 44px; min-width: 44px; }
 
     ox-footer { margin: 0 calc(-1 * var(--pn-gutter)); }
     .ft-action {
@@ -287,7 +288,7 @@
   <div id="pn-live" class="sr-only" role="status" aria-live="polite"></div>
 
   <script>
-  (function orgxPanel() {
+    (function orgxPanel() {
     'use strict';
 
     var R = window.OrgXWidgetRuntime;
@@ -301,28 +302,27 @@
 
     var ui = {
       snapshot: null,
-      loading: true,
-      auth: null,              // { code, message } when signed out
-      fetchFailedAt: null,     // last refresh failed (degraded)
+      readState: { phase: 'idle' },
+      auth: null,
       syncedAt: null,
       tokens: {},
       mode: params.get('mode') === 'thread' ? 'thread' : 'global',
-      listOpen: false,         // thread: "Choose another item"
+      listOpen: false,
       evidenceOpen: false,
-      composer: null,          // { id, draft }
-      selections: {},          // decisionId -> option ids picked (toggles, or the one option awaiting a reason)
-      rejectPicks: {},         // decisionId -> the option a send-back note is about
-      answers: {},             // decisionId -> typed answer
-      notes: {},               // decisionId -> why, when the chosen option asks for it
-      fieldErrors: {},         // decisionId -> { action, field, message } after a refused click
-      rulings: {},             // decisionId -> { action, phase, detail, title }
-      lastRuling: null,        // { action, title } after a refresh removes it
-      actionError: null,       // { id, message }
-      changedSince: null,      // sync label when a refresh found a newer version
-      limited: false,          // restored/deep-linked selection is not available
+      composer: null,
+      selections: {},
+      rejectPicks: {},
+      answers: {},
+      notes: {},
+      fieldErrors: {},
+      rulings: {},
+      lastRuling: null,
+      actionError: null,
+      changedSince: null,
+      limited: false,
       caps: { modelContext: false, deepLink: false },
       generation: 0,
-      chatCannotDecide: false, // the host has no decide tool: every item hands off to OrgX
+      chatCannotDecide: false,
     };
     var ext = { deepLink: undefined, modelContext: undefined };
     var share = X.createShareController({ modelContext: undefined });
@@ -332,7 +332,6 @@
     var lastFocusRequest = null;
     var handledHint = { deepLink: null, context: null };
 
-    // ---------------------------------------------------------------- utils
     function esc(value) {
       return String(value == null ? '' : value)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -459,7 +458,6 @@
       return parts;
     }
 
-    // code; a raw payload ({"detail":…} or a lone "{") never reaches the panel.
     function looksRaw(text) {
       return /^[\s{[<"]/.test(text) || /^[\s{}[\]"',:]*$/.test(text) || /"\s*:/.test(text) || /\b(?:undefined|null|NaN)\b/.test(text);
     }
@@ -661,13 +659,11 @@
       return null;
     }
 
-    // ------------------------------------------------------------ rendering
     function header() {
       var s = ui.snapshot;
       var name = s && s.workspace && s.workspace.name ? s.workspace.name : (s && s.workspace ? 'Workspace' : '');
       var synced = ui.syncedAt ? window.OrgXTime.synced(ui.syncedAt).replace(/^s/, 'S') : '';
-      // The degraded notice carries its own Refresh; say it once.
-      var refresh = ui.auth || ui.fetchFailedAt ? '' : '<button type="button" class="quiet-btn" data-action="refresh">Refresh</button>';
+      var refresh = ui.auth || ui.readState.phase === 'failed' ? '' : '<button type="button" class="quiet-btn" data-action="refresh">Refresh</button>';
       var nameHtml = name
         ? (ui.mode === 'global' ? '<h1 class="ws" title="' + esc(name) + '">' + esc(name) + '</h1>' : '<span class="ws">' + esc(name) + '</span>')
         : (ui.mode === 'global' ? '<h1 class="sr-only">OrgX</h1>' : '');
@@ -686,9 +682,9 @@
 
     function noticeHtml() {
       var parts = [];
-      if (ui.fetchFailedAt && ui.snapshot) {
+      if (ui.readState.phase === 'failed' && ui.snapshot) {
         parts.push('<div class="notice" data-tone="amber" role="status"><p>Showing the snapshot from ' + esc(clock(ui.syncedAt)) +
-          '. OrgX did not respond.</p><button type="button" class="text-btn" data-action="refresh">Refresh</button></div>');
+          '. The latest snapshot could not be loaded.</p><button type="button" class="text-btn" data-action="refresh">Refresh</button></div>');
       }
       if (ui.lastRuling) {
         var receiptTitle = splitHeadline(ui.lastRuling.title);
@@ -838,6 +834,13 @@
 
     function footerFor(f) {
       var ruling = ui.rulings[f.id];
+      if (ui.readState.phase !== 'idle' && (!ruling || ui.readState.focusId !== null)) {
+        var failed = ui.readState.phase === 'failed';
+        var opening = ui.readState.focusId !== null;
+        return '<ox-footer variant="reads" state="' + (failed ? 'failed' : 'refreshing') + '" heading="' +
+          (failed ? (opening ? 'Could not open decision' : 'Could not refresh decisions') : (opening ? 'Opening decision' : 'Refreshing decisions')) +
+          '" detail="Showing the previous decision' + (failed ? '. Try again.' : ' while loading.') + '" data-read="' + ui.readState.phase + '" data-id="' + esc(f.id) + '"></ox-footer>';
+      }
       if (ruling) {
         var approvedLabel = pastTense(ruling.approveLabel, 'approve');
         var rejectedLabel = pastTense(ruling.rejectLabel, 'reject');
@@ -930,7 +933,6 @@
         '<p class="meta"><span class="urgency" data-u="' + esc(f.urgency) + '">' + esc(urgencyLabel(f.urgency)) + '</span>' +
         (f.blocked ? '<span aria-hidden="true">·</span><span class="blocked-tag">Blocking work</span>' : '') +
         (metaBits.length ? '<span aria-hidden="true">·</span><span class="meta-text" title="' + esc(metaBits.join(' · ')) + '">' + esc(metaBits.join(' · ')) + '</span>' : '<span class="meta-text"></span>') +
-        // "Decide in OrgX" already opens it when there is no in-place action.
         (tokenFor(f.id) || ui.rulings[f.id] ? '<button type="button" class="ox-open" data-action="open" data-url="' + esc(f.url) + '" aria-label="Open this decision in OrgX">Open in OrgX</button>' : '') + '</p>' +
         '<' + headingTag + ' id="pk-q" tabindex="-1" class="q' + (ui.wholeQ === f.id ? ' is-whole' : '') + '">' + esc(head.headline) + '</' + headingTag + '>' +
         '<button type="button" class="q-more" data-action="whole-q" data-id="' + esc(f.id) + '" hidden>Show the whole question</button>' +
@@ -949,7 +951,11 @@
       });
       var meta = [urgencyLabel(item.urgency), ago(item.waiting_since), item.initiative_title].filter(Boolean).join(' · ');
       var acts = '';
-      if (ruling) {
+      var opening = ui.readState.phase === 'loading' && ui.readState.focusId === item.id;
+      if (ui.readState.phase !== 'idle') {
+        acts = '<div class="row-acts"><button type="button" class="mini" data-action="select" data-id="' + esc(item.id) + '"' +
+          (opening ? ' aria-disabled="true"' : '') + '>' + (opening ? 'Opening…' : 'Review') + '</button></div>';
+      } else if (ruling) {
         var chip = ruling.phase === 'confirmed' ? 'confirmed' : ruling.phase === 'rejected' ? 'rejected' : ruling.phase === 'elsewhere' ? 'superseded' : ruling.phase === 'recorded' ? 'stale' : ruling.phase === 'failed' ? 'failed' : 'sending';
         var label = ruling.phase === 'confirmed' ? pastTense(ruling.approveLabel, 'approve')
           : ruling.phase === 'rejected' ? pastTense(ruling.rejectLabel, 'reject')
@@ -967,7 +973,7 @@
       }
       var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
       var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : '';
-      return '<li class="row" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '" aria-label="' + esc(item.title + '. ' + meta) + '">' +
+      return '<li class="row" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
         '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span><span class="row-meta"><span>' + esc(kindTag + meta) + '</span></span></button>' + acts +
         (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
     }
@@ -1031,7 +1037,7 @@
           '<button type="button" class="secondary-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>';
       }
       if (s.state === 'degraded' && !s.queue.length) {
-        return html + '<div class="notice" data-tone="amber" role="status"><p>OrgX did not respond. Nothing was changed.</p>' +
+        return html + '<div class="notice" data-tone="amber" role="status"><p>The decision queue could not be loaded.</p>' +
           '<button type="button" class="text-btn" data-action="refresh">Refresh</button></div>' + proofHtml(s, false);
       }
       if (ui.limited || s.selection.status === 'unavailable') {
@@ -1107,12 +1113,12 @@
         root.innerHTML = signedOutHtml();
       } else if (!ui.snapshot) {
         root.setAttribute('data-tone', 'none');
-        root.innerHTML = ui.fetchFailedAt ? loadErrorHtml() : skeletonHtml();
+        root.innerHTML = ui.readState.phase === 'failed' ? loadErrorHtml() : skeletonHtml();
       } else {
         root.setAttribute('data-tone', toneFor(ui.snapshot));
         root.innerHTML = ui.mode === 'thread' ? threadHtml(ui.snapshot) : globalHtml(ui.snapshot);
       }
-      root.setAttribute('aria-busy', ui.snapshot || ui.auth || ui.fetchFailedAt ? 'false' : 'true');
+      root.setAttribute('aria-busy', ui.readState.phase === 'loading' || (!ui.snapshot && !ui.auth && ui.readState.phase !== 'failed') ? 'true' : 'false');
       applyEvidenceClamp(false);
       fitRowActions();
       if (focusKey && focusKey !== 'null||') {
@@ -1143,7 +1149,6 @@
     }
     window.addEventListener('resize', function onResize() { window.requestAnimationFrame(fitQuestion); });
 
-    // ------------------------------------------------------------- data flow
     function accept(snapshot, meta, source) {
       if (!isSnapshot(snapshot)) return false;
       var prev = ui.snapshot;
@@ -1158,9 +1163,8 @@
       }
       ui.snapshot = snapshot;
       ui.syncedAt = new Date(snapshot.generated_at);
-      ui.loading = false;
       ui.auth = null;
-      ui.fetchFailedAt = null;
+      if (ui.readState.phase === 'failed') ui.readState = { phase: 'idle' };
       ui.limited = false;
       if (meta !== undefined) adoptTokens(meta);
       Object.keys(ui.rulings).forEach(function prune(id) {
@@ -1183,6 +1187,10 @@
     }
 
     function fetchSnapshot(focusId, reason) {
+      focusId = focusId || null;
+      ui.readState = window.OrgXPanelState.readTransition(ui.readState, { type: 'requested', focusId: focusId });
+      render();
+      announce(focusId ? 'Opening decision.' : 'Refreshing decisions.');
       if (inflight) {
         pendingFocus = focusId;
         return inflight;
@@ -1191,23 +1199,24 @@
       var args = focusId ? { focus: { type: 'decision', id: focusId } } : {};
       lastFocusRequest = focusId || null;
       var request = R.callToolResult('orgx_panel_snapshot', args).then(function onResult(result) {
-        if (gen !== ui.generation) return;
+        if (gen !== ui.generation || (pendingFocus !== undefined && pendingFocus !== focusId)) return;
+        ui.readState = window.OrgXPanelState.readTransition(ui.readState, { type: 'completed', focusId: focusId });
         if (accept(result.data, result.meta || null, 'refresh')) {
           if (reason === 'refresh') announce('Refreshed. ' + summaryText());
-        } else if (!isSnapshot(result.data)) {
-          ui.fetchFailedAt = new Date();
-          announce('OrgX returned an incomplete snapshot. Try refreshing.');
+        } else {
+          ui.readState = window.OrgXPanelState.readTransition(ui.readState, { type: 'failed', focusId: focusId });
+          announce('The latest snapshot could not be loaded. Try refreshing.');
         }
         render();
       }, function onError(error) {
-        if (gen !== ui.generation) return;
+        if (gen !== ui.generation || (pendingFocus !== undefined && pendingFocus !== focusId)) return;
         var auth = authFailure(error && error.result ? error.result : error);
         if (auth) {
           resetScope();
           ui.snapshot = null;
           ui.auth = { code: auth };
         } else {
-          ui.fetchFailedAt = new Date();
+          ui.readState = window.OrgXPanelState.readTransition(ui.readState, { type: 'failed', focusId: focusId });
           announce('OrgX did not respond. Showing the last snapshot.');
         }
         render();
@@ -1232,13 +1241,14 @@
     }
 
     function selectDecision(id) {
+      if (ui.readState.phase === 'loading' && ui.readState.focusId === id) return;
       ui.listOpen = false;
       ui.evidenceOpen = false;
       ui.composer = null;
       ui.actionError = null;
       ui.limited = false;
       var s = ui.snapshot;
-      if (s && s.focus && s.focus.id === id) { render(); return; }
+      if (s && s.focus && s.focus.id === id && ui.readState.phase === 'idle') { render(); return; }
       if (isGallery) {
         var item = findItem(id);
         if (item) s.focus = Object.assign({}, s.focus || {}, galleryFocus(item));
@@ -1261,7 +1271,6 @@
             ui.mode = 'thread';
             if (!(s.focus && s.focus.id === target.id)) fetchSnapshot(target.id, 'deeplink');
           }
-          // Anything else falls back to the default view, silently.
         }
       }
       if (ext.modelContext) {
@@ -1293,7 +1302,6 @@
       render();
     }
 
-    // -------------------------------------------------------------- rulings
     function wait(ms) {
       return new Promise(function resolveLater(resolve) { later(resolve, ms); });
     }
@@ -1365,7 +1373,7 @@
     }
 
     function rule(id, action) {
-      if (ui.rulings[id]) return;
+      if (ui.rulings[id] || ui.readState.phase !== 'idle') return;
       var token = tokenFor(id);
       var item = findItem(id);
       if (!token || !item) {
@@ -1521,7 +1529,6 @@
       }, function ignore() { /* the poll keeps running */ });
     }
 
-    // ---------------------------------------------------------------- share
     function doShare(id) {
       var item = findItem(id);
       var ws = workspaceId();
@@ -1536,7 +1543,6 @@
         function failed() { render(); });
     }
 
-    // --------------------------------------------------------------- events
     function openUrl(url, event) {
       url = window.OrgXLinks.normalize(url);
       if (!url) return;
@@ -1645,6 +1651,7 @@
       var id = footer && footer.getAttribute('data-id');
       if (!id) return;
       var detail = event.detail || {};
+      if (footer.hasAttribute('data-read')) { if (detail.action === 'retry') fetchSnapshot(ui.readState.focusId, 'select'); return; }
       if (detail.action === 'check_now') checkNow(id);
       else if (detail.action === 'receipt') { var item = findItem(id); openUrl(item ? item.url : window.OrgXLinks.decision(id)); }
     });
@@ -1690,6 +1697,7 @@
     function resetScope() {
       dispose();
       inflight = null; pendingFocus = undefined; lastFocusRequest = null;
+      ui.readState = { phase: 'idle' };
       ui.tokens = {}; ui.rulings = {}; ui.lastRuling = null; ui.composer = null;
       ui.selections = {}; ui.rejectPicks = {}; ui.answers = {}; ui.notes = {}; ui.fieldErrors = {};
       ui.actionError = null; ui.changedSince = null; ui.chatCannotDecide = false;
@@ -1705,11 +1713,11 @@
         if (ui.rulings[id].phase === 'saving' || ui.rulings[id].phase === 'waiting') ui.rulings[id].phase = 'recorded';
       });
       inflight = null; pendingFocus = undefined;
+      ui.readState = { phase: 'idle' };
       render();
       fetchSnapshot(null, 'resume');
     });
 
-    // -------------------------------------------------------------- gallery
     var NOW = Date.now();
     function isoAgo(ms) { return new Date(NOW - ms).toISOString(); }
     var H = 3600 * 1000;
@@ -1975,11 +1983,10 @@
       ui.tokens = tokens;
       accept(s, undefined, 'host');
       ui.syncedAt = new Date(NOW - 4 * 60 * 1000);
-      if (failed) ui.fetchFailedAt = new Date();
+      if (failed) ui.readState = { phase: 'failed', focusId: null };
       render();
     }
 
-    // ----------------------------------------------------------------- boot
     if (isGallery) {
       runGallery();
       return;
@@ -1997,7 +2004,7 @@
       onFailure: function onFailure(decoded) {
         var auth = authFailure(decoded);
         if (auth) { resetScope(); ui.snapshot = null; ui.auth = { code: auth }; }
-        else ui.fetchFailedAt = new Date();
+        else ui.readState = { phase: 'failed', focusId: null };
         render();
         return true;
       },
@@ -2006,12 +2013,12 @@
         if (accept(data, R.getToolResponseMetadata ? { 'orgx/widgetApproval': R.getToolResponseMetadata(APPROVAL_META_KEY) } : null, 'host')) {
           render();
         } else if (!isSnapshot(data)) {
-          ui.fetchFailedAt = new Date();
+          ui.readState = { phase: 'failed', focusId: null };
           render();
         }
       },
     });
-  })();
+    })();
   </script>
 </body>
 </html>

@@ -22,8 +22,14 @@ var OrgXPanelState = (() => {
   var panelInteractionState_exports = {};
   __export(panelInteractionState_exports, {
     isFinalRuling: () => isFinalRuling,
+    readTransition: () => readTransition,
     statusTransition: () => statusTransition
   });
+  function readTransition(state, event) {
+    if (event.type === "requested") return { phase: "loading", focusId: event.focusId };
+    if (state.phase !== "idle" && state.focusId !== event.focusId) return state;
+    return event.type === "failed" ? { phase: "failed", focusId: event.focusId } : { phase: "idle" };
+  }
   function isFinalRuling(phase) {
     return ["confirmed", "rejected", "failed", "elsewhere"].includes(phase);
   }

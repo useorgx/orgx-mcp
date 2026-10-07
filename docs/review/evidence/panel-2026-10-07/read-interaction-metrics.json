@@ -1,0 +1,34 @@
+[
+  {
+    "theme": "light",
+    "width": 800,
+    "feedbackMs": 4,
+    "overflow": false,
+    "animations": 0,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 375,
+    "feedbackMs": 3.900000000372529,
+    "overflow": false,
+    "animations": 0,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 800,
+    "feedbackMs": 3.5,
+    "overflow": false,
+    "animations": 0,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 375,
+    "feedbackMs": 3.900000000372529,
+    "overflow": false,
+    "animations": 0,
+    "errors": []
+  }
+]

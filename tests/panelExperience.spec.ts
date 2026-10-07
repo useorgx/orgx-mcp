@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mountPanel, snapshot, D1 } from './fixtures/panel';
+import { mountPanel, snapshot, D1, D2 } from './fixtures/panel';
 
 const mounted: Awaited<ReturnType<typeof mountPanel>>[] = [];
 afterEach(() => mounted.splice(0).forEach(({ dom }) => dom.window.close()));
@@ -15,8 +15,60 @@ function approve(m: Awaited<ReturnType<typeof mountPanel>>) {
   m.dom.window.document.querySelector('ox-footer[data-id]')!.dispatchEvent(new m.dom.window.CustomEvent('ox-primary', { bubbles: true }));
 }
 const footer = (m: Awaited<ReturnType<typeof mountPanel>>) => m.dom.window.document.querySelector('ox-footer[data-id]');
+const review = (m: Awaited<ReturnType<typeof mountPanel>>, id: string) =>
+  (m.dom.window.document.querySelector(`[data-row="${id}"] .row-main`) as HTMLButtonElement).click();
+function selected(id: string, question: string) {
+  const base = snapshot();
+  return snapshot({ generated_at: '2026-10-02T12:06:00Z', focus: { ...base.focus, id, question }, selection: { status: 'selected', requested_id: id } });
+}
 
 describe('panel experience lifetime and recovery', () => {
+  it('acknowledges Review synchronously and blocks the previous decision while loading', async () => {
+    const m = await open();
+    m.calls.callServerTool.mockImplementation(() => new Promise(() => {}));
+    review(m, D2);
+    expect(footer(m)?.getAttribute('heading')).toBe('Opening decision');
+    expect(m.dom.window.document.querySelector(`[data-row="${D2}"] .row-acts`)!.textContent).toContain('Opening');
+    expect(m.dom.window.document.getElementById('panel')!.getAttribute('aria-busy')).toBe('true');
+    approve(m); await m.flush();
+    expect(m.calls.callServerTool.mock.calls.filter(([p]) => p.name === 'orgx_widget_decide')).toHaveLength(0);
+  });
+  it('coalesces repeated Review without a second read', async () => {
+    const m = await open();
+    let finish!: (value: unknown) => void;
+    m.calls.callServerTool.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    review(m, D2); review(m, D2); await m.flush();
+    finish({ structuredContent: selected(D2, 'Rotate keys?') }); await m.flush();
+    expect(m.calls.callServerTool).toHaveBeenCalledTimes(1);
+    expect(m.dom.window.document.getElementById('pk-q')!.textContent).toBe('Rotate keys?');
+  });
+  it('never flashes a superseded packet before opening the latest requested decision', async () => {
+    const m = await open();
+    const D3 = '33333333-3333-4333-8333-333333333333';
+    const base = snapshot();
+    m.app().ontoolresult({ structuredContent: snapshot({ queue: [...base.queue, { ...base.queue[1], id: D3, title: 'Review the deployment?' }] }) });
+    await m.flush();
+    const finish: ((value: unknown) => void)[] = [];
+    m.calls.callServerTool.mockImplementation(() => new Promise((resolve) => finish.push(resolve)));
+    review(m, D2); review(m, D3); await m.flush();
+    finish[0]!({ structuredContent: selected(D2, 'Superseded packet') }); await m.flush();
+    expect(m.dom.window.document.getElementById('pk-q')!.textContent).not.toBe('Superseded packet');
+    expect(footer(m)?.getAttribute('heading')).toBe('Opening decision');
+    expect(m.calls.callServerTool.mock.calls[1]![0].arguments).toEqual({ focus: { type: 'decision', id: D3 } });
+    finish[1]!({ structuredContent: selected(D3, 'Review the deployment?') }); await m.flush();
+    expect(m.dom.window.document.getElementById('pk-q')!.textContent).toBe('Review the deployment?');
+  });
+  it('retries a failed selection for the intended decision while preserving the previous packet', async () => {
+    const m = await open();
+    m.calls.callServerTool.mockRejectedValueOnce(new Error('Read failed')).mockResolvedValueOnce({ structuredContent: selected(D2, 'Rotate keys?') });
+    review(m, D2); await m.flush();
+    expect(m.dom.window.document.getElementById('pk-q')!.textContent).toBe('Ship release 4.2?');
+    expect(footer(m)?.getAttribute('heading')).toBe('Could not open decision');
+    footer(m)!.dispatchEvent(new m.dom.window.CustomEvent('ox-action', { bubbles: true, detail: { action: 'retry' } }));
+    await m.flush();
+    expect(m.calls.callServerTool.mock.calls[1]![0].arguments).toEqual({ focus: { type: 'decision', id: D2 } });
+    expect(m.dom.window.document.getElementById('pk-q')!.textContent).toBe('Rotate keys?');
+  });
   it('does not transfer drafts into another workspace, even with an older timestamp', async () => {
     const m = await open();
     const doc = m.dom.window.document;
