@@ -577,6 +577,18 @@ async function createWorker() {
   apiMocks.callOrgxApiJson.mockImplementation(async (_env: unknown, path: string, init?: RequestInit) => {
     if (path === '/api/tools/execute') {
       const body = JSON.parse(String(init?.body ?? '{}'));
+      if (body.tool_id === 'get_agent_status') {
+        return Response.json({
+          ok: true,
+          data: {
+            agents: [
+              { agent_id: 'engineering-agent', agent_name: 'Eli', status: 'running', current_tasks: [{ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', title: 'Reconcile telemetry', status: 'in_progress' }] },
+              { agent_id: 'design-agent', agent_name: 'Dana', status: 'blocked', current_activity: 'Waiting on a decision' },
+              { agent_id: 'product-agent', agent_name: 'Pace', status: 'idle' },
+            ],
+          },
+        });
+      }
       if (body.tool_id === 'get_pending_decisions') {
         return Response.json({
           ok: true,
@@ -604,6 +616,33 @@ describe('orgx_panel_snapshot on the worker', () => {
   afterEach(() => {
     apiMocks.callOrgxApiJson.mockReset();
     vi.restoreAllMocks();
+  });
+
+  it('reads In progress through the same agent-status read and projection as get_agent_status, only when asked', async () => {
+    const { worker, client } = await createWorker();
+    const enrich = vi.spyOn(worker as never, 'maybeEnrichWithArtifactProof' as never);
+
+    const plain = await client.callTool({ name: 'orgx_panel_snapshot', arguments: {} });
+    expect((plain.structuredContent as Record<string, unknown>).work).toBeUndefined();
+    const toolIds = () => apiMocks.callOrgxApiJson.mock.calls
+      .filter((call) => call[1] === '/api/tools/execute')
+      .map((call) => JSON.parse(String(call[2]?.body)).tool_id);
+    expect(toolIds()).not.toContain('get_agent_status');
+
+    const result = await client.callTool({ name: 'orgx_panel_snapshot', arguments: { view: 'work', workspace_id: OTHER_WS } });
+    expect(result.isError).not.toBe(true);
+    const statusCall = apiMocks.callOrgxApiJson.mock.calls.find(
+      (call) => call[1] === '/api/tools/execute' && JSON.parse(String(call[2]?.body)).tool_id === 'get_agent_status'
+    );
+    // The session workspace, never an injected one; the same user identity as the decisions read.
+    expect(JSON.parse(String(statusCall?.[2]?.body))).toMatchObject({ args: { workspace_id: SESSION_WS }, user_id: ORGX_USER });
+    expect(enrich).toHaveBeenCalledWith(expect.objectContaining({ toolId: 'get_agent_status', args: { workspace_id: SESSION_WS } }));
+    expect(worker.fetchEntityCollection).toHaveBeenCalledWith(expect.objectContaining({ type: 'task', workspaceId: SESSION_WS }));
+
+    const work = (result.structuredContent as Record<string, any>).work;
+    expect(work.status).toBe('ok');
+    expect(work.items.map((i: { agent: string; state: string }) => `${i.agent}:${i.state}`)).toEqual(['Dana:blocked', 'Eli:running']);
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(result.structuredContent).success).toBe(true);
   });
 
   it('lists the tool with its entrypoints and returns a valid snapshot scoped to the session', async () => {

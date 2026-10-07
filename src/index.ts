@@ -3136,7 +3136,16 @@ export class OrgXMcp extends McpAgent<
           );
           const body = (await response.json()) as { ok?: boolean; data?: Record<string, unknown> };
           if (body?.ok === false || !body?.data || typeof body.data !== 'object') return null;
-          return normalizeAgentStatusPayload(body.data);
+          // Same projection get_agent_status returns: reconcile with durable
+          // tasks and artifacts, then normalize, so In progress and the agent
+          // status widget never disagree about what is running.
+          const enriched = await this.maybeEnrichWithArtifactProof({
+            toolId: 'get_agent_status',
+            args: { workspace_id: workspaceId },
+            data: body.data,
+            userId: id,
+          });
+          return normalizeAgentStatusPayload(enriched);
         } catch {
           return null;
         }
