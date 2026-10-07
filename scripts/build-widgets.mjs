@@ -39,6 +39,7 @@ import { readFileSync, readdirSync, writeFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 import { INLINE_DIR, INTERACTION_KIT_PATHS, writeInlineAssets } from './lib/inlineAssets.mjs';
 
@@ -46,6 +47,13 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
 const WIDGETS_DIR = join(REPO_ROOT, 'public', 'widgets');
 const MANIFEST_PATH = join(WIDGETS_DIR, '_manifest.json');
+
+// The browser and tests use the same typed ruling transitions.
+const localRequire = createRequire(import.meta.url);
+const esbuild = createRequire(localRequire.resolve('vite/package.json'))('esbuild');
+esbuild.buildSync({ entryPoints: [join(REPO_ROOT, 'src/panelInteractionState.ts')],
+  outfile: join(WIDGETS_DIR, 'shared/panel-interaction-state.js'), bundle: true,
+  format: 'iife', globalName: 'OrgXPanelState', target: 'es2020' });
 
 // ── Contract 1: canonical primary palette ─────────────────────────
 // Must mirror the allowlist in tests/widgetPrimaryPalette.spec.ts.
@@ -106,6 +114,7 @@ const SHARED_ALLOWLIST = new Set([
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',
   'shared/openai-extensions.js',
+  'shared/panel-interaction-state.js',
   'shared/demo-data.js',
 ]);
 
@@ -135,6 +144,7 @@ const RUNTIME_INLINED_PATHS = new Set([
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',
   'shared/openai-extensions.js',
+  'shared/panel-interaction-state.js',
 ]);
 
 // ── Contract 4: design-kit bundles ───────────────────────────────

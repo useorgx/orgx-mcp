@@ -21,6 +21,7 @@
     "shared/mcp-apps-sdk.umd.js",
     "shared/openai-extensions.js",
     "shared/orgx-icons.js",
+    "shared/panel-interaction-state.js",
     "shared/tokens.css",
     "shared/utils.js",
     "shared/widget-foundation.css",
@@ -290,8 +291,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 111668,
-      "hash": "520e44f7b401",
+      "bytes": 112420,
+      "hash": "a37f8fece798",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -301,6 +302,7 @@
         "shared/kit/ox-tokens.css",
         "shared/mcp-apps-sdk.umd.js",
         "shared/openai-extensions.js",
+        "shared/panel-interaction-state.js",
         "shared/widget-runtime.js",
         "shared/widget-theme.css"
       ],

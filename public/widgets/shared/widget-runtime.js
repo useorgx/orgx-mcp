@@ -264,12 +264,20 @@
     return 0;
   }
 
-  function createResultGate() {
+  function createResultGate(getScope) {
     var newestObservedAt = null;
     var newestLifecycleRank = 0;
+    var newestScope;
     var arrival = 0;
     return {
       accept: function accept(raw) {
+        // Timestamp ordering is meaningful only within the same declared scope.
+        var scope = getScope ? getScope(extractStructuredWidgetData(raw, true)) : undefined;
+        if (scope !== undefined && scope !== newestScope) {
+          newestScope = scope;
+          newestObservedAt = null;
+          newestLifecycleRank = 0;
+        }
         var nextObservedAt = extractResultTimestamp(raw, 0);
         if (
           nextObservedAt !== null &&
@@ -644,7 +652,7 @@
     var render = options.render;
     var getData = options.getData || extractStructuredWidgetData;
     var currentData = null;
-    var resultGate = createResultGate();
+    var resultGate = createResultGate(options.resultScope);
     var liveState = { attached: null };
     var activeProtocol = getProtocol();
     var chatGptFallback = false;
@@ -946,11 +954,13 @@
   // Result `_meta` is handed to the widget only, never to the model. Widgets
   // read approval tokens from it (see getToolResponseMetadata).
   var lastResultMeta = null;
+  var receivedResultMeta = false;
 
   function rememberResultMeta(result) {
-    if (result && typeof result === 'object' && result._meta && typeof result._meta === 'object') {
-      lastResultMeta = result._meta;
-    }
+    receivedResultMeta = true;
+    // Authority belongs to this result. A result without metadata grants no authority.
+    lastResultMeta = result && typeof result === 'object' && result._meta && typeof result._meta === 'object'
+      ? result._meta : null;
   }
 
   function getToolResponseMetadata(key) {
@@ -958,7 +968,7 @@
     if (getProtocol() === 'chatgpt') {
       meta = global.openai && global.openai.toolResponseMetadata;
     } else {
-      meta = lastResultMeta || (global.openai && global.openai.toolResponseMetadata);
+      meta = receivedResultMeta ? lastResultMeta : (global.openai && global.openai.toolResponseMetadata);
     }
     if (!meta || typeof meta !== 'object') return null;
     return key ? (meta[key] === undefined ? null : meta[key]) : meta;
@@ -1718,6 +1728,7 @@
     bridge = null;
     protocol = null;
     lastResultMeta = null;
+    receivedResultMeta = false;
     hostLocale = null;
     hostTimeZone = null;
     formatterCache = {};
