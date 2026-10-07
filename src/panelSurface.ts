@@ -112,6 +112,8 @@ export const PANEL_TOOL_META = {
 export type PanelUrgency = 'low' | 'medium' | 'high' | 'critical';
 
 export interface PanelQueueItem {
+  /** Explicit client provenance from the scoped pending-decision read, never inferred. */
+  source_client?: string | null;
   id: string;
   version: string;
   title: string;
@@ -171,6 +173,7 @@ export interface PanelWidgetActions {
 }
 
 export interface PanelFocus {
+  source_client?: string | null;
   type: 'decision';
   id: string;
   /** What the item is: a decision, an agent-run approval, or an action awaiting approval. */
@@ -280,6 +283,7 @@ function timeOf(value: string | null): number {
 }
 
 interface NormalizedDecision {
+  sourceClient: string | null;
   id: string;
   version: string;
   title: string;
@@ -504,6 +508,7 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
     version: str(packet?.updatedAt) ?? str(record.updated_at) ?? createdAt ?? id,
     title: summary,
     question: str(packet?.question) ?? summary,
+    sourceClient: clipText(context.source_client, 60),
     urgency: normalizeUrgency(record.urgency),
     createdAt,
     initiativeId: initiativeId && UUID_RE.test(initiativeId) ? initiativeId : null,
@@ -532,6 +537,7 @@ function decisionUrl(decision: NormalizedDecision): string {
 
 function toQueueItem(decision: NormalizedDecision): PanelQueueItem {
   return {
+    source_client: decision.sourceClient,
     id: decision.id,
     version: decision.version,
     title: clipText(decision.title, PANEL_TITLE_MAX) ?? 'Decision',
@@ -559,6 +565,7 @@ function toFocus(decision: NormalizedDecision): PanelFocus {
   const consequences = asRecord(packet.consequences) ?? {};
   return {
     type: 'decision',
+    source_client: decision.sourceClient,
     id: decision.id,
     kind: decision.kind,
     version: decision.version,

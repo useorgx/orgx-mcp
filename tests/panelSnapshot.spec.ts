@@ -147,6 +147,16 @@ const ART_REVIEW = 'a4444444-4444-4444-8444-444444444444';
 const ART_MEMBER = 'a5555555-5555-4555-8555-555555555555';
 
 describe('buildPanelSnapshot', () => {
+  it('carries only explicit scoped client provenance, including a missing-client fallback', () => {
+    const snapshot = buildPanelSnapshot({ workspace: { id: SESSION_WS, name: 'Fixture' },
+      decisions: [decision(D1, 'high', '2026-09-30T10:00:00.000Z', { context: { source_client: 'claude-code' } })], artifacts: [] });
+    expect(snapshot.focus?.source_client).toBe('claude-code');
+    expect(snapshot.queue[0]?.source_client).toBe('claude-code');
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(snapshot).success).toBe(true);
+    const unreported = buildPanelSnapshot({ workspace: { id: SESSION_WS, name: 'Fixture' },
+      decisions: [decision(D1, 'high', '2026-09-30T10:00:00.000Z', { agent_name: 'Codex', metadata: { provider: 'openai' } })], artifacts: [] });
+    expect(unreported.focus?.source_client).toBeNull();
+  });
   it('orders the queue by urgency, keeps three, and focuses the most urgent', () => {
     const snapshot = buildPanelSnapshot({
       workspace: { id: SESSION_WS, name: 'Acme' },

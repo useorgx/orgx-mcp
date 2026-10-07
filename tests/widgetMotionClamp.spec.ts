@@ -82,7 +82,8 @@ describe('motion.setClamped', () => {
   it('is what plan-session-live and orgx-panel use for their disclosures', () => {
     const read = (name: string) => readFileSync(resolve(__dirname, `../public/widgets/${name}.html`), 'utf8');
     expect(read('plan-session-live')).toContain("motion.setClamped(wrap, expanded, expand, { expandedClass: 'is-expanded' })");
-    const panel = read('orgx-panel');
+    expect(read('orgx-panel')).toContain('data-source="controllers/orgx-panel.js"');
+    const panel = readFileSync(resolve(__dirname, '../public/widgets/controllers/orgx-panel.js'), 'utf8');
     expect(panel).toContain('R.motion.setClamped(list, clamped, toggle, options)');
     expect(panel).not.toContain("case 'evidence': ui.evidenceOpen = !ui.evidenceOpen; render();");
   });

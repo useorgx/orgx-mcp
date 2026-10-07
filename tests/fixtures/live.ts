@@ -160,12 +160,12 @@ export function mountWidget(name: string, options: MountOptions = {}): void {
   const html = readWidgetHtml(name);
   const body = html.match(/<body[^>]*>([\s\S]*)<\/body>/)?.[1] ?? '';
   document.documentElement.innerHTML = `<head></head><body>${body.replace(
-    /<script>[\s\S]*?<\/script>/g,
+    /<script\b[^>]*>[\s\S]*?<\/script>/g,
     ''
   )}</body>`;
 
   const scope = window as unknown as LiveGlobals;
-  for (const key of ['OrgXLiveMachine', 'OrgXLiveStore', 'OrgXLivePanel', 'OrgXWidgetRuntime', 'OrgXIcons']) {
+  for (const key of ['OrgXLiveMachine', 'OrgXLiveStore', 'OrgXLivePanel', 'OrgXWidgetRuntime', 'OrgXIcons', 'OrgXPanelState']) {
     delete scope[key];
   }
   (window as unknown as { EventSource: unknown }).EventSource = FakeEventSource;
@@ -182,13 +182,18 @@ export function mountWidget(name: string, options: MountOptions = {}): void {
   for (const file of ['agent-identity.js', 'widget-runtime.js', 'orgx-icons.js', ...LIVE_SCRIPTS]) {
     window.eval(readSharedScript(file));
   }
+  if (html.includes('src="shared/panel-interaction-state.js"')) {
+    // jsdom's ambient eval does not promote a bundled top-level var onto the
+    // window. A browser script does; retain that same exported object here.
+    scope.OrgXPanelState = window.eval(readSharedScript('panel-interaction-state.js') + '\nOrgXPanelState;');
+  }
   (scope.OrgXWidgetRuntime as { __resetForTests(): void }).__resetForTests();
 
-  // daily-brief's inline script was a module; match both spellings so the
-  // harness does not silently pick the wrong <script> for such a widget.
-  const scripts = html.match(/<script(?:\s+type="module")?>[\s\S]*?<\/script>/g) ?? [];
+  // Inline controllers may carry type or build-source attributes. External
+  // shared scripts are installed separately above, as in the serving layer.
+  const scripts = html.match(/<script\b(?![^>]*\bsrc\s*=)[^>]*>[\s\S]*?<\/script>/g) ?? [];
   const widgetScript = scripts[scripts.length - 1]!.replace(
-    /<script(?:\s+type="module")?>|<\/script>/g,
+    /<script\b[^>]*>|<\/script>/g,
     ''
   );
 

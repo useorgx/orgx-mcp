@@ -41,7 +41,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
-import { INLINE_DIR, INTERACTION_KIT_PATHS, writeInlineAssets } from './lib/inlineAssets.mjs';
+import { INLINE_DIR, INTERACTION_KIT_PATHS, writeInlineAssets, minifyInlineAsset } from './lib/inlineAssets.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
@@ -54,6 +54,19 @@ const esbuild = createRequire(localRequire.resolve('vite/package.json'))('esbuil
 esbuild.buildSync({ entryPoints: [join(REPO_ROOT, 'src/panelInteractionState.ts')],
   outfile: join(WIDGETS_DIR, 'shared/panel-interaction-state.js'), bundle: true,
   format: 'iife', globalName: 'OrgXPanelState', target: 'es2020' });
+
+// Keep the panel stylesheet and controller readable while embedding them without
+// another runtime request or a higher resource byte budget.
+const panelFile = join(WIDGETS_DIR, 'orgx-panel.html');
+const panelSource = readFileSync(panelFile, 'utf8');
+for (const marker of ['<style data-source="styles/orgx-panel.css">', '<script data-source="controllers/orgx-panel.js">']) {
+  if (!panelSource.includes(marker)) throw new Error('Panel build source marker missing: ' + marker);
+}
+const panelStyles = minifyInlineAsset('styles/orgx-panel.css', readFileSync(join(WIDGETS_DIR, 'styles/orgx-panel.css'), 'utf8'));
+const styledPanel = panelSource.replace(/<style data-source="styles\/orgx-panel.css">[\s\S]*?<\/style>/, () => '<style data-source="styles/orgx-panel.css">' + panelStyles + '</style>');
+const panelController = minifyInlineAsset('controllers/orgx-panel.js', readFileSync(join(WIDGETS_DIR, 'controllers/orgx-panel.js'), 'utf8'));
+const builtPanel = styledPanel.replace(/<script data-source="controllers\/orgx-panel.js">[\s\S]*?<\/script>/, () => '<script data-source="controllers/orgx-panel.js">' + panelController + '</script>');
+if (builtPanel !== panelSource) writeFileSync(panelFile, builtPanel);
 
 // ── Contract 1: canonical primary palette ─────────────────────────
 // Must mirror the allowlist in tests/widgetPrimaryPalette.spec.ts.
