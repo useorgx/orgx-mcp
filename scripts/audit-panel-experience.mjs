@@ -75,6 +75,33 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
       await page.close();
     }
+    const page = await browser.newPage({ viewport: { width: 375, height: 1000 }, reducedMotion: 'reduce' });
+    await page.route(/^https?:/, (route) => route.abort());
+    await page.addInitScript((fixture) => {
+      window.__calls = [];
+      window.openai = {
+        theme: 'light', toolOutput: fixture.snapshot,
+        toolResponseMetadata: { 'orgx/widgetApproval': { approval_tokens: Object.fromEntries(fixture.snapshot.queue.map((item) => [item.id, 'synthetic-token'])) } },
+        setWidgetHeight() {},
+        async callTool(name, args) {
+          window.__calls.push({ name, args });
+          if (name === 'orgx_widget_decide') throw Object.assign(new Error('Failed to fetch'), { code: 'network' });
+          return { structuredContent: fixture.snapshot };
+        },
+      };
+    }, fixture);
+    await page.goto(pathToFileURL(source).href);
+    await page.locator('ox-footer[data-id]').getByRole('button', { name: 'Allow once', exact: true }).click();
+    const recovery = page.locator('.error-line').getByRole('button', { name: 'Refresh', exact: true });
+    await recovery.waitFor();
+    assert.ok((await recovery.boundingBox()).height >= 44);
+    assert.ok((await page.locator('.error-line').textContent()).includes('response was lost'));
+    assert.equal(await page.evaluate(() => window.__calls.filter(({ name }) => name === 'orgx_widget_decide').length), 1);
+    await recovery.focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.evaluate(() => window.__calls.filter(({ name }) => name === 'orgx_widget_decide').length), 1);
+    await page.screenshot({ path: join(out, 'state-lost-response-375.png'), fullPage: true });
+    await page.close();
   }
   writeFileSync(join(out, `${label}-diagnostics.json`), JSON.stringify(diagnostics, null, 2));
   console.log(JSON.stringify({ label, cases: diagnostics.length, diagnostics }, null, 2));

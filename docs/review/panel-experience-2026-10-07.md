@@ -95,10 +95,11 @@ fixtures before/after. The displayed command is never executed.
   failures reproduce the defects rather than merely mirror the implementation.
 - Full local suite: **241 files passed, 1 skipped; 2,567 tests passed, 2 skipped**.
   Type-check and production bundle build passed. A final generated-assets/payload
-  and experience check passed 51 tests. Exact-head CI results are recorded in the PR.
+  and experience check passed 88 tests. Exact-head CI results are recorded in the PR.
 - Offline browser audit: four theme/viewport pairs at 800px and 375px, one
   synthetic mutation per click, zero page errors/overflow/running reduced-motion
-  animations, keyboard disclosure; ten additional phone state captures.
+  animations, keyboard disclosure; ten additional phone state captures. A lost
+  response fixture checks a 44px Refresh target, keyboard recovery, and no replay.
 - Existing panel theme audit: **8/8** light/dark desktop/tablet/phone/200% zoom
   cases passed; zero visible targets below 44px. Sampled text/token contrast
   minima were 4.92 in light and 6.10 in dark. This is not full WCAG certification

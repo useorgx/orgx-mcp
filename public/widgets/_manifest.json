@@ -292,7 +292,7 @@
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
       "bytes": 111625,
-      "hash": "fb6f46c43c38",
+      "hash": "50e7a3c9013a",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",
