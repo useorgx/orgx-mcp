@@ -427,7 +427,8 @@ describe('B1 · panel: "Not sent" never shows a raw payload', () => {
     await vi.waitFor(() => expect(document.querySelector('ox-footer[data-id]')).not.toBeNull());
     pressPrimary(document.querySelector('ox-footer[data-id]')!);
     await vi.waitFor(() => expect(document.querySelector('.error-line')).not.toBeNull());
-    expect(document.querySelector('.error-line')!.textContent).toBe('Not recorded. Nothing changed; try again.');
+    expect(document.querySelector('.error-line')!.textContent).toContain('OrgX could not confirm this decision. Refresh to check the recorded outcome.');
+    expect(document.querySelector('.error-line [data-action="refresh"]')).not.toBeNull();
     expectNoRawPayload();
   });
 });

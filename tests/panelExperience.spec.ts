@@ -76,6 +76,21 @@ describe('panel experience lifetime and recovery', () => {
     expect(m.dom.window.document.getElementById('panel')!.getAttribute('aria-busy')).toBe('false');
     expect(m.dom.window.document.body.textContent).toContain('could not load');
   });
+  it.each(['network', 'tool_failed'])('reads the outcome after %s without repeating the ruling', async (code) => {
+    const m = await open();
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => {
+      if (name === 'orgx_widget_decide') throw Object.assign(new Error('{'), { code });
+      return { structuredContent: snapshot() };
+    });
+    approve(m);
+    await m.flush(); await m.flush();
+    const recovery = m.dom.window.document.querySelector('.error-line [data-action="refresh"]') as HTMLButtonElement;
+    expect(recovery).not.toBeNull();
+    expect(m.dom.window.document.querySelector('.error-line')!.textContent).not.toContain('Nothing changed');
+    recovery.click(); await m.flush();
+    expect(m.calls.callServerTool.mock.calls.filter(([p]) => p.name === 'orgx_widget_decide')).toHaveLength(1);
+    expect(m.calls.callServerTool.mock.calls.filter(([p]) => p.name === 'orgx_panel_snapshot')).toHaveLength(2);
+  });
   it('ends exhausted polling in an unconfirmed receipt with no spinner', async () => {
     const m = await open();
     const timeout = m.dom.window.setTimeout.bind(m.dom.window);

@@ -1477,8 +1477,8 @@
           id: id,
           message: code === 'network'
             ? 'The response was lost. Refresh to check whether OrgX recorded this decision.'
-            : safeErrorText(error, 'Not recorded. Nothing changed; try again.'),
-          refresh: code === 'network',
+            : safeErrorText(error, 'OrgX could not confirm this decision. Refresh to check the recorded outcome.'),
+          refresh: true,
         };
         render();
         // The token was spent; a fresh snapshot brings a new one.

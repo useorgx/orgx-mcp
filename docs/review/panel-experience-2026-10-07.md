@@ -33,7 +33,7 @@ repairs; the screenshot's density is secondary to those trust failures.
 | P1 | Panel polling consumed MCP envelopes as plain status objects and treated missing, failed, cancelled, unrelated, or exhausted status as approval confirmation. `checkNow` also treated any final status as success. | Typed transition function derives its input type from the existing output schema. Only matching `succeeded` with final polling confirms; uncertainty gets a quiet recorded receipt, failure/cancellation gets a failed receipt, and opposing outcomes are attributed elsewhere. |
 | P1 | Workspace switches retained local drafts, rulings, receipts, and request lifetime. Timestamp ordering could suppress the new workspace's older snapshot. | Scope changes clear local state and invalidate callbacks. The shared result gate orders timestamps within declared scope. Auth resume and cached-page reopening read state without replaying approvals. |
 | P1 | A new MCP Apps result without `_meta` could inherit earlier approval metadata, including the hybrid ChatGPT fallback. | Metadata now belongs to the current result. Missing metadata clears authority. Server authorization and token checks remain the authority boundary; this is not a demonstrated server-side tenant bypass. |
-| P1 | A network failure said “Nothing changed,” although a lost response cannot establish whether a write happened. | The panel asks the user to refresh and inspect the recorded outcome. The older Decisions widget still needs the same uncertainty treatment; its network error and Retry flow remain follow-up work. |
+| P1 | A network or unknown failure said “Nothing changed,” although a lost response cannot establish whether a write happened. | The panel asks the user to refresh and inspect the recorded outcome. Recovery never replays the ruling. The older Decisions widget still needs the same uncertainty treatment; its network error and Retry flow remain follow-up work. |
 | P2 | Initial or malformed refresh results could leave a loading skeleton without recovery. | Required renderer fields are checked before acceptance. Failure renders an announced Refresh action and clears `aria-busy`; partial snapshots retain their available content. The server output schema remains canonical. |
 | P2 | The supplied image repeats the same headline across several consequential requests with adjacent “Allow once” controls. | Duplicate headlines require Review in the queue. The detailed packet remains the ruling surface; one decision has the dominant action. The upstream question generator still needs specific action/target titles instead of the generic floor sentence. |
 | P2 | The last-ruling banner repeated the entire request and command, competing with the next decision. | A compact receipt names the approved command where present; full context is reachable through a keyboard disclosure. It does not claim the authorized action executed. |
@@ -93,9 +93,9 @@ fixtures before/after. The displayed command is never executed.
 
 - New experience regressions against original main: **10 failed, 1 passed**;
   failures reproduce the defects rather than merely mirror the implementation.
-- Full local suite: **241 files passed, 1 skipped; 2,567 tests passed, 2 skipped**.
+- Full local suite: **241 files passed, 1 skipped; 2,569 tests passed, 2 skipped**.
   Type-check and production bundle build passed. A final generated-assets/payload
-  and experience check passed 88 tests. Exact-head CI results are recorded in the PR.
+  and experience check passed 90 tests. Exact-head CI results are recorded in the PR.
 - Offline browser audit: four theme/viewport pairs at 800px and 375px, one
   synthetic mutation per click, zero page errors/overflow/running reduced-motion
   animations, keyboard disclosure; ten additional phone state captures. A lost
