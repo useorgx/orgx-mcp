@@ -416,7 +416,7 @@ describe('B1 · panel: "Not sent" never shows a raw payload', () => {
     await vi.waitFor(() => expect(document.querySelector('ox-footer[data-id]')).not.toBeNull());
     pressPrimary(document.querySelector('ox-footer[data-id]')!);
     await vi.waitFor(() => expect(document.querySelector('.error-line')).not.toBeNull());
-    expect(document.querySelector('.error-line')!.textContent).toBe('Couldn’t reach OrgX. Nothing changed; try again.');
+    expect(document.querySelector('.error-line')!.textContent).toContain('The response was lost. Refresh to check whether OrgX recorded this decision.');
   });
 
   it('never prints JSON from an unknown failure', async () => {

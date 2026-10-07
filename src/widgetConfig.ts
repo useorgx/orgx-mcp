@@ -373,6 +373,7 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   // OpenAI MCP Apps extensions shim (deep link, model context); used by the
   // OrgX panel only. See the file header for its package source.
   'shared/openai-extensions.js',
+  'shared/panel-interaction-state.js',
 ];
 
 /**

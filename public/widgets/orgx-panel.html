@@ -11,10 +11,10 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/openai-extensions.js"></script>
+  <script src="shared/panel-interaction-state.js"></script>
   <script src="shared/interaction-kit.js"></script>
   <style>
-    /* Primaries are the kit's action lime; amber marks only what needs you
-       (the attention line, the panel edge, urgency). */
+
     :root {
       --ox-primary-rgb: 191, 255, 0;
       --pn-gutter: 16px;
@@ -39,7 +39,7 @@
       overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
     }
 
-    /* Context line: workspace (global H1), sync time, refresh. */
+
     .top {
       display: flex; align-items: center; gap: 8px; min-height: 48px;
       margin: 0 calc(-1 * var(--pn-gutter)); padding: 0 var(--pn-gutter);
@@ -62,17 +62,17 @@
     }
     .quiet-btn { color: var(--ox-text-muted); }
     .quiet-btn:hover, .text-btn:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); }
-    button:focus-visible, a:focus-visible, textarea:focus-visible {
+    button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-visible {
       outline: 2px solid var(--ox-focus, rgba(191, 255, 0, 0.8)); outline-offset: 2px;
     }
-    /* Text actions read in the text colour with a quiet underline (lime text is unreadable in light). */
+
     .text-btn { color: var(--ox-text); padding: 0 4px; text-decoration: underline; text-decoration-color: var(--ox-border-strong); text-underline-offset: 3px; }
     .text-btn:hover { text-decoration-color: currentColor; }
     .text-btn[aria-disabled="true"] { opacity: 0.6; cursor: default; }
 
     ox-attention-line { margin: 0 calc(-1 * var(--pn-gutter)); }
 
-    /* Notices: degraded, stale, permission-limited, last ruling. */
+
     .notice {
       display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
       min-height: 44px; margin: 8px 0 0; padding: 6px 12px; border-radius: 12px;
@@ -82,8 +82,11 @@
     .notice[data-tone="amber"] { background: var(--ox-warning-surface, rgba(161, 98, 7, 0.09)); }
     .notice[data-tone="red"] { background: var(--ox-danger-surface, rgba(190, 18, 60, 0.08)); }
     .notice p { margin: 0; flex: 1 1 200px; min-width: 0; }
+    .receipt-details { flex: 1 1 100%; }
+    .receipt-details summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--ox-text-muted); }
+    .receipt-details p { overflow-wrap: anywhere; padding-bottom: 8px; }
 
-    /* The review packet. */
+
     .packet { padding-top: 12px; }
     .meta {
       display: flex; align-items: center; gap: 6px; min-width: 0; margin: 0;
@@ -94,17 +97,17 @@
     .urgency[data-u="critical"], .urgency[data-u="high"] { color: var(--ox-warning); }
     .blocked-tag { color: var(--ox-danger); font-weight: 650; flex: none; }
     .meta .ox-open { flex: none; }
-    /* The headline is the item's first sentence, about three lines at most; the rest is body text. */
+
     .q {
       margin: 8px 0 10px; font-size: 17px; line-height: 1.3; font-weight: 650;
       letter-spacing: -0.015em; overflow-wrap: anywhere;
       display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
     }
     .q.is-whole { -webkit-line-clamp: unset; line-clamp: none; display: block; }
-    .q-more { appearance: none; border: 0; background: none; padding: 0; margin: -6px 0 8px; min-height: 32px; font: 650 13px/1.2 var(--ox-font); color: var(--ox-text-2); cursor: pointer; }
+    .q-more { appearance: none; border: 0; background: none; padding: 0; margin: -6px 0 8px; min-height: 44px; font: 650 13px/1.2 var(--ox-font); color: var(--ox-text-2); cursor: pointer; }
     .q-more[hidden] { display: none; }
     .q-more:hover { color: var(--ox-text); text-decoration: underline; text-underline-offset: 3px; }
-    /* The body, structured: a short lede, commands set as code; labelled parts join the facts. */
+
     .q-body { margin: -4px 0 10px; font-size: 13.5px; line-height: 1.5; color: var(--ox-text-2, var(--ox-text)); overflow-wrap: anywhere; }
     .q-cmd { margin: 0 0 12px; }
     .q-cmd span { display: block; font-size: 12px; font-weight: 600; color: var(--ox-text-muted); margin-bottom: 3px; }
@@ -132,12 +135,12 @@
     .ev-title { flex: 1; min-width: 0; }
     .ev-open {
       appearance: none; border: 0; background: none; flex: none; font: inherit; font-size: 13px; font-weight: 600;
-      color: var(--ox-text-muted); min-height: 32px; min-width: 32px; padding: 0 6px; border-radius: 8px; cursor: pointer;
+      color: var(--ox-text-muted); min-height: 44px; min-width: 44px; padding: 0 6px; border-radius: 8px; cursor: pointer;
     }
     .ev-open:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); color: var(--ox-text); }
 
     .actions { margin-top: 14px; }
-    /* The kit paints its primary with --ox-action (the homepage lime). */
+
     ox-footer { margin: 0 calc(-1 * var(--pn-gutter)); }
     .ft-action {
       appearance: none; border: 0; background: none; font: inherit; font-size: 13px;
@@ -173,11 +176,10 @@
       font-size: 13px; color: var(--ox-text-muted);
     }
 
-    /* Other items in the queue. */
+
     .queue-head { margin: 16px 0 0; font-size: 12px; font-weight: 600; color: var(--ox-text-muted); }
     .queue { list-style: none; margin: 4px 0 0; padding: 0; }
-    /* Queue rows: the title and meta on the left, a quiet pair of decisions on
-       the right, one row tall even at 375. Both decisions stay a click here. */
+
     .row {
       display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px;
       border-top: 1px solid var(--ox-border); padding: 4px 0;
@@ -195,7 +197,7 @@
     }
     .row-meta { font-size: 12px; color: var(--ox-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .row-acts { display: flex; gap: 2px; flex: none; align-items: center; }
-    /* 44 px targets drawn as 34 px pills: the button is the target, ::before the pill. */
+
     .mini {
       appearance: none; position: relative; isolation: isolate; min-height: 44px; min-width: 44px; padding: 0 10px;
       border: 0; background: none; color: var(--ox-text-2, var(--ox-text));
@@ -210,7 +212,7 @@
     .mini:focus-visible { outline: none; }
     .mini:focus-visible::before { outline: 2px solid var(--ox-focus, currentColor); outline-offset: 1px; }
 
-    /* Options the server sent: one click records a choice; several are toggles plus Confirm. */
+
     .opts { display: grid; gap: 6px; margin-bottom: 10px; }
     .opts-label { margin: 0; font-size: 12px; font-weight: 600; color: var(--ox-text-muted); }
     .opt {
@@ -239,7 +241,7 @@
     .composer textarea[aria-invalid="true"] { border-color: var(--ox-danger); }
     .error-line .text-btn { min-height: 32px; font-size: 12.5px; }
 
-    /* Proof: one quiet line. */
+
     .proof { margin-top: 14px; border-top: 1px solid var(--ox-border); }
     .proof-quiet { margin: 0; padding: 10px 0; min-height: 44px; font-size: 13px; color: var(--ox-text-muted); display: flex; align-items: center; }
     .proof-sub { margin: 0; font-size: 13px; color: var(--ox-text-2, var(--ox-text-muted)); padding-bottom: 6px; }
@@ -255,7 +257,7 @@
     .foot-sync { display: flex; align-items: center; gap: 4px; min-width: 0; margin-left: auto; }
     .thread-foot .sync { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Loading: placeholder rows shaped like the real content. */
+
     .sk { display: block; border-radius: 6px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.12)); }
     .sk-line { height: 12px; margin: 10px 0; }
     .sk-title { height: 18px; margin: 14px 0 12px; width: 82%; }
@@ -270,9 +272,7 @@
     @media (max-width: 420px) {
       .fact { grid-template-columns: minmax(0, 1fr); }
     }
-    /* Phones: the title keeps the full row width; the pair sits at the end of the
-       meta line, which is tall enough to hold its 44 px targets (--acts-w is the
-       pair's measured width, set after render). */
+
     @media (max-width: 520px) {
       .row { display: block; position: relative; }
       .row-meta { display: flex; align-items: center; min-height: 44px; padding-right: var(--acts-w, 168px); }
@@ -351,11 +351,9 @@
       var a = ago(iso);
       return !a || a === 'just now' ? a : a + ' ago';
     }
-    // The viewer's locale and zone: "5:05 PM" (en-US), "17:05" (en-GB).
     function clock(date) {
       return window.OrgXTime.clock(date);
     }
-    // One urgency vocabulary across widgets (decisions says the same): Critical, High, Normal, Low.
     function urgencyLabel(u) {
       return u === 'critical' ? 'Critical' : u === 'high' ? 'High' : u === 'low' ? 'Low' : 'Normal';
     }
@@ -372,7 +370,6 @@
       timers.push(id);
       return id;
     }
-    // Why an item is decided in OrgX: one sentence per reason the server gives.
     var DECIDE_IN_ORGX_COPY = {
       credential_required: 'It needs a credential, and credentials are entered only in OrgX.',
       integration_connection_required: 'It settles when you connect the integration in OrgX.',
@@ -397,13 +394,10 @@
       return DECIDE_IN_ORGX_COPY[reason] || (ui.chatCannotDecide ? DECIDE_IN_ORGX_COPY.chat_unavailable : 'Approval uses your signed-in OrgX session.');
     }
 
-    // Two icons drawn inline (the OrgXIcons grammar), so the panel stays self-contained.
     var ICON = {
       ext: '<svg class="pn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V14"/><path d="M14 4h6v6M20 4l-9 9"/></svg>',
       doc: '<svg class="pn-ic ev-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z" fill="currentColor" fill-opacity=".12" stroke="none"/><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 15.5h4"/></svg>',
     };
-    // The headline: the first sentence, whole (a long one splits at its label). CSS clamps it
-    // at three lines and "Show the whole question" lifts the clamp. Never "…" plus an orphan.
     var HEADLINE_MAX = 96;
     var NOT_A_SENTENCE_END = /(?:\b(?:e\.g|i\.e|vs|etc|approx|incl|No|Mr|Ms|Dr|St|Inc|Ltd)|\b[A-Z])$/;
     function splitHeadline(text) {
@@ -426,8 +420,6 @@
       }
       return { headline: head, body: rest };
     }
-    // Sort the body: "Label: value" sentences become facts, "Command: …" and CLI lines become
-    // code, "Approve to …" becomes If approved; the rest is a short lede. URLs are links.
     var CLI = /^(?:gh|git|pnpm|npm|npx|yarn|curl|kubectl|docker|terraform|make|psql|node|bash|orgx)\s+\S/;
     function sentences(text) {
       var out = [];
@@ -467,7 +459,6 @@
       return parts;
     }
 
-    // Host and transport failures arrive with a code (widget-runtime.js). Copy comes from the
     // code; a raw payload ({"detail":…} or a lone "{") never reaches the panel.
     function looksRaw(text) {
       return /^[\s{[<"]/.test(text) || /^[\s{}[\]"',:]*$/.test(text) || /"\s*:/.test(text) || /\b(?:undefined|null|NaN)\b/.test(text);
@@ -512,9 +503,6 @@
         requiresReason: o.requires_reason === true,
       };
     }
-    // What the person can do comes from the snapshot, never from the item's type:
-    // widget_actions (the app's per-item contract) when the server lists it, the older
-    // provisional list from earlier snapshots, else options (two or more) or Approve.
     function choicesFor(f) {
       var raw = f.widget_actions;
       var kind = kindOf(f);
@@ -541,7 +529,6 @@
             requiredFor: { approve: has(rs.required_for, 'approve'), reject: has(rs.required_for, 'reject') },
           };
         }
-        // One option the approval needs, and it is the approval's own label: one button.
         var only = spec.selection && spec.selection.mode === 'single' && options.length === 1 ? options[0] : null;
         if (only && spec.approve && spec.selection.requiredFor.approve && !only.implied && !only.requiresReason && spec.approve.label === only.label) {
           spec.approve.optionId = only.id;
@@ -550,7 +537,6 @@
         return spec;
       }
       if (Array.isArray(raw) && raw.length) {
-        // Snapshots from before the contract: [{ kind: approve|reject|option, label, option_id }].
         var legacyOptions = raw.filter(function isOption(a) { return a && a.kind === 'option' && a.option_id; })
           .map(function opt(a) { return { id: a.option_id, label: a.label, description: '', implied: null, requiresReason: false }; });
         var approveAction = raw.filter(function isApprove(a) { return a && a.kind === 'approve'; })[0];
@@ -596,7 +582,6 @@
       if (sel.min === sel.max) return String(sel.min);
       return sel.max >= sel.options.length ? (sel.min > 1 ? 'at least ' + sel.min : 'one or more') : sel.min + '–' + sel.max;
     }
-    // What one action still needs before it can be sent, and the arguments it sends.
     function draftFor(f, action) {
       var c = choicesFor(f);
       var sel = c.selection;
@@ -641,7 +626,6 @@
       if (draft.missing.indexOf('reason') !== -1) return draft.action === 'reject' ? 'write a note first' : 'say why first';
       return '';
     }
-    // A row can decide in place only when approving needs nothing else.
     function quickDecide(item) {
       var c = choicesFor(item);
       return Boolean(c.approve && !c.selection && !(c.answer && c.answer.approve));
@@ -657,7 +641,14 @@
       ui.tokens = tokens && typeof tokens === 'object' ? Object.assign({}, tokens) : {};
     }
     function isSnapshot(data) {
-      return Boolean(data && typeof data === 'object' && data.schema === 'orgx.panel.v1');
+      // Check the fields this renderer consumes. The server's output schema remains canonical.
+      return Boolean(data && data.schema === 'orgx.panel.v1' && isFinite(Date.parse(data.generated_at)) &&
+        ['ok', 'no_workspace', 'degraded'].indexOf(data.state) !== -1 &&
+        (data.workspace === null || (data.workspace && typeof data.workspace.id === 'string')) &&
+        data.attention && typeof data.attention.pending === 'number' &&
+        Array.isArray(data.queue) && data.queue.every(function validItem(item) { return item && typeof item.id === 'string'; }) &&
+        data.selection && data.proof && Array.isArray(data.degraded) &&
+        (!data.focus || (typeof data.focus.id === 'string' && Array.isArray(data.focus.evidence))));
     }
     function workspaceId() {
       return ui.snapshot && ui.snapshot.workspace ? ui.snapshot.workspace.id : null;
@@ -700,17 +691,18 @@
           '. OrgX did not respond.</p><button type="button" class="text-btn" data-action="refresh">Refresh</button></div>');
       }
       if (ui.lastRuling) {
+        var receiptTitle = splitHeadline(ui.lastRuling.title);
+        var receiptCommand = structureBody(receiptTitle.body).commands[0];
         parts.push('<div class="notice" data-tone="teal" role="status"><p>' +
           (ui.lastRuling.elsewhere ? 'Settled in OrgX: ' : ui.lastRuling.verb ? ui.lastRuling.verb + ' by you: ' : ui.lastRuling.action === 'approve' ? 'Approved by you: ' : 'Sent back by you: ') +
-          esc(ui.lastRuling.title) + '</p></div>');
+          (receiptCommand ? '<code>' + esc(receiptCommand) + '</code>' : esc(receiptTitle.headline)) + '</p>' +
+          (receiptTitle.body ? '<details class="receipt-details"><summary>Decision details</summary><p>' + inline(receiptTitle.body) + '</p></details>' : '') + '</div>');
       }
       return parts.join('');
     }
 
     function evidenceHtml(f) {
       if (!f.evidence.length) return '';
-      // Every row is rendered; past the first two they sit under a clamp that
-      // "All evidence" opens with a height animation (applyEvidenceClamp).
       var clampable = f.evidence.length > EVIDENCE_VISIBLE;
       var shown = clampable && !ui.evidenceOpen ? f.evidence.slice(0, EVIDENCE_VISIBLE) : f.evidence;
       var more = clampable
@@ -733,8 +725,6 @@
     function evidenceCountLabel(shown, total) {
       return shown >= total ? 'Evidence (' + total + ')' : 'Evidence (' + shown + ' of ' + total + ')';
     }
-    // Clamp the evidence list to its first rows, or open it, animating the height
-    // (instant on render and under reduced motion). Rows past the clamp are inert.
     function applyEvidenceClamp(animate) {
       var list = root.querySelector('#ev-list');
       var toggle = root.querySelector('[data-action="evidence"]');
@@ -750,7 +740,6 @@
       var options = { max: max, beyond: items.slice(EVIDENCE_VISIBLE), instant: !animate };
       if (R && R.motion && R.motion.setClamped) R.motion.setClamped(list, clamped, toggle, options);
     }
-    // Phones: each queue row's meta line reserves the width of its own decision pair.
     function fitRowActions() {
       Array.prototype.forEach.call(root.querySelectorAll('.row'), function fit(row) {
         var acts = row.querySelector('.row-acts');
@@ -818,7 +807,6 @@
         '<button type="button" class="secondary-btn" data-action="submit-sendback" data-id="' + esc(id) + '"' + (draft.missing.length ? ' disabled' : '') + '>' + esc(label) + '</button></div></div>';
     }
 
-    // The footer for an item this panel can decide: heading, detail, primary and disabled.
     function footerSpec(f) {
       var c = choicesFor(f);
       var sel = c.selection;
@@ -858,6 +846,8 @@
         var frames = {
           saving: { state: 'saving', heading: ruling.action === 'approve' ? 'Recording your approval' : 'Recording it', detail: 'nothing else changes yet' },
           waiting: { state: 'waiting', heading: 'Recorded', detail: 'checking status in OrgX', action: 'Check now' },
+          recorded: { state: 'stale', heading: 'Decision recorded', detail: 'Status is unconfirmed. Check the receipt before continuing.', action: 'Receipt ↗' },
+          failed: { state: 'failed', heading: 'Could not continue', detail: 'OrgX reports the next step failed or was cancelled. Check the receipt.', action: 'Receipt ↗' },
           confirmed: { state: 'confirmed', heading: ruling.choice ? 'You chose ' + ruling.choice : approvedLabel + ' by you', detail: ruling.detail || 'the agent can continue', action: 'Receipt ↗' },
           rejected: { state: 'rejected', heading: rejectedLabel + ' by you', detail: ruling.detail || 'the agent reworks it', action: 'Receipt ↗' },
           elsewhere: settledApproved
@@ -886,7 +876,6 @@
         }
         body += fieldErrorHtml(f.id, 'form');
         var spec = footerSpec(f);
-        // An empty primary-label keeps the kit from showing its default primary: the options are the actions.
         return body + '<ox-footer variant="confirms-in-orgx" state="needs-you" heading="' + esc(spec.heading) + '" detail="' + esc(spec.detail) +
           '" primary-label="' + esc(spec.primary) + '"' + (spec.disabled ? ' disabled' : '') + ' data-id="' + esc(f.id) + '">' + sendBack + '</ox-footer>';
       }
@@ -932,7 +921,6 @@
         facts.push('<div class="fact"><dt>Recommendation</dt><dd>' + esc(f.recommendation.action) +
           (f.recommendation.status === 'unverified' ? ' <span class="sub">(unverified)</span>' : '') + '</dd></div>');
       } else if (f.recommendation && kindOf(f) === 'decision') {
-        // OrgX couldn't make one: say so once, quietly; never "status: unavailable".
         facts.push('<div class="fact"><dt>Recommendation</dt><dd class="quiet">No recommendation yet</dd></div>');
       }
       if (f.consequence_if_approved || body.ifApproved) {
@@ -956,22 +944,23 @@
 
     function rowHtml(item) {
       var ruling = ui.rulings[item.id];
+      var repeatedTitle = ui.snapshot.queue.some(function repeated(other) {
+        return other.id !== item.id && splitHeadline(other.title).headline === splitHeadline(item.title).headline;
+      });
       var meta = [urgencyLabel(item.urgency), ago(item.waiting_since), item.initiative_title].filter(Boolean).join(' · ');
       var acts = '';
       if (ruling) {
-        var chip = ruling.phase === 'confirmed' ? 'confirmed' : ruling.phase === 'rejected' ? 'rejected' : ruling.phase === 'elsewhere' ? 'superseded' : 'sending';
+        var chip = ruling.phase === 'confirmed' ? 'confirmed' : ruling.phase === 'rejected' ? 'rejected' : ruling.phase === 'elsewhere' ? 'superseded' : ruling.phase === 'recorded' ? 'stale' : ruling.phase === 'failed' ? 'failed' : 'sending';
         var label = ruling.phase === 'confirmed' ? pastTense(ruling.approveLabel, 'approve')
           : ruling.phase === 'rejected' ? pastTense(ruling.rejectLabel, 'reject')
-          : ruling.phase === 'elsewhere' ? 'Settled in OrgX' : 'Recording';
+          : ruling.phase === 'elsewhere' ? 'Settled in OrgX' : ruling.phase === 'recorded' ? 'Check receipt' : ruling.phase === 'failed' ? 'Could not continue' : 'Recording';
         acts = '<div class="row-acts"><ox-state-chip state="' + chip + '" label="' + esc(label) + '"></ox-state-chip></div>';
-      } else if (tokenFor(item.id) && !quickDecide(item)) {
-        // Options and typed answers are given in the packet, where they are listed.
+      } else if (tokenFor(item.id) && (!quickDecide(item) || repeatedTitle)) {
         var c0 = choicesFor(item);
-        var open = c0.selection ? 'Choose' : c0.answer ? 'Answer' : 'Open';
+        var open = repeatedTitle ? 'Review' : c0.selection ? 'Choose' : c0.answer ? 'Answer' : 'Open';
         acts = '<div class="row-acts"><button type="button" class="mini approve" data-action="select" data-id="' + esc(item.id) + '" aria-label="' + esc(open + ': ' + item.title) + '">' + open + '</button></div>';
       } else if (tokenFor(item.id) && !(ui.composer && ui.composer.id === item.id)) {
         var c = choicesFor(item);
-        // Same order as the footer: the quiet action first, the primary last.
         acts = '<div class="row-acts">' +
           (c.reject ? '<button type="button" class="mini" data-action="sendback" data-id="' + esc(item.id) + '" aria-label="' + esc(c.reject.label + ': ' + item.title) + '">' + esc(c.reject.label) + '</button>' : '') +
           '<button type="button" class="mini approve" data-action="approve" data-id="' + esc(item.id) + '" aria-label="' + esc(c.approve.label + ': ' + item.title) + '">' + esc(c.approve.label) + '</button></div>';
@@ -1017,6 +1006,11 @@
           ? 'Reconnect OrgX and allow it to read your initiatives.'
           : 'Connect OrgX in ChatGPT, then open this panel again.') + '</p>' +
         '<button type="button" class="secondary-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>';
+    }
+
+    function loadErrorHtml() {
+      return header() + '<div class="notice" data-tone="amber" role="status"><p>OrgX could not load your decisions. Try refreshing.</p>' +
+        '<button type="button" class="text-btn" data-action="refresh">Refresh</button></div>';
     }
 
     function limitedHtml(tag) {
@@ -1113,12 +1107,12 @@
         root.innerHTML = signedOutHtml();
       } else if (!ui.snapshot) {
         root.setAttribute('data-tone', 'none');
-        root.innerHTML = skeletonHtml();
+        root.innerHTML = ui.fetchFailedAt ? loadErrorHtml() : skeletonHtml();
       } else {
         root.setAttribute('data-tone', toneFor(ui.snapshot));
         root.innerHTML = ui.mode === 'thread' ? threadHtml(ui.snapshot) : globalHtml(ui.snapshot);
       }
-      root.setAttribute('aria-busy', ui.snapshot || ui.auth ? 'false' : 'true');
+      root.setAttribute('aria-busy', ui.snapshot || ui.auth || ui.fetchFailedAt ? 'false' : 'true');
       applyEvidenceClamp(false);
       fitRowActions();
       if (focusKey && focusKey !== 'null||') {
@@ -1138,8 +1132,6 @@
       window.requestAnimationFrame(fitQuestion);
       if (R && R.reportSize) R.reportSize();
     }
-    // A question that overflows its clamp by about a line shows whole; a longer one keeps the
-    // clamp and offers "Show the whole question".
     function fitQuestion() {
       var q = root.querySelector('#pk-q');
       var more = root.querySelector('.q-more');
@@ -1155,6 +1147,8 @@
     function accept(snapshot, meta, source) {
       if (!isSnapshot(snapshot)) return false;
       var prev = ui.snapshot;
+      var scopeChanged = prev && (prev.workspace && prev.workspace.id) !== (snapshot.workspace && snapshot.workspace.id);
+      if (scopeChanged) { resetScope(); prev = null; }
       if (prev && Date.parse(snapshot.generated_at) < Date.parse(prev.generated_at)) return false;
       if (prev && prev.focus && snapshot.focus && prev.focus.id === snapshot.focus.id &&
           prev.focus.version !== snapshot.focus.version && source === 'refresh') {
@@ -1169,7 +1163,6 @@
       ui.fetchFailedAt = null;
       ui.limited = false;
       if (meta !== undefined) adoptTokens(meta);
-      // Drop rulings for decisions that are gone; keep a one-line receipt.
       Object.keys(ui.rulings).forEach(function prune(id) {
         var r = ui.rulings[id];
         if (!findItem(id) && (r.phase === 'confirmed' || r.phase === 'rejected' || r.phase === 'elsewhere')) {
@@ -1197,16 +1190,21 @@
       var gen = ui.generation;
       var args = focusId ? { focus: { type: 'decision', id: focusId } } : {};
       lastFocusRequest = focusId || null;
-      inflight = R.callToolResult('orgx_panel_snapshot', args).then(function onResult(result) {
+      var request = R.callToolResult('orgx_panel_snapshot', args).then(function onResult(result) {
         if (gen !== ui.generation) return;
         if (accept(result.data, result.meta || null, 'refresh')) {
           if (reason === 'refresh') announce('Refreshed. ' + summaryText());
+        } else if (!isSnapshot(result.data)) {
+          ui.fetchFailedAt = new Date();
+          announce('OrgX returned an incomplete snapshot. Try refreshing.');
         }
         render();
       }, function onError(error) {
         if (gen !== ui.generation) return;
         var auth = authFailure(error && error.result ? error.result : error);
         if (auth) {
+          resetScope();
+          ui.snapshot = null;
           ui.auth = { code: auth };
         } else {
           ui.fetchFailedAt = new Date();
@@ -1214,14 +1212,16 @@
         }
         render();
       }).then(function release() {
-        inflight = null;
+        if (inflight === request) inflight = null;
+        if (gen !== ui.generation) return;
         if (pendingFocus !== undefined) {
           var next = pendingFocus;
           pendingFocus = undefined;
           if (next !== lastFocusRequest) fetchSnapshot(next, 'select');
         }
       });
-      return inflight;
+      inflight = request;
+      return request;
     }
 
     function summaryText() {
@@ -1248,7 +1248,6 @@
       fetchSnapshot(id, 'select');
     }
 
-    // Deep link and restored chat selection: hints only, evaluated once each.
     function evaluateHints() {
       var s = ui.snapshot;
       if (!s || !s.workspace || isGallery) return;
@@ -1302,12 +1301,15 @@
     function pollStatus(id, gen) {
       var attempts = 0;
       function once() {
+        var ruling = ui.rulings[id];
+        if (gen !== ui.generation || !ruling || ['confirmed', 'rejected', 'failed'].indexOf(ruling.phase) !== -1) return Promise.resolve(null);
         return R.callTool('orgx_command_status', { kind: 'decision', id: id }).then(function onStatus(status) {
-          if (gen !== ui.generation) return null;
-          var next = status && status.next_poll_after_ms;
-          if (typeof next === 'number' && attempts < 12) {
+          if (gen !== ui.generation || !ui.rulings[id]) return null;
+          status = R.extractStructuredWidgetData(status, true);
+          var transition = window.OrgXPanelState.statusTransition(status, id, ui.rulings[id].action);
+          if (transition.phase === 'waiting' && attempts < 12) {
             attempts += 1;
-            return wait(Math.min(Math.max(next, 400), 15000)).then(once);
+            return wait(transition.next).then(once);
           }
           return status;
         });
@@ -1315,7 +1317,6 @@
       return once();
     }
 
-    // Every refusal code orgx_widget_decide can return, and what the panel says for it.
     var VALIDATION_CODES = ['reason_required', 'answer_required', 'answer_not_accepted', 'option_required', 'options_not_accepted',
       'option_unavailable', 'option_action_mismatch', 'selection_out_of_range', 'invalid_decision_option_material'];
     var VALIDATION_COPY = {
@@ -1347,7 +1348,6 @@
       var message = error && typeof error.message === 'string' ? error.message.trim() : '';
       return message && !/tool request failed|tool execution failed/i.test(message) && message.length <= 160 ? message : fallback;
     }
-    // The same item can sit in the queue and in focus; both copies follow the server.
     function eachCopy(id, fn) {
       var s = ui.snapshot;
       if (!s) return;
@@ -1400,15 +1400,17 @@
       }
       function settle(status) {
         if (gen !== ui.generation || !ui.rulings[id]) return;
-        if (status && status.state === 'failed') {
-          delete ui.rulings[id];
-          ui.actionError = { id: id, message: (status.message || 'OrgX reports this did not go through.') + ' Check it in OrgX.' };
+        if (['confirmed', 'rejected', 'failed'].indexOf(ui.rulings[id].phase) !== -1) return;
+        var transition = c.kind === 'decision' ? window.OrgXPanelState.statusTransition(status, id, action)
+          : { phase: action === 'approve' ? 'confirmed' : 'rejected' };
+        ui.rulings[id].phase = transition.phase === 'waiting' ? 'recorded' : transition.phase;
+        if (transition.status) ui.rulings[id].status = transition.status;
+        ui.rulings[id].detail = doneDetail(status);
+        if (['recorded', 'failed', 'elsewhere'].indexOf(ui.rulings[id].phase) !== -1) {
+          announce(ui.rulings[id].phase === 'recorded' ? 'Decision recorded. Status is unconfirmed.' : 'Check the recorded outcome in OrgX.');
           render();
-          fetchSnapshot(null, 'refresh');
           return;
         }
-        ui.rulings[id].phase = action === 'approve' ? 'confirmed' : 'rejected';
-        ui.rulings[id].detail = doneDetail(status);
         delete ui.answers[id];
         delete ui.notes[id];
         announce(pastTense(action === 'approve' ? ui.rulings[id].approveLabel : ui.rulings[id].rejectLabel, action) + ': ' + title);
@@ -1464,7 +1466,6 @@
           return;
         }
         if (code === 'tool_unavailable') {
-          // This chat can't reach the decide tool: hand every item to OrgX instead of offering Retry again.
           ui.chatCannotDecide = true;
           ui.tokens = {};
           eachCopy(id, function mark(copy) { copy.decide_in_orgx_reason = copy.decide_in_orgx_reason || 'chat_unavailable'; });
@@ -1475,8 +1476,9 @@
         ui.actionError = {
           id: id,
           message: code === 'network'
-            ? 'Couldn’t reach OrgX. Nothing changed; try again.'
+            ? 'The response was lost. Refresh to check whether OrgX recorded this decision.'
             : safeErrorText(error, 'Not recorded. Nothing changed; try again.'),
+          refresh: code === 'network',
         };
         render();
         // The token was spent; a fresh snapshot brings a new one.
@@ -1484,8 +1486,6 @@
       });
     }
 
-    // An option click: approve with it in one click, unless it implies sending back or the
-    // approval still needs a reason or an answer (then it is picked and the panel asks for that).
     function chooseOption(id, optionId) {
       var item = findItem(id);
       if (!item || ui.rulings[id]) return;
@@ -1512,10 +1512,11 @@
       var gen = ui.generation;
       R.callTool('orgx_command_status', { kind: 'decision', id: id }).then(function onStatus(status) {
         if (gen !== ui.generation || !ui.rulings[id]) return;
-        if (status && status.next_poll_after_ms === null) {
-          ui.rulings[id].phase = ui.rulings[id].action === 'approve' ? 'confirmed' : 'rejected';
-          render();
-        }
+        status = R.extractStructuredWidgetData(status, true);
+        var transition = window.OrgXPanelState.statusTransition(status, id, ui.rulings[id].action);
+        ui.rulings[id].phase = transition.phase;
+        if (transition.status) ui.rulings[id].status = transition.status;
+        render();
       }, function ignore() { /* the poll keeps running */ });
     }
 
@@ -1524,9 +1525,10 @@
       var item = findItem(id);
       var ws = workspaceId();
       if (!item || !ws) return;
+      var gen = ui.generation;
       share.share({ id: item.id, version: item.version, title: item.title || item.question, urgency: item.urgency, url: item.url }, ws)
-        .then(function shared() { announce('Shared with chat.'); render(); },
-          function failed() { ui.actionError = { id: id, message: 'Could not share with chat.' }; render(); });
+        .then(function shared() { if (gen === ui.generation) { announce('Shared with chat.'); render(); } },
+          function failed() { if (gen === ui.generation) { ui.actionError = { id: id, message: 'Could not share with chat.' }; render(); } });
     }
     function stopShare() {
       share.stop(workspaceId()).then(function stopped() { announce('Stopped sharing.'); render(); },
@@ -1535,7 +1537,6 @@
 
     // --------------------------------------------------------------- events
     function openUrl(url, event) {
-      // Payload URLs go through the shared normalizer: real app routes only.
       url = window.OrgXLinks.normalize(url);
       if (!url) return;
       if (isGallery) return;
@@ -1600,7 +1601,6 @@
       }
       if (id) syncFooter(id);
     });
-    // Typing answers the inline message; the requirement it raised stays until the item is sent.
     function clearFieldError(id) {
       if (ui.fieldErrors[id]) ui.fieldErrors[id].message = '';
       Array.prototype.forEach.call(root.querySelectorAll('[data-error-for="' + id + '"]'), function drop(node) { node.remove(); });
@@ -1686,7 +1686,27 @@
       timers.forEach(function clear(id) { window.clearTimeout(id); });
       timers = [];
     }
+    function resetScope() {
+      dispose();
+      inflight = null; pendingFocus = undefined; lastFocusRequest = null;
+      ui.tokens = {}; ui.rulings = {}; ui.lastRuling = null; ui.composer = null;
+      ui.selections = {}; ui.rejectPicks = {}; ui.answers = {}; ui.notes = {}; ui.fieldErrors = {};
+      ui.actionError = null; ui.changedSince = null; ui.chatCannotDecide = false;
+      ui.listOpen = false; ui.evidenceOpen = false; ui.wholeQ = null;
+      share = X.createShareController({ modelContext: ext.modelContext });
+      handledHint = { deepLink: null, context: null };
+    }
     window.addEventListener('pagehide', dispose);
+    window.addEventListener('pageshow', function resume(event) {
+      if (!event.persisted || isGallery) return;
+      // A restored page must read current state; it must never replay a ruling.
+      Object.keys(ui.rulings).forEach(function uncertain(id) {
+        if (ui.rulings[id].phase === 'saving' || ui.rulings[id].phase === 'waiting') ui.rulings[id].phase = 'recorded';
+      });
+      inflight = null; pendingFocus = undefined;
+      render();
+      fetchSnapshot(null, 'resume');
+    });
 
     // -------------------------------------------------------------- gallery
     var NOW = Date.now();
@@ -1842,7 +1862,6 @@
           ui.rulings[IDS.d1] = { action: 'approve', phase: 'confirmed', title: s.focus.question, detail: 'the agent can continue' };
           break;
         case 'options':
-          // The server sends the options; each one is a single-click approval.
           s.queue[0].title = s.focus.question = 'When does release 4.2 go to production?';
           s.queue[0].option_count = 3;
           s.focus.recommendation = { status: 'ready', action: 'Tonight after the freeze' };
@@ -1924,12 +1943,10 @@
           ui.composer = { id: IDS.d1, draft: 'The export line still says CSV only.', focus: false, opener: IDS.d1 };
           break;
         case 'chat-unavailable':
-          // The host said the decide tool isn't there (tool_unavailable): hand off, no Retry loop.
           ui.chatCannotDecide = true;
           s.queue[0].decide_in_orgx_reason = s.focus.decide_in_orgx_reason = 'chat_unavailable';
           break;
         case 'no-recommendation': {
-          // A review packet with no recommendation and a long question (live QA, 2026-10-02).
           var question = 'The OrgX floor stopped a merge action in an agent-cli session and is waiting for you. Agent’s reason: please review PR #3239. Required GitHub CI did not start because the Actions budget is exhausted. Approve to let exactly this action run once in the next 24 hours.';
           s.queue[0].title = question.slice(0, 159) + '…';
           s.focus.question = question;
@@ -1970,26 +1987,25 @@
     render();
     R.initWidget({
       bridge: 'mcp-apps-sdk',
+      resultScope: function scope(data) {
+        if (authFailure(data)) return 'disconnected';
+        return data && data.schema === 'orgx.panel.v1' ? 'workspace:' + ((data.workspace && data.workspace.id) || '') : undefined;
+      },
       dataAvailabilityNotice: false,
       onHostContext: onHostContext,
       onFailure: function onFailure(decoded) {
         var auth = authFailure(decoded);
-        if (auth) ui.auth = { code: auth };
+        if (auth) { resetScope(); ui.snapshot = null; ui.auth = { code: auth }; }
         else ui.fetchFailedAt = new Date();
-        if (!ui.snapshot && !auth) {
-          ui.snapshot = {
-            schema: 'orgx.panel.v1', generated_at: new Date(0).toISOString(), state: 'degraded', workspace: null,
-            attention: { pending: 0, oldest_at: null, blocking: false }, queue: [], focus: null,
-            selection: { requested_id: null, status: 'default' }, proof: { last_accepted: null, completed_unaccepted: 0 },
-            degraded: ['decisions_unavailable'],
-          };
-        }
         render();
         return true;
       },
       render: function onHostResult(data) {
         if (data === null || data === undefined) { render(); return; }
         if (accept(data, R.getToolResponseMetadata ? { 'orgx/widgetApproval': R.getToolResponseMetadata(APPROVAL_META_KEY) } : null, 'host')) {
+          render();
+        } else if (!isSnapshot(data)) {
+          ui.fetchFailedAt = new Date();
           render();
         }
       },
