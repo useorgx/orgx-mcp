@@ -5990,9 +5990,10 @@ export class OrgXMcp extends McpAgent<
             '/api/entities',
             {
               method: 'POST',
+              headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
               body: JSON.stringify(attributedBody),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(resolvedUserId), allowFallback: false }
           );
           const result = (await response.json()) as Record<string, unknown>;
           const payload = canonicalizeOrgxWriteResponse(
@@ -6016,6 +6017,8 @@ export class OrgXMcp extends McpAgent<
         }
 
         case 'orgx_attach': {
+          const idempotencyKey =
+            typeof args.idempotency_key === 'string' ? args.idempotency_key : null;
           const attachPayload = buildEntityActionAttachPayload({
             type: args.type,
             id: args.id,
@@ -6051,11 +6054,12 @@ export class OrgXMcp extends McpAgent<
             '/api/client/artifacts',
             {
               method: 'POST',
+              headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
               body: JSON.stringify(
                 withAttachSourceClient(attachPayload, attachSourceClient)
               ),
             },
-            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(resolvedUserId) }
+            { userId: resolvedUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(resolvedUserId), allowFallback: false }
           );
           const result = (await response.json()) as Record<string, unknown>;
           const payload = { ...result, _v2_tool: 'orgx_attach', _action: 'attach' };
