@@ -10,6 +10,10 @@ export type StatusTransition =
   | { phase: 'elsewhere'; next: null; status: string }
   | { phase: 'confirmed' | 'rejected' | 'failed'; next: null };
 
+export function isFinalRuling(phase: RulingPhase): boolean {
+  return ['confirmed', 'rejected', 'failed', 'elsewhere'].includes(phase);
+}
+
 /** A receipt acknowledges the write. Only a matching terminal status confirms its outcome. */
 export function statusTransition(value: unknown, id: string, action: RulingAction): StatusTransition {
   if (!value || typeof value !== 'object') return { phase: 'recorded', next: null };
@@ -21,6 +25,7 @@ export function statusTransition(value: unknown, id: string, action: RulingActio
       const approved = ['approved', 'accepted', 'confirmed'].includes(outcome);
       const rejected = ['rejected', 'declined', 'denied'].includes(outcome);
       if ((action === 'approve' && rejected) || (action === 'reject' && approved)) return { phase: 'elsewhere', next: null, status: outcome };
+      if (!approved && !rejected) return { phase: 'recorded', next: null };
       return { phase: action === 'approve' ? 'confirmed' : 'rejected', next: null };
     }
     if (status.state === 'failed' || status.state === 'cancelled') return { phase: 'failed', next: null };

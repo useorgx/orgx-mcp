@@ -21,8 +21,12 @@ var OrgXPanelState = (() => {
   // src/panelInteractionState.ts
   var panelInteractionState_exports = {};
   __export(panelInteractionState_exports, {
+    isFinalRuling: () => isFinalRuling,
     statusTransition: () => statusTransition
   });
+  function isFinalRuling(phase) {
+    return ["confirmed", "rejected", "failed", "elsewhere"].includes(phase);
+  }
   function statusTransition(value, id, action) {
     if (!value || typeof value !== "object") return { phase: "recorded", next: null };
     const status = value;
@@ -33,6 +37,7 @@ var OrgXPanelState = (() => {
         const approved = ["approved", "accepted", "confirmed"].includes(outcome);
         const rejected = ["rejected", "declined", "denied"].includes(outcome);
         if (action === "approve" && rejected || action === "reject" && approved) return { phase: "elsewhere", next: null, status: outcome };
+        if (!approved && !rejected) return { phase: "recorded", next: null };
         return { phase: action === "approve" ? "confirmed" : "rejected", next: null };
       }
       if (status.state === "failed" || status.state === "cancelled") return { phase: "failed", next: null };

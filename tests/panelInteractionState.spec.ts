@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { statusTransition } from '../src/panelInteractionState';
 
-const status = (state: string, next: number | null = null) => ({ kind: 'decision', id: 'd1', state, next_poll_after_ms: next });
+const status = (state: string, next: number | null = null) => ({ kind: 'decision', id: 'd1', state, outcome: state === 'succeeded' ? 'approved' : null, next_poll_after_ms: next });
 describe('a recorded ruling requires matching terminal evidence', () => {
   it.each(['queued', 'held', 'running', 'not_found', 'unknown'])('never confirms %s', (state) => {
     expect(statusTransition(status(state), 'd1', 'approve').phase).toBe('recorded');
@@ -11,7 +11,7 @@ describe('a recorded ruling requires matching terminal evidence', () => {
   });
   it('confirms only succeeded and final, and preserves rejection', () => {
     expect(statusTransition(status('succeeded'), 'd1', 'approve').phase).toBe('confirmed');
-    expect(statusTransition(status('succeeded'), 'd1', 'reject').phase).toBe('rejected');
+    expect(statusTransition({ ...status('succeeded'), outcome: 'declined' }, 'd1', 'reject').phase).toBe('rejected');
     expect(statusTransition(status('succeeded', 500), 'd1', 'approve').phase).toBe('recorded');
   });
   it.each(['failed', 'cancelled'])('does not claim success for %s', (state) => {
@@ -25,5 +25,8 @@ describe('a recorded ruling requires matching terminal evidence', () => {
   it('does not attribute an opposing outcome to the requested ruling', () => {
     expect(statusTransition({ ...status('succeeded'), outcome: 'declined' }, 'd1', 'approve')).toEqual({ phase: 'elsewhere', next: null, status: 'declined' });
     expect(statusTransition({ ...status('succeeded'), outcome: 'approved' }, 'd1', 'reject').phase).toBe('elsewhere');
+  });
+  it.each([undefined, null, 'expired', 'pending'])('keeps unrecognizable final outcome %s uncertain', (outcome) => {
+    expect(statusTransition({ ...status('succeeded'), outcome }, 'd1', 'approve').phase).toBe('recorded');
   });
 });

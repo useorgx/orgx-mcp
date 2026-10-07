@@ -30,7 +30,7 @@ repairs; the screenshot's density is secondary to those trust failures.
 
 | Severity | Finding and evidence | Result |
 | --- | --- | --- |
-| P1 | Panel polling consumed MCP envelopes as plain status objects and treated missing, failed, cancelled, unrelated, or exhausted status as approval confirmation. `checkNow` also treated any final status as success. | Typed transition function derives its input type from the existing output schema. Only matching `succeeded` with final polling confirms; uncertainty gets a quiet recorded receipt, failure/cancellation gets a failed receipt, and opposing outcomes are attributed elsewhere. |
+| P1 | Panel polling consumed MCP envelopes as plain status objects and treated missing, failed, cancelled, unrelated, or exhausted status as approval confirmation. `checkNow` also treated any final status as success. The app marks both approved and declined decisions `succeeded`. | Typed transition function derives its input type from the existing output schema. Confirmation requires matching identity, final `succeeded`, and a recognizable decision outcome. Missing/unknown outcomes stay recorded; failure/cancellation gets a failed receipt. Opposing outcomes are shown as settled in OrgX. Late automatic/manual reads cannot downgrade a final ruling. |
 | P1 | Workspace switches retained local drafts, rulings, receipts, and request lifetime. Timestamp ordering could suppress the new workspace's older snapshot. | Scope changes clear local state and invalidate callbacks. The shared result gate orders timestamps within declared scope. Auth resume and cached-page reopening read state without replaying approvals. |
 | P1 | A new MCP Apps result without `_meta` could inherit earlier approval metadata, including the hybrid ChatGPT fallback. | Metadata now belongs to the current result. Missing metadata clears authority. Server authorization and token checks remain the authority boundary; this is not a demonstrated server-side tenant bypass. |
 | P1 | A network or unknown failure said “Nothing changed,” although a lost response cannot establish whether a write happened. | The panel asks the user to refresh and inspect the recorded outcome. Recovery never replays the ruling. The older Decisions widget still needs the same uncertainty treatment; its network error and Retry flow remain follow-up work. |
@@ -74,7 +74,7 @@ and `project_chatgpt_app_resubmission_2026-06-10`.
 | 2 | Workspace selection, loading, empty | Gallery signed-out, loading, first-use, and calm fixtures captured. No-workspace source routes to OrgX. Initial and malformed failure recovery tested. |
 | 3 | Partial, stale, error/retry | Available proof stays visible; degraded/stale fixtures captured. Snapshot validation and lost-response recovery tested. |
 | 4 | Approval pending, repeated click, cancel | One mutation for double activation; options/long/permission-limited fixtures captured. Existing composer cancellation and Escape/focus paths retained. Duplicate headlines require review. |
-| 5 | Approved/rejected, status polling, execution | Matching final decision status confirms the ruling. Failed/cancelled/not-found, opposing outcome, missing status, and poll exhaustion are asserted. Approval of an action remains permission to run, not execution proof. |
+| 5 | Approved/rejected, status polling, execution | Matching final decision outcome confirms the ruling. Failed/cancelled/not-found, opposing or missing/unknown outcome, missing status, poll exhaustion, and automatic/manual read races are asserted. Approval of an action remains permission to run, not execution proof. |
 | 6 | Success, receipt, handoff | Compact command receipt and full details captured; keyboard Enter opens disclosure. Existing deep links remain unchanged; open navigation PR #455 was inspected for overlap. |
 | 7 | Races, workspace isolation, back/forward/reopen | Workspace change invalidates old completion; older cross-workspace timestamps are accepted; cached page restore re-reads without mutation. These are synthetic event tests, not native browser-history or actual account-switch certification. |
 | 8 | Streaming | Existing shared live-machine/live-store tests run in the full suite. This panel is snapshot-driven; authenticated production SSE and the older artifact-review timeout are not newly verified. |
@@ -91,11 +91,11 @@ fixtures before/after. The displayed command is never executed.
 
 ## Verification
 
-- New experience regressions against original main: **10 failed, 1 passed**;
+- Initial experience regressions against original main: **10 failed, 1 passed**;
   failures reproduce the defects rather than merely mirror the implementation.
-- Full local suite: **241 files passed, 1 skipped; 2,569 tests passed, 2 skipped**.
+- Full local suite: **241 files passed, 1 skipped; 2,580 tests passed, 2 skipped**.
   Type-check and production bundle build passed. A final generated-assets/payload
-  and experience check passed 90 tests. Exact-head CI results are recorded in the PR.
+  and experience check passed 142 tests. Exact-head CI results are recorded in the PR.
 - Offline browser audit: four theme/viewport pairs at 800px and 375px, one
   synthetic mutation per click, zero page errors/overflow/running reduced-motion
   animations, keyboard disclosure; ten additional phone state captures. A lost

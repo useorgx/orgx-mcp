@@ -851,8 +851,8 @@
           confirmed: { state: 'confirmed', heading: ruling.choice ? 'You chose ' + ruling.choice : approvedLabel + ' by you', detail: ruling.detail || 'the agent can continue', action: 'Receipt ↗' },
           rejected: { state: 'rejected', heading: rejectedLabel + ' by you', detail: ruling.detail || 'the agent reworks it', action: 'Receipt ↗' },
           elsewhere: settledApproved
-            ? { state: 'confirmed', heading: 'Already approved in OrgX', detail: 'nothing of yours was applied', action: 'Receipt ↗' }
-            : { state: 'rejected', heading: settledDeclined ? 'Already declined in OrgX' : 'Already settled in OrgX', detail: 'nothing of yours was applied', action: 'Receipt ↗' },
+            ? { state: 'confirmed', heading: 'Already approved in OrgX', detail: 'Check the recorded outcome in OrgX.', action: 'Receipt ↗' }
+            : { state: 'rejected', heading: settledDeclined ? 'Already declined in OrgX' : 'Already settled in OrgX', detail: 'Check the recorded outcome in OrgX.', action: 'Receipt ↗' },
         };
         var fr = frames[ruling.phase] || frames.saving;
         return '<ox-footer variant="confirms-in-orgx" state="' + fr.state + '" heading="' + esc(fr.heading) + '" detail="' + esc(fr.detail) + '"' +
@@ -1302,9 +1302,9 @@
       var attempts = 0;
       function once() {
         var ruling = ui.rulings[id];
-        if (gen !== ui.generation || !ruling || ['confirmed', 'rejected', 'failed'].indexOf(ruling.phase) !== -1) return Promise.resolve(null);
+        if (gen !== ui.generation || !ruling || window.OrgXPanelState.isFinalRuling(ruling.phase)) return Promise.resolve(null);
         return R.callTool('orgx_command_status', { kind: 'decision', id: id }).then(function onStatus(status) {
-          if (gen !== ui.generation || !ui.rulings[id]) return null;
+          if (gen !== ui.generation || !ui.rulings[id] || window.OrgXPanelState.isFinalRuling(ui.rulings[id].phase)) return null;
           status = R.extractStructuredWidgetData(status, true);
           var transition = window.OrgXPanelState.statusTransition(status, id, ui.rulings[id].action);
           if (transition.phase === 'waiting' && attempts < 12) {
@@ -1400,7 +1400,7 @@
       }
       function settle(status) {
         if (gen !== ui.generation || !ui.rulings[id]) return;
-        if (['confirmed', 'rejected', 'failed'].indexOf(ui.rulings[id].phase) !== -1) return;
+        if (window.OrgXPanelState.isFinalRuling(ui.rulings[id].phase)) return;
         var transition = c.kind === 'decision' ? window.OrgXPanelState.statusTransition(status, id, action)
           : { phase: action === 'approve' ? 'confirmed' : 'rejected' };
         ui.rulings[id].phase = transition.phase === 'waiting' ? 'recorded' : transition.phase;
@@ -1509,9 +1509,10 @@
     }
 
     function checkNow(id) {
+      if (!ui.rulings[id] || window.OrgXPanelState.isFinalRuling(ui.rulings[id].phase)) return;
       var gen = ui.generation;
       R.callTool('orgx_command_status', { kind: 'decision', id: id }).then(function onStatus(status) {
-        if (gen !== ui.generation || !ui.rulings[id]) return;
+        if (gen !== ui.generation || !ui.rulings[id] || window.OrgXPanelState.isFinalRuling(ui.rulings[id].phase)) return;
         status = R.extractStructuredWidgetData(status, true);
         var transition = window.OrgXPanelState.statusTransition(status, id, ui.rulings[id].action);
         ui.rulings[id].phase = transition.phase;

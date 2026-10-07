@@ -467,12 +467,14 @@ describe('panel: the per-item contract and every refusal', () => {
   };
   async function open(structured: Record<string, unknown>, decide?: (args: Record<string, unknown>) => unknown, tokens: Record<string, string> = { [D1]: 'tok-1' }) {
     const mounted = await mountPanel({}, {});
+    const outcomes = new Map<unknown, string>();
     mounted.calls.callServerTool.mockImplementation(async (params: Call) => {
       if (params.name === 'orgx_widget_decide') {
+        outcomes.set(params.arguments.decision_id, params.arguments.action === 'reject' ? 'declined' : 'approved');
         return decide ? decide(params.arguments) : { structuredContent: { decision_id: params.arguments.decision_id, action: 'approved' } };
       }
       if (params.name === 'orgx_command_status') {
-        return { structuredContent: { kind: 'decision', id: params.arguments.id, state: 'succeeded', next_poll_after_ms: null } };
+        return { structuredContent: { kind: 'decision', id: params.arguments.id, state: 'succeeded', outcome: outcomes.get(params.arguments.id), next_poll_after_ms: null } };
       }
       return new Promise(() => undefined);
     });
@@ -632,7 +634,7 @@ describe('panel: the per-item contract and every refusal', () => {
     p.press();
     await p.settle();
     expect(p.footer()!.getAttribute('heading')).toBe('Already declined in OrgX');
-    expect(p.footer()!.getAttribute('detail')).toBe('nothing of yours was applied');
+    expect(p.footer()!.getAttribute('detail')).toBe('Check the recorded outcome in OrgX.');
     expect(p.calls.callServerTool.mock.calls.at(-1)![0]).toEqual({ name: 'orgx_panel_snapshot', arguments: {} });
   });
 

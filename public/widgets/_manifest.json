@@ -291,8 +291,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 111646,
-      "hash": "7af5ff82cf9d",
+      "bytes": 111848,
+      "hash": "c071b92fc1a9",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",

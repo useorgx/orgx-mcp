@@ -66,6 +66,38 @@ describe('panel experience lifetime and recovery', () => {
     expect(footer(m)?.getAttribute('heading')).toBe('Decision recorded');
     expect(footer(m)?.getAttribute('detail')).toContain('Check the receipt');
   });
+  it.each([undefined, null, 'expired'])('does not confirm a succeeded status with outcome %s', async (outcome) => {
+    const m = await open();
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => name === 'orgx_widget_decide'
+      ? { structuredContent: { action: 'approved' } }
+      : { structuredContent: { kind: 'decision', id: D1, state: 'succeeded', outcome, next_poll_after_ms: null } });
+    approve(m); await m.flush(); await m.flush();
+    expect(footer(m)?.getAttribute('state')).toBe('stale');
+    expect(footer(m)?.getAttribute('heading')).toBe('Decision recorded');
+  });
+  it.each([
+    { winner: 0, outcome: 'approved', heading: 'Approved by you' },
+    { winner: 1, outcome: 'approved', heading: 'Approved by you' },
+    { winner: 0, outcome: 'declined', heading: 'Already declined in OrgX' },
+    { winner: 1, outcome: 'declined', heading: 'Already declined in OrgX' },
+  ])('keeps $outcome final when status read $winner wins the race', async ({ winner, outcome, heading }) => {
+    const m = await open();
+    const finish: ((value: unknown) => void)[] = [];
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => {
+      if (name === 'orgx_widget_decide') return { structuredContent: { action: 'approved' } };
+      return new Promise((resolve) => finish.push(resolve));
+    });
+    approve(m); await m.flush();
+    footer(m)!.dispatchEvent(new m.dom.window.CustomEvent('ox-action', { bubbles: true, detail: { action: 'check_now' } }));
+    await m.flush();
+    expect(finish).toHaveLength(2);
+    finish[winner]!({ structuredContent: { kind: 'decision', id: D1, state: 'succeeded', outcome, next_poll_after_ms: null } });
+    await m.flush();
+    expect(footer(m)?.getAttribute('heading')).toBe(heading);
+    finish[1 - winner]!({ structuredContent: { kind: 'decision', id: D1, state: 'held', next_poll_after_ms: null } });
+    await m.flush();
+    expect(footer(m)?.getAttribute('heading')).toBe(heading);
+  });
   it('recovers from a malformed refresh instead of spinning forever', async () => {
     const m = await mountPanel({}, {}); mounted.push(m);
     m.calls.callServerTool.mockResolvedValue({ structuredContent: { schema: 'orgx.panel.v1' } });

@@ -27,7 +27,7 @@ try {
         async callTool(name, args) {
           window.__calls.push({ name, args });
           if (name === 'orgx_widget_decide') return { structuredContent: { action: 'approved' } };
-          if (name === 'orgx_command_status') return { structuredContent: { kind: 'decision', id: args.id, state: 'succeeded', next_poll_after_ms: null } };
+          if (name === 'orgx_command_status') return { structuredContent: { kind: 'decision', id: args.id, state: 'succeeded', outcome: 'approved', next_poll_after_ms: null } };
           return { structuredContent: fixture.after, _meta: { 'orgx/widgetApproval': { approval_tokens: Object.fromEntries(fixture.after.queue.map((item) => [item.id, 'synthetic-next-token'])) } } };
         },
       };
