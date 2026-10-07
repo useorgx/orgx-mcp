@@ -139,6 +139,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           .object({
             id: z.string(),
             version: z.string(),
+            source_client: z.string().nullable().optional(),
             title: z.string(),
             urgency: z.enum(['low', 'medium', 'high', 'critical']),
             waiting_since: z.string().nullable(),
@@ -158,6 +159,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           id: z.string(),
           kind: panelItemKindSchema,
           version: z.string(),
+          source_client: z.string().nullable().optional(),
           question: z.string(),
           urgency: z.enum(['low', 'medium', 'high', 'critical']),
           waiting_since: z.string().nullable(),

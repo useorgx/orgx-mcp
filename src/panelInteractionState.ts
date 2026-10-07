@@ -1,3 +1,4 @@
+export { clientIdentity } from './clientIdentity';
 import type { z } from 'zod';
 import type { WIDGET_OUTPUT_SCHEMAS } from './openaiOutputSchemas/widgets';
 

@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 
 // Offline synthetic host only. It never connects to OrgX or executes the displayed command.
-const fixture = JSON.parse(readFileSync(resolve('tests/fixtures/panel-experience.json'), 'utf8'));
+const fixture = JSON.parse(readFileSync(resolve(process.env.ORGX_PANEL_AUDIT_FIXTURE || 'tests/fixtures/panel-experience.json'), 'utf8'));
 const out = resolve(process.env.ORGX_PANEL_AUDIT_DIR || 'artifacts/qa/panel-experience');
 mkdirSync(out, { recursive: true });
 const source = resolve(process.env.ORGX_PANEL_AUDIT_HTML || 'public/widgets/orgx-panel.html');

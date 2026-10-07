@@ -1,3 +1,4 @@
+import { clientIdentity } from '../src/clientIdentity';
 import { describe, expect, it } from 'vitest';
 import { statusTransition } from '../src/panelInteractionState';
 
@@ -28,5 +29,20 @@ describe('a recorded ruling requires matching terminal evidence', () => {
   });
   it.each([undefined, null, 'expired', 'pending'])('keeps unrecognizable final outcome %s uncertain', (outcome) => {
     expect(statusTransition({ ...status('succeeded'), outcome }, 'd1', 'approve').phase).toBe('recorded');
+  });
+});
+
+describe('reported client identity', () => {
+  it('keeps Codex and ChatGPT distinguishable even with their shared OpenAI mark', () => {
+    expect(clientIdentity('codex').label).toBe('Codex');
+    expect(clientIdentity('chatgpt').label).toBe('ChatGPT');
+    expect(clientIdentity('claude-code').label).toBe('Claude Code');
+    expect(clientIdentity('cursor').mark).toContain('<svg');
+  });
+  it('does not invent marks or render raw unknown identities', () => {
+    expect(clientIdentity(null)).toEqual({ label: 'Client not reported', mark: '' });
+    expect(clientIdentity('__proto__')).toEqual({ label: 'Other client', mark: '' });
+    expect(clientIdentity('<img onerror=alert(1)>').mark).toBe('');
+    expect(clientIdentity('opencode')).toEqual({ label: 'OpenCode', mark: '' });
   });
 });
