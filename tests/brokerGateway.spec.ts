@@ -51,7 +51,7 @@ const TOOLS = [
   { name: 'mystery' },
 ];
 
-type AppState = { active: boolean; reason?: string; refreshes: number; calls: string[]; policy?: unknown };
+type AppState = { active: boolean; reason?: string; refreshes: number; calls: string[]; policy?: unknown; refreshedPolicy?: unknown };
 
 function appFetch(state: AppState) {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -72,14 +72,14 @@ function appFetch(state: AppState) {
         url: VENDOR_URL,
         headers: { Authorization: `Bearer ${state.refreshes ? REFRESHED_TOKEN : VENDOR_TOKEN}`, 'X-MCP-Toolsets': 'repos' },
       },
-      policy: state.policy ?? { groups: { low: 'allow', key: 'ask', high: 'ask' }, tools: {} },
+      policy: (state.refreshes && state.refreshedPolicy) || state.policy || { groups: { low: 'allow', key: 'ask', high: 'ask' }, tools: {} },
       cache_ttl_seconds: 60,
     });
   });
 }
 
 /** A mock vendor MCP: JSON or SSE responses, a session id, auth checking. */
-function vendor(opts: { sse?: boolean; acceptToken?: string } = {}) {
+function vendor(opts: { sse?: boolean; acceptToken?: string; respond?: (message: { id?: unknown; method?: string }) => Response | undefined } = {}) {
   const seen: Array<{ method: string; headers: Headers; body: string | undefined }> = [];
   const fetchFn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
@@ -98,6 +98,8 @@ function vendor(opts: { sse?: boolean; acceptToken?: string } = {}) {
       });
     }
     const message = JSON.parse(body ?? '{}');
+    const custom = opts.respond?.(message);
+    if (custom) return custom;
     const reply =
       message.method === 'tools/list'
         ? { jsonrpc: '2.0', id: message.id, result: { tools: TOOLS } }
@@ -114,7 +116,7 @@ function vendor(opts: { sse?: boolean; acceptToken?: string } = {}) {
   return { fetchFn, seen };
 }
 
-function call(token: string | null, body?: unknown, init: { method?: string; path?: string; headers?: Record<string, string> } = {}) {
+function call(token: string | null, body?: unknown, init: { method?: string; path?: string; headers?: Record<string, string>; raw?: string } = {}) {
   return new Request(`https://mcp.useorgx.com${init.path ?? `/c/${CONN}`}`, {
     method: init.method ?? 'POST',
     headers: {
@@ -123,7 +125,7 @@ function call(token: string | null, body?: unknown, init: { method?: string; pat
       accept: 'application/json, text/event-stream',
       ...(init.headers ?? {}),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: init.raw ?? (body === undefined ? undefined : JSON.stringify(body)),
   });
 }
 
@@ -415,5 +417,184 @@ describe('sse rewrite', () => {
       })
     ).text();
     expect(out).toBe('id: 1\ndata: {"jsonrpc":"2.0","id":1,"result":{"tools":[{"name":"a"}]}}\n\n: keepalive\n\n');
+  });
+});
+
+describe('gateway hardening', () => {
+  const sentMethods = (v: ReturnType<typeof vendor>) => v.seen.map((s) => JSON.parse(s.body ?? '{}').method);
+
+  it('forwards only the tool surface; every other method gets -32601 without reaching the vendor', async () => {
+    for (const method of [
+      'resources/read',
+      'resources/templates/list',
+      'resources/subscribe',
+      'prompts/get',
+      'completion/complete',
+      'logging/setLevel',
+      'tasks/get',
+      'Tools/List',
+      'tools/call ',
+    ]) {
+      const v = setup();
+      const res = (await handleBrokerRequest(call(mint(), { jsonrpc: '2.0', id: 7, method, params: {} }), env, deps))!;
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        jsonrpc: '2.0',
+        id: 7,
+        error: { code: -32601, message: 'Method not available through the OrgX broker' },
+      });
+      expect(v.fetchFn).not.toHaveBeenCalled();
+    }
+    // Client notifications and replies to server requests still go through.
+    const v = setup();
+    await handleBrokerRequest(call(mint(), { jsonrpc: '2.0', method: 'notifications/initialized' }), env, deps);
+    await handleBrokerRequest(call(mint(), { jsonrpc: '2.0', id: 'srv-1', result: {} }), env, deps);
+    expect(v.seen.map((s) => JSON.parse(s.body ?? '{}'))).toEqual([
+      { jsonrpc: '2.0', method: 'notifications/initialized' },
+      { jsonrpc: '2.0', id: 'srv-1', result: {} },
+    ]);
+  });
+
+  it('refuses a whole batch with one unavailable method, and nested batches', async () => {
+    const v = setup();
+    const res = (await handleBrokerRequest(
+      call(mint(), [
+        { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+        { jsonrpc: '2.0', id: 2, method: 'resources/read', params: { uri: 'file:///etc/passwd' } },
+      ]),
+      env,
+      deps
+    ))!;
+    const answers = await res.json();
+    expect(answers).toHaveLength(2);
+    expect(answers[0].result._meta['orgx/broker'].code).toBe('not_allowed');
+    expect(answers[1].error.code).toBe(-32601);
+    expect(v.fetchFn).not.toHaveBeenCalled();
+
+    const nested = (await handleBrokerRequest(
+      call(mint(), [[{ jsonrpc: '2.0', id: 3, method: 'resources/read' }]]),
+      env,
+      deps
+    ))!;
+    expect(nested.status).toBe(400);
+    expect((await nested.json()).error.code).toBe(-32600);
+    expect(v.fetchFn).not.toHaveBeenCalled();
+  });
+
+  it('never resolves a connection id to an Object.prototype member', async () => {
+    for (const id of ['constructor', '__proto__', 'toString']) {
+      const v = setup();
+      state.calls = [];
+      const res = (await handleBrokerRequest(call(mint(), { jsonrpc: '2.0', id: 1, method: 'tools/list' }, { path: `/c/${id}` }), env, deps))!;
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual({ error: 'connection_not_granted' });
+      expect(state.calls).toEqual([]);
+      expect(v.fetchFn).not.toHaveBeenCalled();
+    }
+    const verified = await verifyBrokerToken(mint(), SECRET, NOW);
+    expect(verified.ok && Object.getPrototypeOf(verified.payload.conns)).toBeNull();
+  });
+
+  it('forwards the canonical re-serialization it decided on, not the raw text', async () => {
+    const v = setup();
+    const raw = '{"jsonrpc":"2.0","id":1,"method":"tools/call","method":"tools/list","params":{}}';
+    await handleBrokerRequest(call(mint(), undefined, { raw }), env, deps);
+    expect(v.seen).toHaveLength(1);
+    expect(v.seen[0].body).toBe(JSON.stringify(JSON.parse(raw)));
+    expect(v.seen[0].body).toBe('{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}');
+  });
+
+  it('filters tools/list whatever the media type spelling, and over CR-only SSE', async () => {
+    const ro = () => mint({ conns: { [CONN]: { ro: true } } });
+    const list = { jsonrpc: '2.0', id: 1, method: 'tools/list' };
+    const reply = JSON.stringify({ jsonrpc: '2.0', id: 1, result: { tools: TOOLS } });
+    setup({
+      respond: (m) =>
+        m.method === 'tools/list' ? new Response(reply, { headers: { 'content-type': 'Application/JSON; charset=utf-8' } }) : undefined,
+    });
+    const json = (await handleBrokerRequest(call(ro(), list), env, deps))!;
+    expect((await json.json()).result.tools.map((t: { name: string }) => t.name)).toEqual(['list_issues']);
+
+    setup({
+      respond: (m) =>
+        m.method === 'tools/list'
+          ? new Response(`id: evt-1\revent: message\rdata: ${reply}\r\r`, { headers: { 'content-type': 'Text/Event-Stream' } })
+          : undefined,
+    });
+    const sse = await (await handleBrokerRequest(call(ro(), list), env, deps))!.text();
+    expect(sse).not.toContain('delete_repo');
+    expect(JSON.parse(sse.split('data: ')[1]).result.tools.map((t: { name: string }) => t.name)).toEqual(['list_issues']);
+  });
+
+  it('fails closed (502) on a tools/list answer it cannot read', async () => {
+    const reply = JSON.stringify({ jsonrpc: '2.0', id: 1, result: { tools: TOOLS } });
+    for (const response of [
+      () => new Response(reply, { headers: { 'content-type': 'text/plain' } }),
+      () => new Response(reply.slice(0, -1), { headers: { 'content-type': 'application/json' } }),
+    ]) {
+      setup({ respond: (m) => (m.method === 'tools/list' ? response() : undefined) });
+      const res = (await handleBrokerRequest(call(mint({ conns: { [CONN]: { ro: true } } }), { jsonrpc: '2.0', id: 1, method: 'tools/list' }), env, deps))!;
+      expect(res.status).toBe(502);
+      const text = await res.text();
+      expect(text).not.toContain('delete_repo');
+      expect(JSON.parse(text)).toMatchObject({ jsonrpc: '2.0', id: 1, error: { code: -32603 } });
+    }
+  });
+
+  it('learns tool annotations only from the reply to a forwarded tools/list', async () => {
+    const v = setup({
+      respond: (m) =>
+        m.method === 'initialize'
+          ? Response.json({ jsonrpc: '2.0', id: m.id, result: { tools: [{ name: 'delete_repo', annotations: { readOnlyHint: true } }] } })
+          : undefined,
+    });
+    const token = mint({ jti: 'jti-learn' });
+    await handleBrokerRequest(call(token, { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }), env, deps);
+    expect(deps!.toolCache!.get(`jti-learn|${CONN}|`, NOW)).toBeNull();
+    const res = (await handleBrokerRequest(
+      call(token, { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'delete_repo' } }),
+      env,
+      deps
+    ))!;
+    expect((await res.json()).result._meta['orgx/broker']).toMatchObject({ code: 'needs_approval', risk: 'high' });
+    expect(sentMethods(v)).not.toContain('tools/call');
+  });
+
+  it('decides a tools/call again against the refreshed policy before retrying after a vendor 401', async () => {
+    state.policy = { groups: { low: 'allow', key: 'ask', high: 'ask' }, tools: { delete_repo: 'allow' } };
+    state.refreshedPolicy = { groups: { low: 'allow', key: 'ask', high: 'ask' }, tools: { delete_repo: 'deny' } };
+    const v = setup({ acceptToken: REFRESHED_TOKEN });
+    deps!.toolCache!.remember(`jti-retry|${CONN}|`, TOOLS, NOW);
+    const res = (await handleBrokerRequest(
+      call(mint({ jti: 'jti-retry' }), { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'delete_repo' } }),
+      env,
+      deps
+    ))!;
+    expect(state.refreshes).toBe(1);
+    expect((await res.json()).result._meta['orgx/broker']).toMatchObject({ code: 'not_allowed', tool: 'delete_repo' });
+    // Only the first attempt, with the stale credential, ever left.
+    expect(v.seen.map((s) => s.headers.get('authorization'))).toEqual([`Bearer ${VENDOR_TOKEN}`]);
+  });
+
+  it('reads per-tool permissions from own keys only', () => {
+    const policy = { groups: { low: 'allow', key: 'allow', high: 'allow' } as const, tools: {} };
+    for (const name of ['toString', '__proto__', 'constructor']) {
+      expect(decideTool(name, { name, annotations: { readOnlyHint: true } }, {}, policy)).toEqual({ allow: true, risk: 'low' });
+    }
+  });
+});
+
+describe('sse line endings', () => {
+  it('splits events on CR-only and CRLF line endings, including a CRLF split across chunks', async () => {
+    const encoder = new TextEncoder();
+    const chunks = ['data: {"id":1}\r', '\n\r\n', 'data: {"id":2}\r\rdata: {"id":3}\r\r'];
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+        controller.close();
+      },
+    });
+    const out = await new Response(rewriteSseStream(stream, (m) => ({ ...(m as object), seen: true }))).text();
+    expect(out).toBe('data: {"id":1,"seen":true}\n\ndata: {"id":2,"seen":true}\n\ndata: {"id":3,"seen":true}\n\n');
   });
 });

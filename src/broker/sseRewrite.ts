@@ -8,13 +8,18 @@
 
 export type JsonRpcRewrite = (message: unknown) => unknown;
 
+// SSE lines end in CRLF, LF or a lone CR; an event ends at a blank line. A
+// CR directly followed by LF is one line ending, never two.
+const LINE_END = /\r\n|\r|\n/;
+const EVENT_END = /(?:\r\n|\r(?!\n)|\n)(?:\r\n|\r(?!\n)|\n)/;
+
 /** Apply `rewrite` to one JSON-RPC message or a batch. */
 export function rewriteJsonRpc(payload: unknown, rewrite: JsonRpcRewrite): unknown {
   return Array.isArray(payload) ? payload.map(rewrite) : rewrite(payload);
 }
 
 function rewriteEvent(block: string, rewrite: JsonRpcRewrite): string {
-  const lines = block.split(/\r?\n/);
+  const lines = block.split(LINE_END);
   const dataLines: string[] = [];
   let firstDataIndex = -1;
   lines.forEach((line, index) => {
@@ -44,21 +49,27 @@ export function rewriteSseStream(
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
   let buffer = '';
-  const separator = /\r?\n\r?\n/;
+  const drain = (controller: TransformStreamDefaultController<Uint8Array>, final: boolean) => {
+    for (;;) {
+      const match = EVENT_END.exec(buffer);
+      if (!match) break;
+      const end = match.index + match[0].length;
+      // A CR at the very end may be the first half of a CRLF still in flight.
+      if (!final && end === buffer.length && buffer.endsWith('\r')) break;
+      const block = buffer.slice(0, match.index);
+      buffer = buffer.slice(end);
+      controller.enqueue(encoder.encode(`${rewriteEvent(block, rewrite)}\n\n`));
+    }
+  };
   return body.pipeThrough(
     new TransformStream<Uint8Array, Uint8Array>({
       transform(chunk, controller) {
         buffer += decoder.decode(chunk, { stream: true });
-        for (;;) {
-          const match = separator.exec(buffer);
-          if (!match) break;
-          const block = buffer.slice(0, match.index);
-          buffer = buffer.slice(match.index + match[0].length);
-          controller.enqueue(encoder.encode(`${rewriteEvent(block, rewrite)}\n\n`));
-        }
+        drain(controller, false);
       },
       flush(controller) {
         buffer += decoder.decode();
+        drain(controller, true);
         if (buffer) controller.enqueue(encoder.encode(rewriteEvent(buffer, rewrite)));
       },
     })
@@ -68,9 +79,9 @@ export function rewriteSseStream(
 /** Every JSON-RPC message in a buffered SSE body (for the broker's own calls). */
 export function parseSseMessages(text: string): unknown[] {
   const messages: unknown[] = [];
-  for (const block of text.split(/\r?\n\r?\n/)) {
+  for (const block of text.split(EVENT_END)) {
     const data = block
-      .split(/\r?\n/)
+      .split(LINE_END)
       .filter((line) => line.startsWith('data:'))
       .map((line) => line.slice(5).replace(/^ /, ''))
       .join('\n');
