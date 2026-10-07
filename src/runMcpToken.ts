@@ -68,13 +68,24 @@ export function runMcpTokenSecret(env: RunMcpTokenSecretEnv): string | null {
  *
  * Broker tokens never use this list: they verify with the dedicated secret
  * alone (broker/brokerToken.ts, brokerTokenSecret).
+ *
+ * The fallback ends by itself at SERVICE_KEY_VERIFICATION_FALLBACK_UNTIL_MS,
+ * the same date as the app's (orgx lib/server/auth/runMcpToken.ts): from then
+ * on, with the dedicated secret set, only the dedicated secret verifies. While
+ * the dedicated secret is unset the service key is still what the app signs
+ * with, so it keeps verifying.
  */
-export function runMcpTokenVerificationSecrets(env: RunMcpTokenSecretEnv): string[] {
-  const secrets: string[] = [];
-  for (const candidate of [env.ORGX_RUN_MCP_TOKEN_SECRET, env.ORGX_SERVICE_KEY]) {
-    const secret = usableSecret(candidate);
-    if (secret && !secrets.includes(secret)) secrets.push(secret);
-  }
+export const SERVICE_KEY_VERIFICATION_FALLBACK_UNTIL_MS = Date.parse('2026-11-07T00:00:00Z');
+
+export function runMcpTokenVerificationSecrets(
+  env: RunMcpTokenSecretEnv,
+  nowMs: number = Date.now()
+): string[] {
+  const dedicated = usableSecret(env.ORGX_RUN_MCP_TOKEN_SECRET);
+  const serviceKey = usableSecret(env.ORGX_SERVICE_KEY);
+  const secrets: string[] = dedicated ? [dedicated] : [];
+  const fallbackOpen = !dedicated || nowMs < SERVICE_KEY_VERIFICATION_FALLBACK_UNTIL_MS;
+  if (serviceKey && fallbackOpen && !secrets.includes(serviceKey)) secrets.push(serviceKey);
   return secrets;
 }
 
