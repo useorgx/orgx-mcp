@@ -126,5 +126,9 @@ export async function verifyBrokerToken(
   if (typeof payload.exp !== 'number' || payload.exp <= Math.floor(nowMs / 1000)) {
     return { ok: false, reason: 'expired' };
   }
-  return { ok: true, payload: payload as BrokerTokenPayload };
+  // A null prototype, so `/c/constructor` or `/c/__proto__` never resolve to
+  // an inherited member of Object.prototype.
+  const conns: Record<string, BrokerConnectionGrant> = Object.create(null);
+  for (const [id, grant] of Object.entries(payload.conns)) conns[id] = grant;
+  return { ok: true, payload: { ...(payload as BrokerTokenPayload), conns } };
 }

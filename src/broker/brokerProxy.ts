@@ -18,7 +18,9 @@
  *      the upstream; on a vendor 401, force one refresh and retry;
  *   5. pass `Mcp-Session-Id`, `Mcp-Protocol-Version`, `Last-Event-ID` and SSE
  *      streams through unchanged, so sessions and resumability work;
- *   6. filter `tools/list` and refuse `tools/call` outside the run's grant
+ *   6. forward only the tool surface (`initialize`, `ping`, `tools/list`,
+ *      `tools/call`, client notifications and replies to server requests),
+ *      filter `tools/list` and refuse `tools/call` outside the run's grant
  *      and the person's connector permissions (see brokerPolicy.ts);
  *   7. log metadata only: connection, method, tool, status, duration. Never
  *      a payload, a header value or a token.
@@ -60,8 +62,30 @@ const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const FORWARD_REQUEST_HEADERS = ['accept', 'content-type', 'mcp-session-id', 'mcp-protocol-version', 'last-event-id'];
 const RETURN_RESPONSE_HEADERS = ['content-type', 'mcp-session-id', 'mcp-protocol-version', 'cache-control'];
 const isolateToolCache = new ToolCatalogCache();
+/** Requests the gateway forwards; plus `notifications/*` and replies (no `method`). */
+const FORWARDED_METHODS = new Set(['initialize', 'ping', 'tools/list', 'tools/call']);
 
 type JsonRpcMessage = { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, unknown>; result?: unknown };
+type Refusal = {
+  message: JsonRpcMessage;
+  answer: { result: Record<string, unknown> } | { error: { code: number; message: string } };
+};
+
+function isMessageObject(value: unknown): value is JsonRpcMessage {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Exact method names only; anything else never reaches the vendor. */
+function forwardable(message: JsonRpcMessage): boolean {
+  if (!Object.hasOwn(message, 'method')) return true; // a reply to a server request
+  const method = message.method;
+  return typeof method === 'string' && (FORWARDED_METHODS.has(method) || method.startsWith('notifications/'));
+}
+
+/** `type/subtype`, lowercased, without parameters. */
+function mediaType(headers: Headers): string {
+  return (headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+}
 
 function json(status: number, body: unknown, extra: Record<string, string> = {}): Response {
   return withSecurityHeaders(
@@ -124,7 +148,7 @@ export async function handleBrokerRequest(
     return unauthorized(verified.reason);
   }
   const payload = verified.payload;
-  const grant = payload.conns[connectionId];
+  const grant = Object.hasOwn(payload.conns, connectionId) ? payload.conns[connectionId] : undefined;
   const who = { ...base, wid: payload.wid, rid: payload.rid };
   if (!grant) {
     log({ ...who, status: 403, reason: 'connection_not_granted', duration_ms: now() - started });
@@ -163,47 +187,75 @@ export async function handleBrokerRequest(
   };
   const upstreamFetch = deps.fetch ?? fetch;
 
-  // 6a. Inspect a POST body: refuse tools/call outside policy before it leaves.
+  // 6a. Inspect a POST body: refuse other methods, and tools/call outside
+  // policy, before anything leaves.
   let body: string | undefined;
   let messages: JsonRpcMessage[] = [];
+  let isBatch = false;
+  /** A batch is refused as a whole: every request in it gets an answer. */
+  const refuse = (refused: Refusal[]): Response => {
+    const answers = messages
+      .filter((m) => m.id !== undefined && m.method !== undefined)
+      .map((m) => ({
+        jsonrpc: '2.0',
+        id: m.id,
+        ...(refused.find((r) => r.message === m)?.answer ?? {
+          result: refusedCallResult(String(m.method), { allow: false, code: 'not_allowed', risk: null }),
+        }),
+      }));
+    // Only notifications in it: nothing to answer, nothing was sent.
+    if (answers.length === 0) return withSecurityHeaders(new Response(null, { status: 202 }));
+    return json(200, isBatch ? answers : answers[0]);
+  };
+  /** Decide every tools/call in the body against `up`'s policy; a refusal, or null. */
+  const refuseCalls = async (up: BrokerUpstream): Promise<Response | null> => {
+    const calls = messages.filter((m) => m.method === 'tools/call');
+    if (!calls.length) return null;
+    const catalog = await toolCatalog(up);
+    const refused: Refusal[] = [];
+    for (const call of calls) {
+      const name = typeof call.params?.name === 'string' ? call.params.name : '';
+      const decision = decideTool(name, catalog?.get(name), grant, up.policy);
+      if (!decision.allow) {
+        refused.push({ message: call, answer: { result: refusedCallResult(name, decision) } });
+        log({ ...who, method: 'tools/call', tool: name, status: 200, decision: decision.code, duration_ms: now() - started });
+      }
+    }
+    return refused.length ? refuse(refused) : null;
+  };
   if (request.method === 'POST') {
-    body = await request.text();
-    if (body.length > MAX_BODY_BYTES) return json(413, { error: 'payload_too_large' });
+    const raw = await request.text();
+    if (raw.length > MAX_BODY_BYTES) return json(413, { error: 'payload_too_large' });
+    let parsed: unknown;
     try {
-      const parsed = JSON.parse(body) as unknown;
-      messages = (Array.isArray(parsed) ? parsed : [parsed]) as JsonRpcMessage[];
+      parsed = JSON.parse(raw);
     } catch {
       return json(400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } });
     }
-    const calls = messages.filter((m) => m && m.method === 'tools/call');
-    if (calls.length) {
-      const catalog = await toolCatalog(upstream);
-      const refused: Array<{ id: JsonRpcMessage['id']; result: Record<string, unknown> }> = [];
-      for (const call of calls) {
-        const name = typeof call.params?.name === 'string' ? call.params.name : '';
-        const decision = decideTool(name, catalog?.get(name), grant, upstream.policy);
-        if (!decision.allow) {
-          refused.push({ id: call.id ?? null, result: refusedCallResult(name, decision) });
-          log({ ...who, method: 'tools/call', tool: name, status: 200, decision: decision.code, duration_ms: now() - started });
-        }
-      }
-      if (refused.length) {
-        // A batch is refused as a whole: every request in it gets an answer.
-        const answers = messages
-          .filter((m) => m && m.id !== undefined && m.method)
-          .map((m) => {
-            const own = refused.find((r) => r.id === m.id);
-            return {
-              jsonrpc: '2.0',
-              id: m.id,
-              result: own?.result ?? refusedCallResult(String(m.method), { allow: false, code: 'not_allowed', risk: null }),
-            };
-          });
-        // Only notifications in it: nothing to answer, nothing was sent.
-        if (answers.length === 0) return withSecurityHeaders(new Response(null, { status: 202 }));
-        return json(200, Array.isArray(JSON.parse(body)) ? answers : answers[0]);
-      }
+    isBatch = Array.isArray(parsed);
+    const elements: unknown[] = isBatch ? (parsed as unknown[]) : [parsed];
+    // Every element an object: no nested batches, no bare values.
+    if (!elements.every(isMessageObject)) {
+      return json(400, { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid Request' } });
     }
+    messages = elements;
+    // Forward what was decided on, never the raw text: with duplicate keys a
+    // first-key-wins vendor parser could read another method or tool.
+    body = JSON.stringify(parsed);
+    const unavailable = messages.filter((m) => !forwardable(m));
+    if (unavailable.length) {
+      for (const m of unavailable) {
+        log({ ...who, method: String(m.method).slice(0, 80), status: 200, decision: 'method_not_available', duration_ms: now() - started });
+      }
+      return refuse(
+        unavailable.map((message) => ({
+          message,
+          answer: { error: { code: -32601, message: 'Method not available through the OrgX broker' } },
+        }))
+      );
+    }
+    const refused = await refuseCalls(upstream);
+    if (refused) return refused;
   }
 
   // 4. Forward; a vendor 401 forces one refresh and one retry.
@@ -217,6 +269,9 @@ export async function handleBrokerRequest(
       const refreshed = await app.upstream(token as string, payload, connectionId, variant, true);
       if (!isAppError(refreshed)) {
         upstream = refreshed;
+        // The refreshed upstream carries the current policy: decide again.
+        const refusedNow = await refuseCalls(upstream);
+        if (refusedNow) return refusedNow;
         response = await send(upstream);
       }
     }
@@ -234,30 +289,47 @@ export async function handleBrokerRequest(
     });
   }
 
-  // 6b. Filter tools/list results, in JSON and in SSE.
+  // 6b. Filter tools/list results, in JSON and in SSE. Annotations are
+  // learned only from the reply to a tools/list this request forwarded.
+  const listIds = messages.filter((m) => m.method === 'tools/list' && m.id !== undefined && m.id !== null).map((m) => m.id);
   const filterTools = (message: unknown) => {
     const m = message as JsonRpcMessage;
     const result = m?.result as { tools?: unknown } | undefined;
     if (!result || !Array.isArray(result.tools)) return message;
-    toolCache.remember(catalogKey, result.tools, now(), true);
+    if (!Object.hasOwn(m, 'method') && listIds.includes(m.id)) {
+      toolCache.remember(catalogKey, result.tools, now(), true);
+    }
     return { ...m, result: { ...result, tools: filterToolList(result.tools, grant, (upstream as BrokerUpstream).policy) } };
+  };
+  // A tools/list answer the broker cannot read is never passed through.
+  const mustFilter = response.ok && listIds.length > 0;
+  const unfilterable = () => {
+    log({ ...who, method: methodsOf(messages), status: 502, reason: 'unfilterable_tools_list', duration_ms: now() - started });
+    return json(502, {
+      jsonrpc: '2.0',
+      id: isBatch ? null : (messages[0]?.id ?? null),
+      error: { code: -32603, message: 'The vendor answered tools/list in a form the OrgX broker cannot filter' },
+    });
   };
   const headers = new Headers();
   for (const name of RETURN_RESPONSE_HEADERS) {
     const value = response.headers.get(name);
     if (value) headers.set(name, value);
   }
-  const contentType = response.headers.get('content-type') ?? '';
+  const contentType = mediaType(response.headers);
   let outBody: BodyInit | null = response.body;
-  if (response.body && contentType.includes('text/event-stream')) {
+  if (response.body && contentType === 'text/event-stream') {
     outBody = rewriteSseStream(response.body, filterTools);
-  } else if (response.body && contentType.includes('application/json')) {
+  } else if (response.body && contentType === 'application/json') {
     const text = await response.text();
     try {
       outBody = JSON.stringify(rewriteJsonRpc(JSON.parse(text), filterTools));
     } catch {
+      if (mustFilter) return unfilterable();
       outBody = text;
     }
+  } else if (response.body && mustFilter) {
+    return unfilterable();
   }
 
   // 7. Metadata only.
@@ -296,7 +368,7 @@ export async function handleBrokerRequest(
       }
       if (!res.ok) return null;
       const text = await res.text();
-      const found = (res.headers.get('content-type') ?? '').includes('text/event-stream')
+      const found = mediaType(res.headers) === 'text/event-stream'
         ? parseSseMessages(text)
         : (() => {
             try {

@@ -53,7 +53,8 @@ export function decideTool(
   if (!tool) return { allow: false, code: 'not_allowed', risk: null };
   const risk = classifyTool(tool);
   if (grant.ro && risk !== 'low') return { allow: false, code: 'not_allowed', risk };
-  const answer = policy.tools[name] ?? policy.groups[risk];
+  // Own keys only: a tool named `toString` must not read Object.prototype.
+  const answer = Object.hasOwn(policy.tools, name) ? policy.tools[name] : policy.groups[risk];
   if (answer === 'allow') return { allow: true, risk };
   if (answer === 'ask') return { allow: false, code: 'needs_approval', risk };
   return { allow: false, code: 'not_allowed', risk };
