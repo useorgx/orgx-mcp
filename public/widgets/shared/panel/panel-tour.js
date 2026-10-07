@@ -211,8 +211,8 @@
     function onKey(event) {
       if (!state.el) return;
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); end('skipped'); }
-      else if (event.key === 'ArrowRight') { event.preventDefault(); if (STEPS[state.i].finish) end('finished'); else go(state.i + 1); }
-      else if (event.key === 'ArrowLeft') { event.preventDefault(); go(state.i - 1); }
+      else if (event.key === 'ArrowRight') { event.preventDefault(); event.stopPropagation(); if (STEPS[state.i].finish) end('finished'); else go(state.i + 1); }
+      else if (event.key === 'ArrowLeft') { event.preventDefault(); event.stopPropagation(); go(state.i - 1); }
     }
     function onDown(event) { if (event.target.closest('.pn-coach') && !event.target.closest('button')) state.swipe = { x: event.clientX, y: event.clientY }; }
     function onUp(event) {
@@ -248,6 +248,7 @@
     /** The practice press: show the held step on the footer, then put it back. */
     function practice(footer) {
       if (!state.el || !STEPS[state.i].practice || !footer) return;
+      var stepAt = state.i;
       var prev = { state: footer.getAttribute('state'), heading: footer.getAttribute('heading'), detail: footer.getAttribute('detail') };
       footer.setAttribute('state', 'saving');
       footer.setAttribute('heading', 'Practice: recording your approval');
@@ -257,8 +258,8 @@
         if (footer.isConnected) {
           Object.keys(prev).forEach(function put(k) { if (prev[k] === null) footer.removeAttribute(k); else footer.setAttribute(k, prev[k]); });
         }
-        state.done[state.i] = true;
-        if (state.el) draw();
+        state.done[stepAt] = true;
+        if (state.el && state.i === stepAt) draw();
       }, 2200);
     }
     return {

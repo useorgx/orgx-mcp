@@ -169,3 +169,27 @@ describe('panel v2 identity and tour', () => {
     expect(doc(m).querySelector('.pn-tour')).toBeNull();
   });
 });
+
+describe('panel v2 review fixes', () => {
+  it('recovers In progress after a page-cache restore drops the work read', async () => {
+    const m = await open();
+    m.calls.callServerTool.mockImplementationOnce(() => new Promise(() => {}));
+    click(m, '[data-tab="work"]');
+    await m.flush();
+    expect(doc(m).querySelector('.pn-work')!.getAttribute('aria-busy')).toBe('true');
+    m.calls.callServerTool.mockResolvedValue({ structuredContent: snapshot({ generated_at: '2026-10-02T12:09:00.000Z', work: { status: 'ok', total: 0, items: [] } }) });
+    m.dom.window.dispatchEvent(new m.dom.window.PageTransitionEvent('pagehide', { persisted: true }));
+    m.dom.window.dispatchEvent(new m.dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+    await m.flush(); await m.flush();
+    expect(doc(m).querySelector('.pn-work')!.textContent).toContain('Nothing is running right now');
+  });
+
+  it('does not open send-back or pick options while the tour is open', async () => {
+    const m = await open();
+    click(m, '[data-action="tour"]');
+    await wait(m, 60);
+    click(m, '[data-action="sendback"]');
+    await m.flush();
+    expect(doc(m).querySelector('textarea[data-reason]')).toBeNull();
+  });
+});

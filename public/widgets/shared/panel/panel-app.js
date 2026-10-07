@@ -1457,6 +1457,8 @@
       if (!el || !root.contains(el) || el.disabled) return;
       var action = el.getAttribute('data-action');
       var id = el.getAttribute('data-id');
+      // During the tour only the practice press is live; picks and send-back wait.
+      if (tour && tour.active() && ['approve', 'option', 'toggle-option', 'reject-option', 'sendback', 'submit-sendback'].indexOf(action) !== -1) return;
       switch (action) {
         case 'refresh': fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh'); break;
         case 'open': event.preventDefault(); openUrl(el.getAttribute('data-url'), event); break;
@@ -1632,8 +1634,11 @@
       });
       inflight = null; pendingFocus = undefined;
       ui.readState = { phase: 'idle' };
+      // A work read dropped by the page cache must not leave In progress loading forever.
+      if (ui.workPhase === 'loading') ui.workPhase = ui.work ? 'ready' : 'idle';
       render();
       fetchSnapshot(null, 'resume');
+      if (ui.tab === 'work' && !ui.work) fetchWork();
     });
 
     var NOW = Date.now();
