@@ -4,6 +4,7 @@ import {
   isRunMcpToken,
   runMcpTokenSecret,
   runMcpTokenVerificationSecrets,
+  SERVICE_KEY_VERIFICATION_FALLBACK_UNTIL_MS,
   verifyRunMcpToken,
 } from '../src/runMcpToken';
 
@@ -131,19 +132,46 @@ describe('switching to the dedicated secret without downtime', () => {
   };
 
   it('tries the dedicated secret first, then the service key', () => {
-    expect(runMcpTokenVerificationSecrets(env)).toEqual([DEDICATED, SERVICE_KEY]);
-    expect(runMcpTokenVerificationSecrets({ ORGX_SERVICE_KEY: SERVICE_KEY })).toEqual([
+    expect(runMcpTokenVerificationSecrets(env, NOW_MS)).toEqual([DEDICATED, SERVICE_KEY]);
+    expect(runMcpTokenVerificationSecrets({ ORGX_SERVICE_KEY: SERVICE_KEY }, NOW_MS)).toEqual([
       SERVICE_KEY,
     ]);
     expect(
-      runMcpTokenVerificationSecrets({ ORGX_RUN_MCP_TOKEN_SECRET: 'short', ORGX_SERVICE_KEY: '' })
+      runMcpTokenVerificationSecrets({ ORGX_RUN_MCP_TOKEN_SECRET: 'short', ORGX_SERVICE_KEY: '' }, NOW_MS)
     ).toEqual([]);
     expect(
-      runMcpTokenVerificationSecrets({
-        ORGX_RUN_MCP_TOKEN_SECRET: SERVICE_KEY,
-        ORGX_SERVICE_KEY: SERVICE_KEY,
-      })
+      runMcpTokenVerificationSecrets(
+        { ORGX_RUN_MCP_TOKEN_SECRET: SERVICE_KEY, ORGX_SERVICE_KEY: SERVICE_KEY },
+        NOW_MS
+      )
     ).toEqual([SERVICE_KEY]);
+  });
+
+  it('stops verifying with the service key once the fallback window ends', async () => {
+    const END = SERVICE_KEY_VERIFICATION_FALLBACK_UNTIL_MS;
+    expect(runMcpTokenVerificationSecrets(env, END - 1)).toEqual([DEDICATED, SERVICE_KEY]);
+    expect(runMcpTokenVerificationSecrets(env, END)).toEqual([DEDICATED]);
+    // Not signing with the dedicated secret yet: the service key is still the
+    // app's signing key, so it keeps verifying past the window.
+    expect(runMcpTokenVerificationSecrets({ ORGX_SERVICE_KEY: SERVICE_KEY }, END)).toEqual([
+      SERVICE_KEY,
+    ]);
+    const exp = Math.floor(END / 1000) + 600;
+    const old = await mint({ ...base, exp }, 'oxrun1', SERVICE_KEY);
+    expect(
+      await verifyRunMcpToken(old, runMcpTokenVerificationSecrets(env, END - 1), END - 1)
+    ).toMatchObject({ uid: 'user-1' });
+    expect(await verifyRunMcpToken(old, runMcpTokenVerificationSecrets(env, END), END)).toBeNull();
+    const fresh = await mint({ ...base, exp }, 'oxrun1', DEDICATED);
+    expect(
+      await verifyRunMcpToken(fresh, runMcpTokenVerificationSecrets(env, END), END)
+    ).toMatchObject({ uid: 'user-1' });
+  });
+
+  it('matches the app\'s fallback end date', () => {
+    expect(new Date(SERVICE_KEY_VERIFICATION_FALLBACK_UNTIL_MS).toISOString()).toBe(
+      '2026-11-07T00:00:00.000Z'
+    );
   });
 
   it('signs with the dedicated secret when it is set', () => {
@@ -157,7 +185,7 @@ describe('switching to the dedicated secret without downtime', () => {
       await mint(v2, 'oxrun2', DEDICATED),
     ]) {
       expect(
-        await verifyRunMcpToken(token, runMcpTokenVerificationSecrets(env), NOW_MS)
+        await verifyRunMcpToken(token, runMcpTokenVerificationSecrets(env, NOW_MS), NOW_MS)
       ).toMatchObject({ uid: 'user-1' });
     }
   });
@@ -168,13 +196,13 @@ describe('switching to the dedicated secret without downtime', () => {
       await mint(v2, 'oxrun2', SERVICE_KEY),
     ]) {
       expect(
-        await verifyRunMcpToken(token, runMcpTokenVerificationSecrets(env), NOW_MS)
+        await verifyRunMcpToken(token, runMcpTokenVerificationSecrets(env, NOW_MS), NOW_MS)
       ).toMatchObject({ uid: 'user-1' });
     }
   });
 
   it('rejects a token signed with any other secret, and garbage', async () => {
-    const secrets = runMcpTokenVerificationSecrets(env);
+    const secrets = runMcpTokenVerificationSecrets(env, NOW_MS);
     expect(await verifyRunMcpToken(await mint(base, 'oxrun1', OTHER), secrets, NOW_MS)).toBeNull();
     for (const garbage of ['oxrun1.', 'oxrun1.a.b', 'oxrun2.not-json.sig', 'oxrun1.a.b.c', '']) {
       expect(await verifyRunMcpToken(garbage, secrets, NOW_MS)).toBeNull();
@@ -199,7 +227,7 @@ describe('switching to the dedicated secret without downtime', () => {
     expect(brokerTokenSecret({ ORGX_SERVICE_KEY: SERVICE_KEY } as never)).toBeNull();
     // And the OrgX MCP path refuses it too: wrong audience.
     expect(
-      await verifyRunMcpToken(forged, runMcpTokenVerificationSecrets(env), NOW_MS)
+      await verifyRunMcpToken(forged, runMcpTokenVerificationSecrets(env, NOW_MS), NOW_MS)
     ).toBeNull();
     // The same claims signed with the dedicated secret do verify as a broker token.
     const genuine = await mint(brokerClaims, 'oxrun2', DEDICATED);

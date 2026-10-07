@@ -15093,10 +15093,11 @@ async function tryRunTokenAuth(
   const token = header.slice(7).trim();
   if (!isRunMcpToken(token)) return null;
 
+  const nowMs = Date.now();
   const payload = await verifyRunMcpToken(
     token,
-    runMcpTokenVerificationSecrets(env),
-    Date.now()
+    runMcpTokenVerificationSecrets(env, nowMs),
+    nowMs
   );
   if (!payload) return null;
 
