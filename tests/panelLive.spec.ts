@@ -487,10 +487,12 @@ describe('panel live client', () => {
     live.update(grant());
     stores[0]!.emit(graphState({}, { t1: 'running' }));
     stores[0]!.emit(graphState({}, { t1: 'blocked' }));
-    expect(work.mock.calls.map((c) => [c[0], c[1]])).toEqual([
+    expect(work.mock.calls.map((c) => [{ total: c[0].total, blocked: c[0].blocked }, c[1]])).toEqual([
       [{ total: 1, blocked: 0 }, false],
       [{ total: 1, blocked: 1 }, true],
     ]);
+    // The rows themselves come along, so In progress can render from the feed.
+    expect(work.mock.calls[1]![0].items).toEqual([{ id: 't1', agent: 'Agent', title: 'Task', state: 'blocked' }]);
     expect(stale).not.toHaveBeenCalled();
   });
 
@@ -626,5 +628,26 @@ describe('panel workspaces view', () => {
       ],
     });
     expect(buildPanelWorkspaces(null, WS)).toEqual({ status: 'unavailable', items: [] });
+  });
+});
+
+describe('queue item detail', () => {
+  it('carries the question past the title so repeated rows can be told apart, and passes the schema', async () => {
+    const { buildPanelSnapshot } = await import('../src/panelSurface');
+    const { WIDGET_OUTPUT_SCHEMAS } = await import('../src/openaiOutputSchemas/widgets');
+    const title = 'The OrgX floor stopped a merge action and is waiting for you.';
+    const snapshot = buildPanelSnapshot({
+      workspace: { id: WS, name: 'Acme' },
+      decisions: [
+        { id: D1, summary: title, created_at: '2026-10-01T00:00:00Z', review_packet: { question: `${title} Command: gh pr merge 3236` } },
+        { id: D2, summary: 'Ship it?', created_at: '2026-10-01T00:00:00Z' },
+      ],
+      artifacts: [],
+    });
+    const byId = Object.fromEntries(snapshot.queue.map((q) => [q.id, q]));
+    expect(byId[D1]!.detail).toBe(`${title} Command: gh pr merge 3236`);
+    // Nothing past the title: no detail, not a copy of the title.
+    expect(byId[D2]!.detail).toBeNull();
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(snapshot).success).toBe(true);
   });
 });

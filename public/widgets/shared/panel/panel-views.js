@@ -28,7 +28,7 @@
   var TABS = [['needs', 'Needs you'], ['work', 'In progress'], ['done', 'Done']];
 
   /**
-   * opts: { active, counts: { needs, work, done }, tones: { needs, work, done } }.
+   * opts: { active, counts: { needs, work, done }, tones: { needs, work, done }, changed: { [tab]: true } }.
    * A count of null renders no badge (not loaded yet), never a fake zero.
    */
   function tabsHtml(opts) {
@@ -38,7 +38,7 @@
       var on = opts.active === t[0];
       var n = counts[t[0]];
       return '<button type="button" class="pn-tab" role="tab" id="pn-tab-' + t[0] + '" aria-selected="' + on + '" aria-controls="pn-view" tabindex="' + (on ? '0' : '-1') + '" data-action="tab" data-tab="' + t[0] + '">' +
-        '<span>' + t[1] + '</span>' + (typeof n === 'number' ? '<span class="pn-tab-n" data-tone="' + esc(tones[t[0]] || '') + '">' + n + '</span>' : '') + '</button>';
+        '<span>' + t[1] + '</span>' + (typeof n === 'number' ? '<span class="pn-tab-n' + (opts.changed && opts.changed[t[0]] ? ' tick' : '') + '" data-tone="' + esc(tones[t[0]] || '') + '">' + n + '</span>' : '') + '</button>';
     }).join('') + '</div>';
   }
 

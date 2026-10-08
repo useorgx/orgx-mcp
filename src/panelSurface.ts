@@ -53,6 +53,7 @@ export const PANEL_ASKER_MAX = 60;
 export const PANEL_WORK_LIMIT = 20;
 export const PANEL_EVIDENCE_TITLE_MAX = 80;
 export const PANEL_TEXT_MAX = 280;
+export const PANEL_DETAIL_MAX = 240;
 /** Options the panel can render as buttons for one decision. */
 export const PANEL_OPTION_LIMIT = 12;
 export const PANEL_OPTION_LABEL_MAX = 80;
@@ -139,6 +140,12 @@ export interface PanelQueueItem {
   widget_actions: PanelWidgetActions | null;
   /** The agent or person asking, as OrgX names them; null for OrgX itself. */
   asker: string | null;
+  /**
+   * The question past its first sentence, clipped: what tells apart rows whose
+   * titles are the same (five "merge stopped" approvals differ only in the PR
+   * and command named here). Null when the question adds nothing to the title.
+   */
+  detail?: string | null;
   url: string;
 }
 
@@ -625,6 +632,7 @@ function toQueueItem(decision: NormalizedDecision): PanelQueueItem {
     kind: decision.kind,
     widget_actions: decision.widgetActions,
     asker: decision.asker,
+    detail: decision.question && decision.question !== decision.title ? clipText(decision.question, PANEL_DETAIL_MAX) : null,
     url: decisionUrl(decision),
   };
 }
