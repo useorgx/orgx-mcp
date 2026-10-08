@@ -128,8 +128,10 @@ describe('panel lightweight receipt after a decision', () => {
 describe('panel v2 start work in chat', () => {
   // Calm: one way to Start; the sentence is composed there and sent as a user message.
   async function composeInStart(m: Mounted, text: string) {
-    click(m, '.st-link [data-tab="start"]');
+    // Calm: the empty state's prompt opens Start with the cursor in the composer.
+    click(m, '[data-action="start-open"]');
     await m.flush();
+    expect(doc(m).activeElement!.id).toBe('st-text');
     const ta = doc(m).querySelector('#st-text') as HTMLTextAreaElement;
     ta.value = text;
     ta.dispatchEvent(new m.dom.window.Event('input', { bubbles: true }));
@@ -166,13 +168,13 @@ describe('panel v2 start work in chat', () => {
     expect((doc(m).querySelector('#st-text') as HTMLTextAreaElement).value).toBe('Launch the pricing page');
   });
 
-  it('stops the tip line after two dismissals', async () => {
+  it('offers one next prompt when calm, not a prompt and a tip', async () => {
     const calm = snapshot({ queue: [], focus: null, attention: { pending: 0, oldest_at: null, blocking: false }, proof: { last_accepted: null, completed_unaccepted: 1 } });
     const m = await open(calm, {});
-    expect(doc(m).querySelector('.pn-tip')).not.toBeNull();
-    click(m, '[data-action="tip-dismiss"]'); await m.flush();
-    click(m, '[data-action="tip-dismiss"]'); await m.flush();
+    expect(doc(m).querySelectorAll('[data-action="start-open"]')).toHaveLength(1);
     expect(doc(m).querySelector('.pn-tip')).toBeNull();
+    // In progress has not been read: the empty state claims nothing about it.
+    expect(doc(m).querySelector('.cm-sub')!.textContent!.trim()).toBe('Nothing needs your decision.');
   });
 });
 

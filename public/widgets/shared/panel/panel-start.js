@@ -1,12 +1,12 @@
 /**
  * OrgX panel: Start. The place to set work going from ChatGPT.
  *
- * Say what should get done, pick who takes it (or let OrgX route it), and
- * choose how: start an initiative, plan it first, or hand it straight to an
- * agent. The panel never runs anything itself: it sends one plain sentence to
- * ChatGPT, which uses OrgX to do it, and it always shows that exact sentence
- * before it is sent. Starters fill the composer rather than firing, so the
- * person can make them theirs.
+ * One question and one composer, after the OrgX chat composer: say what should
+ * get done, then two quiet controls in the composer's own bar — who takes it
+ * (a menu, OrgX picks by default) and how (initiative, plan first, hand off).
+ * The panel never runs anything itself: it sends one plain sentence to
+ * ChatGPT, which uses OrgX to do it, and it shows that exact sentence before
+ * it is sent. Ideas fill the composer rather than firing.
  *
  *   OrgXPanelStart.html(opts)           -> the Start view
  *   OrgXPanelStart.sentence(verb, opts) -> the sentence a verb sends
@@ -33,10 +33,13 @@
     return identity && identity.avatar ? identity.avatar({ agent: name, name: name, size: 'inline' }) : '';
   }
 
+  /** Each domain's light, so the stage takes the colour of whoever takes the work. */
+  var TINT = { eli: '0, 201, 167', dana: '167, 139, 250', mark: '250, 204, 21', sage: '191, 255, 0', pace: '96, 165, 250', orion: '45, 212, 191' };
+
   var VERBS = [
-    ['initiative', 'Start an initiative', 'Creates the initiative with its workstreams and tasks'],
-    ['plan', 'Plan it first', 'Drafts a plan you review; nothing runs until you accept'],
-    ['delegate', 'Hand it off', 'Picks the agent and starts the work now'],
+    ['initiative', 'Initiative', 'OrgX sets up the initiative, its workstreams and first tasks.'],
+    ['plan', 'Plan first', 'OrgX drafts a plan for you to review. Nothing runs until you accept it.'],
+    ['delegate', 'Hand off', 'OrgX gives it to the best-fit agent and starts now.'],
   ];
 
   /** The exact sentence each verb sends. Plain words; OrgX is named so ChatGPT uses it. */
@@ -51,91 +54,107 @@
       : 'In OrgX, hand this to the right agent: ' + text + '.';
   }
 
-  /** Starters per domain: concrete jobs, filled into the composer to edit. */
+  /** Ideas per domain: concrete jobs, filled into the composer to edit. */
   var STARTERS = {
-    eli: ['Fix the flaky checkout test and open a PR', 'Add rate limiting to the public API'],
-    dana: ['Audit the onboarding flow for friction', 'Design the empty state for the reports page'],
-    mark: ['Draft the launch post for the new pricing', 'Plan a two-week campaign for founders'],
-    sage: ['Build an ICP list of 50 founder-led SaaS companies', 'Write a follow-up sequence for stalled trials'],
-    pace: ['Write a PRD for team workspaces', 'Synthesize this week’s customer calls'],
-    orion: ['Write a runbook for a failed deploy', 'Review this month’s spend against budget'],
+    eli: ['Fix the flaky checkout test and open a PR', 'Add rate limiting to the public API', 'Cut cold-start time on the API by half'],
+    dana: ['Audit the onboarding flow for friction', 'Design the empty state for the reports page', 'Tighten the mobile checkout layout'],
+    mark: ['Draft the launch post for the new pricing', 'Plan a two-week campaign for founders', 'Turn this week’s release into a changelog'],
+    sage: ['Build an ICP list of 50 founder-led SaaS companies', 'Write a follow-up sequence for stalled trials', 'Prep a call brief for my next demo'],
+    pace: ['Write a PRD for team workspaces', 'Synthesize this week’s customer calls', 'Size the pricing experiment we discussed'],
+    orion: ['Write a runbook for a failed deploy', 'Review this month’s spend against budget', 'Find what slowed releases this month'],
   };
+  var MIXED = [['mark', 0], ['eli', 0], ['pace', 1], ['sage', 0]];
+
+  function verbOf(opts, picked) { return opts.verb || (picked ? 'delegate' : 'initiative'); }
+  function verbHint(verb, picked) {
+    if (verb === 'delegate') return picked ? 'OrgX gives it to ' + picked.name + ' and starts now.' : VERBS[2][2];
+    return verb === 'plan' ? VERBS[1][2] : VERBS[0][2];
+  }
+
+  /** The line under the composer: the exact sentence once there is one, else what this choice does. */
+  function previewHtml(verb, opts) {
+    var picked = agentByKey(opts.agent);
+    var said = sentence(verb, opts);
+    return said
+      ? '<span class="st-pl">Sends</span> “' + esc(said) + '”'
+      : '<span class="st-ph">' + esc(verbHint(verb, picked)) + '</span>';
+  }
 
   /**
-   * opts: { text, agent, verb, status, initiative, workAgents }
+   * opts: { text, agent, verb, status, initiative, workAgents, whoOpen }
    * workAgents: { name: count } of agents already holding work, to say who is busy.
    */
   function html(opts) {
     opts = opts || {};
-    var text = opts.text || '';
     var agents = roster();
     var busy = opts.workAgents || {};
     var picked = agentByKey(opts.agent);
-    var verb = opts.verb || (picked ? 'delegate' : 'initiative');
-    var preview = sentence(verb, { text: text, agent: opts.agent });
+    var verb = verbOf(opts, picked);
+    var said = sentence(verb, { text: opts.text, agent: opts.agent });
 
-    var who = '<div class="st-who" role="radiogroup" aria-label="Who takes it">' +
-      '<button type="button" class="st-agent" role="radio" data-action="start-agent" data-id="" aria-checked="' + !picked + '">' +
-      '<span class="st-auto" aria-hidden="true">✦</span><span class="st-an">OrgX picks</span><span class="st-ar">best fit</span></button>' +
-      agents.map(function chip(a) {
-        var n = busy[a.name] || 0;
-        return '<button type="button" class="st-agent" role="radio" data-action="start-agent" data-id="' + esc(a.key) + '" aria-checked="' + (picked && picked.key === a.key) + '">' +
-          '<span class="md-av">' + avatar(a.name) + '</span><span class="st-an">' + esc(a.name) + '</span>' +
-          '<span class="st-ar">' + esc(a.role) + (n ? ' · ' + n + ' in progress' : '') + '</span></button>';
-      }).join('') + '</div>';
+    // Who takes it: one pill in the bar. OrgX picks shows the team, stacked.
+    var face = picked
+      ? '<span class="st-face">' + avatar(picked.name) + '</span>'
+      : '<span class="st-stack" aria-hidden="true">' + agents.slice(0, 3).map(function f(a) { return avatar(a.name); }).join('') + '</span>';
+    var who = '<button type="button" class="st-who" data-action="start-who" aria-haspopup="true" aria-expanded="' + !!opts.whoOpen + '" aria-controls="st-menu">' +
+      face + '<span class="st-who-n">' + esc(picked ? picked.name : 'OrgX picks') + '</span>' +
+      '<svg class="st-car" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
 
-    var verbs = '<div class="st-verbs" role="radiogroup" aria-label="How">' + VERBS.map(function v(x) {
-      return '<button type="button" class="st-verb" role="radio" data-action="start-verb" data-id="' + x[0] + '" aria-checked="' + (verb === x[0]) + '">' +
-        '<b>' + esc(x[0] === 'delegate' && picked ? 'Hand it to ' + picked.name : x[1]) + '</b><span>' + esc(x[2]) + '</span></button>';
+    var menu = opts.whoOpen
+      ? '<div class="st-menu" id="st-menu" role="radiogroup" aria-label="Who takes it"><p class="st-mh">Who takes it</p>' +
+        '<button type="button" class="st-opt" role="radio" data-action="start-agent" data-id="" aria-checked="' + !picked + '">' +
+        '<span class="st-auto" aria-hidden="true">✦</span><span class="st-on">OrgX picks</span><span class="st-or">Best fit for the job</span></button>' +
+        agents.map(function opt(a) {
+          var n = busy[a.name] || 0;
+          return '<button type="button" class="st-opt" role="radio" data-action="start-agent" data-id="' + esc(a.key) + '" aria-checked="' + (!!picked && picked.key === a.key) + '">' +
+            '<span class="st-face">' + avatar(a.name) + '</span><span class="st-on">' + esc(a.name) + '</span>' +
+            '<span class="st-or">' + esc(a.role) + (n ? ' · ' + n + ' running' : '') + '</span></button>';
+        }).join('') + '</div>'
+      : '';
+
+    var how = '<div class="st-how" role="radiogroup" aria-label="How">' + VERBS.map(function v(x) {
+      return '<button type="button" class="st-verb" role="radio" data-action="start-verb" data-id="' + x[0] + '" aria-checked="' + (verb === x[0]) + '"><b>' +
+        esc(x[0] === 'delegate' && picked ? 'Hand to ' + picked.name : x[1]) + '</b></button>';
     }).join('') + '</div>';
 
     var status = opts.status
       ? '<p class="st-status" role="status" data-outcome="' + esc(opts.status) + '">' +
-        (opts.status === 'sent' ? 'Sent to the chat. ChatGPT is taking it to OrgX.' : opts.status === 'copied' ? 'Copied. Paste it into the chat to send it.' : 'Couldn’t send it from here. Type it in the chat.') + '</p>'
+        (opts.status === 'sent' ? 'Sent. ChatGPT is taking it to OrgX; questions will come back to Needs you.' : opts.status === 'copied' ? 'Copied. Paste it into the chat to send it.' : 'Couldn’t send it from here. Type it in the chat.') + '</p>'
       : '';
 
-    var starterKey = picked ? picked.key : null;
-    var starterSets = starterKey ? [[picked, STARTERS[starterKey] || []]] : agents.slice(0, 6).map(function s(a) { return [a, (STARTERS[a.key] || []).slice(0, 1)]; });
-    var starters = '<div class="st-starters"><h3 class="st-h">' + (picked ? 'Ideas for ' + esc(picked.name) : 'Or start from one of these') + '</h3><ul role="list">' +
-      starterSets.map(function set(pair) {
-        return pair[1].map(function one(t) {
-          return '<li><button type="button" class="st-starter" data-action="start-fill" data-id="' + esc(pair[0].key) + '" data-text="' + esc(t) + '">' +
-            '<span class="md-av">' + avatar(pair[0].name) + '</span><span class="st-st">' + esc(t) + '</span><span class="st-sr">' + esc(pair[0].role) + '</span></button></li>';
-        }).join('');
-      }).join('') + '</ul></div>';
+    // Ideas: three, for the picked agent or one each across the team; the
+    // open initiative first when there is one.
+    var ideas = picked
+      ? (STARTERS[picked.key] || []).map(function p(t) { return [picked.key, t]; })
+      : MIXED.slice(0, 3).map(function m(x) { return [x[0], STARTERS[x[0]][x[1]]]; });
+    if (opts.initiative) ideas.unshift(['', 'Plan the next steps for ' + opts.initiative]);
+    var tryRow = '<div class="st-try"><span class="st-sl">Try</span>' + ideas.slice(0, 4).map(function chip(x) {
+      return '<button type="button" class="st-idea" data-action="start-fill" data-id="' + esc(x[0]) + '" data-text="' + esc(x[1]) + '">' + esc(x[1]) + '</button>';
+    }).join('') + '</div>';
 
-    var cont = opts.initiative
-      ? '<div class="st-continue"><h3 class="st-h">Keep ' + esc(opts.initiative) + ' moving</h3><div class="st-cont-b">' +
-        '<button type="button" class="pn-chip" data-action="launch" data-prompt="' + esc('Plan the next steps for ' + opts.initiative + ' in OrgX') + '">Plan the next steps</button>' +
-        '<button type="button" class="pn-chip" data-action="launch" data-prompt="' + esc('How is ' + opts.initiative + ' going in OrgX?') + '">How is it going?</button></div></div>'
-      : '';
-
-    // The loop this starts, in the panel's own words: where each part comes back.
-    var steps = [
-      ['Sent', 'ChatGPT takes your sentence to OrgX.'],
-      [verb === 'plan' ? 'Planned' : verb === 'delegate' ? 'Routed' : 'Set up', verb === 'plan' ? 'OrgX drafts the plan; nothing runs until you accept it.' : verb === 'delegate' ? 'OrgX hands it to ' + (picked ? picked.name : 'the right agent') + ' and starts it.' : 'OrgX creates the initiative, its workstreams and first tasks.'],
-      ['Back here', 'Questions arrive in Needs you, running work in In progress, receipts in Done.'],
-    ];
-    var busyList = Object.keys(busy).sort(function most(a, b) { return busy[b] - busy[a]; }).slice(0, 5);
-    var aside = '<aside class="st-aside"><div class="md-card"><p class="md-kicker">What happens next</p><ol class="st-steps">' +
-      steps.map(function step(x, i) { return '<li><span class="st-n">' + (i + 1) + '</span><span><b>' + esc(x[0]) + '</b> ' + esc(x[1]) + '</span></li>'; }).join('') + '</ol>' +
-      (busyList.length ? '<p class="md-kicker st-busy-h">Agents right now</p><ul class="st-busy" role="list">' + busyList.map(function b(name) {
-        return '<li><span class="md-av">' + avatar(name) + '</span><span>' + esc(name) + '</span><span class="st-ar">' + busy[name] + ' in progress</span></li>';
-      }).join('') + '</ul>' : '') + '</div></aside>';
+    var tint = picked ? TINT[picked.key] : '';
     return '<section class="pn-start" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-start">' +
-      '<div class="pn-view-head"><h2 class="pn-view-h">Start work</h2></div>' +
-      '<p class="st-lede">Say what should get done. ChatGPT sends it to OrgX, which plans it, runs it with your agents and brings decisions back to this panel.</p>' +
-      '<div class="st-grid"><div class="st-main">' +
-      '<div class="st-card">' +
-      '<label class="st-label" for="st-text">What should get done?</label>' +
-      '<textarea id="st-text" class="st-text" data-action="start-text" rows="3" maxlength="600" placeholder="e.g. Launch the new pricing page by Friday, with a post and an email to trials">' + esc(text) + '</textarea>' +
-      '<p class="st-label">Who takes it</p>' + who +
-      '<p class="st-label">How</p>' + verbs +
-      '<div class="st-send"><p class="st-preview" aria-live="polite">' +
-      (preview ? '<span class="st-pl">Sends</span> “' + esc(preview) + '”' : '<span class="st-pl">Sends</span> <span class="st-ph">your sentence, exactly as shown here</span>') + '</p>' +
-      '<button type="button" class="pn-btn st-go" data-action="start-send"' + (preview ? '' : ' disabled aria-disabled="true"') + '>Send to chat</button></div>' +
-      status + '</div>' + starters + cont + '</div>' + aside + '</div></section>';
+      '<div class="st-stage"' + (tint ? ' style="--st-tint: ' + tint + '"' : '') + '>' +
+      '<div class="st-glow" aria-hidden="true"></div>' +
+      '<h2 class="st-q">What should get done?</h2>' +
+      '<p class="st-sub">Say the outcome. OrgX plans it, runs it with your agents and brings decisions back here.</p>' +
+      '<div class="st-box">' +
+      '<label class="sr-only" for="st-text">What should get done?</label>' +
+      '<textarea id="st-text" class="st-text" data-action="start-text" rows="2" maxlength="600" placeholder="Launch the new pricing page by Friday, with a post and an email to trials">' + esc(opts.text || '') + '</textarea>' +
+      '<div class="st-bar">' + who + how + '<span class="st-sp"></span>' +
+      '<span class="st-kbd" aria-hidden="true">↵ send</span>' +
+      '<button type="button" class="st-go" data-action="start-send" aria-label="Send to chat"' + (said ? '' : ' disabled aria-disabled="true"') + '>' +
+      '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>' +
+      '</div>' + menu + '</div>' +
+      '<p class="st-preview" aria-live="polite">' + previewHtml(verb, { text: opts.text, agent: opts.agent }) + '</p>' +
+      status + tryRow + '</div></section>';
   }
 
-  global.OrgXPanelStart = { html: html, sentence: sentence, roster: roster };
+  global.OrgXPanelStart = {
+    html: html,
+    sentence: sentence,
+    roster: roster,
+    /** The preview line alone, so typing updates it without rebuilding the composer. */
+    previewHtml: function preview(opts) { opts = opts || {}; return previewHtml(verbOf(opts, agentByKey(opts.agent)), opts); },
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

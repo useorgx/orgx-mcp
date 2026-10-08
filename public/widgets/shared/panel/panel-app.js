@@ -62,7 +62,7 @@
       startAgent: '',
       startVerb: '',
       startStatus: null,
-      launchNoted: false,
+      startWhoOpen: false,
       tourChecked: false,
       // Live feed: connection status, and what it says In progress holds
       // before (or without) the full In progress read.
@@ -965,7 +965,10 @@
       var meta = [item.blocked && calmUrgency ? 'Blocking work' : urgencyLabel(item.urgency), ago(item.waiting_since), item.initiative_title].filter(Boolean).join(' · ');
       var acts = '';
       var opening = ui.readState.phase === 'loading' && ui.readState.focusId === item.id;
-      if (ui.readState.phase !== 'idle') {
+      var current = Boolean(ui.snapshot.focus && ui.snapshot.focus.id === item.id && !ruling);
+      if (current) {
+        acts = '<div class="row-acts"><span class="row-open">Open</span></div>';
+      } else if (ui.readState.phase !== 'idle') {
         acts = '<div class="row-acts"><button type="button" class="mini" data-action="select" data-id="' + esc(item.id) + '"' +
           (opening ? ' aria-disabled="true"' : '') + '>' + (opening ? 'Opening…' : 'Review') + '</button></div>';
       } else if (ruling) {
@@ -989,11 +992,11 @@
       var arrived = ui.seenRows && !ui.seenRows[item.id];
       if (grouped) {
         // Inside a group the title is the group's; the line is what differs.
-        return '<li class="row grow' + (arrived ? ' arrive' : '') + '" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + ' ' + (item.detail || '') + '. ' + meta) + '">' +
+        return '<li class="row grow' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + ' ' + (item.detail || '') + '. ' + meta) + '">' +
           distinguisherHtml(item) + '<span class="row-meta"><span>' + esc(meta) + '</span></span></button>' + acts +
           (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
       }
-      return '<li class="row' + (arrived ? ' arrive' : '') + '" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
+      return '<li class="row' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
         '<span class="row-av" aria-hidden="true">' + askerAvatar(item.asker_kind, item.asker, 'row') + '</span>' +
         // Repeated titles step back to one muted line; what differs leads.
         (repeatedTitle && distinguisherHtml(item)
@@ -1143,22 +1146,53 @@
           launch: startLinkHtml('Start something next'),
         });
       }
-      if (isFirstUse(s)) {
-        return html + '<p class="lede">This workspace has no decisions or accepted work yet.</p>' +
-          '<p class="sub">Say what should get done: OrgX plans it, runs it with your agents and brings decisions back here.</p>' +
-          '<div class="md-acts"><button type="button" class="pn-btn st-cta" data-action="tab" data-tab="start">Start your first piece of work</button>' +
-          '<button type="button" class="pn-btn ghost" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button></div>';
-      }
-      if (calm) return html + attentionLine(s) + proofHtml(s, true) + startLinkHtml('Nothing needs you. Start something') + tipHtml(ctx, ['calm']);
-      var others = s.queue.filter(function notFocus(item) { return !s.focus || item.id !== s.focus.id; });
+      if (isFirstUse(s)) return html + calmHtml(s, true);
+      if (calm) return html + calmHtml(s);
+      // The whole queue, with the open decision marked in place: the list's
+      // count is the attention line's count, never one short of it.
       var hidden = Math.max(0, s.attention.pending - s.queue.length);
       html += '<div class="pn-split">' +
         '<div class="pn-att">' + attentionLine(s) + '</div>' +
         '<div class="pn-detail">' + (s.focus ? packetHtml(s.focus, 'h2') : '') + '</div>' +
-        (others.length ? '<div class="pn-list"><h2 class="queue-head">' + (s.focus ? 'Also waiting' : 'Waiting on you') + '</h2><ul class="queue">' + queueRowsHtml(others) + '</ul>' +
+        (s.queue.length > 1 || !s.focus ? '<div class="pn-list"><h2 class="queue-head">Your queue <span class="queue-n">' + s.attention.pending + '</span></h2><ul class="queue">' + queueRowsHtml(s.queue) + '</ul>' +
           (hidden ? '<p class="sub">' + hidden + ' more in OrgX. <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.decisions({ status: 'pending' })) + '">All decisions ↗</button></p>' : '') + '</div>' : '') +
         '</div>';
       return html;
+    }
+
+    /**
+     * Nothing needs a decision. Say so once, show the work that is moving
+     * without the person (so "clear" never reads as "idle"), and invite the
+     * next thing: a prompt that opens Start with the cursor already in it.
+     */
+    function calmHtml(s, firstUse) {
+      var w = workView().work;
+      var items = w && w.items ? w.items : [];
+      var agents = {};
+      items.forEach(function n(i) { agents[i.agent] = true; });
+      var nAgents = Object.keys(agents).length;
+      var blocked = items.filter(function b(i) { return i.state === 'blocked'; }).length;
+      // Only say what is known: before In progress has been read, say nothing about it.
+      var moving = !w ? ''
+        : items.length ? nAgents + (nAgents === 1 ? ' agent is' : ' agents are') + ' working on ' + items.length + (items.length === 1 ? ' task' : ' tasks') + (blocked ? ', ' + blocked + ' blocked' : '') + '.'
+        : 'No agent work is running right now.';
+      var glyph = '<span class="cm-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>';
+      var prompt = Start && ui.mode === 'global'
+        ? '<button type="button" class="cm-prompt" data-action="start-open"><span class="cm-pp">What should get done next?</span><span class="cm-go" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span></button>'
+        : '';
+      var see = items.length ? '<button type="button" class="text-btn" data-action="tab" data-tab="work">See what’s running</button>' : '';
+      if (firstUse) {
+        // A new workspace: nothing to be clear of yet. Invite the first job.
+        return '<section class="pn-calm is-first" aria-labelledby="cm-h">' +
+          (Brand ? '<span class="cm-mark is-brand" aria-hidden="true">' + Brand.mark(26) + '</span>' : '') +
+          '<h2 class="cm-h" id="cm-h">Start your first piece of work.</h2>' +
+          '<p class="cm-sub">Say what should get done. OrgX plans it, runs it with your agents and brings decisions back here.</p>' +
+          (prompt || '<button type="button" class="pn-btn st-cta" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>') + '</section>';
+      }
+      return '<section class="pn-calm" aria-labelledby="cm-h">' + glyph +
+        '<h2 class="cm-h" id="cm-h">You’re clear.</h2>' +
+        '<p class="cm-sub">Nothing needs your decision. ' + esc(moving) + (see ? ' ' + see : '') + '</p>' +
+        prompt + '</section>' + proofHtml(s, true);
     }
 
     /** One way to the Start tab from any view, instead of prompt lists everywhere. */
@@ -1173,7 +1207,7 @@
       var busy = {};
       var w = workView().work;
       if (w && w.items) w.items.forEach(function n(i) { busy[i.agent] = (busy[i.agent] || 0) + 1; });
-      return Start.html({ text: ui.startText, agent: ui.startAgent, verb: ui.startVerb, status: ui.startStatus, initiative: ctx.initiative || '', workAgents: busy });
+      return Start.html({ text: ui.startText, agent: ui.startAgent, verb: ui.startVerb, status: ui.startStatus, initiative: ctx.initiative || '', workAgents: busy, whoOpen: ui.startWhoOpen });
     }
 
     function startSentence() {
@@ -1184,11 +1218,6 @@
       var initiative = null;
       (s && s.queue || []).some(function pick(item) { initiative = item.initiative_title || null; return Boolean(initiative); });
       return { initiative: initiative };
-    }
-    function tipHtml(ctx, shownKinds) {
-      if (!Launch) return '';
-      if (!ui.launchNoted) { ui.launchNoted = true; Launch.noteOpen(); }
-      return Launch.tipHtml(ctx, shownKinds);
     }
 
     function threadHtml(s) {
@@ -1308,18 +1337,25 @@
       later(startTour, 600);
     }
 
-    function setTab(tab, quiet) {
+    function setTab(tab, quiet, after) {
       if (['needs', 'work', 'done', 'start'].indexOf(tab) === -1 || (tab === 'start' && !Start)) return;
       var changed = ui.tab !== tab;
-      ui.tab = tab;
-      ui.composer = changed ? null : ui.composer;
-      if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); return; }
-      render();
-      if (changed && !quiet) {
-        var t = root.querySelector('#pn-tab-' + tab);
-        if (t) t.focus();
-        announce(tab === 'needs' ? 'Needs you.' : tab === 'work' ? 'In progress.' : 'Done.');
+      var order = ['needs', 'work', 'done', 'start'];
+      var dir = order.indexOf(tab) >= order.indexOf(ui.tab) ? 'fwd' : 'back';
+      function apply() {
+        ui.tab = tab;
+        ui.composer = changed ? null : ui.composer;
+        ui.startWhoOpen = false;
+        if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); return; }
+        render();
+        if (changed && !quiet) {
+          var t = root.querySelector('#pn-tab-' + tab);
+          if (t) t.focus();
+          announce(tab === 'needs' ? 'Needs you.' : tab === 'work' ? 'In progress.' : tab === 'done' ? 'Done.' : 'Start.');
+        }
+        if (after) after();
       }
+      if (changed) transition('tab', apply, dir); else apply();
     }
 
     /**
@@ -1587,9 +1623,11 @@
       var s = ui.snapshot;
       if (s && s.focus && s.focus.id === id && ui.readState.phase === 'idle') { render(); return; }
       if (isGallery) {
-        var item = findItem(id);
-        if (item) s.focus = Object.assign({}, s.focus || {}, galleryFocus(item));
-        render();
+        transition('detail', function showGallery() {
+          var item = findItem(id);
+          if (item) s.focus = Object.assign({}, s.focus || {}, galleryFocus(item));
+          render();
+        });
         return;
       }
       fetchSnapshot(id, 'select');
@@ -1896,6 +1934,7 @@
     }
 
     root.addEventListener('click', function onClick(event) {
+      if (ui.startWhoOpen && !event.target.closest('.st-menu, [data-action="start-who"]')) transition('menu', function dismiss() { ui.startWhoOpen = false; render(); });
       var el = event.target.closest('[data-action]');
       if (!el || !root.contains(el) || el.disabled) return;
       var action = el.getAttribute('data-action');
@@ -1903,7 +1942,7 @@
       // During the tour only the practice press is live; picks and send-back wait.
       if (tour && tour.active() && ['approve', 'option', 'toggle-option', 'reject-option', 'sendback', 'submit-sendback'].indexOf(action) !== -1) return;
       switch (action) {
-        case 'workspaces': if (ui.wsOpen) closeWorkspaces(true); else openWorkspaces(); break;
+        case 'workspaces': transition('menu', function toggleWs() { if (ui.wsOpen) closeWorkspaces(true); else openWorkspaces(); }); break;
         case 'workspaces-retry': ui.workspaces = null; ui.wsPhase = 'idle'; openWorkspaces(); break;
         case 'switch-workspace': switchWorkspace(id); break;
         case 'refresh': fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh'); break;
@@ -1938,21 +1977,24 @@
         case 'stop-share': stopShare(); break;
         case 'tab': setTab(el.getAttribute('data-tab')); break;
         case 'launch': launchPrompt(el); break;
-        case 'tip-dismiss': if (Launch) Launch.noteDismiss(); render(); focusFirst('[data-action="tab"][aria-selected="true"]'); break;
         case 'tour': startTour(); break;
         case 'work-retry': ui.workPhase = 'failed'; fetchWork(); break;
         case 'receipt':
-          ui.openReceipt = !id || ui.openReceipt === id ? null : id;
-          render();
-          focusFirst(ui.openReceipt ? '.pn-md-detail .md-close' : '[data-action="receipt"][aria-pressed]');
+          transition('detail', function openReceipt() {
+            ui.openReceipt = !id || ui.openReceipt === id ? null : id;
+            render();
+            focusFirst(ui.openReceipt ? '.pn-md-detail .md-close' : '[data-action="receipt"][aria-pressed]');
+          });
           break;
         case 'work-select':
-          ui.workSel = !id || ui.workSel === id ? null : id;
-          render();
-          focusFirst(ui.workSel ? '.pn-md-detail .md-close' : '.wk-row');
+          transition('detail', function openWork() {
+            ui.workSel = !id || ui.workSel === id ? null : id;
+            render();
+            focusFirst(ui.workSel ? '.pn-md-detail .md-close' : '.wk-row');
+          });
           break;
         case 'work-filter': ui.workFilter = id || 'all'; if (id === 'all') ui.workQuery = ''; render(); focusFirst('[data-action="work-filter"][aria-pressed="true"]'); break;
-        case 'agent-expand': ui.workExpanded[id] = !ui.workExpanded[id]; render(); break;
+        case 'agent-expand': transition('expand', function expand() { ui.workExpanded[id] = !ui.workExpanded[id]; render(); }); break;
         case 'agent-focus':
           // Show that agent's whole list in place rather than filtering it away.
           ui.workFilter = 'all'; ui.workQuery = ''; ui.workExpanded[id] = true;
@@ -1960,20 +2002,29 @@
           var agentEl = root.querySelector('.ag[data-agent="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
           if (agentEl) { agentEl.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' }); var firstRow = agentEl.querySelector('.wk-row'); if (firstRow) firstRow.focus({ preventScroll: true }); }
           break;
-        case 'done-range': setDoneRange(id); break;
-        case 'done-more': ui.donePage += 1; render(); break;
+        case 'done-range': transition('swap', function range() { setDoneRange(id); }); break;
+        case 'done-more': transition('expand', function more() { ui.donePage += 1; render(); }); break;
+        case 'start-open': setTab('start', true, function focusComposer() { focusFirst('#st-text'); }); break;
+        case 'start-who':
+          transition('menu', function toggleWho() {
+            ui.startWhoOpen = !ui.startWhoOpen;
+            render();
+            focusFirst(ui.startWhoOpen ? '.st-opt[aria-checked="true"]' : '[data-action="start-who"]');
+          });
+          break;
         case 'start-agent':
           ui.startAgent = id || '';
           // Picking an agent means handing it to them; OrgX picks keeps the chosen verb.
           if (id) ui.startVerb = 'delegate'; else if (ui.startVerb === 'delegate') ui.startVerb = '';
           ui.startStatus = null;
-          render(); focusFirst('[data-action="start-agent"][aria-checked="true"]');
+          transition('menu', function picked() { ui.startWhoOpen = false; render(); focusFirst('#st-text'); });
           break;
         case 'start-verb': ui.startVerb = id || ''; ui.startStatus = null; render(); focusFirst('[data-action="start-verb"][aria-checked="true"]'); break;
         case 'start-fill':
           ui.startText = el.getAttribute('data-text') || '';
           ui.startAgent = id || ui.startAgent;
           if (ui.startAgent) ui.startVerb = 'delegate';
+          else if (/^Plan the next steps/.test(ui.startText)) ui.startVerb = 'plan';
           ui.startStatus = null;
           render();
           var ta = root.querySelector('#st-text');
@@ -1991,7 +2042,7 @@
           });
           break;
         }
-        case 'why': ui.whyOpen = ui.whyOpen === id ? null : id; render(); focusFirst('[data-action="why"]'); break;
+        case 'why': transition('expand', function why() { ui.whyOpen = ui.whyOpen === id ? null : id; render(); focusFirst('[data-action="why"]'); }); break;
         default: break;
       }
     });
@@ -2019,7 +2070,7 @@
         var preview = root.querySelector('.st-preview');
         var go = root.querySelector('[data-action="start-send"]');
         var said = startSentence();
-        if (preview) preview.innerHTML = '<span class="st-pl">Sends</span> ' + (said ? '“' + esc(said) + '”' : '<span class="st-ph">your sentence, exactly as shown here</span>');
+        if (preview) preview.innerHTML = Start.previewHtml({ text: ui.startText, agent: ui.startAgent, verb: ui.startVerb });
         if (go) { go.disabled = !said; if (said) go.removeAttribute('aria-disabled'); else go.setAttribute('aria-disabled', 'true'); }
         var st = root.querySelector('.st-status');
         if (st) st.remove();
@@ -2115,8 +2166,15 @@
         setTab(order[next]);
         return;
       }
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.target && event.target.id === 'st-text') {
+        event.preventDefault();
+        var goBtn = root.querySelector('[data-action="start-send"]');
+        if (goBtn && !goBtn.disabled) goBtn.click();
+        return;
+      }
       if (event.key !== 'Escape') return;
-      if (ui.wsOpen) { event.preventDefault(); closeWorkspaces(true); return; }
+      if (ui.startWhoOpen) { event.preventDefault(); transition('menu', function esc() { ui.startWhoOpen = false; render(); focusFirst('[data-action="start-who"]'); }); return; }
+      if (ui.wsOpen) { event.preventDefault(); transition('menu', function escWs() { closeWorkspaces(true); }); return; }
       if (ui.composer) { event.preventDefault(); closeComposer(); return; }
       if (ui.evidenceOpen) {
         event.preventDefault();
@@ -2166,7 +2224,7 @@
       ui.tab = 'needs'; ui.work = null; ui.workPhase = 'idle'; ui.session = []; ui.openReceipt = null;
       ui.workSel = null; ui.workFilter = 'all'; ui.workQuery = ''; ui.workExpanded = {};
       ui.doneRange = 'session'; ui.history = {}; ui.historyPhase = 'idle'; ui.donePage = 1;
-      ui.startStatus = null;
+      ui.startStatus = null; ui.startWhoOpen = false;
       ui.wsOpen = false; ui.wsPhase = 'idle'; ui.workspaces = null; ui.wsError = null; ui.wsSwitchingTo = null;
       ui.seenRows = null; ui.lastCounts = null;
       share = X.createShareController({ modelContext: ext.modelContext });
@@ -2576,6 +2634,36 @@
 
     function reducedMotion() {
       return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    /**
+     * Run a state change and its render as one view transition, so what leaves
+     * and what arrives move together: tabs slide in the direction travelled,
+     * menus grow from their trigger and shrink back, the detail pane rises in
+     * and the header stays put. `change` renders and moves focus itself; it
+     * runs synchronously when transitions are unavailable or motion is
+     * reduced, so callers never depend on the animation.
+     */
+    function transition(kind, change, dir) {
+      var html = document.documentElement;
+      var can = typeof document.startViewTransition === 'function' && !reducedMotion() && document.visibilityState !== 'hidden';
+      if (!can) {
+        change();
+        if (kind === 'tab' && !reducedMotion()) {
+          var view = root.querySelector('#pn-view, .pn-split, .pn-calm');
+          if (view) view.classList.add('pn-enter');
+        }
+        return;
+      }
+      html.setAttribute('data-vt', kind);
+      if (dir) html.setAttribute('data-vt-dir', dir); else html.removeAttribute('data-vt-dir');
+      var vt = document.startViewTransition(change);
+      vt.finished.then(clear, clear);
+      function clear() {
+        if (html.getAttribute('data-vt') !== kind) return;
+        html.removeAttribute('data-vt');
+        html.removeAttribute('data-vt-dir');
+      }
     }
 
     function liveRefresh() {

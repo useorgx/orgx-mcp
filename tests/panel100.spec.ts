@@ -287,9 +287,15 @@ describe('Start: setting work going from the panel', () => {
     await m.flush();
     const send = doc(m).querySelector('[data-action="start-send"]') as HTMLButtonElement;
     expect(send.disabled).toBe(true);
+    // Who takes it is one pill in the composer bar; the roster is a menu behind it.
+    expect(doc(m).querySelector('.st-menu')).toBeNull();
+    click(m, '[data-action="start-who"]');
+    await m.flush();
     click(m, '[data-action="start-agent"][data-id="eli"]');
     await m.flush();
-    expect(doc(m).querySelector('.st-verb[aria-checked="true"] b')!.textContent).toBe('Hand it to Eli');
+    expect(doc(m).querySelector('.st-menu')).toBeNull();
+    expect(doc(m).querySelector('.st-who')!.textContent).toContain('Eli');
+    expect(doc(m).querySelector('.st-verb[aria-checked="true"] b')!.textContent).toBe('Hand to Eli');
     const ta = doc(m).querySelector('#st-text') as HTMLTextAreaElement;
     ta.value = 'Fix the flaky checkout test';
     ta.dispatchEvent(new m.dom.window.Event('input', { bubbles: true }));
@@ -327,5 +333,55 @@ describe('Start: setting work going from the panel', () => {
     await m.flush();
     expect((doc(m).querySelector('#st-text') as HTMLTextAreaElement).value).toBe(text);
     expect(m.calls.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('sends on Enter, keeps Shift+Enter for a new line, and closes the who menu on Escape', async () => {
+    const m = await openWith(snapshot());
+    click(m, '[data-tab="start"]');
+    await m.flush();
+    const ta = doc(m).querySelector('#st-text') as HTMLTextAreaElement;
+    ta.value = 'Write a PRD for team workspaces';
+    ta.dispatchEvent(new m.dom.window.Event('input', { bubbles: true }));
+    const key = (k: string, shift = false) => ta.dispatchEvent(new m.dom.window.KeyboardEvent('keydown', { key: k, shiftKey: shift, bubbles: true, cancelable: true }));
+    key('Enter', true);
+    expect(m.calls.sendMessage).not.toHaveBeenCalled();
+    click(m, '[data-action="start-who"]');
+    await m.flush();
+    expect(doc(m).querySelector('.st-menu')).not.toBeNull();
+    doc(m).dispatchEvent(new m.dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await m.flush();
+    expect(doc(m).querySelector('.st-menu')).toBeNull();
+    expect(doc(m).activeElement!.getAttribute('data-action')).toBe('start-who');
+    // Closing the menu re-renders; the text survives and Enter sends it.
+    const again = doc(m).querySelector('#st-text') as HTMLTextAreaElement;
+    expect(again.value).toBe('Write a PRD for team workspaces');
+    again.dispatchEvent(new m.dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await m.flush(); await m.flush();
+    expect(m.calls.sendMessage).toHaveBeenCalledWith({ role: 'user', content: [{ type: 'text', text: 'Start a new initiative in OrgX: Write a PRD for team workspaces.' }] });
+  });
+});
+
+describe('Needs you: the queue and its empty state', () => {
+  it('lists the whole queue with the open decision marked, so the count matches the attention line', async () => {
+    const m = await openWith(snapshot());
+    const data = snapshot();
+    const rows = doc(m).querySelectorAll('.queue .row');
+    expect(rows).toHaveLength(data.queue.length);
+    expect(doc(m).querySelector('.queue-n')!.textContent).toBe(String(data.attention.pending));
+    const current = doc(m).querySelectorAll('.queue .row[aria-current="true"]');
+    expect(current).toHaveLength(1);
+    expect(current[0]!.getAttribute('data-row')).toBe(data.focus!.id);
+  });
+
+  it('says you are clear, what is still moving, and offers the next prompt', async () => {
+    const calm = snapshot({ queue: [], focus: null, attention: { pending: 0, oldest_at: null, blocking: false }, proof: { last_accepted: null, completed_unaccepted: 1 } });
+    const m = await openWith(calm);
+    expect(doc(m).querySelector('.cm-h')!.textContent).toBe('You’re clear.');
+    expect(doc(m).querySelector('.cm-sub')!.textContent).toContain('Nothing needs your decision.');
+    expect(doc(m).querySelector('.queue')).toBeNull();
+    click(m, '[data-action="start-open"]');
+    await m.flush();
+    expect(doc(m).querySelector('.pn-start')).not.toBeNull();
+    expect(doc(m).activeElement!.id).toBe('st-text');
   });
 });
