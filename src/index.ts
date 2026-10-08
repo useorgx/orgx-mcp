@@ -266,6 +266,7 @@ import {
   buildBootstrapToolRouting,
   pickBootstrapWorkspaceFallback,
   resolveBootstrapSessionContext,
+  resolveBootstrapSessionModel,
 } from './bootstrapPayload';
 import { buildSurfaceMap } from './surfaceMap';
 import { buildEntityCard } from './entityCard';
@@ -671,6 +672,9 @@ export class OrgXMcp extends McpAgent<
     initiativeId?: string;
     clientName?: string;
     clientVersion?: string;
+    // Named once at orgx_bootstrap; the default model on this session's receipts.
+    model?: string;
+    modelProvider?: string;
   } = {};
 
   // Persisted auth from OAuth flow - stored in DO SQLite
@@ -808,6 +812,8 @@ export class OrgXMcp extends McpAgent<
       // workspace scoping so attribution survives DO resets and deploys.
       this.ensureSessionContextColumn('client_name', 'TEXT');
       this.ensureSessionContextColumn('client_version', 'TEXT');
+      this.ensureSessionContextColumn('model', 'TEXT');
+      this.ensureSessionContextColumn('model_provider', 'TEXT');
       this.sessionSqlInitialized = true;
     } catch (error) {
       console.error('[mcp:session] Failed to initialize SQLite', { error });
@@ -1033,6 +1039,12 @@ export class OrgXMcp extends McpAgent<
             typeof row.client_version === 'string'
               ? row.client_version
               : undefined;
+          const model =
+            typeof row.model === 'string' ? row.model : undefined;
+          const modelProvider =
+            typeof row.model_provider === 'string'
+              ? row.model_provider
+              : undefined;
 
           this.sessionContext = {
             ...this.sessionContext,
@@ -1041,6 +1053,8 @@ export class OrgXMcp extends McpAgent<
             initiativeId: initiativeId ?? this.sessionContext.initiativeId,
             clientName: clientName ?? this.sessionContext.clientName,
             clientVersion: clientVersion ?? this.sessionContext.clientVersion,
+            model: model ?? this.sessionContext.model,
+            modelProvider: modelProvider ?? this.sessionContext.modelProvider,
           };
 
           if (!this.isDirectoryReviewProfile()) {
@@ -1109,13 +1123,15 @@ export class OrgXMcp extends McpAgent<
 
       if (this.sessionSqlInitialized) {
         this.sessionSql.exec(
-          `INSERT OR REPLACE INTO session_context (id, workspace_id, workspace_name, initiative_id, client_name, client_version, updated_at)
-           VALUES (1, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO session_context (id, workspace_id, workspace_name, initiative_id, client_name, client_version, model, model_provider, updated_at)
+           VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)`,
           this.sessionContext.workspaceId ?? null,
           this.sessionContext.workspaceName ?? null,
           this.sessionContext.initiativeId ?? null,
           this.sessionContext.clientName ?? null,
           this.sessionContext.clientVersion ?? null,
+          this.sessionContext.model ?? null,
+          this.sessionContext.modelProvider ?? null,
           now
         );
       }
@@ -5100,6 +5116,13 @@ export class OrgXMcp extends McpAgent<
       initiative: this.sessionContext.initiativeId
         ? { id: this.sessionContext.initiativeId }
         : null,
+      // Echoed so the agent can see its receipts will name this model.
+      model: this.sessionContext.model
+        ? {
+            name: this.sessionContext.model,
+            provider: this.sessionContext.modelProvider ?? null,
+          }
+        : null,
       granted_scopes: this.parseGrantedScopes(),
       // Where work lives in the web app, and which of this session's tools
       // read or change each surface. Drawn by the workspace-map widget.
@@ -5500,10 +5523,16 @@ export class OrgXMcp extends McpAgent<
             this.sessionContext,
             fetchedWorkspaceName
           );
-          if (resolvedContext.changed) {
+          const resolvedModel = resolveBootstrapSessionModel(
+            args,
+            this.sessionContext
+          );
+          if (resolvedContext.changed || resolvedModel.changed) {
             this.sessionContext = {
               ...this.sessionContext,
               ...resolvedContext.context,
+              model: resolvedModel.model,
+              modelProvider: resolvedModel.modelProvider,
             };
             await this.saveSessionContext();
           }
@@ -6680,6 +6709,10 @@ export class OrgXMcp extends McpAgent<
                   : null) ??
                 receiptSourceClient ??
                 this.resolveClientNameLabel(args._context),
+              sessionModel: {
+                name: this.sessionContext.model ?? null,
+                provider: this.sessionContext.modelProvider ?? null,
+              },
             });
             try {
               const response = await callOrgxApiJson(

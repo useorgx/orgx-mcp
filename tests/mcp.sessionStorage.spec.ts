@@ -122,6 +122,8 @@ describe('MCP session storage (DO persistence)', () => {
       initiative_id: 'init_2',
       client_name: null,
       client_version: null,
+      model: null,
+      model_provider: null,
       updated_at: 999,
     });
   });
@@ -150,5 +152,21 @@ describe('MCP session storage (DO persistence)', () => {
       parseStoredSessionContext({ client_name: 'codex', updated_at: 1 })
     ).toEqual({ clientName: 'codex' });
     expect(parseStoredSessionContext({ updated_at: 1 })).toBeNull();
+  });
+
+  it('round-trips the model named at bootstrap, and keeps a row that only names a model', () => {
+    const stored = toStoredSessionContext(
+      { workspaceId: 'ws_4', model: 'claude-opus-5-5', modelProvider: 'anthropic' },
+      999
+    );
+    expect(stored.model).toBe('claude-opus-5-5');
+    expect(parseStoredSessionContext(stored)).toEqual({
+      workspaceId: 'ws_4',
+      model: 'claude-opus-5-5',
+      modelProvider: 'anthropic',
+    });
+    expect(parseStoredSessionContext({ model: 'gpt-6-luna', updated_at: 1 })).toEqual({ model: 'gpt-6-luna' });
+    // A provider without a model means nothing on its own.
+    expect(parseStoredSessionContext({ model_provider: 'openai', updated_at: 1 })).toBeNull();
   });
 });

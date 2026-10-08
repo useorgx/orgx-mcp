@@ -72,6 +72,8 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       command_center_id: z.string().optional().describe('Deprecated alias for workspace_id. workspace_id wins when both are sent.'),
       conversation_id: z.string().optional().describe('Optional client conversation/session identifier for continuity'),
       client_name: z.string().optional().describe('Optional MCP client name, such as codex, chatgpt, cursor, or claude'),
+      model: z.string().max(120).optional().describe('The model you are running as, as its provider names it (e.g. "claude-opus-5-5"). Say it once here: every receipt this session records it, so orgx_submit_receipt does not need it again.'),
+      model_provider: z.string().max(60).optional().describe('Provider of model when it cannot be read from the name (anthropic, openai, google…).'),
       timezone: z.string().optional().describe('Optional user timezone for date-sensitive readouts'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
@@ -518,7 +520,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       model_tier: z.enum(['standard', 'balanced', 'precision', 'local', 'sonnet', 'opus']).optional().describe('Model tier used for the run being receipted. For validation rungs before calibrated expansion, use standard.'),
       budget_mode: z.enum(['cheapest_valid', 'balanced', 'highest_quality']).optional().describe('Budget posture used for the run being receipted. For validation rungs before calibrated expansion, use cheapest_valid.'),
       max_cost_usd: z.number().nonnegative().optional().describe('Per-task or canary spend cap used during the validation run, when known.'),
-      model: z.string().max(120).optional().describe('Model that did the work, as its provider names it (e.g. "claude-opus-5-5"). Always pass it: a receipt that does not say which model ran cannot be compared with another.'),
+      model: z.string().max(120).optional().describe('Model that did the work, as its provider names it (e.g. "claude-opus-5-5"). Defaults to the model given to orgx_bootstrap this session; pass it only if that was not given or this work ran on a different model.'),
       model_provider: z.string().max(60).optional().describe('Provider of model when it cannot be read from the name (anthropic, openai, google…).'),
       agent_work_receipt: z.record(z.unknown()).optional().describe('A complete Agent Work Receipt (v0.2), stored verbatim instead of one built from the other fields. Include actor.runtime and actor.model, and ideally extensions["org.orgx.review/v1"]: criteria frozen before the work, one check per criterion, output attached.'),
       // Without these two, a receipt could only ever say "completed". The API

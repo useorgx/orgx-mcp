@@ -81,6 +81,11 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
         .object({ id: z.string(), name: nullableString })
         .nullable(),
       initiative: z.object({ id: z.string() }).nullable(),
+      // The model named at bootstrap; this session's receipts record it.
+      model: z
+        .object({ name: z.string(), provider: nullableString })
+        .nullable()
+        .optional(),
       granted_scopes: z.array(z.string()),
       surfaces: z
         .array(

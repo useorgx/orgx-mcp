@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-08T17:42:01.878Z",
-  "sourceHash": "75aa1b5e9c077fb6",
+  "generatedAt": "2026-10-08T18:00:39.753Z",
+  "sourceHash": "eb979db4a976845d",
   "version": "1.0.0",
   "totalTools": 108,
   "categories": [
@@ -3338,6 +3338,16 @@
             "type": "string",
             "description": "Optional MCP client name, such as codex, chatgpt, cursor, or claude"
           },
+          "model": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "The model you are running as, as its provider names it (e.g. \"claude-opus-5-5\"). Say it once here: every receipt this session records it, so orgx_submit_receipt does not need it again."
+          },
+          "model_provider": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "Provider of model when it cannot be read from the name (anthropic, openai, google…)."
+          },
           "timezone": {
             "type": "string",
             "description": "Optional user timezone for date-sensitive readouts"
@@ -4207,7 +4217,7 @@
           "model": {
             "type": "string",
             "maxLength": 120,
-            "description": "Model that did the work, as its provider names it (e.g. \"claude-opus-5-5\"). Always pass it: a receipt that does not say which model ran cannot be compared with another."
+            "description": "Model that did the work, as its provider names it (e.g. \"claude-opus-5-5\"). Defaults to the model given to orgx_bootstrap this session; pass it only if that was not given or this work ran on a different model."
           },
           "model_provider": {
             "type": "string",
