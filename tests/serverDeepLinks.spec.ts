@@ -80,9 +80,10 @@ const CASES: Array<[string, string, string]> = [
   ['run', link('run', ID), '/runs/[runId]'],
   ['agent run', link('agent_run', ID), '/runs/[runId]'],
   // was /agents/sessions/:id
-  ['session', link('session', ID), '/live'],
+  // was /live?view=mission-control&session= (empty without an initiative)
+  ['session', link('session', ID), '/runs'],
   // was /planning/sessions/:id
-  ['plan session', link('plan_session', ID), '/live'],
+  ['plan session', link('plan_session', ID), '/runs'],
   ['plan session with initiative', link('plan_session', ID, { initiativeId: INI }), '/initiatives/[id]'],
   // was /settings/agents?agent= (a redirect source)
   ['agent by key', link('agent', 'eli'), '/command/agents/[agentId]'],
@@ -95,14 +96,15 @@ const CASES: Array<[string, string, string]> = [
   ['blocker on its run', link('blocker', ID, { runId: RUN }), '/runs/[runId]'],
   ['blocker in its initiative', link('blocker', ID, { initiativeId: INI }), '/live/[initiativeId]'],
   ['blocker', link('blocker', ID), '/command'],
-  ['mission control', link('live', 'default'), '/live'],
+  // was the legacy mission-control view; Runs is the workspace's running work
+  ['mission control', link('live', 'default'), '/runs'],
   ['live room', link('live', INI), '/live/[initiativeId]'],
   ['live, initiative option', link('live', 'default', { initiativeId: INI }), '/live/[initiativeId]'],
   ['live url', buildLiveUrl(INI), '/live/[initiativeId]'],
-  ['live url, mission control', buildLiveUrl(), '/live'],
-  ['live url, session', buildLiveUrl(undefined, ID), '/live'],
+  ['live url, mission control', buildLiveUrl(), '/runs'],
+  ['live url, session', buildLiveUrl(undefined, ID), '/runs'],
   // was /live?workspace= (the live view reads ?center=)
-  ['live url, workspace', buildLiveUrl(undefined, undefined, { workspace: ID }), '/live'],
+  ['live url, workspace', buildLiveUrl(undefined, undefined, { workspace: ID }), '/runs'],
   ['live url, initiative with session', buildLiveUrl(INI, ID), '/live/[initiativeId]'],
 ];
 
@@ -146,7 +148,7 @@ describe('server deep links', () => {
     expect(link('run', ID)).toBe(`https://useorgx.com/runs/${ID}`);
     expect(link('milestone', ID, { initiativeId: INI })).toBe(`https://useorgx.com/milestones/${ID}`);
     expect(link('decision', ID, { initiativeId: INI })).toBe(`https://useorgx.com/decisions/${ID}`);
-    expect(link('plan_session', ID)).toBe(`https://useorgx.com/live?view=mission-control&session=${ID}`);
+    expect(link('plan_session', ID)).toBe('https://useorgx.com/runs');
     expect(link('decision', '')).toBe('https://useorgx.com/decisions?status=pending');
     expect(agentSlug('design_codex')).toBe('dana');
     expect(agentSlug('Developer')).toBeNull();

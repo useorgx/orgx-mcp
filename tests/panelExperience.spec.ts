@@ -214,7 +214,7 @@ describe('panel experience lifetime and recovery', () => {
     data.queue[1]!.title = data.queue[0]!.title;
     m.app().ontoolresult({ structuredContent: data, _meta: { 'orgx/widgetApproval': { approval_tokens: Object.fromEntries(data.queue.map((item) => [item.id, 'fixture-token'])) } } });
     await m.flush();
-    const row = m.dom.window.document.querySelector('.row')!;
+    const row = m.dom.window.document.querySelector('.row:not(.is-current)')!;
     expect(row.querySelector('[data-action="approve"]')).toBeNull();
     expect(row.querySelector('.mini')!.textContent).toBe('Review');
   });

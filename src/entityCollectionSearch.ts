@@ -10,6 +10,9 @@ export type EntityCollectionSearchInput = {
   fields?: string[] | null;
   createdFrom?: string;
   createdTo?: string;
+  /** A column the API allows ordering by, e.g. updated_at. */
+  orderBy?: string;
+  orderDirection?: 'asc' | 'desc';
 };
 
 /**
@@ -35,5 +38,7 @@ export function buildEntityCollectionSearchParams(
   if (input.createdTo) search.set('created_to', input.createdTo);
   if (input.query) search.set('search', input.query);
   if (input.fields?.length) search.set('fields', input.fields.join(','));
+  if (input.orderBy) search.set('order_by', input.orderBy);
+  if (input.orderDirection) search.set('order_direction', input.orderDirection);
   return search;
 }

@@ -29,6 +29,7 @@ import {
 
 const decideActionSchema = z.enum(['approve', 'reject']);
 const panelItemKindSchema = z.enum(['decision', 'approval', 'action']);
+const panelAskerKindSchema = z.enum(['agent', 'floor', 'unnamed', 'system']);
 /** The app's per-item widget_actions contract, as the panel carries it (clipped). */
 const panelWidgetActionsSchema = z
   .object({
@@ -150,6 +151,8 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             kind: panelItemKindSchema,
             widget_actions: panelWidgetActionsSchema.nullable(),
             asker: z.string().nullable(),
+            asker_kind: panelAskerKindSchema.optional(),
+            session_label: z.string().nullable().optional(),
             detail: z.string().nullable().optional(),
             url: z.string(),
           })
@@ -186,6 +189,18 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           multiselect: z.boolean(),
           widget_actions: panelWidgetActionsSchema.nullable(),
           asker: z.string().nullable(),
+          asker_kind: panelAskerKindSchema.optional(),
+          session_label: z.string().nullable().optional(),
+          why: z
+            .object({
+              authority: z.string().nullable(),
+              policy: z.string().nullable(),
+              uncertainty: z.array(z.string()),
+              run_url: z.string().nullable(),
+              initiative_url: z.string().nullable(),
+            })
+            .strict()
+            .optional(),
           url: z.string(),
         })
         .strict()
@@ -223,6 +238,9 @@ export const WIDGET_OUTPUT_SCHEMAS = {
                 title: z.string(),
                 state: z.enum(['blocked', 'running', 'queued']),
                 url: z.string(),
+                domain: z.string().nullable().optional(),
+                updated_at: z.string().nullable().optional(),
+                stale: z.boolean().optional(),
               })
               .strict()
           ),
@@ -235,6 +253,24 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           status: z.enum(['ok', 'unavailable']),
           items: z.array(
             z.object({ id: z.string(), name: z.string(), current: z.boolean() }).strict()
+          ),
+        })
+        .strict()
+        .optional(),
+      history: z
+        .object({
+          status: z.enum(['ok', 'unavailable']),
+          range: z.enum(['today', '7d', '30d']),
+          items: z.array(
+            z
+              .object({
+                id: z.string(),
+                title: z.string(),
+                outcome: z.enum(['approved', 'declined', 'cancelled', 'superseded']),
+                settled_at: z.string().nullable(),
+                url: z.string(),
+              })
+              .strict()
           ),
         })
         .strict()
