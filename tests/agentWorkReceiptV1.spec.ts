@@ -380,6 +380,35 @@ describe('receipts say which model did the work', () => {
     );
     expect(warnings.some((w) => w.startsWith('model was not given'))).toBe(true);
   });
+  it('defaults to the model named at bootstrap, so the call need not repeat it', () => {
+    const { body, warnings } = buildAgentWorkReceiptImportRequest(
+      { receipt_type: 'proof', summary: 'Shipped' },
+      { workspaceId: '00000000-0000-4000-8000-000000000001', sourceClient: 'codex', sessionModel: { name: 'gpt-6-luna', provider: null }, issuedAt: '2026-10-08T10:00:00.000Z', receiptId: 'r1' }
+    );
+    expect(body.receipt.actor).toMatchObject({ model: { provider: 'openai', name: 'gpt-6-luna' } });
+    expect(warnings.some((w) => w.startsWith('model was not given'))).toBe(false);
+  });
+  it('lets the call override the session model, without carrying the session provider over', () => {
+    const { body } = buildAgentWorkReceiptImportRequest(
+      { receipt_type: 'proof', summary: 'Shipped', model: 'claude-haiku-4.5' },
+      { workspaceId: '00000000-0000-4000-8000-000000000001', sessionModel: { name: 'my-finetune', provider: 'acme' }, issuedAt: '2026-10-08T10:00:00.000Z', receiptId: 'r1' }
+    );
+    expect(body.receipt.actor).toMatchObject({ model: { provider: 'anthropic', name: 'claude-haiku-4.5' } });
+  });
+  it('uses the session provider for the session model', () => {
+    const { body } = buildAgentWorkReceiptImportRequest(
+      { receipt_type: 'proof', summary: 'Shipped' },
+      { workspaceId: '00000000-0000-4000-8000-000000000001', sessionModel: { name: 'my-finetune', provider: 'acme' }, issuedAt: '2026-10-08T10:00:00.000Z', receiptId: 'r1' }
+    );
+    expect(body.receipt.actor).toMatchObject({ model: { provider: 'acme', name: 'my-finetune' } });
+  });
+  it('points to bootstrap when neither names a model', () => {
+    const { warnings } = buildAgentWorkReceiptImportRequest(
+      { receipt_type: 'proof', summary: 'Shipped' },
+      { workspaceId: '00000000-0000-4000-8000-000000000001', sessionModel: { name: null }, issuedAt: '2026-10-08T10:00:00.000Z', receiptId: 'r1' }
+    );
+    expect(warnings.find((w) => w.startsWith('model was not given'))).toMatch(/orgx_bootstrap/);
+  });
   it('passes a full receipt through verbatim and reports what it leaves out', () => {
     const receipt = { schema_version: 'agent-work-receipt/v0.2', receipt_id: 'x', actor: { type: 'agent', id: 'a', runtime: { name: 'codex' } } };
     const { body, warnings } = buildAgentWorkReceiptImportRequest(

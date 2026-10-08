@@ -11,6 +11,7 @@ import {
   getBootstrapSafeFirstCalls,
   pickBootstrapWorkspaceFallback,
   resolveBootstrapSessionContext,
+  resolveBootstrapSessionModel,
 } from '../src/bootstrapPayload';
 import { CLAUDE_DIRECTORY_SURFACE } from '../src/toolProfiles';
 
@@ -298,5 +299,21 @@ describe('bootstrap payload routing hints', () => {
       '/api/client/bootstrap?source_client=mcp'
     );
     expect(bootstrapWorkspaceHelper).not.toContain('if (!userId) return null');
+  });
+});
+
+describe('resolveBootstrapSessionModel', () => {
+  it('records the model named at bootstrap', () => {
+    expect(resolveBootstrapSessionModel({ model: ' claude-opus-5-5 ' }, {})).toEqual({ model: 'claude-opus-5-5', changed: true });
+    expect(resolveBootstrapSessionModel({ model: 'x', model_provider: 'acme' }, {})).toEqual({ model: 'x', modelProvider: 'acme', changed: true });
+  });
+  it('keeps the session model when a later bootstrap names none', () => {
+    expect(resolveBootstrapSessionModel({ workspace_id: 'ws' }, { model: 'gpt-6-luna', modelProvider: 'openai' })).toEqual({ model: 'gpt-6-luna', modelProvider: 'openai', changed: false });
+  });
+  it('is unchanged when the same model is named again', () => {
+    expect(resolveBootstrapSessionModel({ model: 'gpt-6-luna' }, { model: 'gpt-6-luna', modelProvider: 'openai' })).toEqual({ model: 'gpt-6-luna', modelProvider: 'openai', changed: false });
+  });
+  it('drops the old provider when a different model is named', () => {
+    expect(resolveBootstrapSessionModel({ model: 'claude-sonnet-5' }, { model: 'my-finetune', modelProvider: 'acme' })).toEqual({ model: 'claude-sonnet-5', changed: true });
   });
 });

@@ -20,6 +20,10 @@ export type SessionContext = {
   // server-side so attribution survives agents that never send _context.
   clientName?: string;
   clientVersion?: string;
+  // The model the agent named once at orgx_bootstrap. Receipts default to it,
+  // so an agent is not asked for its model on every orgx_submit_receipt.
+  model?: string;
+  modelProvider?: string;
 };
 
 type StoredAuth = {
@@ -46,6 +50,9 @@ type StoredContext = {
   clientName?: unknown;
   client_version?: unknown;
   clientVersion?: unknown;
+  model?: unknown;
+  model_provider?: unknown;
+  modelProvider?: unknown;
   updated_at?: unknown;
   updatedAt?: unknown;
 };
@@ -126,10 +133,26 @@ export function parseStoredSessionContext(stored: unknown): SessionContext | nul
       ? record.clientVersion
       : undefined;
 
-  if (!workspaceId && !workspaceName && !initiativeId && !clientName) {
+  const model = typeof record.model === 'string' ? record.model : undefined;
+  const modelProvider =
+    typeof record.model_provider === 'string'
+      ? record.model_provider
+      : typeof record.modelProvider === 'string'
+      ? record.modelProvider
+      : undefined;
+
+  if (!workspaceId && !workspaceName && !initiativeId && !clientName && !model) {
     return null;
   }
-  return { workspaceId, workspaceName, initiativeId, clientName, clientVersion };
+  return {
+    workspaceId,
+    workspaceName,
+    initiativeId,
+    clientName,
+    clientVersion,
+    ...(model ? { model } : {}),
+    ...(model && modelProvider ? { modelProvider } : {}),
+  };
 }
 
 export function toStoredSessionContext(
@@ -142,6 +165,8 @@ export function toStoredSessionContext(
     initiative_id: context.initiativeId ?? null,
     client_name: context.clientName ?? null,
     client_version: context.clientVersion ?? null,
+    model: context.model ?? null,
+    model_provider: context.modelProvider ?? null,
     updated_at: now,
   };
 }

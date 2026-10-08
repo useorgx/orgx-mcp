@@ -42,6 +42,8 @@ export interface BuildAgentWorkReceiptOptions {
   workspaceId: string;
   /** Verbatim client label (e.g. "claude-code") for actor.runtime.name. */
   sourceClient?: string | null;
+  /** The model named at orgx_bootstrap, used when the tool call names none. */
+  sessionModel?: { name?: string | null; provider?: string | null } | null;
   /** Clock override for deterministic tests. Defaults to now. */
   issuedAt?: string;
   /** receipt_id override for deterministic tests. */
@@ -337,9 +339,15 @@ export function buildAgentWorkReceiptImportRequest(
 
   // ------------------------------------------------------------------- actor
   const actorId = agentType ?? sourceClient ?? 'orgx-mcp-agent';
-  // The model that did the work, when the agent says. Without it two receipts
-  // for the same task cannot be compared, so its absence is reported.
-  const modelName = nonEmptyString(args.model);
+  // The model that did the work: what this call says, else what the agent said
+  // once at orgx_bootstrap. Without it two receipts for the same task cannot be
+  // compared, so its absence is reported.
+  const callModel = nonEmptyString(args.model);
+  const sessionModelName = nonEmptyString(options.sessionModel?.name);
+  const modelName = callModel ?? sessionModelName;
+  const modelProviderGiven = callModel
+    ? nonEmptyString(args.model_provider)
+    : nonEmptyString(args.model_provider) ?? nonEmptyString(options.sessionModel?.provider);
   const actor: JsonRecord = {
     type: 'agent',
     id: shortString(actorId),
@@ -347,11 +355,11 @@ export function buildAgentWorkReceiptImportRequest(
       ? { runtime: { name: shortString(sourceClient) } }
       : {}),
     ...(modelName
-      ? { model: { provider: shortString(nonEmptyString(args.model_provider) ?? providerOfModel(modelName)), name: shortString(modelName) } }
+      ? { model: { provider: shortString(modelProviderGiven ?? providerOfModel(modelName)), name: shortString(modelName) } }
       : {}),
   };
   if (!modelName) {
-    warnings.push('model was not given, so the receipt cannot say which model did the work; pass model (for example "claude-opus-5-5").');
+    warnings.push('model was not given, so the receipt cannot say which model did the work; pass model to orgx_bootstrap once (for example "claude-opus-5-5") and every receipt this session will record it.');
   }
 
   // --------------------------------------------------------------- authority

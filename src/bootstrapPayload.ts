@@ -106,6 +106,29 @@ export function resolveBootstrapSessionContext(
   };
 }
 
+/**
+ * The model an agent names at orgx_bootstrap, recorded once for the session so
+ * orgx_submit_receipt can default to it. A bootstrap that names no model keeps
+ * whatever the session already holds; naming a different one replaces it (and
+ * drops a provider that belonged to the old model).
+ */
+export function resolveBootstrapSessionModel(
+  args: Record<string, unknown>,
+  current: { model?: string; modelProvider?: string }
+): { model?: string; modelProvider?: string; changed: boolean } {
+  const model = nonEmptyString(args.model)?.slice(0, 120);
+  if (!model) {
+    return { model: current.model, modelProvider: current.modelProvider, changed: false };
+  }
+  const given = nonEmptyString(args.model_provider)?.slice(0, 60);
+  const modelProvider = given ?? (model === current.model ? current.modelProvider : undefined);
+  return {
+    model,
+    ...(modelProvider ? { modelProvider } : {}),
+    changed: model !== current.model || modelProvider !== current.modelProvider,
+  };
+}
+
 export const V2_PUBLIC_TOOL_IDS = V2_PUBLIC_SURFACE;
 
 const CANONICAL_GUIDANCE_TOOL_IDS = new Set<string>(V2_CORE_PUBLIC_SURFACE);
