@@ -8,6 +8,7 @@
     var Launch = window.OrgXPanelLaunch || null;
     var Views = window.OrgXPanelViews || null;
     var Tour = window.OrgXPanelTour || null;
+    var Start = window.OrgXPanelStart || null;
     var root = document.getElementById('panel');
     var params = new URLSearchParams(window.location.search);
     var isGallery = params.get('gallery') === 'true';
@@ -45,6 +46,22 @@
       workPhase: 'idle',
       session: [],
       openReceipt: null,
+      // In progress: selected task, state filter, search, agents shown in full.
+      workSel: null,
+      workFilter: 'all',
+      workQuery: '',
+      workExpanded: {},
+      // Done: time range, history per range, selected receipt, page.
+      doneRange: 'session',
+      history: {},
+      historyPhase: 'idle',
+      donePage: 1,
+      whyOpen: null,
+      // Start: the composer's text, who takes it, how, and the last send's outcome.
+      startText: '',
+      startAgent: '',
+      startVerb: '',
+      startStatus: null,
       launchNoted: false,
       tourChecked: false,
       // Live feed: connection status, and what it says In progress holds
@@ -169,10 +186,16 @@
       return out;
     }
     function inline(text) {
+      // "PR #3239 (https://github.com/…/pull/3239)" says the number twice once
+      // the URL becomes a link: keep only the link.
+      text = String(text == null ? '' : text).replace(/\b(?:PR|pull request) #(\d+) \((https?:\/\/github\.com\/[^\s)]+\/pull\/\1)\)/gi, '$2');
       return esc(text)
         .replace(/\bhttps?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)]/g, function link(url) {
           var raw = url.replace(/&amp;/g, '&');
-          return '<a href="' + url + '" data-action="open" data-url="' + url + '">' + esc(raw.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48)) + '</a>';
+          // A pull request reads as one: "PR #3239 ↗", not a truncated URL.
+          var pr = /github\.com\/[^/]+\/[^/]+\/(pull|issues)\/(\d+)/.exec(raw);
+          var label = pr ? (pr[1] === 'pull' ? 'PR #' : 'Issue #') + pr[2] + ' ↗' : raw.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48);
+          return '<a href="' + url + '" class="' + (pr ? 'pr-link' : '') + '" data-action="open" data-url="' + url + '">' + esc(label) + '</a>';
         })
         .replace(/`([^`]{1,200})`/g, '<code>$1</code>')
         .replace(/\b([0-9a-f]{12,64})\b/g, function hash(m, h) { return '<code title="' + h + '">' + h.slice(0, 10) + '</code>'; });
@@ -449,8 +472,12 @@
         body = '<p class="ws-note" role="alert">' + esc(ui.wsError || 'Your workspaces could not be loaded.') + '</p>' +
           '<button type="button" class="quiet-btn" data-action="workspaces-retry">Try again</button>';
       } else {
-        var items = ui.workspaces ? ui.workspaces.items : [];
-        body = '<ul class="ws-list" role="list">' + items.map(function item(w) {
+        var all = ui.workspaces ? ui.workspaces.items : [];
+        var wq = String(ui.wsQuery || '').trim().toLowerCase();
+        var items = wq ? all.filter(function match(w) { return w.name.toLowerCase().indexOf(wq) !== -1; }) : all;
+        var filter = all.length > 8
+          ? '<label class="ws-filter"><span class="sr-only">Find a workspace</span><input type="search" data-action="ws-query" placeholder="Find a workspace" value="' + esc(ui.wsQuery || '') + '" autocomplete="off"></label>' : '';
+        body = filter + (items.length ? '' : '<p class="ws-note">No workspace matches “' + esc(ui.wsQuery) + '”.</p>') + '<ul class="ws-list" role="list">' + items.map(function item(w) {
           var busy = ui.wsPhase === 'switching' && ui.wsSwitchingTo === w.id;
           return '<li><button type="button" class="ws-item" data-action="switch-workspace" data-id="' + esc(w.id) + '"' +
             (w.current ? ' aria-current="true"' : '') + (busy ? ' aria-busy="true"' : '') +
@@ -462,7 +489,7 @@
           (ui.wsError ? '<p class="ws-note" role="alert">' + esc(ui.wsError) + '</p>' : '') +
           '<p class="ws-note">You can also ask ChatGPT to switch your OrgX workspace.</p>';
       }
-      return '<div id="pn-ws-menu" class="ws-menu" role="region" aria-label="Workspaces">' + body + '</div>';
+      return '<div id="pn-ws-menu" class="ws-menu" role="dialog" aria-label="Switch workspace">' + body + '</div>';
     }
 
     function openWorkspaces() {
@@ -501,6 +528,7 @@
     function closeWorkspaces(restoreFocus) {
       if (!ui.wsOpen) return;
       ui.wsOpen = false;
+      ui.wsQuery = '';
       ui.wsError = null;
       if (ui.wsPhase === 'failed') ui.wsPhase = 'idle';
       render();
@@ -772,7 +800,14 @@
         var settledApproved = /approv|accept|confirm|grant|allow/.test(ruling.status || '');
         var settledDeclined = /declin|reject|deni|denied|sent_back|cancel/.test(ruling.status || '');
         var frames = {
-          saving: { state: 'saving', heading: ruling.action === 'approve' ? 'Recording your approval' : 'Recording it', detail: 'nothing else changes yet' },
+          // Say what is happening, and keep the pressed button's own label (with
+          // the kit's spinner) so the footer does not jump to "Saving…".
+          saving: {
+            state: 'saving',
+            heading: 'Sending “' + ((ruling.action === 'approve' ? ruling.approveLabel : ruling.rejectLabel) || (ruling.action === 'approve' ? 'Approve' : 'Send back')) + '” to OrgX',
+            detail: 'confirming in a moment',
+            primary: (ruling.action === 'approve' ? ruling.approveLabel : ruling.rejectLabel) || '',
+          },
           waiting: { state: 'waiting', heading: 'Recorded', detail: 'checking status in OrgX', action: 'Check now' },
           recorded: { state: 'stale', heading: 'Decision recorded', detail: 'Status is unconfirmed. Check the receipt before continuing.', action: 'Receipt ↗' },
           failed: { state: 'failed', heading: 'Could not continue', detail: 'OrgX reports the next step failed or was cancelled. Check the receipt.', action: 'Receipt ↗' },
@@ -784,7 +819,7 @@
         };
         var fr = frames[ruling.phase] || frames.saving;
         return '<ox-footer variant="confirms-in-orgx" state="' + fr.state + '" heading="' + esc(fr.heading) + '" detail="' + esc(fr.detail) + '"' +
-          (fr.action ? ' action-label="' + esc(fr.action) + '"' : '') + ' data-id="' + esc(f.id) + '"></ox-footer>';
+          (fr.action ? ' action-label="' + esc(fr.action) + '"' : '') + (fr.primary ? ' primary-label="' + esc(fr.primary) + '"' : '') + ' data-id="' + esc(f.id) + '"></ox-footer>';
       }
       if (ui.composer && ui.composer.id === f.id) return composerHtml(f);
       if (tokenFor(f.id)) {
@@ -825,7 +860,9 @@
         return '<div class="share-row"><span>Shared with chat</span><span aria-hidden="true">·</span>' +
           '<button type="button" class="text-btn" data-action="stop-share">Stop sharing</button></div>';
       }
-      return '<div class="share-row"><button type="button" class="text-btn" data-action="share" data-id="' + esc(f.id) + '">Share with chat</button></div>';
+      return '<div class="share-row"><button type="button" class="pn-chip share" data-action="share" data-id="' + esc(f.id) + '">' +
+        '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8.5l4-2.5M6 7.5l4 2.5"/><circle cx="4.5" cy="8" r="2"/><circle cx="11.5" cy="5" r="2"/><circle cx="11.5" cy="11" r="2"/></svg>' +
+        '<span>Share with chat</span></button><span class="share-hint">ChatGPT can then read this decision</span></div>';
     }
 
     function actionErrorHtml(style) {
@@ -834,9 +871,54 @@
         (e.refresh ? ' <button type="button" class="text-btn" data-action="refresh">Refresh</button>' : '') + '</p>';
     }
 
+    var GLYPH = {
+      floor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M9.5 12.2l1.8 1.8 3.4-3.6"/></svg>',
+      agent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 7V4M9.5 12h.01M14.5 12h.01M9.5 15.5h5"/></svg>',
+    };
+    /**
+     * Who is asking, honestly. The floor's stops arrive as "OrgX System" and
+     * some run approvals as just "Agent"; neither names the agent behind the
+     * work, so the panel says what it knows instead of inventing an identity.
+     */
+    function askerAvatar(kind, name, size) {
+      if (kind === 'floor') return '<span class="ax ax-floor ax-' + size + '" title="Stopped by the OrgX floor">' + GLYPH.floor + '</span>';
+      if (kind === 'unnamed') return '<span class="ax ax-agent ax-' + size + '" title="An agent (not named)">' + GLYPH.agent + '</span>';
+      return Views ? Views.avatar(kind === 'agent' ? name || '' : '', size) : '';
+    }
+    function askerPhrase(f) {
+      if (f.asker_kind === 'floor') return 'Stopped by the OrgX floor' + (f.session_label ? ' · ' + f.session_label : '');
+      if (f.asker_kind === 'unnamed') return 'An agent asks';
+      return f.asker ? f.asker + ' asks' : '';
+    }
+
+    /**
+     * Why you are being asked, from the review packet: what it blocks, why only
+     * a person can answer, the policy that stopped it, what is uncertain, and
+     * where it came from. Closed by default; the question stays the headline.
+     */
+    function whyHtml(f) {
+      var why = f.why || {};
+      var lines = [];
+      if (f.blocked) lines.push(['Blocking', 'Work stays stopped until you decide.']);
+      if (why.policy) lines.push(['Policy', why.policy]);
+      if (why.authority) lines.push(['Why you', why.authority]);
+      (why.uncertainty || []).forEach(function u(text) { lines.push(['Uncertain', text]); });
+      if (f.session_label && f.asker_kind === 'floor') lines.push(['Where', 'The floor paused an action in an ' + f.session_label + ' before it ran.']);
+      var refs = [];
+      if (why.run_url) refs.push('<button type="button" class="pn-chip" data-action="open" data-url="' + esc(why.run_url) + '">Source run ↗</button>');
+      if (why.initiative_url) refs.push('<button type="button" class="pn-chip" data-action="open" data-url="' + esc(why.initiative_url) + '">Initiative ↗</button>');
+      if (!lines.length && !refs.length) return '';
+      var open = ui.whyOpen === f.id;
+      return '<div class="why"><button type="button" class="why-t" data-action="why" data-id="' + esc(f.id) + '" aria-expanded="' + open + '" aria-controls="why-' + esc(f.id) + '">' +
+        '<span>Why you’re asked</span><span class="why-n">' + (lines.length + refs.length) + '</span><span class="why-chev" aria-hidden="true">›</span></button>' +
+        '<div class="why-b" id="why-' + esc(f.id) + '"' + (open ? '' : ' hidden') + '>' +
+        (lines.length ? '<dl class="why-l">' + lines.map(function l(x) { return '<div><dt>' + esc(x[0]) + '</dt><dd>' + inline(x[1]) + '</dd></div>'; }).join('') + '</dl>' : '') +
+        (refs.length ? '<div class="why-refs">' + refs.join('') + '</div>' : '') + '</div></div>';
+    }
+
     function packetHtml(f, headingTag) {
-      var metaBits = [f.asker ? f.asker + ' asks' : '', f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
-      var askerAvatar = Views ? '<span class="pn-asker" aria-hidden="true">' + Views.avatar(f.asker || '', 'inline') + '</span>' : '';
+      var metaBits = [askerPhrase(f), f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
+      var askerAvatarHtml = '<span class="pn-asker" aria-hidden="true">' + askerAvatar(f.asker_kind, f.asker, 'inline') + '</span>';
       var error = ui.actionError && ui.actionError.id === f.id ? actionErrorHtml() : '';
       var changed = ui.changedSince
         ? '<div class="notice" role="status"><p>Changed since ' + esc(ui.changedSince) + '</p></div>' : '';
@@ -857,7 +939,7 @@
         facts.push('<div class="fact"><dt>If approved</dt><dd>' + inline(f.consequence_if_approved || body.ifApproved) + '</dd></div>');
       }
       return '<section class="packet enter" aria-labelledby="pk-q">' + changed +
-        '<p class="meta">' + askerAvatar +
+        '<p class="meta">' + askerAvatarHtml +
         // "Normal · Blocking work" says two things at once; blocking is the one that matters.
         (f.blocked && (f.urgency === 'medium' || f.urgency === 'low') ? '' : '<span class="urgency" data-u="' + esc(f.urgency) + '">' + esc(urgencyLabel(f.urgency)) + '</span>') +
         (f.blocked ? (f.urgency === 'medium' || f.urgency === 'low' ? '' : '<span aria-hidden="true">·</span>') + '<span class="blocked-tag">Blocking work</span>' : '') +
@@ -868,7 +950,7 @@
         (body.lede.length ? '<p class="q-body">' + inline(body.lede.join(' ')) + '</p>' : '') +
         body.commands.map(function cmd(c) { return '<div class="q-cmd"><span>Command</span><pre><code>' + esc(c) + '</code></pre></div>'; }).join('') +
         (facts.length ? '<dl class="facts">' + facts.join('') + '</dl>' : '') +
-        evidenceHtml(f) +
+        evidenceHtml(f) + whyHtml(f) +
         '<div class="actions">' + footerFor(f) + error + '</div>' +
         shareHtml(f) + (Launch && !ui.rulings[f.id] ? Launch.chipsHtml('packet', { title: head.headline }) : '') + '</section>';
     }
@@ -912,7 +994,7 @@
           (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
       }
       return '<li class="row' + (arrived ? ' arrive' : '') + '" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
-        (Views ? '<span class="row-av" aria-hidden="true">' + Views.avatar(item.asker || '', 'row') + '</span>' : '') +
+        '<span class="row-av" aria-hidden="true">' + askerAvatar(item.asker_kind, item.asker, 'row') + '</span>' +
         // Repeated titles step back to one muted line; what differs leads.
         (repeatedTitle && distinguisherHtml(item)
           ? distinguisherHtml(item) + '<span class="row-title is-repeat">' + esc(splitHeadline(item.title).headline) + '</span>'
@@ -939,7 +1021,7 @@
         var distinct = members.every(function has(item) { return Boolean(distinguisherHtml(item)); });
         if (members.length < 2 || !distinct) return members.map(function one(item) { return rowHtml(item); }).join('');
         var gid = 'grp-' + members[0].id;
-        return '<li class="qgroup" aria-labelledby="' + gid + '"><p class="qgroup-h" id="' + gid + '"><span class="qgroup-t">' + esc(key) + '</span>' +
+        return '<li class="qgroup" aria-labelledby="' + gid + '"><p class="qgroup-h" id="' + gid + '"><span class="row-av" aria-hidden="true">' + askerAvatar(members[0].asker_kind, members[0].asker, 'row') + '</span><span class="qgroup-t">' + esc(key) + '</span>' +
           '<span class="qgroup-n">' + members.length + '</span></p><ul class="qgroup-rows" role="list">' +
           members.map(function member(item) { return rowHtml(item, { grouped: true }); }).join('') + '</ul></li>';
       }).join('');
@@ -978,7 +1060,7 @@
       }
       if (p.completed_unaccepted > 0) {
         html += '<p class="proof-sub">' + p.completed_unaccepted.toLocaleString() + (p.completed_unaccepted === 1 ? ' finished output waits' : ' finished outputs wait') + ' for acceptance' +
-          ' <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.workLedger()) + '">Review in OrgX ↗</button></p>';
+          ' <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.workLedger({ center: s.workspace && s.workspace.id, range: '30d' })) + '">Review in OrgX ↗</button></p>';
       }
       return html ? '<div class="proof">' + html + '</div>' : '';
     }
@@ -986,9 +1068,21 @@
     function skeletonHtml() {
       // Cold start: the header frame and the real OrgX mark revealing in the
       // space the content will take, so nothing shifts when data lands.
-      var frame = ui.mode === 'global' ? '<header class="top"><span class="pn-mark-slot"></span><div class="top-id"><span class="brand">OrgX</span></div></header>' : '';
-      var reveal = Brand ? Brand.bootHtml() : '<div aria-hidden="true"><span class="sk sk-line" style="width:56%;margin-top:16px"></span><span class="sk sk-title"></span><span class="sk sk-btn"></span></div>';
-      return frame + reveal + '<p class="sr-only">Loading your decisions.</p>';
+      // The panel's own shape, arriving: header, attention line, queue and the
+      // decision, shimmering in place, so the first paint lands without a jump.
+      var mark = Brand ? '<span class="pn-mark-slot pn-breathe">' + Brand.mark(22) + '</span>' : '<span class="pn-mark-slot"></span>';
+      var frame = ui.mode === 'global'
+        ? '<header class="top">' + mark + '<div class="top-id"><span class="sk sk-ws"></span></div><span class="sk sk-tab"></span><span class="sk sk-tab"></span><span class="sk sk-tab"></span></header>'
+        : '';
+      var rows = '';
+      for (var i = 0; i < 4; i += 1) rows += '<div class="sk-row" style="--i:' + i + '"><span class="sk sk-av"></span><span class="sk-lines"><span class="sk sk-line" style="width:' + (86 - i * 11) + '%"></span><span class="sk sk-line sk-short"></span></span></div>';
+      var shape = '<div class="pn-skel" aria-hidden="true"><div class="sk-att"><span class="sk sk-dot"></span><span class="sk sk-line" style="width:38%"></span></div>' +
+        '<div class="sk-split"><div class="sk-list">' + rows + '</div>' +
+        '<div class="sk-detail"><span class="sk sk-line sk-meta"></span><span class="sk sk-title"></span><span class="sk sk-title sk-t2"></span>' +
+        '<span class="sk sk-line" style="width:92%"></span><span class="sk sk-line" style="width:84%"></span><span class="sk sk-block"></span>' +
+        '<span class="sk-acts"><span class="sk sk-btn sk-ghost"></span><span class="sk sk-btn"></span></span></div></div>' +
+        '<p class="sk-cap">Reading your workspace</p></div>';
+      return frame + shape + '<p class="sr-only">Loading your decisions.</p>';
     }
 
     function signedOutHtml() {
@@ -1030,34 +1124,60 @@
       }
       var calm = s.attention.pending === 0;
       var ctx = launchContext(s);
+      if (ui.tab === 'start' && Start) return html + startViewHtml(ctx);
       if (ui.tab === 'work' && Views) {
         var wv = workView();
-        return html + Views.workHtml(wv.work, wv.phase, Launch ? Launch.sectionHtml(wv.work && wv.work.items.length ? 'work' : 'work-empty', ctx, { heading: 'Start or delegate work' }) : '');
+        return html + Views.workHtml(wv.work, wv.phase, startLinkHtml(wv.work && wv.work.items.length ? 'Start or delegate more work' : 'Start work'),
+          { sel: ui.workSel, filter: ui.workFilter, query: ui.workQuery, expanded: ui.workExpanded });
       }
       if (ui.tab === 'done' && Views) {
         return html + Views.doneHtml({
           session: ui.session,
-          openId: ui.openReceipt,
-          proofHtml: proofHtml(s, false),
-          launch: Launch ? Launch.sectionHtml('done', Object.assign({}, ctx, { title: ui.session[0] ? ui.session[0].title : '' }), { heading: 'Keep it moving', limit: 3 }) : '',
-        }) + tipHtml(ctx, ['done']);
+          sel: ui.openReceipt,
+          range: ui.doneRange,
+          history: ui.history[ui.doneRange] || null,
+          historyPhase: ui.historyPhase,
+          page: ui.donePage,
+          workspaceId: s.workspace && s.workspace.id,
+          overviewHtml: proofHtml(s, true),
+          launch: startLinkHtml('Start something next'),
+        });
       }
       if (isFirstUse(s)) {
         return html + '<p class="lede">This workspace has no decisions or accepted work yet.</p>' +
-          '<p class="sub">Start something: ask ChatGPT in plain words, and OrgX plans it, runs it and brings decisions back here.</p>' +
-          (Launch ? Launch.sectionHtml('calm', ctx, { heading: 'Start your first initiative' }) : '') +
-          '<button type="button" class="secondary-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>';
+          '<p class="sub">Say what should get done: OrgX plans it, runs it with your agents and brings decisions back here.</p>' +
+          '<div class="md-acts"><button type="button" class="pn-btn st-cta" data-action="tab" data-tab="start">Start your first piece of work</button>' +
+          '<button type="button" class="pn-btn ghost" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button></div>';
       }
-      if (calm) return html + attentionLine(s) + proofHtml(s, true) + (Launch ? Launch.sectionHtml('calm', ctx) : '') + tipHtml(ctx, ['calm']);
+      if (calm) return html + attentionLine(s) + proofHtml(s, true) + startLinkHtml('Nothing needs you. Start something') + tipHtml(ctx, ['calm']);
       var others = s.queue.filter(function notFocus(item) { return !s.focus || item.id !== s.focus.id; });
       var hidden = Math.max(0, s.attention.pending - s.queue.length);
       html += '<div class="pn-split">' +
         '<div class="pn-att">' + attentionLine(s) + '</div>' +
         '<div class="pn-detail">' + (s.focus ? packetHtml(s.focus, 'h2') : '') + '</div>' +
-        (others.length ? '<div class="pn-list"><h2 class="queue-head">' + (s.focus ? 'Also waiting' : 'Waiting on you') + ' <span class="queue-n">' + others.length + '</span></h2><ul class="queue">' + queueRowsHtml(others) + '</ul>' +
+        (others.length ? '<div class="pn-list"><h2 class="queue-head">' + (s.focus ? 'Also waiting' : 'Waiting on you') + '</h2><ul class="queue">' + queueRowsHtml(others) + '</ul>' +
           (hidden ? '<p class="sub">' + hidden + ' more in OrgX. <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.decisions({ status: 'pending' })) + '">All decisions ↗</button></p>' : '') + '</div>' : '') +
         '</div>';
       return html;
+    }
+
+    /** One way to the Start tab from any view, instead of prompt lists everywhere. */
+    function startLinkHtml(label) {
+      if (!Start || ui.mode !== 'global') return '';
+      return '<div class="st-link"><button type="button" class="pn-btn ghost" data-action="tab" data-tab="start">' +
+        '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>' +
+        esc(label) + '</button></div>';
+    }
+
+    function startViewHtml(ctx) {
+      var busy = {};
+      var w = workView().work;
+      if (w && w.items) w.items.forEach(function n(i) { busy[i.agent] = (busy[i.agent] || 0) + 1; });
+      return Start.html({ text: ui.startText, agent: ui.startAgent, verb: ui.startVerb, status: ui.startStatus, initiative: ctx.initiative || '', workAgents: busy });
+    }
+
+    function startSentence() {
+      return Start ? Start.sentence(ui.startVerb || (ui.startAgent ? 'delegate' : 'initiative'), { text: ui.startText, agent: ui.startAgent }) : '';
     }
 
     function launchContext(s) {
@@ -1189,7 +1309,7 @@
     }
 
     function setTab(tab, quiet) {
-      if (['needs', 'work', 'done'].indexOf(tab) === -1) return;
+      if (['needs', 'work', 'done', 'start'].indexOf(tab) === -1 || (tab === 'start' && !Start)) return;
       var changed = ui.tab !== tab;
       ui.tab = tab;
       ui.composer = changed ? null : ui.composer;
@@ -1213,12 +1333,55 @@
         var live = window.OrgXLinks.live();
         return {
           work: { status: 'ok', total: ui.liveWork.items.length, items: ui.liveWork.items.map(function row(i) {
-            return { id: i.id, agent: i.agent, title: i.title, state: i.state === 'running' || i.state === 'blocked' ? i.state : 'queued', url: live };
+            return {
+              id: i.id, agent: i.agent, title: i.title, state: i.state === 'running' || i.state === 'blocked' ? i.state : 'queued',
+              url: i.url || live, domain: i.domain || null, updated_at: i.updated_at || null, stale: Boolean(i.stale),
+            };
           }) },
           phase: ui.workPhase === 'loading' ? 'loading' : 'ready',
         };
       }
       return { work: ui.work, phase: ui.workPhase };
+    }
+
+    /** Done's range. "This session" is local; the others read OrgX's decision history once per range. */
+    function setDoneRange(range) {
+      ui.doneRange = range || 'session';
+      ui.openReceipt = null;
+      ui.donePage = 1;
+      if (ui.doneRange === 'session' || isGallery) {
+        if (isGallery && ui.doneRange !== 'session') ui.history[ui.doneRange] = galleryHistory(ui.doneRange);
+        render();
+        return;
+      }
+      var cached = ui.history[ui.doneRange];
+      if (cached && cached.status === 'ok') { render(); return; }
+      ui.historyPhase = 'loading';
+      delete ui.history[ui.doneRange];
+      render();
+      var gen = ui.generation;
+      var asked = ui.doneRange;
+      R.callToolResult('orgx_panel_snapshot', { view: 'history', range: asked }).then(function onHistory(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        if (isSnapshot(data)) accept(data, result.meta || null, 'refresh');
+        ui.history[asked] = data && data.history ? data.history : { status: 'unavailable', range: asked, items: [] };
+        ui.historyPhase = 'ready';
+        if (ui.doneRange === asked) render();
+      }, function onHistoryError() {
+        if (gen !== ui.generation) return;
+        ui.history[asked] = { status: 'unavailable', range: asked, items: [] };
+        ui.historyPhase = 'ready';
+        if (ui.doneRange === asked) render();
+      });
+    }
+
+    function galleryHistory(range) {
+      var titles = ['Ship release 4.1 to production?', 'Approve the Q4 pricing page copy', 'Allow gh pr merge 3221', 'Rotate the staging database password', 'Publish the September changelog', 'Pause the low-intent ads campaign'];
+      var n = range === 'today' ? 2 : range === '7d' ? 5 : 6;
+      return { status: 'ok', range: range, items: titles.slice(0, n).map(function item(t, i) {
+        return { id: 'h' + i + '-0000-4000-8000-000000000000', title: t, outcome: i % 4 === 3 ? 'declined' : 'approved', settled_at: new Date(Date.now() - (i + 1) * 5 * 3600 * 1000).toISOString(), url: decisionUrl('h' + i) };
+      }) };
     }
 
     /** In progress is read only when opened: the same snapshot with view "work". */
@@ -1287,15 +1450,26 @@
     }
 
     function galleryWork() {
+      var live = window.OrgXLinks.live();
+      var h = function hoursAgo(n) { return new Date(Date.now() - n * 3600 * 1000).toISOString(); };
+      var items = [
+        ['w1', 'Dana', 'Design', 'Design plan for OrgX Live', 'blocked', 3],
+        ['w2', 'Eli', 'Engineering', 'Reconcile launch telemetry fields', 'running', 0.2],
+        ['w3', 'Eli', 'Engineering', 'Upgrade the actual Mac and replay its backlog without duplicates', 'running', 150],
+        ['w4', 'Eli', 'Engineering', 'tokens.json to CSS variables and dashboard theme', 'queued', 30],
+        ['w5', 'Eli', 'Engineering', 'One AgentAvatar on ox-avatar', 'queued', 30],
+        ['w6', 'Eli', 'Engineering', 'Rebuild 12 widgets on orgx-ui-kit elements', 'queued', 31],
+        ['w7', 'Eli', 'Engineering', 'Widget-only orgx_approve tool', 'queued', 31],
+        ['w8', 'Mark', 'Marketing', 'Pricing page copy, variant B', 'running', 1],
+        ['w9', 'Orion', 'Operations', 'Agent routing fixture', 'blocked', 120],
+        ['w10', 'Orion', 'Operations', 'PR6: collect production proof and independent verification', 'blocked', 96],
+        ['w11', 'Sage', 'Sales', 'ICP list for founder-led SaaS', 'queued', 4],
+      ];
       return {
-        status: 'ok',
-        total: 4,
-        items: [
-          { id: 'w1', agent: 'Dana', title: 'Design plan for OrgX Live', state: 'blocked', url: window.OrgXLinks.live() },
-          { id: 'w2', agent: 'Eli', title: 'Reconcile launch telemetry fields', state: 'running', url: window.OrgXLinks.live() },
-          { id: 'w3', agent: 'Mark', title: 'Pricing page copy, variant B', state: 'running', url: window.OrgXLinks.live() },
-          { id: 'w4', agent: 'Sage', title: 'ICP list for founder-led SaaS', state: 'queued', url: window.OrgXLinks.live() },
-        ],
+        status: 'ok', total: items.length,
+        items: items.map(function row(x) {
+          return { id: x[0], agent: x[1], domain: x[2], title: x[3], state: x[4], url: live, updated_at: h(x[5]), stale: x[4] === 'running' && x[5] > 24 };
+        }),
       };
     }
     function fitQuestion() {
@@ -1767,7 +1941,57 @@
         case 'tip-dismiss': if (Launch) Launch.noteDismiss(); render(); focusFirst('[data-action="tab"][aria-selected="true"]'); break;
         case 'tour': startTour(); break;
         case 'work-retry': ui.workPhase = 'failed'; fetchWork(); break;
-        case 'receipt': ui.openReceipt = ui.openReceipt === id ? null : id; render(); focusFirst('[data-action="receipt"][data-id="' + id + '"]'); break;
+        case 'receipt':
+          ui.openReceipt = !id || ui.openReceipt === id ? null : id;
+          render();
+          focusFirst(ui.openReceipt ? '.pn-md-detail .md-close' : '[data-action="receipt"][aria-pressed]');
+          break;
+        case 'work-select':
+          ui.workSel = !id || ui.workSel === id ? null : id;
+          render();
+          focusFirst(ui.workSel ? '.pn-md-detail .md-close' : '.wk-row');
+          break;
+        case 'work-filter': ui.workFilter = id || 'all'; if (id === 'all') ui.workQuery = ''; render(); focusFirst('[data-action="work-filter"][aria-pressed="true"]'); break;
+        case 'agent-expand': ui.workExpanded[id] = !ui.workExpanded[id]; render(); break;
+        case 'agent-focus':
+          // Show that agent's whole list in place rather than filtering it away.
+          ui.workFilter = 'all'; ui.workQuery = ''; ui.workExpanded[id] = true;
+          render();
+          var agentEl = root.querySelector('.ag[data-agent="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+          if (agentEl) { agentEl.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' }); var firstRow = agentEl.querySelector('.wk-row'); if (firstRow) firstRow.focus({ preventScroll: true }); }
+          break;
+        case 'done-range': setDoneRange(id); break;
+        case 'done-more': ui.donePage += 1; render(); break;
+        case 'start-agent':
+          ui.startAgent = id || '';
+          // Picking an agent means handing it to them; OrgX picks keeps the chosen verb.
+          if (id) ui.startVerb = 'delegate'; else if (ui.startVerb === 'delegate') ui.startVerb = '';
+          ui.startStatus = null;
+          render(); focusFirst('[data-action="start-agent"][aria-checked="true"]');
+          break;
+        case 'start-verb': ui.startVerb = id || ''; ui.startStatus = null; render(); focusFirst('[data-action="start-verb"][aria-checked="true"]'); break;
+        case 'start-fill':
+          ui.startText = el.getAttribute('data-text') || '';
+          ui.startAgent = id || ui.startAgent;
+          if (ui.startAgent) ui.startVerb = 'delegate';
+          ui.startStatus = null;
+          render();
+          var ta = root.querySelector('#st-text');
+          if (ta) { ta.focus(); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (_) { /* not a text input */ } }
+          break;
+        case 'start-send': {
+          var sentenceToSend = startSentence();
+          if (!sentenceToSend || !Launch) break;
+          el.setAttribute('aria-busy', 'true');
+          Launch.send(sentenceToSend).then(function sentStart(outcome) {
+            ui.startStatus = outcome;
+            if (outcome === 'sent') ui.startText = '';
+            render();
+            announce(outcome === 'sent' ? 'Sent to the chat.' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send it. Type it in the chat.');
+          });
+          break;
+        }
+        case 'why': ui.whyOpen = ui.whyOpen === id ? null : id; render(); focusFirst('[data-action="why"]'); break;
         default: break;
       }
     });
@@ -1789,6 +2013,33 @@
         if (err && (err.field === field || (field === 'note' && err.field === 'reason'))) clearFieldError(id);
       }
       if (id) syncFooter(id);
+      if (area.matches('textarea[data-action="start-text"]')) {
+        ui.startText = area.value;
+        ui.startStatus = null;
+        var preview = root.querySelector('.st-preview');
+        var go = root.querySelector('[data-action="start-send"]');
+        var said = startSentence();
+        if (preview) preview.innerHTML = '<span class="st-pl">Sends</span> ' + (said ? '“' + esc(said) + '”' : '<span class="st-ph">your sentence, exactly as shown here</span>');
+        if (go) { go.disabled = !said; if (said) go.removeAttribute('aria-disabled'); else go.setAttribute('aria-disabled', 'true'); }
+        var st = root.querySelector('.st-status');
+        if (st) st.remove();
+        return;
+      }
+      if (area.matches('input[data-action="ws-query"]')) {
+        ui.wsQuery = area.value;
+        var wcaret = area.selectionStart;
+        render();
+        var wsAgain = root.querySelector('input[data-action="ws-query"]');
+        if (wsAgain) { wsAgain.focus(); try { wsAgain.setSelectionRange(wcaret, wcaret); } catch (_) { /* not a text input */ } }
+        return;
+      }
+      if (area.matches('input[data-action="work-query"]')) {
+        ui.workQuery = area.value;
+        var caret = area.selectionStart;
+        render();
+        var again = root.querySelector('input[data-action="work-query"]');
+        if (again) { again.focus(); try { again.setSelectionRange(caret, caret); } catch (_) { /* not a text input */ } }
+      }
     });
     function clearFieldError(id) {
       if (ui.fieldErrors[id]) ui.fieldErrors[id].message = '';
@@ -1857,7 +2108,7 @@
     document.addEventListener('keydown', function onKey(event) {
       var tabEl = event.target && event.target.closest ? event.target.closest('.pn-tab') : null;
       if (tabEl && (event.key === 'ArrowRight' || event.key === 'ArrowLeft' || event.key === 'Home' || event.key === 'End')) {
-        var order = ['needs', 'work', 'done'];
+        var order = Start ? ['needs', 'work', 'done', 'start'] : ['needs', 'work', 'done'];
         var at = order.indexOf(tabEl.getAttribute('data-tab'));
         var next = event.key === 'Home' ? 0 : event.key === 'End' ? order.length - 1 : (at + (event.key === 'ArrowRight' ? 1 : -1) + order.length) % order.length;
         event.preventDefault();
@@ -1913,6 +2164,9 @@
       ui.actionError = null; ui.changedSince = null; ui.chatCannotDecide = false;
       ui.listOpen = false; ui.evidenceOpen = false; ui.wholeQ = null;
       ui.tab = 'needs'; ui.work = null; ui.workPhase = 'idle'; ui.session = []; ui.openReceipt = null;
+      ui.workSel = null; ui.workFilter = 'all'; ui.workQuery = ''; ui.workExpanded = {};
+      ui.doneRange = 'session'; ui.history = {}; ui.historyPhase = 'idle'; ui.donePage = 1;
+      ui.startStatus = null;
       ui.wsOpen = false; ui.wsPhase = 'idle'; ui.workspaces = null; ui.wsError = null; ui.wsSwitchingTo = null;
       ui.seenRows = null; ui.lastCounts = null;
       share = X.createShareController({ modelContext: ext.modelContext });
@@ -2051,13 +2305,17 @@
           // The production shape: several merge approvals that share one title
           // and differ only in the PR named in the question, whose command runs
           // straight into the approval wording, plus one blocking run approval.
+          // Shaped like production: the whole question as the title, the
+          // command on its own line, the floor as the asker.
           var mergeTitle = 'The OrgX floor stopped a merge action in a agent-cli session and is waiting for you.';
-          var merges = [3236, 3237, 3238, 3234].map(function merge(pr, i) {
+          var merges = [3236, 3237, 3238, 3239].map(function merge(pr, i) {
             var id = '5b1e0c3a-1d2f-4c3b-9a8e-0000000032' + String(30 + i);
+            var question = mergeTitle + '\n\nAgent\'s reason: PR #' + pr + ' (https://github.com/hopeatina/orgx/pull/' + pr + ') adds accessible decision action tiles. All GitHub checks pass; please review and decide whether to merge.\n\nCommand:\ngh pr merge ' + pr + '\n\nApprove to let exactly this action run once in the next 24 hours. Decline and the agent is told to continue without it.';
             return {
-              id: id, version: isoAgo((8 * 24 - i) * H), title: mergeTitle, urgency: 'medium', waiting_since: isoAgo(8 * D), initiative_title: null,
-              blocked: true, decide_in_orgx_reason: null, option_count: 0, kind: 'action', widget_actions: null, asker: null, url: decisionUrl(id),
-              detail: mergeTitle + ' All GitHub checks pass on PR #' + pr + '; please review and decide whether to merge. Command: gh pr merge ' + pr + ' Approve to let exactly this action run once in the next 24 hours.',
+              id: id, version: isoAgo((8 * 24 - i) * H), title: question.slice(0, 160), urgency: 'medium', waiting_since: isoAgo(8 * D), initiative_title: null,
+              blocked: true, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', asker: null, asker_kind: 'floor', session_label: 'agent-cli session', url: decisionUrl(id),
+              widget_actions: { kind: 'decision', actions: ['approve', 'reject'], labels: { approve: 'Allow once', reject: 'Deny' }, reject_requires_reason: false, answer: null, selection: null },
+              detail: question,
             };
           });
           s = baseSnapshot();
@@ -2066,7 +2324,9 @@
           var first = merges[0];
           s.focus = Object.assign(galleryFocus(FIXTURE_QUEUE[0]), {
             id: first.id, version: first.version, urgency: 'medium', blocked: true, waiting_since: first.waiting_since, initiative_title: null, asker: null, url: first.url,
-            question: first.detail, recommendation: null, evidence: [], evidence_total: 0, consequence_if_approved: null,
+            question: first.detail, recommendation: { status: 'unavailable', action: null }, evidence: [], evidence_total: 0, consequence_if_approved: null,
+            asker_kind: 'floor', session_label: 'agent-cli session', widget_actions: first.widget_actions,
+            why: { authority: 'This gate blocks work until an authorized person answers.', policy: null, uncertainty: [], run_url: null, initiative_url: window.OrgXLinks.initiative('14985d6c-214c-4f9e-96ac-4f6b254e1770') },
           });
           tokens = allTokens(s);
           break;

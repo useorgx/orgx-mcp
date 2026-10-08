@@ -366,7 +366,7 @@ describe('polish: In progress agrees with its count', () => {
     await m.flush(); await m.flush(); await m.flush();
     const view = doc(m).querySelector('.pn-work')!;
     expect(view.textContent).not.toContain('could not be read');
-    expect(view.querySelectorAll('.pn-row')).toHaveLength(2);
+    expect(view.querySelectorAll('.wk-row')).toHaveLength(2);
     expect(doc(m).querySelector('#pn-tab-work .pn-tab-n')!.textContent).toBe('2');
   });
 

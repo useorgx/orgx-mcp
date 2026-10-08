@@ -50,10 +50,14 @@ export const PANEL_TITLE_MAX = 160;
 export const PANEL_QUESTION_MAX = 1600;
 export const PANEL_ASKER_MAX = 60;
 /** Work items in the In progress view. */
-export const PANEL_WORK_LIMIT = 20;
+// Enough to group by agent and drill in; the panel renders it in groups.
+export const PANEL_WORK_LIMIT = 100;
 export const PANEL_EVIDENCE_TITLE_MAX = 80;
 export const PANEL_TEXT_MAX = 280;
-export const PANEL_DETAIL_MAX = 240;
+export const PANEL_DETAIL_MAX = 600;
+export const PANEL_HISTORY_LIMIT = 40;
+export const PANEL_HISTORY_RANGES = ['today', '7d', '30d'] as const;
+export type PanelHistoryRange = (typeof PANEL_HISTORY_RANGES)[number];
 /** Options the panel can render as buttons for one decision. */
 export const PANEL_OPTION_LIMIT = 12;
 export const PANEL_OPTION_LABEL_MAX = 80;
@@ -91,9 +95,13 @@ export const PANEL_SNAPSHOT_TOOL_CONTRACT = {
       'Optional decision to show as the review packet. Defaults to the most urgent pending decision.'
     ),
     view: z
-      .enum(['work', 'workspaces'])
+      .enum(['work', 'workspaces', 'history'])
       .optional()
-      .describe('Optional extra view. "work" adds what agents are running and what waits on you; "workspaces" adds the workspaces the panel can switch to.'),
+      .describe('Optional extra view. "work" adds what agents are running and what waits on you; "workspaces" adds the workspaces the panel can switch to; "history" adds decisions settled in the range.'),
+    range: z
+      .enum(PANEL_HISTORY_RANGES)
+      .optional()
+      .describe('For view "history": today, 7d or 30d. Defaults to 7d.'),
   },
   annotations: {
     readOnlyHint: true,
@@ -140,6 +148,10 @@ export interface PanelQueueItem {
   widget_actions: PanelWidgetActions | null;
   /** The agent or person asking, as OrgX names them; null for OrgX itself. */
   asker: string | null;
+  /** Who is really asking: a named agent, the OrgX floor stopping an agent, an unnamed agent, or OrgX. */
+  asker_kind?: PanelAskerKind;
+  /** The session the floor stopped, when the question names one ("agent-cli session"). */
+  session_label?: string | null;
   /**
    * The question past its first sentence, clipped: what tells apart rows whose
    * titles are the same (five "merge stopped" approvals differ only in the PR
@@ -216,7 +228,24 @@ export interface PanelFocus {
   /** What the person can do here, as the server lists it; preferred over options. */
   widget_actions: PanelWidgetActions | null;
   asker: string | null;
+  asker_kind?: PanelAskerKind;
+  session_label?: string | null;
+  /** Why a person is being asked, from the review packet: shown on demand. */
+  why?: PanelWhy;
   url: string;
+}
+
+export type PanelAskerKind = 'agent' | 'floor' | 'unnamed' | 'system';
+
+export interface PanelWhy {
+  /** Why only a person can answer (the packet's authority reason). */
+  authority: string | null;
+  /** The policy that stopped the work, in words ("Specialist planning weekly cap"). */
+  policy: string | null;
+  /** What is still uncertain; the missing recommendation is said elsewhere. */
+  uncertainty: string[];
+  run_url: string | null;
+  initiative_url: string | null;
 }
 
 export type PanelWorkState = 'blocked' | 'running' | 'queued';
@@ -227,6 +256,25 @@ export interface PanelWorkItem {
   title: string;
   state: PanelWorkState;
   url: string;
+  /** The agent's domain ("Engineering"), for grouping and the name line. */
+  domain?: string | null;
+  updated_at?: string | null;
+  /** Marked in progress but not updated in a day: say so rather than "Running". */
+  stale?: boolean;
+}
+
+export interface PanelHistoryItem {
+  id: string;
+  title: string;
+  outcome: 'approved' | 'declined' | 'cancelled' | 'superseded';
+  settled_at: string | null;
+  url: string;
+}
+
+export interface PanelHistory {
+  status: 'ok' | 'unavailable';
+  range: PanelHistoryRange;
+  items: PanelHistoryItem[];
 }
 
 export interface PanelWork {
@@ -269,6 +317,8 @@ export interface PanelSnapshot {
   work?: PanelWork;
   /** Present only when the snapshot was asked for view "workspaces". */
   workspaces?: PanelWorkspaces;
+  /** Present only when the snapshot was asked for view "history". */
+  history?: PanelHistory;
   /**
    * Subscription to the panel's live feed for this workspace. Absent when the
    * worker cannot mint one; the panel then refreshes when it is opened.
@@ -348,6 +398,9 @@ interface NormalizedDecision {
   runId: string | null;
   widgetActions: PanelWidgetActions | null;
   asker: string | null;
+  askerKind: PanelAskerKind;
+  sessionLabel: string | null;
+  policyKey: string | null;
   packet: Record<string, unknown> | null;
 }
 
@@ -545,6 +598,41 @@ export function panelAsker(record: Record<string, unknown>, current: Record<stri
   return source === 'system' && !str(current.owner) && !str(record.agent_name) ? null : raw;
 }
 
+const UNNAMED_AGENT = /^(an? )?agent$/i;
+/**
+ * Who is really asking. OrgX names the floor's stops "OrgX System" and some
+ * run approvals just "Agent"; neither is the agent behind the work, and the
+ * panel should not pass a placeholder off as an identity.
+ */
+function askerKindOf(record: Record<string, unknown>, asker: string | null, question: string): PanelAskerKind {
+  if (asker && UNNAMED_AGENT.test(asker)) return 'unnamed';
+  if (asker) return 'agent';
+  if (/\borgx floor\b/i.test(question)) return 'floor';
+  return str(record.agent_name) && UNNAMED_AGENT.test(str(record.agent_name)!) ? 'unnamed' : 'system';
+}
+
+function humanizeKey(value: string | null): string | null {
+  if (!value) return null;
+  const words = value.replace(/[_-]+/g, ' ').trim();
+  return words ? words[0]!.toUpperCase() + words.slice(1) : null;
+}
+
+function packetWhy(decision: NormalizedDecision): PanelWhy {
+  const packet = decision.packet ?? {};
+  const authority = asRecord(packet.authority);
+  const rawUncertainty = Array.isArray(packet.uncertainty) ? packet.uncertainty : [packet.uncertainty];
+  return {
+    authority: clipText(authority?.reason, PANEL_TEXT_MAX),
+    policy: clipText(humanizeKey(decision.policyKey), PANEL_TITLE_MAX),
+    uncertainty: rawUncertainty
+      .map((value) => clipText(value, PANEL_TEXT_MAX))
+      .filter((value): value is string => Boolean(value) && !/\bno\b.*\brecommendation\b/i.test(value!))
+      .slice(0, 3),
+    run_url: decision.runId ? buildEntityLink('run', decision.runId).url : null,
+    initiative_url: decision.initiativeId ? buildEntityLink('initiative', decision.initiativeId).url : null,
+  };
+}
+
 function normalizeDecision(input: unknown): NormalizedDecision | null {
   const record = asRecord(input);
   if (!record) return null;
@@ -565,12 +653,17 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
   const typeKind = kindFromType(record);
   const widgetActions = normalizePanelWidgetActions(record.widget_actions, { kind: typeKind, multiselect });
   const runId = str(context.run_id);
+  const asker = panelAsker(record, current);
+  const question = str(packet?.question) ?? summary;
   return {
-    asker: panelAsker(record, current),
+    asker,
+    askerKind: askerKindOf(record, asker, question),
+    sessionLabel: clipText(/\bin an? ([\w.-]{2,40}) session\b/i.exec(question)?.[1], 40)?.concat(' session') ?? null,
+    policyKey: str(context.policy_key),
     id,
     version: str(packet?.updatedAt) ?? str(record.updated_at) ?? createdAt ?? id,
     title: summary,
-    question: str(packet?.question) ?? summary,
+    question,
     urgency: normalizeUrgency(record.urgency),
     createdAt,
     initiativeId: initiativeId && UUID_RE.test(initiativeId) ? initiativeId : null,
@@ -632,7 +725,13 @@ function toQueueItem(decision: NormalizedDecision): PanelQueueItem {
     kind: decision.kind,
     widget_actions: decision.widgetActions,
     asker: decision.asker,
-    detail: decision.question && decision.question !== decision.title ? clipText(decision.question, PANEL_DETAIL_MAX) : null,
+    asker_kind: decision.askerKind,
+    session_label: decision.sessionLabel,
+    // OrgX often sends the whole question as the title too; what matters is
+    // whether there is more than the row's clipped headline shows.
+    detail: decision.question && decision.question.length > (clipText(decision.title, PANEL_TITLE_MAX) ?? '').length
+      ? clipText(decision.question, PANEL_DETAIL_MAX)
+      : null,
     url: decisionUrl(decision),
   };
 }
@@ -676,6 +775,9 @@ function toFocus(decision: NormalizedDecision): PanelFocus {
     multiselect: decision.multiselect,
     widget_actions: decision.widgetActions,
     asker: decision.asker,
+    asker_kind: decision.askerKind,
+    session_label: decision.sessionLabel,
+    why: packetWhy(decision),
     url: decisionUrl(decision),
   };
 }
@@ -813,6 +915,29 @@ function workState(value: unknown): PanelWorkState | null {
  * own system agents and finished tasks are left out. Null input (the read
  * failed) is reported as unavailable, never as "nothing running".
  */
+const STALE_WORK_MS = 24 * 60 * 60 * 1000;
+
+function isOlderThan(iso: string | null, ms: number): boolean {
+  const at = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(at) && Date.now() - at > ms;
+}
+
+/** "engineering-agent" → "Engineering"; the payload's own domain wins. */
+function agentDomain(agent: Record<string, unknown>): string | null {
+  const explicit = str(agent.domain) ?? str(agent.role);
+  if (explicit) return clipText(humanizeKey(explicit), 40);
+  const slug = /^([a-z]+)-agent$/i.exec(str(agent.agent_id) ?? '')?.[1];
+  return slug ? slug[0]!.toUpperCase() + slug.slice(1).toLowerCase() : null;
+}
+
+/** The initiative's live view when the task is not addressable; never a bare /live. */
+function agentLiveUrl(task: Record<string, unknown>, agent: Record<string, unknown>): string {
+  const initiative = str(task.initiative_id) ?? str(agent.initiative_id);
+  if (initiative && UUID_RE.test(initiative)) return buildEntityLink('initiative', initiative).url;
+  // The agent's desk; buildEntityLink falls back to the roster for unknown agents.
+  return buildEntityLink('agent', str(agent.agent_id) ?? str(agent.agent_name) ?? '').url;
+}
+
 export function buildPanelWork(data: Record<string, unknown> | null): PanelWork {
   if (!data || !Array.isArray(data.agents)) return { status: 'unavailable', items: [], total: 0 };
   const items: PanelWorkItem[] = [];
@@ -822,6 +947,10 @@ export function buildPanelWork(data: Record<string, unknown> | null): PanelWork 
     const name = clipText(str(agent.agent_name) ?? str(agent.name) ?? str(agent.domain), PANEL_ASKER_MAX);
     if (!name || SYSTEM_ASKER.test(name) || /chatgpt app/i.test(name)) continue;
     const agentState = workState(agent.status);
+    const domain = agentDomain(agent);
+    // The read says when an agent has stopped reporting; a task it still
+    // marks in progress is then not "running" in any sense a person means.
+    const agentStale = str(agent.observability_state) === 'stale';
     const tasks = ['current_tasks', 'active_tasks', 'tasks']
       .flatMap((key) => (Array.isArray(agent[key]) ? (agent[key] as unknown[]) : []))
       .map(asRecord)
@@ -829,24 +958,83 @@ export function buildPanelWork(data: Record<string, unknown> | null): PanelWork 
     const seen = new Set<string>();
     for (const task of tasks) {
       const state = workState(task.status) ?? (task.status === undefined ? agentState : null);
-      const id = str(task.id) ?? `${name}:${str(task.title)}`;
+      // Agent status names it task_id; older payloads used id.
+      const id = str(task.id) ?? str(task.task_id) ?? `${name}:${str(task.title)}`;
       if (!state || seen.has(id)) continue;
       seen.add(id);
+      const updatedAt = str(task.updated_at) ?? str(agent.last_heartbeat_at);
       items.push({
         id,
         agent: name,
         title: clipText(task.title, PANEL_TITLE_MAX) ?? 'Task',
         state,
-        url: UUID_RE.test(id) ? buildEntityLink('task', id).url : 'https://useorgx.com/live',
+        url: UUID_RE.test(id) ? buildEntityLink('task', id).url : agentLiveUrl(task, agent),
+        domain,
+        updated_at: updatedAt,
+        stale: state === 'running' && (agentStale || isOlderThan(updatedAt, STALE_WORK_MS)),
       });
     }
     if (!tasks.length && agentState) {
       const current = clipText(str(asRecord(agent.current_task)?.title) ?? str(agent.current_activity) ?? str(agent.status_detail), PANEL_TITLE_MAX);
-      items.push({ id: `agent:${str(agent.agent_id) ?? name}`, agent: name, title: current ?? 'Working', state: agentState, url: 'https://useorgx.com/live' });
+      items.push({
+        id: `agent:${str(agent.agent_id) ?? name}`, agent: name, title: current ?? 'Working', state: agentState,
+        url: agentLiveUrl({}, agent), domain, updated_at: str(agent.last_heartbeat_at),
+        stale: agentState === 'running' && agentStale,
+      });
     }
   }
   items.sort((a, b) => WORK_RANK[a.state] - WORK_RANK[b.state]);
   return { status: 'ok', items: items.slice(0, PANEL_WORK_LIMIT), total: items.length };
+}
+
+const HISTORY_OUTCOME: Record<string, PanelHistoryItem['outcome']> = {
+  approved: 'approved', declined: 'declined', rejected: 'declined', cancelled: 'cancelled', superseded: 'superseded',
+};
+const RANGE_MS: Record<PanelHistoryRange, number> = { today: 0, '7d': 7 * 86400000, '30d': 30 * 86400000 };
+
+/** Start of the range: midnight UTC for today, else now minus the window. */
+export function historyRangeStart(range: PanelHistoryRange, now: Date = new Date()): number {
+  if (range === 'today') return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return now.getTime() - RANGE_MS[range];
+}
+
+/**
+ * Decisions settled in the range, newest first. Settled time is the record's
+ * last update, which is when its status changed; a failed read is unavailable.
+ */
+export function buildPanelHistory(
+  records: unknown[] | null,
+  range: PanelHistoryRange,
+  now: Date = new Date()
+): PanelHistory {
+  if (!records) return { status: 'unavailable', range, items: [] };
+  const since = historyRangeStart(range, now);
+  const seen = new Set<string>();
+  const items: PanelHistoryItem[] = [];
+  for (const raw of records) {
+    const record = asRecord(raw);
+    const id = str(record?.id);
+    const outcome = HISTORY_OUTCOME[(str(record?.status) ?? '').toLowerCase()];
+    if (!record || !id || !UUID_RE.test(id) || !outcome || seen.has(id)) continue;
+    const settledAt = str(record.resolved_at) ?? str(record.updated_at);
+    const at = settledAt ? Date.parse(settledAt) : NaN;
+    if (!Number.isFinite(at) || at < since) continue;
+    seen.add(id);
+    const title = splitFirstLine(str(record.title) ?? str(record.summary) ?? 'Decision');
+    items.push({
+      id,
+      title: clipText(title, PANEL_TITLE_MAX) ?? 'Decision',
+      outcome,
+      settled_at: settledAt,
+      url: buildEntityLink('decision', id, { initiativeId: str(record.initiative_id) ?? undefined }).url,
+    });
+  }
+  items.sort((a, b) => Date.parse(b.settled_at ?? '') - Date.parse(a.settled_at ?? ''));
+  return { status: 'ok', range, items: items.slice(0, PANEL_HISTORY_LIMIT) };
+}
+
+function splitFirstLine(text: string): string {
+  return text.split(/\n\s*\n|\n/)[0]!.trim();
 }
 
 /**
@@ -1058,6 +1246,8 @@ export interface PanelSurfaceHost {
    * Returns the app payload's data, or null when the read fails.
    */
   fetchAgentStatus?(params: { workspaceId: string }): Promise<Record<string, unknown> | null>;
+  /** Settled decisions (approved, declined…), newest first, for the Done tab's range. */
+  fetchDecisionHistory?(params: { workspaceId: string }): Promise<unknown[] | null>;
   /** The viewer's workspaces, asked for only when the panel opens its switcher. */
   fetchWorkspaces?(): Promise<unknown[] | null>;
   /** A live-feed grant for this workspace, or null when live is unavailable. */
@@ -1079,6 +1269,10 @@ export async function handlePanelSnapshot(
     const focus = parsedFocus.success ? parsedFocus.data : null;
     const wantsWork = args?.view === 'work';
     const wantsWorkspaces = args?.view === 'workspaces';
+    const wantsHistory = args?.view === 'history';
+    const range: PanelHistoryRange = (PANEL_HISTORY_RANGES as readonly string[]).includes(String(args?.range))
+      ? (args.range as PanelHistoryRange)
+      : '7d';
 
     let workspace = host.sessionWorkspace();
     if (!workspace) {
@@ -1126,6 +1320,15 @@ export async function handlePanelSnapshot(
       viewerUserIds: host.viewerUserIds(),
     });
     if (work) snapshot.work = work;
+    if (wantsHistory && workspace) {
+      let records: unknown[] | null = null;
+      try {
+        records = host.fetchDecisionHistory ? await host.fetchDecisionHistory({ workspaceId: workspace.id }) : null;
+      } catch {
+        records = null;
+      }
+      snapshot.history = buildPanelHistory(records, range, host.now?.());
+    }
     if (wantsWorkspaces) {
       let records: unknown[] | null = null;
       try {

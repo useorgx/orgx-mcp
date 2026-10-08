@@ -2576,6 +2576,8 @@ export class OrgXMcp extends McpAgent<
     status?: string | null;
     query?: string | null;
     fields?: string[] | null;
+    orderBy?: string;
+    orderDirection?: 'asc' | 'desc';
   }): Promise<Array<Record<string, unknown>>> {
     const page = await this.fetchEntityCollectionPage(params);
     return page.records;
@@ -2594,6 +2596,8 @@ export class OrgXMcp extends McpAgent<
     fields?: string[] | null;
     createdFrom?: string;
     createdTo?: string;
+    orderBy?: string;
+    orderDirection?: 'asc' | 'desc';
   }): Promise<EntitySearchPage> {
     const search = buildEntityCollectionSearchParams(params);
 
@@ -3160,6 +3164,19 @@ export class OrgXMcp extends McpAgent<
             workspaceId,
             error: error instanceof Error ? error.message : String(error),
           });
+          return null;
+        }
+      },
+      // Read only when Done is opened: approved and declined decisions, by last update.
+      fetchDecisionHistory: async ({ workspaceId }) => {
+        try {
+          const read = (status: string) => this.fetchEntityCollection({
+            type: 'decision', userId: userId(), workspaceId, status, limit: 40, orderBy: 'updated_at', orderDirection: 'desc',
+          });
+          const [approved, declined] = await Promise.all([read('approved'), read('declined')]);
+          return [...approved, ...declined];
+        } catch (error) {
+          console.warn('[panel] decision history read failed', { workspaceId, error: error instanceof Error ? error.message : String(error) });
           return null;
         }
       },

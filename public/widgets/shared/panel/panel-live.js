@@ -48,7 +48,12 @@
       items.push(node.id + '=' + (node.status || node.phase || ''));
       if (node.phase === 'blocked') blocked += 1;
       // The panel's own In progress rows, in the feed's (and the snapshot's) order.
-      rows.push({ id: node.id.slice(5), agent: node.owner || 'Agent', title: node.title || 'Task', state: node.status || 'queued' });
+      var stale = node.status === 'stale';
+      rows.push({
+        id: node.id.slice(5), agent: node.owner || 'Agent', title: node.title || 'Task',
+        state: stale ? 'running' : node.status || 'queued', stale: stale,
+        domain: node.domain || null, updated_at: node.updatedAt || null, url: node.href || null,
+      });
     });
     items.sort();
     return { signature: items.join('|'), total: items.length, blocked: blocked, items: rows };

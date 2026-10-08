@@ -488,6 +488,16 @@
       if (theme) document.documentElement.setAttribute('data-theme', theme);
     })();
 
+    /**
+     * The ledger for the workspace and window this card shows. A bare
+     * /work-ledger opens the browser's active workspace over 30 days, which
+     * can be a different workspace and never matches a day or week card.
+     * The ledger's ranges are 7d, 30d and 90d, so a day or week opens 7d.
+     */
+    var ledgerUrlFor = function (chronicle) {
+      var range = chronicle && chronicle.period === '30d' ? '30d' : '7d';
+      return window.OrgXLinks.workLedger({ center: chronicle && chronicle.workspaceId, range: range });
+    };
     var LEDGER_URL = window.OrgXLinks.workLedger();
     var PERIOD_LABEL = { day: 'Last 24 hours', week: 'Last 7 days', '30d': 'Last 30 days' };
     var PERIOD_PHRASE = { day: 'in the last 24 hours', week: 'in the last 7 days', '30d': 'in the last 30 days' };
@@ -1170,7 +1180,7 @@
     document.addEventListener('ox-action', function (event) {
       var footer = event.target;
       if (footer && footer.getAttribute && footer.getAttribute('state') === 'failed') refresh();
-      else openLink(LEDGER_URL);
+      else openLink(lastPayload ? ledgerUrlFor(lastPayload.chronicle || lastPayload) : LEDGER_URL);
     });
     document.addEventListener('ox-open', function (event) {
       event.preventDefault();

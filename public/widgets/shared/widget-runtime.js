@@ -1388,8 +1388,11 @@
     },
     /**
      * Live view. With an initiative: its execution room, optionally focused on
-     * a workstream, task, decision or artifact. Without: mission control,
-     * optionally focused on a workstream, milestone, task, run or session.
+     * a workstream, task, decision or artifact. Without one there is no live
+     * room to open: the legacy mission-control view is built around a single
+     * initiative and renders an empty graph. So the focus picks its own page
+     * (task, run, workstream, milestone) and otherwise Runs, which lists what
+     * needs you, what is running and what finished across the workspace.
      */
     live: function (initiativeId, focus) {
       focus = focus || {};
@@ -1401,14 +1404,11 @@
           artifact: focus.artifact,
         });
       }
-      return orgxUrl('/live', {
-        view: 'mission-control',
-        workstream: focus.workstream,
-        milestone: focus.milestone,
-        task: focus.task,
-        run: focus.run,
-        session: focus.session,
-      });
+      if (cleanId(focus.task)) return orgxUrl('/tasks/' + seg(focus.task));
+      if (cleanId(focus.run)) return orgxUrl('/runs/' + seg(focus.run));
+      if (cleanId(focus.workstream)) return orgxUrl('/workstreams/' + seg(focus.workstream));
+      if (cleanId(focus.milestone)) return orgxUrl('/milestones/' + seg(focus.milestone));
+      return orgxUrl('/runs');
     },
     /** In the initiative's live room when known, else the workstream page. */
     workstream: function (id, options) {
@@ -1418,7 +1418,7 @@
     },
     /** The milestone page (the live room has no milestone focus). */
     milestone: function (id) {
-      return cleanId(id) ? orgxUrl('/milestones/' + seg(id)) : links.live();
+      return cleanId(id) ? orgxUrl('/milestones/' + seg(id)) : orgxUrl('/initiatives');
     },
     /** In the initiative's live room when known, else the task page. */
     task: function (id, options) {
@@ -1461,8 +1461,13 @@
       if (type === 'decision' && cleanId(query)) return orgxUrl('/decisions', { status: 'all', search: query });
       return links.command();
     },
-    workLedger: function () {
-      return orgxUrl('/work-ledger');
+    /**
+     * The work ledger for a workspace and window. Without `center` the page
+     * falls back to the browser's active workspace and a 30-day window, which
+     * need not be what the widget showed.
+     */
+    workLedger: function (options) {
+      return orgxUrl('/work-ledger', { center: options && options.center, range: options && options.range });
     },
     /** Dispatch on an entity type ("task", "Workstream", "agent_run", ...). */
     entity: function (type, id, options) {

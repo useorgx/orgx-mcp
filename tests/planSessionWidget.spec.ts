@@ -168,7 +168,7 @@ describe('plan session widget', () => {
 
     expect(footer().getAttribute('primary-label')).toBe('Guide this plan');
     expect(doc.querySelector('[data-open-plan]')?.getAttribute('href')).toBe(
-      'https://useorgx.com/live?view=mission-control&session=plan-1'
+      'https://useorgx.com/runs'
     );
     press();
     const input = doc.querySelector('[data-guidance-input]') as HTMLTextAreaElement;
