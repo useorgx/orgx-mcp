@@ -90,9 +90,9 @@ export const PANEL_SNAPSHOT_TOOL_CONTRACT = {
       'Optional decision to show as the review packet. Defaults to the most urgent pending decision.'
     ),
     view: z
-      .enum(['work'])
+      .enum(['work', 'workspaces'])
       .optional()
-      .describe('Optional extra view. "work" adds what agents are running and what waits on you.'),
+      .describe('Optional extra view. "work" adds what agents are running and what waits on you; "workspaces" adds the workspaces the panel can switch to.'),
   },
   annotations: {
     readOnlyHint: true,
@@ -228,6 +228,13 @@ export interface PanelWork {
   total: number;
 }
 
+export const PANEL_WORKSPACE_LIMIT = 20;
+
+export interface PanelWorkspaces {
+  status: 'ok' | 'unavailable';
+  items: Array<{ id: string; name: string; current: boolean }>;
+}
+
 export interface PanelSnapshot {
   schema: typeof PANEL_SNAPSHOT_SCHEMA;
   generated_at: string;
@@ -253,6 +260,8 @@ export interface PanelSnapshot {
   degraded: string[];
   /** Present only when the snapshot was asked for view "work". */
   work?: PanelWork;
+  /** Present only when the snapshot was asked for view "workspaces". */
+  workspaces?: PanelWorkspaces;
   /**
    * Subscription to the panel's live feed for this workspace. Absent when the
    * worker cannot mint one; the panel then refreshes when it is opened.
@@ -832,6 +841,33 @@ export function buildPanelWork(data: Record<string, unknown> | null): PanelWork 
   return { status: 'ok', items: items.slice(0, PANEL_WORK_LIMIT), total: items.length };
 }
 
+/**
+ * The workspaces the panel offers in its switcher, current one first. A failed
+ * read is "unavailable", never an empty list that would hide the switcher's
+ * reason for being empty.
+ */
+export function buildPanelWorkspaces(
+  records: unknown[] | null,
+  currentId: string | null
+): PanelWorkspaces {
+  if (!records) return { status: 'unavailable', items: [] };
+  const seen = new Set<string>();
+  const items: PanelWorkspaces['items'] = [];
+  for (const raw of records) {
+    const record = asRecord(raw);
+    const id = str(record?.id);
+    if (!record || !id || !UUID_RE.test(id) || seen.has(id)) continue;
+    seen.add(id);
+    items.push({
+      id,
+      name: clipText(str(record.name) ?? str(record.title), 80) ?? 'Workspace',
+      current: id === currentId,
+    });
+  }
+  items.sort((a, b) => Number(b.current) - Number(a.current) || a.name.localeCompare(b.name));
+  return { status: 'ok', items: items.slice(0, PANEL_WORKSPACE_LIMIT) };
+}
+
 export interface BuildPanelSnapshotInput {
   now?: Date;
   workspace: { id: string; name: string | null } | null;
@@ -1014,6 +1050,8 @@ export interface PanelSurfaceHost {
    * Returns the app payload's data, or null when the read fails.
    */
   fetchAgentStatus?(params: { workspaceId: string }): Promise<Record<string, unknown> | null>;
+  /** The viewer's workspaces, asked for only when the panel opens its switcher. */
+  fetchWorkspaces?(): Promise<unknown[] | null>;
   /** A live-feed grant for this workspace, or null when live is unavailable. */
   liveGrant?(workspaceId: string): Promise<StreamGrant | null>;
   /** The worker's tool wrapper (error mapping, session bookkeeping). */
@@ -1032,6 +1070,7 @@ export async function handlePanelSnapshot(
     const parsedFocus = PANEL_FOCUS_SCHEMA.safeParse(args?.focus);
     const focus = parsedFocus.success ? parsedFocus.data : null;
     const wantsWork = args?.view === 'work';
+    const wantsWorkspaces = args?.view === 'workspaces';
 
     let workspace = host.sessionWorkspace();
     if (!workspace) {
@@ -1079,6 +1118,15 @@ export async function handlePanelSnapshot(
       viewerUserIds: host.viewerUserIds(),
     });
     if (work) snapshot.work = work;
+    if (wantsWorkspaces) {
+      let records: unknown[] | null = null;
+      try {
+        records = host.fetchWorkspaces ? await host.fetchWorkspaces() : null;
+      } catch {
+        records = null;
+      }
+      snapshot.workspaces = buildPanelWorkspaces(records, workspace?.id ?? null);
+    }
     if (workspace && host.liveGrant) {
       try {
         const grant = await host.liveGrant(workspace.id);

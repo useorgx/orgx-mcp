@@ -3157,6 +3157,14 @@ export class OrgXMcp extends McpAgent<
           return null;
         }
       },
+      // Read only when the person opens the workspace switcher.
+      fetchWorkspaces: async () => {
+        try {
+          return await this.fetchEntityCollection({ type: 'workspace', userId: userId(), limit: 50 });
+        } catch {
+          return null;
+        }
+      },
       liveGrant: async (workspaceId) => {
         if (!this.env.LIVE_FEED || !this.env.MCP_JWT_SECRET) return null;
         const id = userId();

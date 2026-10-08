@@ -212,3 +212,76 @@ describe('panel live updates', () => {
     expect(doc(m).querySelector('.sync')?.getAttribute('data-live')).toBe('off');
   });
 });
+
+describe('workspace switcher', () => {
+  const OTHER = '55555555-5555-4555-8555-555555555555';
+
+  it('lists workspaces when opened, switches through orgx_bootstrap, and follows the new feed', async () => {
+    const m = await open();
+    const sws = snapshot().workspace as { id: string };
+    m.calls.callServerTool.mockImplementation(async ({ name, arguments: args }: { name: string; arguments: Record<string, unknown> }) => {
+      if (name === 'orgx_bootstrap') return { structuredContent: { ok: true } };
+      if (args.view === 'workspaces') {
+        return { structuredContent: snapshot({
+          generated_at: '2026-10-02T12:01:00.000Z',
+          workspaces: { status: 'ok', items: [
+            { id: sws.id, name: 'Acme', current: true },
+            { id: OTHER, name: 'Labs', current: false },
+          ] },
+        }) };
+      }
+      return { structuredContent: { ...snapshot({ generated_at: '2026-10-02T12:02:00.000Z', workspace: { id: OTHER, name: 'Labs' } }), live: grant(OTHER) } };
+    });
+
+    // No workspace read until the switcher opens.
+    expect(m.calls.callServerTool).not.toHaveBeenCalled();
+    (doc(m).querySelector('[data-action="workspaces"]') as HTMLElement).click();
+    await m.flush(); await m.flush();
+    expect(m.calls.callServerTool.mock.calls[0]![0]).toMatchObject({ name: 'orgx_panel_snapshot', arguments: { view: 'workspaces' } });
+    const items = Array.from(doc(m).querySelectorAll('.ws-item')).map((b) => b.textContent);
+    expect(items).toEqual(['AcmeCurrent', 'Labs']);
+
+    (doc(m).querySelector(`[data-action="switch-workspace"][data-id="${OTHER}"]`) as HTMLElement).click();
+    await m.flush(); await m.flush(); await m.flush();
+    expect(m.calls.callServerTool.mock.calls[1]![0]).toEqual({ name: 'orgx_bootstrap', arguments: { workspace_id: OTHER } });
+    expect(m.calls.callServerTool.mock.calls[2]![0]).toMatchObject({ name: 'orgx_panel_snapshot', arguments: {} });
+    expect(doc(m).querySelector('.ws-btn')!.textContent).toContain('Labs');
+    expect(doc(m).querySelector('#pn-ws-menu')).toBeNull();
+    // The old workspace's stream closed; the new one opened.
+    expect(m.sources[0]!.closed).toBe(true);
+    expect(m.sources.at(-1)!.url).toContain(`/live-feed/panel/${OTHER}/`);
+  });
+
+  it('keeps the list open with a way forward when the switch fails', async () => {
+    const m = await open();
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => {
+      if (name === 'orgx_bootstrap') throw new Error('nope');
+      return { structuredContent: snapshot({
+        generated_at: '2026-10-02T12:01:00.000Z',
+        workspaces: { status: 'ok', items: [
+          { id: (snapshot().workspace as { id: string }).id, name: 'Acme', current: true },
+          { id: OTHER, name: 'Labs', current: false },
+        ] },
+      }) };
+    });
+    (doc(m).querySelector('[data-action="workspaces"]') as HTMLElement).click();
+    await m.flush(); await m.flush();
+    (doc(m).querySelector(`[data-action="switch-workspace"][data-id="${OTHER}"]`) as HTMLElement).click();
+    await m.flush(); await m.flush();
+    expect(doc(m).querySelector('#pn-ws-menu')).not.toBeNull();
+    expect(doc(m).querySelector('#pn-ws-menu [role="alert"]')).not.toBeNull();
+    expect(doc(m).querySelector('.ws-btn')!.textContent).toContain('Acme');
+  });
+
+  it('says the list could not be read instead of showing it empty', async () => {
+    const m = await open();
+    m.calls.callServerTool.mockResolvedValue({ structuredContent: snapshot({
+      generated_at: '2026-10-02T12:01:00.000Z',
+      workspaces: { status: 'unavailable', items: [] },
+    }) });
+    (doc(m).querySelector('[data-action="workspaces"]') as HTMLElement).click();
+    await m.flush(); await m.flush();
+    expect(doc(m).querySelector('#pn-ws-menu')!.textContent).toContain('could not be loaded');
+    expect(doc(m).querySelector('[data-action="workspaces-retry"]')).not.toBeNull();
+  });
+});

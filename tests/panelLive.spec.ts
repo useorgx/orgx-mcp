@@ -603,3 +603,28 @@ describe('start versus plan prompts', () => {
     expect(byKey.launch.does).not.toMatch(/plan/i);
   });
 });
+
+describe('panel workspaces view', () => {
+  it('lists valid workspaces once each, current first, and reports a failed read as unavailable', async () => {
+    const { buildPanelWorkspaces } = await import('../src/panelSurface');
+    const list = buildPanelWorkspaces(
+      [
+        { id: D1, name: 'Zeta' },
+        { id: WS, title: 'Acme' },
+        { id: D1, name: 'Zeta again' },
+        { id: 'not-a-uuid', name: 'Skip' },
+        { id: D2, name: 'Beta' },
+      ],
+      WS
+    );
+    expect(list).toEqual({
+      status: 'ok',
+      items: [
+        { id: WS, name: 'Acme', current: true },
+        { id: D2, name: 'Beta', current: false },
+        { id: D1, name: 'Zeta', current: false },
+      ],
+    });
+    expect(buildPanelWorkspaces(null, WS)).toEqual({ status: 'unavailable', items: [] });
+  });
+});
