@@ -77,7 +77,10 @@ describe('panel v2 tabs', () => {
     doc(m).querySelector('ox-footer[data-id]')!.dispatchEvent(new m.dom.window.CustomEvent('ox-primary', { bubbles: true }));
     await m.flush(); await m.flush();
     expect(doc(m).querySelector('#pn-tab-done .pn-tab-n')!.textContent).toBe('1');
+    // Done opens on Work; the decisions this panel settled are one press away.
     click(m, '[data-tab="done"]');
+    await m.flush();
+    click(m, '[data-action="done-lens"][data-id="decisions"]');
     await m.flush();
     const done = doc(m).querySelector('.pn-done')!;
     expect(done.textContent).toContain('Ship release 4.2?');
@@ -118,7 +121,7 @@ describe('panel lightweight receipt after a decision', () => {
     expect(receipt.textContent).toContain('Approved by you');
     expect(receipt.querySelector('.rt')!.getAttribute('aria-label')).toBe('Decided: proven. Recorded: proven. Outcome: no proof');
     // Done holds the receipt; the one-line notice does not repeat it there.
-    click(m, '[data-tab="done"]');
+    click(m, '[data-action="done-decisions"]');
     await m.flush();
     expect(doc(m).querySelector('.notice.receipt')).toBeNull();
     expect(doc(m).querySelector('.pn-done-sum')!.textContent).toContain('1 decision settled');

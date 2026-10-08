@@ -20,7 +20,7 @@ import {
 import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 import { WORK_LEASE_DESCRIPTION, workLeaseInputSchema } from './workLeases';
 import { ControllerDomainSchema } from './controllerStatusContract';
-import { PANEL_SNAPSHOT_TOOL_CONTRACT, PANEL_TOOL_META } from './panelSurface';
+import { PANEL_SNAPSHOT_TOOL_CONTRACT, PANEL_TOOL_META, RECEIPT_CALL_TOOL_CONTRACT, RECEIPT_CALL_TOOL_META } from './panelSurface';
 
 export const V2_ORGX_TOOL_IDS = [
   'orgx_bootstrap',
@@ -1296,6 +1296,10 @@ export const INLINE_TOOL_CONTRACTS = {
   orgx_panel_snapshot: {
     ...PANEL_SNAPSHOT_TOOL_CONTRACT,
     _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
+  },
+  orgx_widget_receipt_call: {
+    ...RECEIPT_CALL_TOOL_CONTRACT,
+    _meta: RECEIPT_CALL_TOOL_META as unknown as Record<string, unknown>,
   },
   review_artifact: {
     id: 'review_artifact',

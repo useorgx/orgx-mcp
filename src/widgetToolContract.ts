@@ -29,11 +29,13 @@ import { TOOL_FEED_BINDINGS } from './live/streamGrant';
  *   widget approval token that only the widget sees, so approvals stay a
  *   human click.
  * - orgx_panel_snapshot: the OrgX panel's own read.
+ * - orgx_widget_receipt_call: a person's call on a Work Ledger receipt, from the panel.
  * - resume_agent_run: the agent-status widget's Resume button.
  */
 export const WIDGET_ONLY_TOOL_IDS = [
   'orgx_widget_decide',
   'orgx_panel_snapshot',
+  'orgx_widget_receipt_call',
   'resume_agent_run',
 ] as const;
 
@@ -83,7 +85,7 @@ export const WIDGET_TOOL_CALLS: Readonly<Record<string, readonly string[]>> =
     'morning-brief': [],
     // orgx_bootstrap is the panel's workspace switch: the same call a model
     // makes to change the session's workspace.
-    'orgx-panel': ['orgx_bootstrap', 'orgx_command_status', 'orgx_panel_snapshot', 'orgx_widget_decide'],
+    'orgx-panel': ['orgx_bootstrap', 'orgx_command_status', 'orgx_panel_snapshot', 'orgx_widget_decide', 'orgx_widget_receipt_call'],
     'plan-session-live': ['orgx_command_status', 'orgx_plan'],
     'proof-receipt': [],
     'scaffolded-initiative': ['orgx_act', 'orgx_command_status'],

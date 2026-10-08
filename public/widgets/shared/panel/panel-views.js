@@ -274,11 +274,82 @@
       '<button type="button" class="md-close" data-action="receipt" data-id="" aria-label="Close receipt">×</button>' +
       '<p class="md-kicker">Receipt</p><h3 class="md-title">' + esc(e.title) + '</h3>' +
       '<ul class="rt-lines" role="list">' + lines + '</ul>' +
-      '<div class="md-acts"><button type="button" class="pn-btn" data-action="open" data-url="' + esc(e.url) + '">Open receipt in OrgX ↗</button></div></div>';
+      '<div class="md-acts"><button type="button" class="pn-btn" data-action="open" data-url="' + esc(e.url) + '">Open decision in OrgX ↗</button></div></div>';
   }
 
-  /** opts: { session, history, historyPhase, range, sel, page, overviewHtml, launch, workspaceId } */
+  var WORK_RANGES = [['today', 'Today'], ['7d', '7 days'], ['30d', '30 days']];
+
+  /** Quality across the range: what the receipts showed, in one read. */
+  function qualityHtml(items) {
+    var c = { met: 0, unmet: 0, unknown: 0 };
+    var checked = 0;
+    var accepted = 0;
+    var none = 0;
+    items.forEach(function sum(r) {
+      c.met += r.criteria.met; c.unmet += r.criteria.unmet; c.unknown += r.criteria.unknown;
+      if (/^(verified|passed)$/i.test(r.verification || '')) checked += 1;
+      if (/^accepted$/i.test(r.accepted || '')) accepted += 1;
+      if (!(r.criteria.met + r.criteria.unmet + r.criteria.unknown)) none += 1;
+    });
+    var total = c.met + c.unmet + c.unknown;
+    var bar = total
+      ? '<div class="q-bar" role="img" aria-label="' + c.met + ' checks met, ' + c.unmet + ' not met, ' + c.unknown + ' with no evidence">' +
+        ['met', 'unmet', 'unknown'].map(function seg(k) { return c[k] ? '<i data-s="' + k + '" style="flex:' + c[k] + '"></i>' : ''; }).join('') + '</div>' +
+        '<ul class="q-key" role="list"><li data-s="met"><b>' + c.met + '</b> met</li><li data-s="unmet"><b>' + c.unmet + '</b> not met</li><li data-s="unknown"><b>' + c.unknown + '</b> no evidence</li></ul>'
+      : '<p class="rc-quiet">None of this work wrote down what done meant, so none of it can be checked.</p>';
+    return '<div class="md-card md-overview q-card" role="region" aria-label="Quality"><p class="md-kicker">Quality</p>' +
+      '<h3 class="md-title">' + count(items.length, 'piece of work', 'pieces of work') + ', ' + count(total, 'check', 'checks') + '</h3>' + bar +
+      '<dl class="q-facts"><div><dt>Checked after the change</dt><dd>' + checked + ' of ' + items.length + '</dd></div>' +
+      '<div><dt>Accepted by a person</dt><dd>' + accepted + ' of ' + items.length + '</dd></div>' +
+      (none ? '<div><dt>No criteria written</dt><dd>' + none + '</dd></div>' : '') + '</dl>' +
+      '<p class="q-note">Pick a receipt to see each check and its evidence, then take it into the chat to fix what is not met.</p></div>';
+  }
+
+  /** The Work lens: Work Ledger receipts for the range. */
+  function workReceiptsBody(opts) {
+    var R = global.OrgXPanelReceipts;
+    var data = opts.receipts;
+    if (!R) return { body: '', detail: '' };
+    if (!data && opts.receiptsPhase !== 'failed') return { body: skeletonRows(4), detail: '' };
+    if (!data || data.status !== 'ok') {
+      return { body: '<div class="notice" data-tone="amber" role="status"><p>' + esc((data && data.reason) || 'Work receipts could not be read right now.') + '</p>' +
+        '<button type="button" class="text-btn" data-action="done-range" data-id="' + esc(opts.range) + '">Try again</button></div>', detail: '' };
+    }
+    if (!data.items.length) {
+      return { body: '<p class="pn-done-sum">No receipts in this range. Work agents finish lands here with what done meant and whether it was met.</p>', detail: '' };
+    }
+    var sel = opts.rsel ? data.items.filter(function f(r) { return r.id === opts.rsel; })[0] || null : null;
+    var detail = opts.rsel ? R.detailHtml(opts.receiptDetail, sel, { workspaceId: opts.workspaceId, phase: opts.receiptPhase, call: opts.receiptCall }) : qualityHtml(data.items);
+    return {
+      summary: '<p class="pn-done-sum"><b>' + count(data.total, 'receipt', 'receipts') + '</b> of agent work' + (data.total > data.items.length ? ' · newest ' + data.items.length + ' shown' : '') + '</p>',
+      body: R.listHtml(data, { sel: opts.rsel, page: opts.page, pageSize: DONE_PAGE }),
+      detail: detail,
+      selected: Boolean(opts.rsel),
+    };
+  }
+
+  /**
+   * opts: { lens: 'work'|'decisions', session, history, historyPhase, range, sel, page, overviewHtml, launch, workspaceId,
+   *         receipts, receiptsPhase, rsel, receiptDetail, receiptPhase }
+   */
   function doneHtml(opts) {
+    var lens = opts.lens === 'decisions' || !global.OrgXPanelReceipts ? 'decisions' : 'work';
+    var lensSeg = global.OrgXPanelReceipts
+      ? '<div class="seg dn-lens" role="group" aria-label="Show">' + [['work', 'Work'], ['decisions', 'Decisions']].map(function b(x) {
+        return '<button type="button" class="seg-b" data-action="done-lens" data-id="' + x[0] + '" aria-pressed="' + (lens === x[0]) + '">' + x[1] + '</button>';
+      }).join('') + '</div>'
+      : '';
+    if (lens === 'work') {
+      var wrange = WORK_RANGES.some(function r(x) { return x[0] === opts.range; }) ? opts.range : '7d';
+      var wseg = '<div class="seg" role="group" aria-label="Time range">' + WORK_RANGES.map(function b(r) {
+        return '<button type="button" class="seg-b" data-action="done-range" data-id="' + r[0] + '" aria-pressed="' + (wrange === r[0]) + '">' + r[1] + '</button>';
+      }).join('') + '</div>';
+      var w = workReceiptsBody(Object.assign({}, opts, { range: wrange }));
+      return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
+        '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + wseg + '</div></div>' + (w.summary || '') +
+        '<div class="pn-md' + (w.selected ? ' has-sel' : '') + '"><div class="pn-md-list">' + w.body + '</div>' +
+        '<aside class="pn-md-detail">' + w.detail + '</aside></div>' + (opts.launch || '') + '</section>';
+    }
     var range = RANGES.some(function r(x) { return x[0] === opts.range; }) ? opts.range : 'session';
     var l = links();
     var historyUrl = l ? l.decisions({ status: 'all' }) : 'https://useorgx.com/decisions?status=all';
@@ -295,7 +366,7 @@
       body = skeletonRows(4);
     } else if (!opts.history || opts.history.status !== 'ok') {
       entries = null;
-      body = '<div class="notice" data-tone="amber" role="status"><p>Decision history could not be read right now.</p><button type="button" class="text-btn" data-action="done-range" data-id="' + range + '">Try again</button></div>';
+      body = '<div class="notice" data-tone="amber" role="status"><p>' + esc((opts.history && opts.history.reason) || 'Decision history could not be read right now.') + '</p><button type="button" class="text-btn" data-action="done-range" data-id="' + range + '">Try again</button></div>';
     } else {
       entries = opts.history.items.map(historyEntry);
     }
@@ -323,7 +394,7 @@
       '<div class="md-links"><button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(historyUrl) + '">Decision history ↗</button>' +
       '<button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(ledgerUrl) + '">Work ledger ↗</button></div>';
     return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
-      '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2>' + seg + '</div>' + summary +
+      '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + seg + '</div></div>' + summary +
       '<div class="pn-md' + (selected ? ' has-sel' : '') + '"><div class="pn-md-list">' + (body || '') + '</div>' +
       '<aside class="pn-md-detail">' + (selected ? receiptDetailHtml(selected) : '<div class="md-card md-overview" role="region" aria-label="Acceptance"><p class="md-kicker">Accepted work</p>' + overview + '</div>') + '</aside></div>' +
       (opts.launch || '') + '</section>';

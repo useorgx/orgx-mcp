@@ -38,6 +38,15 @@ import {
 } from './widgetApprovalMeta';
 import { normalizeArtifactRecord } from './widgetArtifactProof';
 import type { StreamGrant } from './live/streamGrant';
+import {
+  buildPanelReceiptDetail,
+  buildPanelReceipts,
+  ledgerFailure,
+  PANEL_RECEIPT_LIMIT,
+  receiptRangeQuery,
+  type PanelReceiptDetail,
+  type PanelReceipts,
+} from './panelReceipts';
 
 export const PANEL_SNAPSHOT_SCHEMA = 'orgx.panel.v1' as const;
 export const PANEL_TOOL_ID = 'orgx_panel_snapshot' as const;
@@ -95,13 +104,23 @@ export const PANEL_SNAPSHOT_TOOL_CONTRACT = {
       'Optional decision to show as the review packet. Defaults to the most urgent pending decision.'
     ),
     view: z
-      .enum(['work', 'workspaces', 'history'])
+      .enum(['work', 'workspaces', 'history', 'receipts', 'receipt'])
       .optional()
-      .describe('Optional extra view. "work" adds what agents are running and what waits on you; "workspaces" adds the workspaces the panel can switch to; "history" adds decisions settled in the range.'),
+      .describe('Optional extra view. "work" adds what agents are running and what waits on you; "workspaces" adds the workspaces the panel can switch to; "history" adds decisions settled in the range; "receipts" adds the Work Ledger receipts for the range (or for `query`); "receipt" adds one receipt in full with each criterion\'s verdict.'),
     range: z
       .enum(PANEL_HISTORY_RANGES)
       .optional()
-      .describe('For view "history": today, 7d or 30d. Defaults to 7d.'),
+      .describe('For views "history" and "receipts": today, 7d or 30d. Defaults to 7d.'),
+    query: z
+      .string()
+      .max(200)
+      .optional()
+      .describe('For view "receipts": a Work Ledger filter instead of the range, e.g. "pr:3236" for the work behind a merge.'),
+    receipt_id: z
+      .string()
+      .max(200)
+      .optional()
+      .describe('For view "receipt": the receipt to read in full.'),
   },
   annotations: {
     readOnlyHint: true,
@@ -109,6 +128,37 @@ export const PANEL_SNAPSHOT_TOOL_CONTRACT = {
     openWorldHint: false,
   },
   securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+} as const;
+
+export const RECEIPT_CALL_TOOL_ID = 'orgx_widget_receipt_call';
+export const RECEIPT_CALL_STATUSES = ['succeeded', 'partially_succeeded', 'failed', 'blocked'] as const;
+
+/**
+ * A person's call on a Work Ledger receipt, from the panel. App-only and a
+ * human click: the ledger keeps the latest call per receipt, it overrides the
+ * producer's own guess, and it becomes the example OrgX learns "done" from.
+ */
+export const RECEIPT_CALL_TOOL_CONTRACT = {
+  id: RECEIPT_CALL_TOOL_ID,
+  title: 'Your call on a work receipt',
+  description:
+    'App-only: records a person\'s call on a Work Ledger receipt from the OrgX panel: done, partly done, not done or blocked. The ledger keeps the latest call per receipt; it overrides the agent\'s own guess and teaches OrgX what done means. USE WHEN: the person presses a call on a receipt in the OrgX panel. DO NOT USE: from a model; models read receipts with orgx_search scope=work_ledger.',
+  inputSchema: {
+    receipt_id: z.string().min(1).max(200).describe('The Work Ledger receipt the call is about.'),
+    status: z.enum(RECEIPT_CALL_STATUSES).describe('The person\'s call on the outcome.'),
+  },
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: false,
+    openWorldHint: false,
+  },
+  securitySchemes: SECURITY_SCHEMES.authRequired,
+} as const;
+
+export const RECEIPT_CALL_TOOL_META = {
+  ui: { resourceUri: WIDGET_URIS.orgxPanel, visibility: ['app'] as string[] },
+  'openai/visibility': 'private',
+  'openai/widgetAccessible': true,
 } as const;
 
 export const PANEL_TOOL_META = {
@@ -275,6 +325,8 @@ export interface PanelHistory {
   status: 'ok' | 'unavailable';
   range: PanelHistoryRange;
   items: PanelHistoryItem[];
+  /** Why the read failed, in the panel's words; absent when it did not. */
+  reason?: string | null;
 }
 
 export interface PanelWork {
@@ -319,6 +371,10 @@ export interface PanelSnapshot {
   workspaces?: PanelWorkspaces;
   /** Present only when the snapshot was asked for view "history". */
   history?: PanelHistory;
+  /** Work Ledger receipts, only when the panel asks (view "receipts"). */
+  receipts?: PanelReceipts;
+  /** One receipt in full, only when the panel asks (view "receipt"). */
+  receipt?: PanelReceiptDetail;
   /**
    * Subscription to the panel's live feed for this workspace. Absent when the
    * worker cannot mint one; the panel then refreshes when it is opened.
@@ -629,7 +685,8 @@ function packetWhy(decision: NormalizedDecision): PanelWhy {
       .filter((value): value is string => Boolean(value) && !/\bno\b.*\brecommendation\b/i.test(value!))
       .slice(0, 3),
     run_url: decision.runId ? buildEntityLink('run', decision.runId).url : null,
-    initiative_url: decision.initiativeId ? buildEntityLink('initiative', decision.initiativeId).url : null,
+    // The initiative's own page, not its live room: the page every panel link agrees on.
+    initiative_url: decision.initiativeId ? new URL(`/initiatives/${encodeURIComponent(decision.initiativeId)}`, buildEntityLink('initiative', decision.initiativeId).url).toString() : null,
   };
 }
 
@@ -1002,6 +1059,15 @@ export function historyRangeStart(range: PanelHistoryRange, now: Date = new Date
  * Decisions settled in the range, newest first. Settled time is the record's
  * last update, which is when its status changed; a failed read is unavailable.
  */
+/** A failed history read in the panel's words: the HTTP status, never a stack or an id. */
+export function historyFailure(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  const code = (error as { status?: unknown } | null)?.status;
+  const status = typeof code === 'number' ? String(code) : /\b(4\d\d|5\d\d)\b/.exec(message)?.[1];
+  if (/abort|timeout|timed out/i.test(message)) return 'OrgX took too long to return settled decisions.';
+  return status ? `OrgX answered ${status} when reading settled decisions.` : 'OrgX could not be reached for settled decisions.';
+}
+
 export function buildPanelHistory(
   records: unknown[] | null,
   range: PanelHistoryRange,
@@ -1246,8 +1312,14 @@ export interface PanelSurfaceHost {
    * Returns the app payload's data, or null when the read fails.
    */
   fetchAgentStatus?(params: { workspaceId: string }): Promise<Record<string, unknown> | null>;
-  /** Settled decisions (approved, declined…), newest first, for the Done tab's range. */
+  /** Settled decisions (approved, declined…), newest first, for the Done tab's range. Throws with the cause when every read fails. */
   fetchDecisionHistory?(params: { workspaceId: string }): Promise<unknown[] | null>;
+  /** GET /api/v1/work-ledger/receipts?q= payload. Throws when the read fails. */
+  fetchLedgerReceipts?(params: { workspaceId: string; query: string; limit: number }): Promise<unknown>;
+  /** GET /api/v1/work-ledger/receipts/{id} payload. Throws when the read fails. */
+  fetchLedgerReceipt?(params: { workspaceId: string; id: string }): Promise<unknown>;
+  /** POST /api/v1/work-ledger/decisions {kind:'outcome'}: a person's call on a receipt. Throws when refused. */
+  recordReceiptCall?(params: { workspaceId: string | null; receiptId: string; status: (typeof RECEIPT_CALL_STATUSES)[number] }): Promise<void>;
   /** The viewer's workspaces, asked for only when the panel opens its switcher. */
   fetchWorkspaces?(): Promise<unknown[] | null>;
   /** A live-feed grant for this workspace, or null when live is unavailable. */
@@ -1322,12 +1394,33 @@ export async function handlePanelSnapshot(
     if (work) snapshot.work = work;
     if (wantsHistory && workspace) {
       let records: unknown[] | null = null;
+      let reason: string | null = null;
       try {
         records = host.fetchDecisionHistory ? await host.fetchDecisionHistory({ workspaceId: workspace.id }) : null;
-      } catch {
+      } catch (error) {
         records = null;
+        reason = historyFailure(error);
       }
       snapshot.history = buildPanelHistory(records, range, host.now?.());
+      if (snapshot.history.status === 'unavailable') snapshot.history.reason = reason ?? 'OrgX did not return settled decisions.';
+    }
+    if (args?.view === 'receipts' && workspace) {
+      const query = typeof args.query === 'string' && args.query.trim() ? args.query.trim() : receiptRangeQuery(range, host.now?.());
+      try {
+        const payload = host.fetchLedgerReceipts ? await host.fetchLedgerReceipts({ workspaceId: workspace.id, query, limit: PANEL_RECEIPT_LIMIT }) : null;
+        snapshot.receipts = buildPanelReceipts(payload, query);
+      } catch (error) {
+        snapshot.receipts = buildPanelReceipts(null, query, ledgerFailure(error));
+      }
+    }
+    if (args?.view === 'receipt' && workspace && typeof args.receipt_id === 'string' && args.receipt_id.trim()) {
+      const id = args.receipt_id.trim();
+      try {
+        const payload = host.fetchLedgerReceipt ? await host.fetchLedgerReceipt({ workspaceId: workspace.id, id }) : null;
+        snapshot.receipt = buildPanelReceiptDetail(payload, id);
+      } catch (error) {
+        snapshot.receipt = buildPanelReceiptDetail(null, id, ledgerFailure(error));
+      }
     }
     if (wantsWorkspaces) {
       let records: unknown[] | null = null;
@@ -1375,4 +1468,43 @@ export function registerPanelSurface(
     } as Parameters<typeof registerAppTool>[2],
     async (args: Record<string, unknown>) => handlePanelSnapshot(host, args)
   );
+  if (allowedTools && !allowedTools.has(RECEIPT_CALL_TOOL_ID)) return;
+  registerAppTool(
+    server,
+    RECEIPT_CALL_TOOL_ID,
+    {
+      title: RECEIPT_CALL_TOOL_CONTRACT.title,
+      description: RECEIPT_CALL_TOOL_CONTRACT.description,
+      inputSchema: withClientContext({ ...RECEIPT_CALL_TOOL_CONTRACT.inputSchema }),
+      annotations: { ...RECEIPT_CALL_TOOL_CONTRACT.annotations },
+      _meta: RECEIPT_CALL_TOOL_META as unknown as Record<string, unknown>,
+    } as Parameters<typeof registerAppTool>[2],
+    async (args: Record<string, unknown>) => handleReceiptCall(host, args)
+  );
+}
+
+/** Record a person's call on a receipt; the result says what was recorded, or why not. */
+export async function handleReceiptCall(host: PanelSurfaceHost, args: Record<string, unknown>): Promise<CallToolResult> {
+  const auth = host.authRequired();
+  if (auth) return auth;
+  return host.run(async () => {
+    const receiptId = typeof args?.receipt_id === 'string' ? args.receipt_id.trim() : '';
+    const status = (RECEIPT_CALL_STATUSES as readonly string[]).includes(String(args?.status)) ? (args.status as (typeof RECEIPT_CALL_STATUSES)[number]) : null;
+    const fail = (message: string): CallToolResult => ({ isError: true, content: [{ type: 'text', text: message }], structuredContent: { recorded: false, receipt_id: receiptId, status, reason: message } });
+    if (!receiptId || !status) return fail('A receipt and a call are required.');
+    if (!host.recordReceiptCall) return fail('Calls on receipts are not available here.');
+    let workspace = host.sessionWorkspace();
+    if (!workspace) {
+      try { workspace = await host.inferWorkspace(); } catch { workspace = null; }
+    }
+    try {
+      await host.recordReceiptCall({ workspaceId: workspace?.id ?? null, receiptId, status });
+    } catch (error) {
+      return fail(ledgerFailure(error).replace('has nothing for this yet', 'has no receipt with that id'));
+    }
+    return {
+      content: [{ type: 'text', text: `Recorded your call on receipt ${receiptId}: ${status.replace(/_/g, ' ')}.` }],
+      structuredContent: { recorded: true, receipt_id: receiptId, status, reason: null },
+    };
+  });
 }

@@ -68,13 +68,15 @@ describe('orgx_panel_snapshot registration', () => {
     expect(WIDGET_URIS.orgxPanel).toMatch(/^ui:\/\/widget\/orgx-panel\.html\?v=/);
   });
 
-  it('takes an optional decision focus, an optional view and a history range, and nothing else (no workspace_id)', () => {
+  it('takes an optional decision focus, a view, a range, a ledger query or receipt id, and nothing else (no workspace_id)', () => {
     const [registration] = captureRegistration();
     const input = z.object(registration!.config.inputSchema).strict();
-    expect(Object.keys(registration!.config.inputSchema)).toEqual(['focus', 'view', 'range']);
+    expect(Object.keys(registration!.config.inputSchema)).toEqual(['focus', 'view', 'range', 'query', 'receipt_id']);
     expect(input.safeParse({ view: 'work' }).success).toBe(true);
     expect(input.safeParse({ view: 'history', range: '30d' }).success).toBe(true);
     expect(input.safeParse({ view: 'history', range: 'forever' }).success).toBe(false);
+    expect(input.safeParse({ view: 'receipts', query: 'pr:3236' }).success).toBe(true);
+    expect(input.safeParse({ view: 'receipt', receipt_id: 'rcpt-1' }).success).toBe(true);
     expect(input.safeParse({ view: 'everything' }).success).toBe(false);
     expect(input.safeParse({}).success).toBe(true);
     expect(
