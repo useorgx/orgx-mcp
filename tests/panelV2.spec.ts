@@ -84,8 +84,42 @@ describe('panel v2 tabs', () => {
     click(m, `[data-action="receipt"][data-id="${D1}"]`);
     await m.flush();
     expect(doc(m).querySelector(`#rc-${D1}`)!.hasAttribute('hidden')).toBe(false);
-    expect(doc(m).querySelector(`#rc-${D1} ox-receipt-row[label="Confirmed by OrgX"]`)).not.toBeNull();
+    // The lightweight receipt: decided and recorded proven, the outcome named as missing.
+    const lines = Array.from(doc(m).querySelectorAll(`#rc-${D1} .rt-line`)).map((l) => [l.getAttribute('data-s'), l.textContent]);
+    expect(lines.map((l) => l[0])).toEqual(['pass', 'pass', 'none']);
+    expect(lines[1]![1]).toContain('Recorded in OrgX');
+    expect(lines[2]![1]).toContain('not on this receipt yet');
+    expect(doc(m).querySelector(`[data-action="receipt"][data-id="${D1}"] .rt`)!.getAttribute('aria-label')).toBe('Decided: proven. Recorded: proven. Outcome: no proof');
     expect(done.textContent).toContain('Decision history');
+  });
+});
+
+describe('panel lightweight receipt after a decision', () => {
+  it('confirms in one line with the receipt marks, then leaves Done to hold the full receipt', async () => {
+    const m = await open();
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => {
+      if (name === 'orgx_widget_decide') return { structuredContent: { action: 'approved' } };
+      if (name === 'orgx_command_status') return { structuredContent: { kind: 'decision', id: D1, state: 'succeeded', outcome: 'approved', next_poll_after_ms: null } };
+      // The re-read after the ruling: D1 has left the queue.
+      const base = snapshot();
+      return { structuredContent: snapshot({
+        generated_at: '2026-10-02T12:09:00.000Z',
+        attention: { pending: 1, oldest_at: '2026-09-30T10:00:00.000Z', blocking: false },
+        queue: (base.queue as Array<{ id: string }>).filter((q) => q.id !== D1),
+        focus: null,
+      }) };
+    });
+    doc(m).querySelector('ox-footer[data-id]')!.dispatchEvent(new m.dom.window.CustomEvent('ox-primary', { bubbles: true }));
+    await wait(m, 1300);
+    const receipt = doc(m).querySelector('.notice.receipt')!;
+    expect(receipt).not.toBeNull();
+    expect(receipt.textContent).toContain('Approved by you');
+    expect(receipt.querySelector('.rt')!.getAttribute('aria-label')).toBe('Decided: proven. Recorded: proven. Outcome: no proof');
+    // Done holds the receipt; the one-line notice does not repeat it there.
+    click(m, '[data-tab="done"]');
+    await m.flush();
+    expect(doc(m).querySelector('.notice.receipt')).toBeNull();
+    expect(doc(m).querySelector('.pn-done-sum')!.textContent).toContain('1 settled');
   });
 });
 

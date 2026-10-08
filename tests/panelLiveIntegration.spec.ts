@@ -327,7 +327,15 @@ describe('polish: what the production panel got wrong', () => {
     const m = await openWith(mergesSnapshot());
     const subs = Array.from(doc(m).querySelectorAll('.row .row-sub.is-cmd')).map((n) => n.textContent);
     expect(subs).toEqual(['gh pr merge 3237', 'gh pr merge 3238']);
-    expect(doc(m).querySelectorAll('.row .row-title.is-repeat')).toHaveLength(2);
+    // One group: the shared title once, with a count, then a line per decision.
+    const group = doc(m).querySelector('.qgroup')!;
+    expect(group.querySelector('.qgroup-t')!.textContent).toBe(TITLE);
+    expect(group.querySelector('.qgroup-n')!.textContent).toBe('2');
+    expect(group.querySelectorAll('.row.grow')).toHaveLength(2);
+    // Rendered text only (the inlined gallery fixture carries the sentence too).
+    const holders = Array.from(doc(m).querySelectorAll('body *'))
+      .filter((el) => el.tagName !== 'SCRIPT' && el.children.length === 0 && (el.textContent || '').includes(TITLE));
+    expect(holders.map((el) => el.className)).toEqual(['q', 'qgroup-t']); // packet heading + group header, never per row
     const review = doc(m).querySelector('.row [data-action="select"].mini') as HTMLElement;
     expect(review.classList.contains('ghost')).toBe(true);
     expect(review.classList.contains('approve')).toBe(false);

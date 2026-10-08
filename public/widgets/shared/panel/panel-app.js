@@ -589,9 +589,11 @@
       if (ui.lastRuling && ui.tab !== 'done') {
         var receiptTitle = splitHeadline(ui.lastRuling.title);
         var receiptCommand = structureBody(receiptTitle.body).commands[0];
+        var receiptEntry = ui.session.filter(function same(e) { return e.id === ui.lastRuling.id; })[0];
         var verb = ui.lastRuling.elsewhere ? 'Settled in OrgX' : (ui.lastRuling.verb || (ui.lastRuling.action === 'approve' ? 'Approved' : 'Sent back')) + ' by you';
         parts.push('<div class="notice receipt" data-tone="teal" role="status">' + ICON.check +
           '<p><strong>' + esc(verb) + '</strong> ' + (receiptCommand ? '<code>' + esc(receiptCommand) + '</code>' : esc(receiptTitle.headline)) + '</p>' +
+          (receiptEntry && Views && Views.trailMarks ? Views.trailMarks(receiptEntry) : '') +
           (ui.session.length ? '<button type="button" class="text-btn" data-action="tab" data-tab="done">In Done</button>' : '') + '</div>');
         armReceiptDismiss();
       }
@@ -871,7 +873,8 @@
         shareHtml(f) + (Launch && !ui.rulings[f.id] ? Launch.chipsHtml('packet', { title: head.headline }) : '') + '</section>';
     }
 
-    function rowHtml(item) {
+    function rowHtml(item, opts) {
+      var grouped = Boolean(opts && opts.grouped);
       var ruling = ui.rulings[item.id];
       var repeatedTitle = ui.snapshot.queue.some(function repeated(other) {
         return other.id !== item.id && splitHeadline(other.title).headline === splitHeadline(item.title).headline;
@@ -902,6 +905,12 @@
       var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
       var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : '';
       var arrived = ui.seenRows && !ui.seenRows[item.id];
+      if (grouped) {
+        // Inside a group the title is the group's; the line is what differs.
+        return '<li class="row grow' + (arrived ? ' arrive' : '') + '" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + ' ' + (item.detail || '') + '. ' + meta) + '">' +
+          distinguisherHtml(item) + '<span class="row-meta"><span>' + esc(meta) + '</span></span></button>' + acts +
+          (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
+      }
       return '<li class="row' + (arrived ? ' arrive' : '') + '" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
         (Views ? '<span class="row-av" aria-hidden="true">' + Views.avatar(item.asker || '', 'row') + '</span>' : '') +
         // Repeated titles step back to one muted line; what differs leads.
@@ -910,6 +919,30 @@
           : '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span>') +
         '<span class="row-meta"><span>' + esc(kindTag + meta) + '</span></span></button>' + acts +
         (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
+    }
+
+    /**
+     * The queue, with decisions that share a title folded into one group: the
+     * title once with a count, then one compact line per decision led by what
+     * differs. Five "merge stopped" approvals are one thing to scan, not five.
+     */
+    function queueRowsHtml(items) {
+      var order = [];
+      var groups = {};
+      items.forEach(function bucket(item) {
+        var key = splitHeadline(item.title).headline;
+        if (!groups[key]) { groups[key] = []; order.push(key); }
+        groups[key].push(item);
+      });
+      return order.map(function render(key) {
+        var members = groups[key];
+        var distinct = members.every(function has(item) { return Boolean(distinguisherHtml(item)); });
+        if (members.length < 2 || !distinct) return members.map(function one(item) { return rowHtml(item); }).join('');
+        var gid = 'grp-' + members[0].id;
+        return '<li class="qgroup" aria-labelledby="' + gid + '"><p class="qgroup-h" id="' + gid + '"><span class="qgroup-t">' + esc(key) + '</span>' +
+          '<span class="qgroup-n">' + members.length + '</span></p><ul class="qgroup-rows" role="list">' +
+          members.map(function member(item) { return rowHtml(item, { grouped: true }); }).join('') + '</ul></li>';
+      }).join('');
     }
 
     /**
@@ -1021,7 +1054,7 @@
       html += '<div class="pn-split">' +
         '<div class="pn-att">' + attentionLine(s) + '</div>' +
         '<div class="pn-detail">' + (s.focus ? packetHtml(s.focus, 'h2') : '') + '</div>' +
-        (others.length ? '<div class="pn-list"><h2 class="queue-head">' + (s.focus ? 'Also waiting' : 'Waiting on you') + ' <span class="queue-n">' + others.length + '</span></h2><ul class="queue">' + others.map(rowHtml).join('') + '</ul>' +
+        (others.length ? '<div class="pn-list"><h2 class="queue-head">' + (s.focus ? 'Also waiting' : 'Waiting on you') + ' <span class="queue-n">' + others.length + '</span></h2><ul class="queue">' + queueRowsHtml(others) + '</ul>' +
           (hidden ? '<p class="sub">' + hidden + ' more in OrgX. <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.decisions({ status: 'pending' })) + '">All decisions ↗</button></p>' : '') + '</div>' : '') +
         '</div>';
       return html;
@@ -1299,7 +1332,7 @@
         var r = ui.rulings[id];
         if (!findItem(id) && (r.phase === 'confirmed' || r.phase === 'rejected' || r.phase === 'elsewhere')) {
           ui.lastRuling = {
-            action: r.action, title: r.title, elsewhere: r.phase === 'elsewhere',
+            id: id, action: r.action, title: r.title, elsewhere: r.phase === 'elsewhere',
             verb: r.phase === 'confirmed' ? pastTense(r.approveLabel, 'approve') : r.phase === 'rejected' ? pastTense(r.rejectLabel, 'reject') : '',
           };
           delete ui.rulings[id];
