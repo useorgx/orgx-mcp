@@ -96,6 +96,22 @@
   };
   var STATUS_WORD = { met: 'Met', unmet: 'Not met', unknown: 'No evidence' };
 
+  /** Where a check came from, as a chip; a learned one names the call behind it when the ledger does. */
+  function sourceChip(x) {
+    var X = global.OrgXExpectations;
+    if (!X || !x.source) return '';
+    var label = x.source === 'learned' && x.source_label ? 'from ' + x.source_label : '';
+    return X.chipHtml(x.source, label);
+  }
+  /** "Judged against the bar you agreed on Oct 8", when the ledger names the agreement. */
+  function barLine(detail) {
+    var X = global.OrgXExpectations;
+    var bar = detail && detail.bar;
+    if (!bar || !bar.agreed_at) return '';
+    var when = X && X.shortDate ? X.shortDate(bar.agreed_at) : '';
+    return '<p class="rc-bar">Judged against the bar you agreed on' + (when ? ' ' + esc(when) : '') + '.</p>';
+  }
+
   /**
    * detail: the receipt in full (or null while it loads); row: its list row,
    * so the pane can show the headline at once. opts: { workspaceId, phase }
@@ -115,12 +131,12 @@
       body = '<p class="rc-quiet">' + esc(detail.reason || 'This receipt could not be read right now.') + '</p>';
     } else {
       var crit = detail.criteria || [];
-      body += '<section class="rc-sec" aria-label="What done meant"><h4 class="rc-h">What done meant</h4>' +
+      body += '<section class="rc-sec" aria-label="What done meant"><h4 class="rc-h">What done meant</h4>' + barLine(detail) +
         (crit.length
           ? '<ul class="rc-crits" role="list">' + crit.map(function c(x) {
             var guess = typeof x.confidence === 'number' && x.confidence < 0.6;
             return '<li class="rc-c" data-s="' + x.status + '"><span class="rc-cm" aria-hidden="true">' + MARK[x.status] + '</span>' +
-              '<span class="rc-ct">' + esc(x.text) + '</span><span class="rc-cs">' + STATUS_WORD[x.status] + (guess && x.status !== 'unknown' ? ' · a guess' : '') + '</span></li>';
+              '<span class="rc-ct">' + esc(x.text) + (x.source ? '<span class="rc-src">' + sourceChip(x) + '</span>' : '') + '</span><span class="rc-cs">' + STATUS_WORD[x.status] + (guess && x.status !== 'unknown' ? ' · a guess' : '') + '</span></li>';
           }).join('') + '</ul>'
           : '<p class="rc-quiet">No criteria were written down for this work, so nothing can be checked against them.</p>') + '</section>';
       if (detail.outcome_summary) body += '<section class="rc-sec"><h4 class="rc-h">What happened</h4><p class="rc-p">' + esc(detail.outcome_summary) + '</p></section>';

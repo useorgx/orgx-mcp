@@ -88,7 +88,9 @@ export const WIDGET_TOOL_CALLS: Readonly<Record<string, readonly string[]>> =
     'orgx-panel': ['orgx_bootstrap', 'orgx_command_status', 'orgx_panel_snapshot', 'orgx_widget_decide', 'orgx_widget_receipt_call'],
     'plan-session-live': ['orgx_command_status', 'orgx_plan'],
     'proof-receipt': [],
-    'scaffolded-initiative': ['orgx_act', 'orgx_command_status'],
+    // orgx_widget_decide: "Agree and launch" settles the Agree on done decision
+    // with its single-use approval token.
+    'scaffolded-initiative': ['orgx_act', 'orgx_command_status', 'orgx_widget_decide'],
     'search-results': ['orgx_search'],
     'task-spawned': ['orgx_command_status'],
     'work-ledger': ['get_operator_chronicle'],

@@ -166,6 +166,38 @@ export const scaffoldContractWarningSchema = z.object({
   message: z.string(),
 });
 
+/** "Done means": the bar a person agrees to before work starts (src/expectations.ts). */
+export const expectationCheckSchema = z
+  .object({
+    id: z.string().nullable(),
+    scope: z.enum(['initiative', 'workstream', 'task']),
+    scope_id: z.string().nullable(),
+    statement: z.string(),
+    verify: z.enum(['command', 'http', 'artifact', 'manual']),
+    required: z.boolean(),
+    source: z.enum(['rule', 'artifact_type', 'learned', 'suggested', 'drafted']),
+    source_ref: z.string().nullable(),
+    source_label: z.string().nullable(),
+    owner_agent: z.string().nullable(),
+    new_since_last: z.boolean(),
+  })
+  .strict();
+
+export const expectationSetSchema = z
+  .object({
+    id: z.string().nullable(),
+    status: z.enum(['drafted', 'agreed', 'sent_back', 'superseded']),
+    version: z.string().nullable(),
+    initiative_id: z.string().nullable(),
+    decision_id: z.string().nullable(),
+    agreed_at: z.string().nullable(),
+    agreed_by: z.string().nullable(),
+    checks: z.array(expectationCheckSchema),
+    omitted_count: z.number(),
+    origin: z.enum(['app', 'suggested']),
+  })
+  .strict();
+
 export const toolErrorEnvelopeSchema = z.object({
   code: z.string(),
   status: z.number().optional(),

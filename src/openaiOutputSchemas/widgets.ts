@@ -7,6 +7,7 @@ import {
   artifactSummarySchema,
   budgetPreflightSchema,
   decisionSchema,
+  expectationSetSchema,
   nullableNumber,
   nullableString,
   approvalListProofSchema,
@@ -171,6 +172,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             asker_kind: panelAskerKindSchema.optional(),
             session_label: z.string().nullable().optional(),
             detail: z.string().nullable().optional(),
+            agreement: z.boolean().optional(),
             url: z.string(),
           })
           .strict()
@@ -218,6 +220,8 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             })
             .strict()
             .optional(),
+          // Only on an "Agree on done" (expectation_agreement) decision.
+          expectations: expectationSetSchema.optional(),
           url: z.string(),
         })
         .strict()
@@ -319,9 +323,13 @@ export const WIDGET_OUTPUT_SCHEMAS = {
                 kind: z.string().nullable(),
                 status: z.enum(['met', 'unmet', 'unknown']),
                 confidence: z.number().nullable(),
+                source: z.enum(['rule', 'artifact_type', 'learned', 'suggested', 'drafted']).nullable().optional(),
+                source_label: z.string().nullable().optional(),
               })
               .strict()
           ),
+          // The agreed bar this receipt was judged against, when the ledger names it.
+          bar: z.object({ agreed_at: z.string().nullable(), agreed_by: z.string().nullable() }).strict().nullable().optional(),
           artifacts: z.array(z.object({ kind: z.string(), name: z.string(), url: z.string().nullable() }).strict()),
           uncertain: z.array(z.string()),
           workstream_title: z.string().nullable(),
@@ -531,6 +539,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       billing_usage: resourceSchema.optional(),
       scaffold_usage: resourceSchema.optional(),
       fallback_agent_dispatch: resourceSchema.optional(),
+      expectations: expectationSetSchema.optional(),
       result_contract: z
         .object({
           mode: z.string(),

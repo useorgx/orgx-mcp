@@ -147,6 +147,8 @@
       '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>' +
       '</div>' + menu + '</div>' +
       '<p class="st-preview" aria-live="polite">' + previewHtml(verb, { text: opts.text, agent: opts.agent }) + '</p>' +
+      // The agreement that comes before any work (Agree on done, in Needs you).
+      '<p class="st-done">Before work starts, OrgX asks you to agree on what done means.</p>' +
       status + tryRow + '</div></section>';
   }
 

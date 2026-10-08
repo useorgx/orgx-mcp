@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <link rel="stylesheet" href="shared/expectations.css" />
   <script src="shared/kit/ox-elements-core.js"></script>
   <script src="shared/kit/ox-elements-footer.js"></script>
   <script src="shared/kit/ox-elements-avatar.js"></script>
@@ -16,6 +17,7 @@
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/orgx-icons.js"></script>
   <script src="shared/interaction-kit.js"></script>
+  <script src="shared/expectations.js"></script>
   <script src="shared/live-machine.js"></script>
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
@@ -149,6 +151,24 @@
     .tree-label { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; line-height: 1.4; }
 
     .gaps { display: flex; flex-direction: column; }
+
+    /* Done means: the bar a person agrees to before work starts. One section on
+       the card's hairlines; it opens when it needs the person and folds when agreed. */
+    .dm { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .dm .sec { gap: 10px; }
+    .dm-state { font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .dm[data-state="can_agree"] .dm-state, .dm[data-state="waiting"] .dm-state { color: var(--ox-warning); font-weight: 600; }
+    .dm[data-state="agreed"] .dm-state { color: var(--ox-teal); font-weight: 600; }
+    .dm-body { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .dm-body[hidden] { display: none; }
+    .dm-acts { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+    .dm-act {
+      min-height: 36px; padding: 0; border: 0; background: none; cursor: pointer;
+      color: var(--ox-text-2); font-family: inherit; font-size: 12.5px; font-weight: 650;
+    }
+    .dm-act:hover { color: var(--ox-text); }
+    .dm-act:focus-visible { outline: 2px solid var(--ox-focus, currentColor); outline-offset: 2px; border-radius: 6px; }
+    .dm-err { margin: 0; font-size: 12.5px; color: var(--ox-danger); }
 
     /* The footer's text action: open the initiative in OrgX in every state. */
     .ft-link {
@@ -668,6 +688,56 @@
         });
       }
     }
+    // Done means: the bar OrgX drafted, in each state the card can be in.
+    var DEMO_DECISION_ID = '5b1c9e2a-4f3d-4a8b-9e61-2c7d0a9f4b13';
+    var demoExpectations = function(status) {
+      var ws1 = { scope: 'workstream', scope_id: 'WS-1', owner_agent: 'product-agent' };
+      var ws2 = { scope: 'workstream', scope_id: 'WS-2', owner_agent: 'engineering-agent' };
+      var ws3 = { scope: 'workstream', scope_id: 'WS-3', owner_agent: 'marketing-agent' };
+      var c = function(base, statement, source, verify, extra) { return Object.assign({}, base, { statement: statement, source: source, verify: verify }, extra || {}); };
+      return {
+        id: 'exp-402', status: status, version: '3', decision_id: status === 'drafted' ? DEMO_DECISION_ID : DEMO_DECISION_ID,
+        agreed_at: status === 'agreed' ? '2026-10-08T15:20:00Z' : null,
+        checks: [
+          c(ws1, 'The headline names the outcome, not the feature', 'learned', 'manual', { source_label: 'your call on the pricing post', new_since_last: true }),
+          c(ws1, 'Every claim on the page links to its source', 'artifact_type', 'artifact'),
+          c(ws1, 'A person approves the final copy before it ships', 'rule', 'manual'),
+          c(ws2, 'Every PR is reviewed by a person', 'rule', 'manual'),
+          c(ws2, 'The continuity query returns the linked decision first in 10 of 10 runs', 'artifact_type', 'command'),
+          c(ws2, 'Search answers in under 800 ms at p95', 'suggested', 'http'),
+          c(ws2, 'No regression in the existing search suite', 'drafted', 'command'),
+          c(ws2, 'Memory writes are idempotent on retry', 'drafted', 'command'),
+          c(ws2, 'The relevance threshold change ships behind a flag', 'learned', 'manual', { source_label: 'your call on #3211' }),
+          c(ws3, 'Ends with one clear call to action', 'learned', 'manual', { source_label: 'your call on the launch post' }),
+          c(ws3, 'The preview renders at 375px without overflow', 'suggested', 'artifact'),
+          { scope: 'initiative', statement: 'No outbound email goes out without approval', source: 'rule', verify: 'manual' }
+        ]
+      };
+    };
+    var DEMO_AGREEMENT = {
+      agree: { status: 'drafted', launch: { attempted: true, ok: false, held_for_agreement: true, decision_id: DEMO_DECISION_ID } },
+      waiting: { status: 'drafted', launch: { attempted: true, ok: false, held_for_agreement: true, decision_id: DEMO_DECISION_ID } },
+      agreed: { status: 'agreed', launch: { attempted: true, ok: true } },
+      'sent-back': { status: 'sent_back', launch: { attempted: true, ok: false, held_for_agreement: true, decision_id: DEMO_DECISION_ID } },
+      suggested: { status: 'drafted', suggested: true }
+    };
+    if (isDemo && data && DEMO_AGREEMENT[demoState]) {
+      var fixture = DEMO_AGREEMENT[demoState];
+      data = JSON.parse(JSON.stringify(data));
+      var demoSet = demoExpectations(fixture.status);
+      if (fixture.suggested) {
+        demoSet = { status: 'drafted', origin: 'suggested', checks: demoSet.checks.filter(function(x) { return x.source === 'suggested'; }) };
+      }
+      data.expectations = demoSet;
+      if (fixture.launch) data.launch = fixture.launch;
+      if (fixture.status !== 'agreed') {
+        data.initiative = Object.assign({}, data.initiative, { status: 'scaffolded' });
+        data.hierarchy.initiative = Object.assign({}, data.hierarchy.initiative, { status: 'scaffolded' });
+        if (data.streams && Array.isArray(data.streams.items)) {
+          data.streams.items = data.streams.items.map(function(item) { return Object.assign({}, item, { status: 'ready', progress_pct: 0 }); });
+        }
+      }
+    }
     // Long content: titles, refs and a URL that must wrap, never overflow.
     if (isDemo && data && demoState === 'long') {
       data = JSON.parse(JSON.stringify(data));
@@ -813,6 +883,74 @@
        orgx_command_status (respecting next_poll_after_ms, stopping when
        it is null) instead of declaring the initiative live on its own. */
     var launch = { phase: 'idle', error: null, kind: null, id: null, status: null, timer: null, failures: 0 };
+    /* ── Agree on done ────────────────────────────────────────────────
+       OrgX drafts what done means and holds launch on one "Agree on done"
+       decision. The card agrees here only with the decision's single-use
+       approval token (it travels in the result _meta, never to the model);
+       without one, the person agrees in Needs you. */
+    var agree = { phase: 'idle', error: null, open: null, held: false, decisionId: null };
+    var X = window.OrgXExpectations;
+    var approvalTokenFor = (decisionId) => {
+      if (!decisionId) return null;
+      if (isDemo) return demoState === 'agree' ? 'demo-token' : null;
+      var meta = window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.getToolResponseMetadata
+        ? window.OrgXWidgetRuntime.getToolResponseMetadata('orgx/widgetApproval')
+        : null;
+      var token = meta && meta.approval_tokens ? meta.approval_tokens[decisionId] : null;
+      return typeof token === 'string' && token ? token : null;
+    };
+    /* drafted (no decision yet) · can_agree · waiting · agreed · sent_back, or null without a bar. */
+    var agreementOf = () => {
+      var set = X && data ? X.normalize(data.expectations) : null;
+      var launchInfo = data && data.launch && typeof data.launch === 'object' ? data.launch : {};
+      var held = agree.held || launchInfo.held_for_agreement === true;
+      if (!set && !held) return null;
+      var decisionId = (set && set.decision_id) || launchInfo.decision_id || agree.decisionId || null;
+      var status = set ? set.status : 'drafted';
+      var state;
+      if (agree.phase === 'agreed' || status === 'agreed') state = 'agreed';
+      else if (status === 'sent_back') state = 'sent_back';
+      else if (decisionId && agree.phase !== 'spent' && approvalTokenFor(decisionId)) state = 'can_agree';
+      else if (decisionId || held) state = 'waiting';
+      else state = 'drafted';
+      return { set: set, state: state, decisionId: decisionId, token: state === 'can_agree' ? approvalTokenFor(decisionId) : null };
+    };
+    var agreeAndLaunch = () => {
+      var ag = agreementOf();
+      if (!ag || ag.state !== 'can_agree' || agree.phase === 'sending') return;
+      agree.phase = 'sending';
+      agree.error = null;
+      refreshChrome();
+      var call = isDemo
+        ? new Promise((resolve) => window.setTimeout(() => resolve({ structuredContent: { ok: true } }), 600))
+        : window.OrgXWidgetRuntime.callTool('orgx_widget_decide', { decision_id: ag.decisionId, action: 'approve', kind: 'decision', approval_token: ag.token });
+      Promise.resolve(call).then(() => {
+        // Agreeing settles the decision; OrgX launches the initiative from it.
+        agree.phase = 'agreed';
+        launch = { phase: 'accepted', error: null, kind: null, id: null, status: null, timer: null, failures: 0, viaAgreement: true };
+        render();
+      }).catch((err) => {
+        // The token is single-use: a refusal hands the person to Needs you.
+        agree.phase = 'spent';
+        agree.error = (err && err.message) || 'OrgX did not record it. Agree in Needs you.';
+        render();
+      });
+    };
+    var sendToChat = (text) => {
+      var app = window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.getApp ? window.OrgXWidgetRuntime.getApp() : null;
+      try {
+        if (app && typeof app.sendMessage === 'function') return Promise.resolve(app.sendMessage({ role: 'user', content: [{ type: 'text', text: text }] }));
+        if (window.openai && typeof window.openai.sendFollowUpMessage === 'function') return Promise.resolve(window.openai.sendFollowUpMessage({ prompt: text }));
+      } catch (_) { /* fall through to copy */ }
+      return navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text).then(() => 'copied') : Promise.reject(new Error('unavailable'));
+    };
+    var AGREE_STATE_LINE = {
+      drafted: 'drafted · you agree before work starts',
+      can_agree: 'needs your agreement',
+      waiting: 'waiting for you in Needs you',
+      agreed: 'agreed',
+      sent_back: 'sent back · being redrafted',
+    };
     var currentScaffold = null;
     var expandedWorkstreams = {};
 
@@ -897,15 +1035,33 @@
       refreshChrome();
       callLaunch(scaffold).then((result) => {
         var out = window.OrgXWidgetRuntime.extractStructuredWidgetData(result, true);
+        if (out && (out.held_for_agreement === true || out.error_kind === 'expectation_agreement_pending')) {
+          heldForAgreement(out.decision_id);
+          return;
+        }
         var ref = readCommandRef(out);
         launch = { phase: 'accepted', error: null, kind: ref && ref.kind, id: ref && ref.id, status: null, timer: null, failures: 0 };
         refreshChrome();
         if (ref) scheduleLaunchCheck(isDemo ? 700 : 0);
       }).catch((err) => {
+        var message = (err && err.message) || '';
+        if (/agree on what done means|expectation/i.test(message)) {
+          var named = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.exec(message);
+          heldForAgreement(named ? named[0] : null);
+          return;
+        }
         console.warn('[scaffold:launch] failed', err);
         launch = { phase: 'failed', error: (err && err.message) || 'Nothing changed. Try again.', kind: null, id: null, status: null, timer: null, failures: 0 };
         refreshChrome();
       });
+    };
+
+    /* OrgX held the launch until a person agrees on what done means. Nothing failed. */
+    var heldForAgreement = (decisionId) => {
+      agree.held = true;
+      if (typeof decisionId === 'string' && UUID_RE.test(decisionId)) agree.decisionId = decisionId;
+      launch = { phase: 'idle', error: null, kind: null, id: null, status: null, timer: null, failures: 0 };
+      render();
     };
 
     /* One description of the card's state; header, edge and footer read it. */
@@ -917,11 +1073,18 @@
       var activeCount = sections.filter((s) => s.execution && s.execution.status && s.execution.status.tone === 'active').length;
       var streamsLine = plural(sections.length, 'workstream');
       var openLabel = 'Open Live View';
+      var openHref = null;
       var footer;
       var kind = viewState.tone === 'live' ? 'Live' : viewState.tone === 'complete' ? 'Complete' : viewState.tone === 'paused' ? 'Paused' : 'Scaffolded';
       var edge = viewState.tone === 'live' || viewState.tone === 'complete' ? 'teal' : 'mute';
 
-      if (launch.phase === 'sending') {
+      var ag = agreementOf();
+      var checksLine = ag && ag.set ? plural(ag.set.checks.length + (ag.set.omitted_count || 0), 'check') : 'the checks';
+      if (agree.phase === 'sending') {
+        footer = { variant: 'finishes-here', state: 'sending', heading: 'Agreeing', detail: 'recording it in OrgX', primary: 'Agree and launch' };
+        kind = 'Launching';
+        edge = 'amber';
+      } else if (launch.phase === 'sending') {
         footer = { variant: 'finishes-here', state: 'sending', heading: 'Launching', detail: 'committing in OrgX', primary: 'Launching…' };
         kind = 'Launching';
         edge = 'amber';
@@ -933,7 +1096,11 @@
         var st = launch.status && launch.status.state;
         var outcome = launch.status && launch.status.outcome;
         openLabel = 'Open mission control';
-        if (st === 'succeeded') {
+        if (launch.viaAgreement && !st) {
+          footer = { variant: 'queues-work', state: 'running', heading: 'Agreed · launching', detail: 'every receipt is judged against this bar' };
+          kind = 'Launching';
+          edge = 'teal';
+        } else if (st === 'succeeded') {
           footer = { variant: 'queues-work', state: 'done', heading: 'Launched', detail: outcome || streamsLine + ' activating' };
           kind = 'Live';
           edge = 'teal';
@@ -955,9 +1122,22 @@
           kind = 'Launching';
           edge = 'teal';
         }
+      } else if (draft && ag && ag.state === 'can_agree') {
+        footer = { variant: 'finishes-here', state: 'needs-you', heading: 'Agree on what done means', detail: checksLine + ' · agents start when you agree', primary: 'Agree and launch', hold: true };
+        kind = 'Needs you';
+        edge = 'amber';
+      } else if (draft && ag && ag.state === 'waiting') {
+        footer = { variant: 'confirms-in-orgx', state: 'waiting', heading: 'Waiting for you in Needs you', detail: agree.error ? 'not recorded here · agree in Needs you' : 'agree on what done means to start' };
+        kind = 'Needs you';
+        edge = 'amber';
+        if (ag.decisionId && window.OrgXLinks.decision) { openLabel = 'Open Needs you'; openHref = window.OrgXLinks.decision(ag.decisionId); }
+      } else if (draft && ag && ag.state === 'sent_back') {
+        footer = { variant: 'reads', state: 'stale', heading: 'Sent back', detail: 'OrgX is redrafting what done means' };
+        kind = 'Scaffolded';
+        edge = 'mute';
       } else if (draft) {
         if (readiness.ready) {
-          footer = { variant: 'queues-work', state: 'needs-you', heading: 'Ready to launch', detail: 'all ' + readiness.total + ' checks green · starts ' + streamsLine, primary: 'Hold to launch', hold: true };
+          footer = { variant: 'queues-work', state: 'needs-you', heading: 'Ready to launch', detail: ag && ag.state === 'drafted' ? 'you agree on what done means next' : 'all ' + readiness.total + ' checks green · starts ' + streamsLine, primary: 'Hold to launch', hold: true };
           kind = 'Ready to launch';
           edge = 'amber';
         } else {
@@ -976,7 +1156,7 @@
       } else {
         footer = { variant: 'reads', state: 'fresh', heading: viewState.status, detail: streamsLine };
       }
-      return { kind: kind, edge: edge, footer: footer, openLabel: openLabel, readiness: readiness, draft: draft, viewState: viewState };
+      return { kind: kind, edge: edge, footer: footer, openLabel: openLabel, readiness: readiness, draft: draft, viewState: viewState, agreement: ag, openHref: openHref };
     };
 
     var applyFooter = (ft, view) => {
@@ -990,7 +1170,11 @@
       ft.toggleAttribute('disabled', !!f.disabled);
       ft.setAttribute('state', f.state);
       var link = ft.querySelector('[data-open-live-view]');
-      if (link) setOpenLabel(link, view.openLabel);
+      if (link) {
+        setOpenLabel(link, view.openLabel);
+        if (!link.hasAttribute('data-home-href')) link.setAttribute('data-home-href', link.getAttribute('data-href') || '');
+        link.setAttribute('data-href', view.openHref || link.getAttribute('data-home-href'));
+      }
     };
 
     // "Open" always shows; the rest of the label yields under 420px.
@@ -1163,6 +1347,52 @@
       return '<div class="gaps" role="list" aria-label="Launch readiness gaps">' + rows + '</div>';
     };
 
+    /* Which workstream a check belongs to, by the ids and refs the hierarchy carries. */
+    var workstreamResolver = (sections) => {
+      var byId = {};
+      sections.forEach((section) => {
+        var who = section.execution && section.execution.agent_name && !/^unassigned$/i.test(section.execution.agent_name) ? section.execution.agent_name : '';
+        var group = { key: section.raw_id || section.display_id, label: readLabel(section, 'Workstream'), sub: who };
+        [section.raw_id, section.display_id, section.ref].forEach((k) => { if (k) byId[k] = group; });
+        (section.milestones || []).forEach((m) => (m.tasks || []).forEach((t) => {
+          [t.raw_id, t.display_id, t.ref].forEach((k) => { if (k) byId[k] = group; });
+        }));
+      });
+      return (check) => (check.scope_id && byId[check.scope_id]) || null;
+    };
+
+    var renderDoneMeans = (scaffold, view) => {
+      var ag = view.agreement;
+      if (!X || !ag || !ag.set) {
+        // Held with no checks to show (the answer was clipped): say where to agree.
+        return ag && ag.state === 'waiting'
+          ? '<section class="dm" data-state="waiting" aria-labelledby="dm-h"><div class="sec"><span class="sec-label" id="dm-h">Done means</span><span class="dm-state">' + escapeHtml(AGREE_STATE_LINE.waiting) + '</span></div><p class="note">OrgX drafted what done means for this initiative. Agree to it in Needs you and agents start.</p></section>'
+          : '';
+      }
+      var set = ag.set;
+      var needsPerson = ag.state === 'can_agree' || ag.state === 'waiting' || ag.state === 'drafted';
+      var open = agree.open == null ? needsPerson : agree.open;
+      var when = ag.state === 'agreed' ? X.shortDate(set.agreed_at) : '';
+      var stateLine = AGREE_STATE_LINE[ag.state] + (when ? ' ' + when : '');
+      var lead = ag.state === 'can_agree' ? 'Agents start when you agree. Every receipt is judged against these checks.'
+        : ag.state === 'waiting' ? 'Agree to it in Needs you and agents start. Every receipt is judged against these checks.'
+        : ag.state === 'agreed' ? 'Every receipt is judged against this bar.'
+        : ag.state === 'sent_back' ? 'You sent it back. OrgX redrafts it and asks again.'
+        : set.origin === 'suggested' ? 'OrgX adds your rules and past calls, then asks you to agree before work starts.'
+        : 'OrgX asks you to agree on this before work starts.';
+      var acts = needsPerson && ag.state !== 'waiting'
+        ? '<div class="dm-acts"><button type="button" class="dm-act" data-dm-edit>Change it in chat</button></div>'
+        : '';
+      var err = agree.error ? '<p class="dm-err" role="alert">' + escapeHtml(agree.error) + '</p>' : '';
+      return '<section class="dm" data-state="' + ag.state + '" aria-labelledby="dm-h">' +
+        '<div class="sec"><span class="sec-label" id="dm-h">Done means</span><span class="dm-state">' + escapeHtml(stateLine) + '</span>' +
+        '<button type="button" class="section-toggle-all" data-dm-toggle aria-expanded="' + open + '" aria-controls="dm-body">' + (open ? 'Hide' : 'Show ' + (set.checks.length + (set.omitted_count || 0))) + '</button></div>' +
+        '<div class="dm-body" id="dm-body"' + (open ? '' : ' hidden') + '>' +
+        '<p class="note">' + escapeHtml(X.describe(set) + ' ' + lead) + '</p>' + err +
+        X.listHtml(set, { by: 'workstream', workstreamOf: workstreamResolver(scaffold.sections || []) }) + acts +
+        '</div></section>';
+    };
+
     var renderEmptyCard = (mode) => {
       var errored = mode === 'error';
       return `<article class="wcard ox-card ox-surface ox-enter" data-scaffold-card data-edge="${errored ? 'red' : 'mute'}">
@@ -1212,6 +1442,7 @@
             <h2 class="pk-q"${idAttr(scaffold.initiative.display_id, scaffold.initiative.raw_id)}>${escapeHtml(scaffold.initiative.title)}</h2>
             ${renderMix(sections)}
             ${renderReadinessGaps(view)}
+            ${renderDoneMeans(scaffold, view)}
             ${sections.length ? `<div class="sec">
               <span class="sec-label">${escapeHtml(plural(sections.length, 'workstream').replace(/^(\d+) w/, '$1 w'))}</span>
               <button type="button" class="section-toggle-all" data-toggle-all data-expanded="false" aria-label="Expand all workstreams">Expand all</button>
@@ -1228,12 +1459,35 @@
       if (footer) {
         footer.addEventListener('ox-primary', () => {
           var state = footer.getAttribute('state');
-          if (state === 'needs-you' || state === 'failed') launchInitiative();
+          var ag = agreementOf();
+          if (state === 'needs-you' && ag && ag.state === 'can_agree') agreeAndLaunch();
+          else if (state === 'needs-you' || state === 'failed') launchInitiative();
         });
       }
       if (typeof document !== 'undefined') document.title = view.viewState.header + ' - OrgX';
       Array.from(document.querySelectorAll('.node-toggle')).forEach((btn) => {
         btn.addEventListener('click', () => window.toggleNode(btn));
+      });
+      var dmToggle = document.querySelector('[data-dm-toggle]');
+      if (dmToggle) dmToggle.addEventListener('click', () => {
+        var body = document.getElementById('dm-body');
+        var next = dmToggle.getAttribute('aria-expanded') !== 'true';
+        agree.open = next;
+        var motion = window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.motion;
+        if (body && motion) motion.setExpanded(body, next, dmToggle);
+        else if (body) { body.hidden = !next; dmToggle.setAttribute('aria-expanded', String(next)); }
+        var ag = agreementOf();
+        dmToggle.textContent = next ? 'Hide' : 'Show ' + (ag && ag.set ? ag.set.checks.length + (ag.set.omitted_count || 0) : '');
+        _scheduleSizeSync([24, 160, 320]);
+      });
+      var dmEdit = document.querySelector('[data-dm-edit]');
+      if (dmEdit) dmEdit.addEventListener('click', () => {
+        var ag = agreementOf();
+        if (isDemo) { dmEdit.textContent = 'Sent to chat'; return; }
+        sendToChat(X.editSentence(ag && ag.set, scaffold.initiative.title)).then(
+          (r) => { dmEdit.textContent = r === 'copied' ? 'Copied · paste it in the chat' : 'Sent to chat'; },
+          () => { dmEdit.textContent = 'Type it in the chat'; }
+        );
       });
       var toggleAll = document.querySelector('[data-toggle-all]');
       if (toggleAll) toggleAll.addEventListener('click', () => window.toggleAllWorkstreams(toggleAll));

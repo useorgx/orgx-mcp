@@ -1,0 +1,50 @@
+/*
+ * "Done means": the grouped checklist (shared/expectations.js). Flat rows on
+ * hairlines, never a card inside a card. The source is a word in a chip with
+ * a coloured dot, so the colour is never the only thing that says it.
+ */
+.xp-list, .xp-cs { list-style: none; margin: 0; padding: 0; }
+.xp-list { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.xp-g { min-width: 0; }
+.xp-gh {
+  display: flex; align-items: baseline; gap: 8px; margin: 0 0 2px; min-width: 0;
+  font-size: 12.5px; line-height: 1.35; color: var(--ox-text-2, var(--ox-text));
+}
+.xp-gn { font-weight: 650; color: var(--ox-text); overflow-wrap: anywhere; }
+.xp-gs { color: var(--ox-text-muted); }
+.xp-gc { margin-left: auto; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+.xp-g[data-new] .xp-gn::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 7px 1px 0; border-radius: 50%;
+  background: rgb(var(--ox-action-rgb, 191, 255, 0)); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); vertical-align: middle;
+}
+.xp-c {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px;
+  padding: 7px 0; border-top: 1px solid var(--ox-border); min-width: 0;
+}
+.xp-cs > .xp-c:first-child { border-top: 0; }
+.xp-ct { flex: 1 1 220px; min-width: 0; font-size: 13px; line-height: 1.4; color: var(--ox-text); overflow-wrap: anywhere; }
+.xp-cm { display: inline-flex; align-items: baseline; gap: 4px 8px; flex: 0 1 auto; min-width: 0; flex-wrap: wrap; }
+.xp-vk { font-size: 11.5px; color: var(--ox-text-muted); white-space: nowrap; }
+.xp-src {
+  display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 7px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; line-height: 1.5; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  color: var(--ox-text-2, var(--ox-text)); background: rgba(127, 127, 127, 0.1);
+}
+.xp-src::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--xp-dot, #8b9184); }
+.xp-src[data-src="rule"] { --xp-dot: rgb(var(--ox-action-rgb, 191, 255, 0)); }
+.xp-src[data-src="artifact_type"] { --xp-dot: var(--ox-teal, #00c9a7); }
+.xp-src[data-src="learned"] { --xp-dot: #a78bfa; }
+.xp-src[data-src="suggested"] { --xp-dot: #60a5fa; }
+.xp-src[data-src="drafted"] { --xp-dot: #9aa190; }
+.xp-more { margin: 0; }
+.xp-more > summary {
+  display: inline-flex; align-items: center; min-height: 32px; padding: 0; cursor: pointer; list-style: none;
+  font-size: 12.5px; font-weight: 600; color: var(--ox-text-2, var(--ox-text));
+}
+.xp-more > summary::-webkit-details-marker { display: none; }
+.xp-more > summary::after { content: "›"; margin-left: 6px; transition: transform 160ms ease; }
+.xp-more[open] > summary::after { transform: rotate(90deg); }
+.xp-more > summary:hover { color: var(--ox-text); }
+.xp-more > summary:focus-visible { outline: 2px solid var(--ox-focus, currentColor); outline-offset: 2px; border-radius: 6px; }
+.xp-omit { margin: 6px 0 0; font-size: 12px; color: var(--ox-text-muted); }
+@media (prefers-reduced-motion: reduce) { .xp-more > summary::after { transition: none; } }

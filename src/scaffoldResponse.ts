@@ -1,4 +1,5 @@
 import type { BatchCreateSummary } from './batchCreate';
+import type { ExpectationSet } from './expectations';
 import type {
   ExternalSyncRequest,
   FirstAgentWorkState,
@@ -336,6 +337,7 @@ function buildResultContract(params: {
       'hierarchy',
       'ref_map',
       'first_agent_work',
+      'expectations',
     ],
     detail_policy:
       'Fetch details through orgx_search/orgx_inspect with pagination instead of asking scaffold_initiative to return a larger payload.',
@@ -432,6 +434,7 @@ export function buildCompactScaffoldResult(params: {
   billingUsage?: unknown;
   scaffoldUsage?: unknown;
   fallbackAgentDispatch?: unknown;
+  expectations?: ExpectationSet | null;
 }) {
   const { hierarchy, counts } = compactHierarchy(params.hierarchy);
   const refMap = compactRefMap(params.result.ref_map);
@@ -486,6 +489,7 @@ export function buildCompactScaffoldResult(params: {
     fallback_agent_dispatch: compactFallbackDispatch(
       params.fallbackAgentDispatch
     ),
+    expectations: params.expectations ?? undefined,
     result_contract: buildResultContract({
       initiativeId: params.initiativeId,
       workspaceId: params.workspaceId,
@@ -505,6 +509,7 @@ export function buildScaffoldDraftResult(params: {
   contractWarnings?: ScaffoldContractWarning[];
   dependencyEdges?: MaterializedDependencyEdge[];
   coordinationDependency?: Record<string, unknown> | null;
+  expectations?: ExpectationSet | null;
 }) {
   const createdLike = params.batch.map((entity, index) => ({
     index,
@@ -554,6 +559,7 @@ export function buildScaffoldDraftResult(params: {
     entity_plan_preview: preview,
     entity_plan_count: params.batch.length,
     entity_plan_preview_count: preview.length,
+    expectations: params.expectations ?? undefined,
     result_contract: buildResultContract({
       workspaceId: params.workspaceId,
     }),

@@ -31,6 +31,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { buildEntityLink } from './deepLinks';
+import {
+  expectationSetOfDecision,
+  isExpectationAgreement,
+  type ExpectationSet,
+} from './expectations';
 import { SECURITY_SCHEMES, WIDGET_URIS } from './toolDefinitions';
 import {
   WIDGET_APPROVAL_META_KEY,
@@ -208,6 +213,8 @@ export interface PanelQueueItem {
    * and command named here). Null when the question adds nothing to the title.
    */
   detail?: string | null;
+  /** An "Agree on done" decision: the row opens the bar rather than approving in one tap. */
+  agreement?: boolean;
   url: string;
 }
 
@@ -282,6 +289,8 @@ export interface PanelFocus {
   session_label?: string | null;
   /** Why a person is being asked, from the review packet: shown on demand. */
   why?: PanelWhy;
+  /** The bar to agree on, only on an "Agree on done" (expectation_agreement) decision. */
+  expectations?: ExpectationSet;
   url: string;
 }
 
@@ -458,6 +467,8 @@ interface NormalizedDecision {
   sessionLabel: string | null;
   policyKey: string | null;
   packet: Record<string, unknown> | null;
+  agreement: boolean;
+  expectations: ExpectationSet | null;
 }
 
 /** Options as the pending list carries them (strings or {id,label}). */
@@ -735,7 +746,23 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
     runId: runId && UUID_RE.test(runId) ? runId : null,
     widgetActions,
     packet,
+    agreement: isExpectationAgreement(record),
+    expectations: panelExpectations(record),
   };
+}
+
+/** Checks one "Agree on done" decision shows; the rest are counted, not sent. */
+export const PANEL_EXPECTATION_CHECK_LIMIT = 60;
+
+/** The bar on an expectation_agreement decision, clipped like everything else the model can see. */
+function panelExpectations(record: Record<string, unknown>): ExpectationSet | null {
+  const set = expectationSetOfDecision(record);
+  if (!set) return null;
+  const checks = set.checks.slice(0, PANEL_EXPECTATION_CHECK_LIMIT).map((check) => ({
+    ...check,
+    statement: clipText(check.statement, PANEL_TEXT_MAX) ?? check.statement,
+  }));
+  return { ...set, checks, omitted_count: set.omitted_count + (set.checks.length - checks.length) };
 }
 
 /** Agent-run approvals open their run; actions awaiting approval open the pending queue. */
@@ -789,6 +816,7 @@ function toQueueItem(decision: NormalizedDecision): PanelQueueItem {
     detail: decision.question && decision.question.length > (clipText(decision.title, PANEL_TITLE_MAX) ?? '').length
       ? clipText(decision.question, PANEL_DETAIL_MAX)
       : null,
+    ...(decision.agreement ? { agreement: true } : {}),
     url: decisionUrl(decision),
   };
 }
@@ -835,6 +863,7 @@ function toFocus(decision: NormalizedDecision): PanelFocus {
     asker_kind: decision.askerKind,
     session_label: decision.sessionLabel,
     why: packetWhy(decision),
+    ...(decision.expectations ? { expectations: decision.expectations } : {}),
     url: decisionUrl(decision),
   };
 }
