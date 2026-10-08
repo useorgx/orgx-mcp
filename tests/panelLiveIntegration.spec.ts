@@ -124,7 +124,9 @@ describe('panel live updates', () => {
       }),
     });
     m.sources[0]!.send(graph({ [D1]: 'v1' }));
-    await m.flush();
+    // Long enough for the kit's delayed announcement (it writes after 20ms so
+    // screen readers notice the change), well short of the 300ms re-read.
+    await wait(m, 60);
     // Gone before any read completes, and no loading state for it.
     expect(doc(m).querySelector('.pn-tab-n')!.textContent).toBe('1');
     expect(doc(m).getElementById('panel')!.getAttribute('aria-busy')).toBe('false');
