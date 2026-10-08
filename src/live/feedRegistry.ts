@@ -19,6 +19,14 @@ import {
   type WorkGraph,
   type WorkNode,
 } from './workGraph';
+import {
+  buildPanelLiveGraph,
+  loadPanelFeed,
+  PANEL_FEED_TYPE,
+  type FeedLoadContext,
+} from './panelFeed';
+
+export type { FeedLoadContext } from './panelFeed';
 
 type Loose = Record<string, unknown>;
 
@@ -41,8 +49,13 @@ export interface FeedDefinition {
    * would share one instance and see each other's queue.
    */
   scope: 'initiative' | 'user';
-  /** Build the upstream OrgX API URL for this feed. */
-  buildUrl(feedId: string, apiBase: string): string;
+  /** Build the upstream OrgX API URL for this feed (a GET). */
+  buildUrl?(feedId: string, apiBase: string): string;
+  /**
+   * Fetch the upstream payload some other way than one GET. Takes precedence
+   * over buildUrl; the panel feed uses it to make its two tool reads.
+   */
+  load?(ctx: FeedLoadContext): Promise<unknown>;
   /** Fold the upstream payload into the canonical graph. */
   normalize(raw: unknown, feedId: string): WorkGraph;
   cadence: FeedCadence;
@@ -57,6 +70,11 @@ export interface FeedDefinition {
 // slower poll costs nothing visually.
 const RESPONSIVE: FeedCadence = { activeMs: 3000, idleMs: 30000 };
 const CALM: FeedCadence = { activeMs: 5000, idleMs: 45000 };
+// The panel is the surface a person is looking at while work lands, so it
+// trades a little more polling for seeing a new decision within seconds. The
+// reads are exempt from the person's allowance and the feed only runs while a
+// visible panel is attached.
+const PANEL: FeedCadence = { activeMs: 3000, idleMs: 6000 };
 
 function asRecord(value: unknown): Loose {
   return value && typeof value === 'object' ? (value as Loose) : {};
@@ -263,6 +281,16 @@ export const FEEDS: Record<string, FeedDefinition> = {
       });
     },
   },
+
+  [PANEL_FEED_TYPE]: {
+    type: PANEL_FEED_TYPE,
+    label: 'OrgX panel',
+    // The feed id is a workspace; what it shows is the viewer's own queue.
+    scope: 'user',
+    cadence: PANEL,
+    load: loadPanelFeed,
+    normalize: buildPanelLiveGraph,
+  },
 };
 
 // ── Not yet shipped ─────────────────────────────────────────────────────────
@@ -278,6 +306,8 @@ export const FEEDS: Record<string, FeedDefinition> = {
  * inbound request first, so it can never be spoofed by a caller.
  */
 export const FEED_VIEWER_HEADER = 'x-orgx-feed-viewer';
+/** The viewer's canonical OrgX UUID, when the token carries one. Same rules. */
+export const FEED_VIEWER_ORGX_HEADER = 'x-orgx-feed-viewer-orgx';
 
 export const FEED_TYPES = Object.keys(FEEDS);
 

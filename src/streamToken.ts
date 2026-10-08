@@ -13,6 +13,8 @@ interface StreamTokenPayload {
   ft: string; // feedType
   fi: string; // feedId
   uid?: string; // userId (optional)
+  /** Canonical OrgX user UUID, when known: lets a feed read as the panel does. */
+  ouid?: string;
   exp: number; // expiry timestamp (ms)
 }
 
@@ -49,6 +51,7 @@ export async function signStreamToken(opts: {
   feedType: string;
   feedId: string;
   userId?: string;
+  orgxUserId?: string;
   secret: string;
   /**
    * Override the default lifetime. Live-feed grants use a much shorter one:
@@ -63,6 +66,7 @@ export async function signStreamToken(opts: {
     fi: opts.feedId,
     exp: Date.now() + (opts.ttlMs ?? TOKEN_TTL_MS),
     ...(opts.userId ? { uid: opts.userId } : {}),
+    ...(opts.orgxUserId ? { ouid: opts.orgxUserId } : {}),
   };
   const enc = new TextEncoder();
   const payloadB64 = b64url(enc.encode(JSON.stringify(payload)).buffer as ArrayBuffer);

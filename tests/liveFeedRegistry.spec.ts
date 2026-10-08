@@ -209,7 +209,9 @@ describe('feed registry', () => {
     // execution-room stays out: GET /api/live/execution-room gates on
     // hasViewerAuthSignal() (a Clerk bearer or session cookie), which the
     // worker's service-key + actor-token path does not satisfy.
-    expect(FEED_TYPES.sort()).toEqual(['agent-status', 'decisions', 'initiative-pulse']);
+    // panel reads through /api/tools/execute (service key + actor), marked as
+    // an exempt live refresh; see src/live/panelFeed.ts.
+    expect(FEED_TYPES.sort()).toEqual(['agent-status', 'decisions', 'initiative-pulse', 'panel']);
   });
 
   it('declares who each feed belongs to', () => {
@@ -219,6 +221,8 @@ describe('feed registry', () => {
     expect(FEEDS['agent-status']!.scope).toBe('initiative');
     expect(FEEDS['initiative-pulse']!.scope).toBe('initiative');
     expect(FEEDS.decisions!.scope).toBe('user');
+    // A workspace id, but the queue in it is the viewer's.
+    expect(FEEDS.panel!.scope).toBe('user');
   });
 
   it('treats a pending decision as actionable blocked work', () => {

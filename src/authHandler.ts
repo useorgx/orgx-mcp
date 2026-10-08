@@ -38,7 +38,12 @@ import {
   verifyStreamTokenDetailed,
   withStreamTokenExpiry,
 } from './streamToken';
-import { FEED_ROUTE_PATTERN, FEED_VIEWER_HEADER, getFeed } from './live/feedRegistry';
+import {
+  FEED_ROUTE_PATTERN,
+  FEED_VIEWER_HEADER,
+  FEED_VIEWER_ORGX_HEADER,
+  getFeed,
+} from './live/feedRegistry';
 import { verifyMcpIdentityTokenDetailed } from './mcpIdentityToken';
 import { buildAuthErrorResponse } from './authErrors';
 import { secureCompare } from './secureCompare';
@@ -1798,7 +1803,9 @@ tool_timeout_sec = 60
       // the same name cannot survive.
       const forwardedHeaders = new Headers(request.headers);
       forwardedHeaders.delete(FEED_VIEWER_HEADER);
+      forwardedHeaders.delete(FEED_VIEWER_ORGX_HEADER);
       if (viewerId) forwardedHeaders.set(FEED_VIEWER_HEADER, viewerId);
+      if (viewerId && payload.ouid) forwardedHeaders.set(FEED_VIEWER_ORGX_HEADER, payload.ouid);
       const forwarded = new Request(request.url, {
         method: request.method,
         headers: forwardedHeaders,

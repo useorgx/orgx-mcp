@@ -47,7 +47,13 @@
       openReceipt: null,
       launchNoted: false,
       tourChecked: false,
+      // Live feed: connection status, and what it says In progress holds
+      // before (or without) the full In progress read.
+      live: 'off',
+      liveWork: null,
+      renderPending: false,
     };
+    var live = null;
     var tour = null;
     var ext = { deepLink: undefined, modelContext: undefined };
     var share = X.createShareController({ modelContext: undefined });
@@ -387,7 +393,7 @@
     function header() {
       var s = ui.snapshot;
       var name = s && s.workspace && s.workspace.name ? s.workspace.name : (s && s.workspace ? 'Workspace' : '');
-      var synced = ui.syncedAt ? window.OrgXTime.synced(ui.syncedAt).replace(/^s/, 'S') : '';
+      var synced = syncLabel();
       var refresh = ui.auth || ui.readState.phase === 'failed' ? '' : '<button type="button" class="quiet-btn" data-action="refresh">Refresh</button>';
       var nameHtml = name
         ? (ui.mode === 'global' ? '<h1 class="ws" title="' + esc(name) + '">' + esc(name) + '</h1>' : '<span class="ws">' + esc(name) + '</span>')
@@ -397,16 +403,27 @@
       var help = tabs ? '<button type="button" class="quiet-btn pn-help" data-action="tour" aria-label="How the OrgX panel works">?</button>' : '';
       return '<header class="top' + (tabs ? ' has-tabs' : '') + '">' + mark + '<div class="top-id"><span class="brand" aria-hidden="' + (name ? 'false' : 'true') + '">OrgX</span>' +
         (name ? '<span aria-hidden="true">·</span>' : '') + nameHtml + '</div>' + tabs +
-        (synced ? '<span class="sync">' + esc(synced) + '</span>' : '') + refresh + help + '</header>';
+        (synced ? '<span class="sync" data-live="' + esc(ui.live) + '"' + (ui.live === 'live' ? ' role="img" aria-label="Live: updates as they happen" title="Updates as they happen"' : '') + '>' + esc(synced) + '</span>' : '') + refresh + help + '</header>';
+    }
+
+    /** "Live" while the feed is attached; otherwise when the panel last synced. */
+    function syncLabel() {
+      if (ui.snapshot && ui.live === 'live') return 'Live';
+      if (ui.snapshot && ui.live === 'reconnecting') return 'Reconnecting…';
+      return ui.syncedAt ? window.OrgXTime.synced(ui.syncedAt).replace(/^s/, 'S') : '';
     }
 
     function tabsHtml() {
       var s = ui.snapshot;
       if (!Views || ui.mode !== 'global' || ui.auth || !s || s.state !== 'ok' || ui.limited || s.selection.status === 'unavailable') return '';
-      var blocked = ui.work && ui.work.status === 'ok' && ui.work.items.some(function b(i) { return i.state === 'blocked'; });
+      var workRead = ui.work && ui.work.status === 'ok';
+      var blocked = workRead
+        ? ui.work.items.some(function b(i) { return i.state === 'blocked'; })
+        : Boolean(ui.liveWork && ui.liveWork.blocked);
+      var workCount = workRead ? ui.work.total : ui.liveWork ? ui.liveWork.total : null;
       return Views.tabsHtml({
         active: ui.tab,
-        counts: { needs: s.attention.pending, work: ui.work && ui.work.status === 'ok' ? ui.work.total : null, done: ui.session.length },
+        counts: { needs: s.attention.pending, work: workCount, done: ui.session.length },
         tones: { needs: s.attention.pending ? (s.attention.blocking ? 'red' : 'amber') : '', work: blocked ? 'red' : '', done: ui.session.length ? 'teal' : '' },
       });
     }
@@ -1061,6 +1078,7 @@
       if (ui.readState.phase === 'failed') ui.readState = { phase: 'idle' };
       ui.limited = false;
       if (meta !== undefined) adoptTokens(meta);
+      if (live) live.update(snapshot.live || null);
       Object.keys(ui.rulings).forEach(function prune(id) {
         var r = ui.rulings[id];
         if (!findItem(id) && (r.phase === 'confirmed' || r.phase === 'rejected' || r.phase === 'elsewhere')) {
@@ -1117,6 +1135,8 @@
       }).then(function release() {
         if (inflight === request) inflight = null;
         if (gen !== ui.generation) return;
+        // A live change that arrived during this read waited for it.
+        if (liveAgain) { liveAgain = false; scheduleLiveRefresh(); }
         if (pendingFocus !== undefined) {
           var next = pendingFocus;
           pendingFocus = undefined;
@@ -1615,6 +1635,8 @@
     }
     function resetScope() {
       dispose();
+      if (live) live.stop();
+      ui.live = 'off'; ui.liveWork = null; ui.renderPending = false;
       inflight = null; pendingFocus = undefined; lastFocusRequest = null;
       ui.readState = { phase: 'idle' };
       ui.tokens = {}; ui.rulings = {}; ui.lastRuling = null; ui.composer = null;
@@ -1731,6 +1753,8 @@
     }
     function runGallery() {
       var name = params.get('state') || 'needs-you';
+      // Visual check of the live indicator; the gallery has no feed of its own.
+      if (['live', 'reconnecting'].indexOf(params.get('live')) !== -1) ui.live = params.get('live');
       var s = baseSnapshot();
       var tokens = allTokens(s);
       var failed = false;
@@ -1928,6 +1952,156 @@
       runGallery();
       return;
     }
+
+    // ── Live updates ───────────────────────────────────────────────────────
+    // The feed says what changed; the panel re-reads its own snapshot to show
+    // it. These reads are quiet: no loading state, no announcement of the read
+    // itself, and no repaint while the person is typing.
+    var LIVE_DEBOUNCE_MS = 300;
+    var LIVE_MIN_GAP_MS = 1500;
+    var FALLBACK_STALE_MS = 30000;
+    var liveTimer = null;
+    var liveInflight = false;
+    var liveAgain = false;
+    var liveLastAt = 0;
+
+    function typingInPanel() {
+      var el = document.activeElement;
+      return Boolean(el && root.contains(el) && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'radio')));
+    }
+    function liveRender() {
+      if (typingInPanel()) { ui.renderPending = true; return; }
+      ui.renderPending = false;
+      render();
+    }
+    root.addEventListener('focusout', function flushPending() {
+      if (!ui.renderPending) return;
+      window.setTimeout(function afterFocusMoves() {
+        if (ui.renderPending && !typingInPanel()) { ui.renderPending = false; render(); }
+      }, 0);
+    });
+
+    function shownQueue() {
+      var map = {};
+      var s = ui.snapshot;
+      if (s && s.state === 'ok') s.queue.forEach(function each(item) { map[item.id] = item.version || ''; });
+      return map;
+    }
+
+    /** Decisions settled somewhere else leave the list now; the re-read follows. */
+    function dropSettled(ids) {
+      var s = ui.snapshot;
+      if (!s || s.state !== 'ok') return;
+      var dropped = 0;
+      ids.forEach(function drop(id) {
+        // Our own rulings already narrate themselves, and a decision someone is
+        // replying to stays put until the re-read says what happened to it.
+        if (ui.rulings[id] || (ui.composer && ui.composer.id === id)) return;
+        if (s.focus && s.focus.id === id && typingInPanel()) return;
+        var before = s.queue.length;
+        s.queue = s.queue.filter(function keep(item) { return item.id !== id; });
+        if (s.queue.length < before) {
+          dropped += 1;
+          s.attention.pending = Math.max(0, s.attention.pending - 1);
+        }
+      });
+      if (!dropped) return;
+      announce(dropped === 1 ? 'A decision was settled elsewhere.' : dropped + ' decisions were settled elsewhere.');
+      liveRender();
+    }
+
+    function liveRefresh() {
+      liveTimer = null;
+      if (liveInflight || inflight) { liveAgain = true; return; }
+      liveInflight = true;
+      liveLastAt = Date.now();
+      var gen = ui.generation;
+      var args = currentReadArgs();
+      var withWork = args.view === 'work';
+      R.callToolResult('orgx_panel_snapshot', args).then(function onLive(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        if (accept(data, result.meta || null, 'refresh')) {
+          if (withWork) {
+            ui.work = data.work || { status: 'unavailable', items: [], total: 0 };
+            ui.workPhase = 'ready';
+          }
+          liveRender();
+        }
+      }, function onLiveError() {
+        // The feed will report the next change; a failed quiet read changes
+        // nothing on screen.
+      }).then(function release() {
+        liveInflight = false;
+        if (liveAgain) { liveAgain = false; scheduleLiveRefresh(); }
+      });
+    }
+    /** What the panel would read now: its selected decision and open tab. */
+    function currentReadArgs() {
+      var s = ui.snapshot;
+      var args = {};
+      if (s && s.selection.status === 'selected' && s.focus) args.focus = { type: 'decision', id: s.focus.id };
+      if (ui.tab === 'work') args.view = 'work';
+      return args;
+    }
+    function scheduleLiveRefresh() {
+      if (liveTimer) return;
+      var wait = Math.max(LIVE_DEBOUNCE_MS, LIVE_MIN_GAP_MS - (Date.now() - liveLastAt));
+      liveTimer = window.setTimeout(liveRefresh, wait);
+    }
+
+    function onLiveWork(summary, moved) {
+      var prev = ui.liveWork;
+      ui.liveWork = summary;
+      if (moved) {
+        if (ui.tab === 'work') { scheduleLiveRefresh(); return; }
+        // Read again when opened rather than showing what was running before.
+        if (ui.workPhase !== 'loading') { ui.work = null; ui.workPhase = 'idle'; }
+      }
+      if (!prev || prev.total !== summary.total || prev.blocked !== summary.blocked || moved) liveRender();
+    }
+
+    function onLiveStatus(status) {
+      ui.live = status;
+      var el = root.querySelector('.sync');
+      if (el) {
+        el.textContent = syncLabel();
+        el.setAttribute('data-live', status);
+        if (status === 'live') {
+          el.setAttribute('role', 'img');
+          el.setAttribute('aria-label', 'Live: updates as they happen');
+          el.setAttribute('title', 'Updates as they happen');
+        } else {
+          el.removeAttribute('role'); el.removeAttribute('aria-label'); el.removeAttribute('title');
+        }
+      } else {
+        liveRender();
+      }
+    }
+
+    live = window.OrgXPanelLive ? window.OrgXPanelLive.create({
+      runtime: R,
+      shownQueue: shownQueue,
+      onRemoved: dropSettled,
+      onStale: scheduleLiveRefresh,
+      onWork: onLiveWork,
+      refreshArgs: currentReadArgs,
+      onSnapshot: function onGrantRead(result) {
+        if (!result || !accept(result.data, result.meta || null, 'refresh')) return;
+        if (result.data.work) { ui.work = result.data.work; ui.workPhase = 'ready'; }
+        liveRender();
+      },
+      onStatus: onLiveStatus,
+    }) : null;
+
+    // Without a live feed (none granted, unsupported, or stopped), coming back
+    // to the panel re-reads it if what it shows has aged.
+    document.addEventListener('visibilitychange', function onVisible() {
+      if (document.hidden || !ui.snapshot || ui.auth) return;
+      if (live && live.status() !== 'off') return;
+      if (ui.syncedAt && Date.now() - ui.syncedAt.getTime() < FALLBACK_STALE_MS) return;
+      scheduleLiveRefresh();
+    });
 
     render();
     R.initWidget({

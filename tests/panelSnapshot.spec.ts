@@ -673,7 +673,15 @@ describe('orgx_panel_snapshot on the worker', () => {
     expect(structured.workspace).toEqual({ id: SESSION_WS, name: 'Acme' });
     expect(structured.proof).toEqual({ last_accepted: null, completed_unaccepted: 1 });
     expect(JSON.stringify(structured)).not.toContain(SECRET_TOKEN);
-    expect(structured.live).toBeUndefined();
+    // Its own live feed: the session workspace, refreshed by re-reading the panel.
+    expect(structured.live).toMatchObject({
+      feedType: 'panel',
+      feedId: SESSION_WS,
+      refreshTool: 'orgx_panel_snapshot',
+      refreshArgs: {},
+    });
+    expect(structured.live.streamUrl).toContain(`/live-feed/panel/${SESSION_WS}/stream?t=`);
+    expect(body.usage_class).toBe('live_refresh');
     expect((result._meta as Record<string, any>)['orgx/widgetApproval'].approval_tokens).toEqual({ [D2]: SECRET_TOKEN });
     expect(spy).not.toHaveBeenCalled();
     expect(worker.sessionContext).toEqual(sessionBefore);

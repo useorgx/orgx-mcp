@@ -16,6 +16,7 @@ import {
   proofHandoffSchema,
   resourceSchema,
   scaffoldContractWarningSchema,
+  streamGrantSchema,
   toolCallSchema,
 } from './shared';
 import {
@@ -228,6 +229,8 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         })
         .strict()
         .optional(),
+      // The panel's own live feed (see src/live/panelFeed.ts).
+      live: streamGrantSchema.optional(),
     })
     .strict(),
 

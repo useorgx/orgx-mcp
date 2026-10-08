@@ -102,16 +102,22 @@ describe('orgx_panel_snapshot registration', () => {
     expect(manifest?.description).toBe(PANEL_SNAPSHOT_TOOL_CONTRACT.description);
   });
 
-  it('is wired from index.ts with one call and never touches session or live state', () => {
+  it('is wired from index.ts with one call, never touches session state, and grants only its own feed', () => {
     expect(workerSource.match(/registerPanelSurface\(/g)).toHaveLength(1);
     const adapterStart = workerSource.indexOf('private panelSurfaceHost(): PanelSurfaceHost {');
     const adapterEnd = workerSource.indexOf('private maybeUpdateSessionInitiativeContext(', adapterStart);
     expect(adapterStart).toBeGreaterThan(0);
     const adapter = workerSource.slice(adapterStart, adapterEnd);
     expect(adapter).toContain('_widget_meta_channel: true');
-    expect(adapter).not.toMatch(/maybeUpdateSessionInitiativeContext|saveSessionContext|buildStreamGrant|signStreamToken/);
+    expect(adapter).not.toMatch(/maybeUpdateSessionInitiativeContext|saveSessionContext|signStreamToken/);
+    // The one grant it mints is the panel feed, refreshed by re-reading itself.
+    expect(adapter.match(/buildStreamGrant\(/g)).toHaveLength(1);
+    expect(adapter).toContain('feedType: PANEL_FEED_TYPE');
+    expect(adapter).toContain("refreshTool: 'orgx_panel_snapshot'");
+    // Both reads are marked as a live refresh, which the app exempts from the allowance.
+    expect(adapter.match(/usage_class: LIVE_REFRESH_USAGE_CLASS/g)).toHaveLength(2);
     const panelSource = readFileSync(resolve(process.cwd(), 'src/panelSurface.ts'), 'utf8');
-    expect(panelSource).not.toMatch(/maybeUpdateSessionInitiativeContext|buildStreamGrant|signStreamToken|\blive\b:/);
+    expect(panelSource).not.toMatch(/maybeUpdateSessionInitiativeContext|buildStreamGrant|signStreamToken/);
   });
 
   it('publishes the panel resource through the shared widget path with its display modes', () => {

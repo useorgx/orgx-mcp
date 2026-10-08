@@ -33,7 +33,12 @@ export function snapshot(overrides: Record<string, unknown> = {}) {
   };
 }
 
-export async function mountPanel(hostContext: Record<string, unknown>, capabilities: Record<string, unknown>) {
+export async function mountPanel(
+  hostContext: Record<string, unknown>,
+  capabilities: Record<string, unknown>,
+  /** Runs before the page's scripts, e.g. to install a fake EventSource. */
+  setup?: (win: Window) => void
+) {
   const widgets = resolve(process.cwd(), 'public/widgets');
   const html = readFileSync(resolve(widgets, 'orgx-panel.html'), 'utf8');
   const sharedComponents: Record<string, string> = {};
@@ -78,6 +83,7 @@ export async function mountPanel(hostContext: Record<string, unknown>, capabilit
         },
         applyDocumentTheme: () => {},
       };
+      setup?.(win as unknown as Window);
     },
   });
   const flush = () => new Promise((r) => dom.window.setTimeout(r, 0));

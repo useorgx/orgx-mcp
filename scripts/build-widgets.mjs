@@ -120,6 +120,7 @@ const SHARED_ALLOWLIST = new Set([
   'shared/panel/panel-launch.js',
   'shared/panel/panel-tour.js',
   'shared/panel/panel-views.js',
+  'shared/panel/panel-live.js',
   'shared/panel/panel-app.js',
   'shared/demo-data.js',
 ]);
@@ -156,6 +157,7 @@ const RUNTIME_INLINED_PATHS = new Set([
   'shared/panel/panel-launch.js',
   'shared/panel/panel-tour.js',
   'shared/panel/panel-views.js',
+  'shared/panel/panel-live.js',
   'shared/panel/panel-app.js',
 ]);
 

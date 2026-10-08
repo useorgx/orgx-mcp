@@ -37,6 +37,7 @@ import {
   splitWidgetApprovalMeta,
 } from './widgetApprovalMeta';
 import { normalizeArtifactRecord } from './widgetArtifactProof';
+import type { StreamGrant } from './live/streamGrant';
 
 export const PANEL_SNAPSHOT_SCHEMA = 'orgx.panel.v1' as const;
 export const PANEL_TOOL_ID = 'orgx_panel_snapshot' as const;
@@ -252,6 +253,11 @@ export interface PanelSnapshot {
   degraded: string[];
   /** Present only when the snapshot was asked for view "work". */
   work?: PanelWork;
+  /**
+   * Subscription to the panel's live feed for this workspace. Absent when the
+   * worker cannot mint one; the panel then refreshes when it is opened.
+   */
+  live?: StreamGrant;
 }
 
 // ---------------------------------------------------------------------------
@@ -567,6 +573,25 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
 }
 
 /** Agent-run approvals open their run; actions awaiting approval open the pending queue. */
+/**
+ * What the live feed watches in the decision queue: identity, wording and
+ * version, normalized exactly as the snapshot normalizes them, so the feed and
+ * the panel never disagree about whether a decision changed.
+ */
+export function panelDecisionSignals(
+  decisions: unknown[]
+): Array<{ id: string; title: string; version: string; blocked: boolean }> {
+  return decisions
+    .map(normalizeDecision)
+    .filter((d): d is NormalizedDecision => Boolean(d))
+    .map((d) => ({
+      id: d.id,
+      title: clipText(d.title, PANEL_TITLE_MAX) ?? 'Decision',
+      version: d.version,
+      blocked: d.blocked,
+    }));
+}
+
 function decisionUrl(decision: NormalizedDecision): string {
   if (decision.kind === 'approval' && decision.runId) return buildEntityLink('run', decision.runId).url;
   if (decision.kind === 'action') return 'https://useorgx.com/decisions?status=pending';
@@ -989,6 +1014,8 @@ export interface PanelSurfaceHost {
    * Returns the app payload's data, or null when the read fails.
    */
   fetchAgentStatus?(params: { workspaceId: string }): Promise<Record<string, unknown> | null>;
+  /** A live-feed grant for this workspace, or null when live is unavailable. */
+  liveGrant?(workspaceId: string): Promise<StreamGrant | null>;
   /** The worker's tool wrapper (error mapping, session bookkeeping). */
   run(runner: () => Promise<CallToolResult>): Promise<CallToolResult>;
   now?(): Date;
@@ -1052,6 +1079,14 @@ export async function handlePanelSnapshot(
       viewerUserIds: host.viewerUserIds(),
     });
     if (work) snapshot.work = work;
+    if (workspace && host.liveGrant) {
+      try {
+        const grant = await host.liveGrant(workspace.id);
+        if (grant) snapshot.live = grant;
+      } catch {
+        // No grant means a panel that refreshes on open, never a failed read.
+      }
+    }
     const widgetMeta = selectPanelApprovalMeta(approvalMeta, snapshot);
 
     return {
