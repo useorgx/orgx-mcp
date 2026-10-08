@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-08T16:41:05.466Z",
-  "sourceHash": "e41c32e10766e4aa",
+  "generatedAt": "2026-10-08T17:42:01.878Z",
+  "sourceHash": "75aa1b5e9c077fb6",
   "version": "1.0.0",
   "totalTools": 108,
   "categories": [
@@ -1786,6 +1786,7 @@
       "readOnly": false,
       "source": "inline",
       "profiles": [
+        "v2",
         "chatgpt"
       ]
     },
@@ -4202,6 +4203,21 @@
             "type": "number",
             "minimum": 0,
             "description": "Per-task or canary spend cap used during the validation run, when known."
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Model that did the work, as its provider names it (e.g. \"claude-opus-5-5\"). Always pass it: a receipt that does not say which model ran cannot be compared with another."
+          },
+          "model_provider": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "Provider of model when it cannot be read from the name (anthropic, openai, google…)."
+          },
+          "agent_work_receipt": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "A complete Agent Work Receipt (v0.2), stored verbatim instead of one built from the other fields. Include actor.runtime and actor.model, and ideally extensions[\"org.orgx.review/v1\"]: criteria frozen before the work, one check per criterion, output attached."
           },
           "status": {
             "type": "string",

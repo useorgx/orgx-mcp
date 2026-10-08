@@ -22,7 +22,7 @@ exports[`listed tool surfaces > profile "chatgpt" lists byte-identical tool desc
   "orgx_recommend": "05f7fa9274c70448",
   "orgx_search": "f99fd7c7687f97c8",
   "orgx_spawn": "b1283814f0da803a",
-  "orgx_submit_receipt": "386f213902732845",
+  "orgx_submit_receipt": "1047a94c280599cf",
   "orgx_widget_decide": "75098f2ae324724f",
   "orgx_widget_receipt_call": "29c0860fb8349feb",
   "orgx_write": "83d98b5670c2e8b9",
@@ -60,7 +60,7 @@ exports[`listed tool surfaces > profile "claude-directory" lists byte-identical 
   "orgx_record_plan_edit": "b582d0bf713c7fbd",
   "orgx_search": "446b76994ccaa211",
   "orgx_start_plan": "773d88d8e7e0c555",
-  "orgx_submit_receipt": "bc17515c95278b52",
+  "orgx_submit_receipt": "5315f6f1531e23c1",
   "orgx_update_entity": "ad26ef92f9c0e32b",
   "resume_agent_run": "90b388a6df57d58e",
   "review_artifact": "fffa3af8e120f00c",
@@ -83,7 +83,7 @@ exports[`listed tool surfaces > profile "claude-plugin" lists byte-identical too
   "orgx_inspect": "d95c7c71a1c9801b",
   "orgx_recommend": "05f7fa9274c70448",
   "orgx_search": "f99fd7c7687f97c8",
-  "orgx_submit_receipt": "386f213902732845",
+  "orgx_submit_receipt": "1047a94c280599cf",
   "orgx_tail": "d27b33e1225e6ac8",
 }
 `;
@@ -113,7 +113,7 @@ exports[`listed tool surfaces > profile "commander" lists byte-identical tool de
   "orgx_request_question": "86e1d5eca987ab0e",
   "orgx_search": "f99fd7c7687f97c8",
   "orgx_spawn": "b1283814f0da803a",
-  "orgx_submit_receipt": "386f213902732845",
+  "orgx_submit_receipt": "1047a94c280599cf",
   "orgx_tail": "d27b33e1225e6ac8",
   "orgx_write": "83d98b5670c2e8b9",
   "scaffold_initiative": "93f1b3c5eda771cc",
@@ -143,7 +143,7 @@ exports[`listed tool surfaces > profile "executor" lists byte-identical tool des
   "orgx_request_question": "86e1d5eca987ab0e",
   "orgx_search": "f99fd7c7687f97c8",
   "orgx_spawn": "b1283814f0da803a",
-  "orgx_submit_receipt": "386f213902732845",
+  "orgx_submit_receipt": "1047a94c280599cf",
   "orgx_tail": "d27b33e1225e6ac8",
   "orgx_write": "83d98b5670c2e8b9",
 }
@@ -206,7 +206,7 @@ exports[`listed tool surfaces > profile "full" lists byte-identical tool descrip
   "orgx_request_question": "86e1d5eca987ab0e",
   "orgx_search": "f99fd7c7687f97c8",
   "orgx_spawn": "b1283814f0da803a",
-  "orgx_submit_receipt": "386f213902732845",
+  "orgx_submit_receipt": "1047a94c280599cf",
   "orgx_tail": "d27b33e1225e6ac8",
   "orgx_widget_decide": "75098f2ae324724f",
   "orgx_widget_receipt_call": "29c0860fb8349feb",
@@ -250,7 +250,7 @@ exports[`listed tool surfaces > profile "memory" lists byte-identical tool descr
   "orgx_inspect": "d95c7c71a1c9801b",
   "orgx_recommend": "05f7fa9274c70448",
   "orgx_search": "f99fd7c7687f97c8",
-  "orgx_submit_receipt": "386f213902732845",
+  "orgx_submit_receipt": "1047a94c280599cf",
 }
 `;
 
@@ -335,7 +335,7 @@ exports[`listed tool surfaces > profile "v2" lists byte-identical tool descripto
   "orgx_request_question": "86e1d5eca987ab0e",
   "orgx_search": "f99fd7c7687f97c8",
   "orgx_spawn": "b1283814f0da803a",
-  "orgx_submit_receipt": "386f213902732845",
+  "orgx_submit_receipt": "1047a94c280599cf",
   "orgx_tail": "d27b33e1225e6ac8",
   "orgx_widget_decide": "75098f2ae324724f",
   "orgx_widget_receipt_call": "29c0860fb8349feb",
