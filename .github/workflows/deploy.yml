@@ -3,6 +3,7 @@ name: Deploy MCP Server
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   release:
     types: [published]
   workflow_dispatch:
@@ -70,11 +71,12 @@ jobs:
         id: version
         env:
           EVENT_NAME: ${{ github.event_name }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          if [[ "$EVENT_NAME" == "release" ]]; then
+          if [[ "$EVENT_NAME" == "release" || "$REF_TYPE" == "tag" ]]; then
             VERSION="$RELEASE_TAG"
             VERSION="${VERSION#v}"
           else
@@ -84,7 +86,7 @@ jobs:
           echo "Version: $VERSION"
 
       - name: Update server.json version
-        if: ${{ github.event_name == 'release' }}
+        if: ${{ github.event_name == 'release' || github.ref_type == 'tag' }}
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -277,6 +279,7 @@ jobs:
     needs: deploy
     if: |
       github.event_name == 'release' ||
+      (github.event_name == 'push' && github.ref_type == 'tag') ||
       (github.event_name == 'workflow_dispatch' &&
        inputs.publish_registry &&
        inputs.environment == 'production')
