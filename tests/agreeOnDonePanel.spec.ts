@@ -128,17 +128,28 @@ async function open(tokens: Record<string, string> = { [AGREE]: 'single-use-toke
 }
 
 describe('Needs you: agreeing on what done means', () => {
-  it('drafted: shows the bar grouped new-first then per owner, five per owner and the rest folded', async () => {
+  it('drafted: compresses the bar to its makeup, what is worth a look, and one drill-down row per owner', async () => {
     const m = await open();
-    const groups = Array.from(doc(m).querySelectorAll('.packet .xp-g')).map((g) => g.querySelector('.xp-gn')!.textContent);
-    expect(groups).toEqual(['New since last time', 'Eli', 'Mark', 'Across the initiative']);
-    const eli = doc(m).querySelector('.packet .xp-g[data-group="owner:engineering-agent"]')!;
-    expect(eli.querySelectorAll(':scope > .xp-cs > .xp-c')).toHaveLength(5);
-    expect(eli.querySelector('.xp-more summary')!.textContent).toBe('1 more');
-    const chips = Array.from(doc(m).querySelectorAll('.packet .xp-src')).map((c) => c.textContent);
-    expect(chips).toContain('learned · your call on #3211');
-    expect(chips).toEqual(expect.arrayContaining(['your rule', 'kind of work', 'suggested', 'drafted']));
-    expect(doc(m).querySelector('.packet .xp-sum')!.textContent).toContain('9 checks across 2 owners');
+    const q = (sel: string) => doc(m).querySelector('.packet ' + sel)!;
+    const all = (sel: string) => Array.from(doc(m).querySelectorAll('.packet ' + sel));
+    // Makeup: one strip segment and one legend entry per source, with counts.
+    expect(q('.xp-strip').getAttribute('aria-label')).toBe('9 checks: 2 from your rules, 1 from the kind of work, 2 learned from your past calls, 1 suggested in chat, 3 drafted to fill gaps');
+    expect(all('.xp-lg').map((b) => b.textContent)).toEqual(['2rules', '1kind of work', '2learned', '1suggested', '3drafted']);
+    // Worth a look: only what is new to the person (new since last time, drafted, suggested), one line each.
+    const look = q('.xp-look[data-xp-view=""]');
+    expect(look.querySelector('.xp-h')!.textContent).toBe('Worth a look5 of 9 are new to you');
+    expect(Array.from(look.querySelectorAll('.xp-rt')).map((r) => r.textContent)).toEqual([
+      'Plans match the billing catalog (new)', 'No regression in billing tests', 'Old pricing URLs redirect', 'Prices render in the visitor’s currency',
+    ]);
+    expect(look.querySelector('.xp-more')!.textContent).toBe('1 more in the rows below');
+    expect(look.querySelector('.xp-who')!.textContent).toBe('Eli');
+    // Then one closed row per owner, the initiative-wide one last.
+    expect(all('.xp-gh .xp-gn').map((n) => n.textContent)).toEqual(['Eli', 'Mark', 'Across the initiative']);
+    expect(all('.xp-gh .xp-gc').map((n) => n.textContent)).toEqual(['7 · 5 new', '1', '1']);
+    expect(all('.xp-grp > .xp-rows').every((r) => (r as HTMLElement).hidden)).toBe(true);
+    // Every row's source and verify kind are named glyphs, not repeated words.
+    expect(q('.xp-r .xp-g svg').getAttribute('aria-label')).toBe('learned');
+    expect(q('.xp-r .xp-v svg').getAttribute('aria-label')).toBe('checks the output');
     // An agreement is read, not approved from the row; generic chat chips stay off it.
     expect(doc(m).querySelector(`.row[data-row="${AGREE}"] [data-action="approve"]`)).toBeNull();
     expect(doc(m).querySelector('.packet .pn-asks')).toBeNull();
@@ -184,6 +195,41 @@ describe('Needs you: agreeing on what done means', () => {
     const done = doc(m).querySelector(`ox-footer[data-id="${AGREE}"]`)!;
     expect(done.getAttribute('heading')).toBe('Sent back by you');
     expect(done.getAttribute('detail')).toBe('OrgX redrafts it and asks again');
+  });
+
+  it('drills into an owner, filters by source, and edits one workstream in chat', async () => {
+    const m = await open();
+    const q = (sel: string) => doc(m).querySelector('.packet ' + sel) as HTMLElement;
+    click(m, '.packet .xp-gh');
+    await m.flush();
+    expect(q('.xp-gh').getAttribute('aria-expanded')).toBe('true');
+    const rows = q('.xp-grp > .xp-rows');
+    expect(rows.hidden).toBe(false);
+    expect(rows.querySelectorAll('.xp-r')).toHaveLength(7);
+    // In the drill-down, a learned check names the call behind it.
+    expect(rows.querySelector('.xp-r[data-src="learned"] .xp-rs')!.textContent).toBe('from your call on #3211');
+    // A live refresh keeps the row open.
+    m.app().ontoolresult({ structuredContent: agreementSnapshot(), _meta: { 'orgx/widgetApproval': { approval_tokens: { [AGREE]: 'single-use-token' } } } });
+    await m.flush();
+    expect(q('.xp-gh').getAttribute('aria-expanded')).toBe('true');
+
+    click(m, '.packet .xp-lg[data-src="rule"]');
+    await m.flush();
+    expect(q('.xp-look[data-xp-view=""]').hidden).toBe(true);
+    const rules = q('.xp-look[data-xp-view="rule"]');
+    expect(rules.hidden).toBe(false);
+    expect(Array.from(rules.querySelectorAll('.xp-rt')).map((r) => r.textContent)).toEqual(['Every PR is reviewed by a person', 'No outbound email without approval']);
+    expect(q('.xp-lg[data-src="rule"]').getAttribute('aria-pressed')).toBe('true');
+    click(m, '.packet .xp-look[data-xp-view="rule"] .xp-clear');
+    await m.flush();
+    expect(q('.xp-look[data-xp-view=""]').hidden).toBe(false);
+
+    click(m, '.packet .xp-grp [data-xp-edit]');
+    await m.flush(); await m.flush();
+    const sent = m.calls.sendMessage.mock.calls[0]![0].content[0].text as string;
+    expect(sent).toContain('for the “Eli” workstream');
+    expect(sent).toContain('show me its 7 checks');
+    expect(sent).toContain('Leave the other workstreams as they are.');
   });
 
   it('Edit in chat posts the sentence as the person’s own message', async () => {

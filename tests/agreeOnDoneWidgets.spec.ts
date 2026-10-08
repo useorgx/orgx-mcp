@@ -82,9 +82,14 @@ describe('scaffold widget: Done means', () => {
       await page.locator('.dm[data-state="can_agree"]').waitFor();
       expect(await footer(page).getAttribute('primary-label')).toBe('Agree and launch');
       expect(await footer(page).getAttribute('heading')).toBe('Agree on what done means');
-      // Grouped by workstream, task checks under their workstream, the shared ones last.
-      expect(await page.locator('.dm .xp-gn').allTextContents()).toEqual(['Build the page', 'Launch post', 'Across the initiative']);
-      expect(await page.locator('.dm .xp-src').allTextContents()).toEqual(['your rule', 'kind of work', 'learned · your call on the launch post', 'your rule']);
+      // Done means keeps the makeup and the initiative-wide checks; each workstream row carries its own.
+      expect(await page.locator('.dm .xp-lg').allTextContents()).toEqual(['2rules', '1kind of work', '1learned']);
+      expect(await page.locator('.dm .xp-gh .xp-gn').allTextContents()).toEqual(['Across the initiative']);
+      expect(await page.locator('.dm .xp-look.is-calm .xp-h').textContent()).toContain('Nothing new');
+      expect(await page.locator('.ws .ws-checks').allTextContents()).toEqual(['2 checks', '1 check']);
+      await page.locator('.node-toggle').first().click();
+      // Task checks fold under their workstream.
+      expect(await page.locator('.ws').first().locator('.ws-done .xp-rt').allTextContents()).toEqual(['Every PR is reviewed by a person', 'Checkout e2e passes']);
       expect(await noOverflow(page)).toBe(true);
       await press(page);
       await page.locator('.dm[data-state="agreed"]').waitFor();
@@ -158,7 +163,8 @@ describe('decisions widget: an Agree on done decision', () => {
     const page = await openWidget('decisions.html?state=agree');
     try {
       await page.locator('.dq-bar').waitFor();
-      expect(await page.locator('.dq-bar .xp-gn').allTextContents()).toEqual(['New since last time', 'Eli', 'Mark', 'Across the initiative']);
+      expect(await page.locator('.dq-bar .xp-gh .xp-gn').allTextContents()).toEqual(['Eli', 'Mark', 'Across the initiative']);
+      expect(await page.locator('.dq-bar .xp-look[data-xp-view=""] .xp-rt').allTextContents()).toEqual(['Plans on the page match the billing catalog (new)', 'Lighthouse performance is 90 or higher']);
       const ft = page.locator('ox-footer[data-decision-id="x1"]');
       expect(await ft.getAttribute('primary-label')).toBe('Agree · start work');
       expect(await ft.getAttribute('heading')).toBe('Agree on done');

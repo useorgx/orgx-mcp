@@ -54,6 +54,8 @@ export interface ExpectationCheck {
   id: string | null;
   scope: ExpectationScope;
   scope_id: string | null;
+  /** The workstream (or task) the check belongs to, by name, when the app sends it. */
+  scope_label: string | null;
   statement: string;
   verify: ExpectationVerify;
   required: boolean;
@@ -180,6 +182,10 @@ export function normalizeExpectationCheck(
     id: idString(rec.id),
     scope: normalizeScope(rec.scope),
     scope_id: idString(rec.scope_id ?? rec.scopeId),
+    scope_label: (() => {
+      const label = str(rec.scope_label) ?? str(rec.scope_title) ?? str(rec.workstream_title);
+      return label ? clip(label, 120) : null;
+    })(),
     statement: clip(statement.replace(/\s+/g, ' '), EXPECTATION_STATEMENT_MAX),
     verify: normalizeExpectationVerify(rec.verify ?? rec.verify_kind ?? rec.verification),
     // Rules are always required; anything else is required only when the app says so.

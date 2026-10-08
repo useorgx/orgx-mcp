@@ -1326,10 +1326,10 @@
       if (next.reject && /^(reject|decline)$/i.test(next.reject.label)) next.reject = { ...next.reject, label: 'Send back' };
       return next;
     };
-    window.editBarInChat = (id, button) => {
+    window.editBarInChat = (id, button, group) => {
       const d = getDecisionById(id);
       if (!d || !d.expectations || !window.OrgXExpectations) return;
-      const text = window.OrgXExpectations.editSentence(d.expectations, d.source_label || d.headline);
+      const text = window.OrgXExpectations.editSentence(d.expectations, d.source_label || d.headline, group);
       const say = (t) => { if (button) button.textContent = t; };
       if (isDemo) { say('Sent to the chat'); return; }
       const app = rt() && rt().getApp ? rt().getApp() : null;
@@ -2155,6 +2155,11 @@
     };
 
     // Option buttons and fields are delegated: their ids come from the server and never reach an inline handler.
+    if (window.OrgXExpectations) window.OrgXExpectations.bind(document.getElementById('content'));
+    document.getElementById('content').addEventListener('ox-xp-edit', (event) => {
+      const d = event.detail || {};
+      window.editBarInChat(d.key, d.button, d.group);
+    });
     document.getElementById('content').addEventListener('click', (event) => {
       const button = event.target && event.target.closest ? event.target.closest('.dq-opt[data-option-id]') : null;
       if (!button || button.disabled) return;
@@ -2573,8 +2578,7 @@
       if (bar) recLine = '';
       const barHtml = bar
         ? `<div class="dq-bar">
-            <p class="dq-bar-sum">${escapeHtml(window.OrgXExpectations.describe(bar) + ' Agents start when you agree.')}</p>
-            ${window.OrgXExpectations.listHtml(bar, { by: 'owner' })}
+            ${window.OrgXExpectations.barHtml(bar, { key: d.id })}
             ${canDecideHere && !actionStates[d.id] ? `<div class="dq-bar-acts"><button type="button" class="dq-text-btn" onclick="editBarInChat('${escapeHtml(d.id)}', this)">Edit in chat</button><span class="dq-bar-hint">Change a check before you agree</span></div>` : ''}
           </div>`
         : '';

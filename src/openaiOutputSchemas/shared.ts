@@ -172,6 +172,7 @@ export const expectationCheckSchema = z
     id: z.string().nullable(),
     scope: z.enum(['initiative', 'workstream', 'task']),
     scope_id: z.string().nullable(),
+    scope_label: z.string().nullable(),
     statement: z.string(),
     verify: z.enum(['command', 'http', 'artifact', 'manual']),
     required: z.boolean(),

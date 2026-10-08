@@ -169,6 +169,10 @@
     .dm-act:hover { color: var(--ox-text); }
     .dm-act:focus-visible { outline: 2px solid var(--ox-focus, currentColor); outline-offset: 2px; border-radius: 6px; }
     .dm-err { margin: 0; font-size: 12.5px; color: var(--ox-danger); }
+    /* A workstream's own checks, first thing inside its row. */
+    .ws-done { display: flex; flex-direction: column; gap: 2px; padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid var(--ox-border); }
+    .ws-checks { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .ws-done-h { margin: 0; font-size: 12px; font-weight: 600; color: var(--ox-text-muted); }
 
     /* The footer's text action: open the initiative in OrgX in every state. */
     .ft-link {
@@ -1280,6 +1284,18 @@
         </div>`;
     };
 
+    /* The bar's checks per workstream key, so each row in the tree carries its own. */
+    var wsChecks = {};
+    var indexChecks = (scaffold) => {
+      wsChecks = {};
+      var ag = agreementOf();
+      if (!X || !ag || !ag.set) return;
+      var resolve = workstreamResolver(scaffold.sections || []);
+      ag.set.checks.forEach((c) => {
+        var g = resolve(c);
+        if (g) (wsChecks[g.key] = wsChecks[g.key] || []).push(c);
+      });
+    };
     var renderWorkstream = (section, index) => {
       var execution = section.execution || {};
       var status = execution.status || classifyStatus('not_started');
@@ -1293,12 +1309,17 @@
       var tone = chip.state === 'running' || chip.state === 'succeeded' ? 'teal' : chip.state === 'blocked' || chip.state === 'failed_step' ? 'red' : '';
       var childId = 'ws-children-' + index;
       var title = readLabel(section, 'Untitled');
+      var checks = wsChecks[section.raw_id || section.display_id] || [];
+      var newCount = checks.filter((c) => X.worthALook(c)).length;
+      var doneLine = checks.length
+        ? '<span class="ws-sub ws-checks">' + X.pipsHtml(checks) + escapeHtml(plural(checks.length, 'check') + (newCount ? ' · ' + newCount + ' new' : '')) + '</span>'
+        : '';
       return `<div class="ws" data-ws-block data-ws-key="${escapeHtml(key)}"${idAttr(section.display_id, section.raw_id)}>
           <div class="ws-row">
             <span class="ws-glyph"${tone ? ' data-tone="' + tone + '"' : ''}>${window.OrgXIcons.icon('workstream', 18)}</span>
             <div class="ws-copy">
               <span class="ws-title">${escapeHtml(title)}</span>
-              <span class="ws-sub">${escapeHtml(summary)}</span>
+              <span class="ws-sub">${escapeHtml(summary)}</span>${doneLine}
             </div>
             <span class="ws-meta">
               ${renderAgent(execution, title)}
@@ -1307,9 +1328,10 @@
                 <span class="ws-pct" aria-label="${escapeHtml(String(progress))}% complete">${escapeHtml(String(progress))}%</span>
               </span>
             </span>
-            <button type="button" class="node-toggle" data-expanded="${open}" aria-expanded="${open}" aria-controls="${childId}" aria-label="Show milestones and tasks in ${escapeHtml(title)}">${icons.chevronDown(16)}</button>
+            <button type="button" class="node-toggle" data-expanded="${open}" aria-expanded="${open}" aria-controls="${childId}" aria-label="Show ${checks.length ? 'what done means, ' : ''}milestones and tasks in ${escapeHtml(title)}">${icons.chevronDown(16)}</button>
           </div>
           <div class="ws-children" id="${childId}" data-ws-children${open ? '' : ' hidden'}>
+            ${checks.length ? `<div class="ws-done"><p class="ws-done-h">Done means</p>${X.rowsHtml(checks, title)}</div>` : ''}
             ${(section.milestones || []).map(renderMilestone).join('')}
           </div>
         </div>`;
@@ -1352,7 +1374,7 @@
       var byId = {};
       sections.forEach((section) => {
         var who = section.execution && section.execution.agent_name && !/^unassigned$/i.test(section.execution.agent_name) ? section.execution.agent_name : '';
-        var group = { key: section.raw_id || section.display_id, label: readLabel(section, 'Workstream'), sub: who };
+        var group = { key: section.raw_id || section.display_id, label: readLabel(section, 'Workstream'), sub: who, agent: (section.execution && section.execution.agent_id) || '' };
         [section.raw_id, section.display_id, section.ref].forEach((k) => { if (k) byId[k] = group; });
         (section.milestones || []).forEach((m) => (m.tasks || []).forEach((t) => {
           [t.raw_id, t.display_id, t.ref].forEach((k) => { if (k) byId[k] = group; });
@@ -1374,8 +1396,8 @@
       var open = agree.open == null ? needsPerson : agree.open;
       var when = ag.state === 'agreed' ? X.shortDate(set.agreed_at) : '';
       var stateLine = AGREE_STATE_LINE[ag.state] + (when ? ' ' + when : '');
-      var lead = ag.state === 'can_agree' ? 'Agents start when you agree. Every receipt is judged against these checks.'
-        : ag.state === 'waiting' ? 'Agree to it in Needs you and agents start. Every receipt is judged against these checks.'
+      var lead = ag.state === 'can_agree' ? 'Agents start when you agree. Every receipt is judged against this bar.'
+        : ag.state === 'waiting' ? 'Agree in Needs you and agents start.'
         : ag.state === 'agreed' ? 'Every receipt is judged against this bar.'
         : ag.state === 'sent_back' ? 'You sent it back. OrgX redrafts it and asks again.'
         : set.origin === 'suggested' ? 'OrgX adds your rules and past calls, then asks you to agree before work starts.'
@@ -1388,8 +1410,10 @@
         '<div class="sec"><span class="sec-label" id="dm-h">Done means</span><span class="dm-state">' + escapeHtml(stateLine) + '</span>' +
         '<button type="button" class="section-toggle-all" data-dm-toggle aria-expanded="' + open + '" aria-controls="dm-body">' + (open ? 'Hide' : 'Show ' + (set.checks.length + (set.omitted_count || 0))) + '</button></div>' +
         '<div class="dm-body" id="dm-body"' + (open ? '' : ' hidden') + '>' +
-        '<p class="note">' + escapeHtml(X.describe(set) + ' ' + lead) + '</p>' + err +
-        X.listHtml(set, { by: 'workstream', workstreamOf: workstreamResolver(scaffold.sections || []) }) + acts +
+        '<p class="note">' + escapeHtml(lead) + '</p>' + err +
+        // Each workstream row below carries its own checks; here only the
+        // makeup, what is worth a look, and checks no workstream owns.
+        X.barHtml(set, { key: 'scaffold', workstreamOf: workstreamResolver(scaffold.sections || []), groupFilter: (g) => g.key.indexOf('ws:') !== 0, moreWhere: 'in the workstreams below' }) + acts +
         '</div></section>';
     };
 
@@ -1426,6 +1450,7 @@
       }
       currentScaffold = scaffold;
       var sections = scaffold.sections || [];
+      indexChecks(scaffold);
       var view = describeScaffold(scaffold);
       var initiativeUrl = liveUrlFor(scaffold);
       var milestoneTotal = sections.reduce((n, s) => n + ((s.milestones || []).length), 0);
@@ -1516,6 +1541,18 @@
     };
 
     window.addEventListener('resize', function(){ _scheduleSizeSync([24, 180]); });
+    if (window.OrgXExpectations) window.OrgXExpectations.bind(document.getElementById('content'));
+    document.getElementById('content').addEventListener('ox-xp-change', function(){ _syncSizeDuringTransition(320); });
+    document.getElementById('content').addEventListener('ox-xp-edit', function(event) {
+      var d = event.detail || {};
+      var ag = agreementOf();
+      if (!ag || !ag.set || !currentScaffold) return;
+      if (isDemo) { if (d.button) d.button.textContent = 'Sent to chat'; return; }
+      sendToChat(X.editSentence(ag.set, currentScaffold.initiative.title, d.group)).then(
+        function(r) { if (d.button) d.button.textContent = r === 'copied' ? 'Copied · paste it in the chat' : 'Sent to chat'; },
+        function() { if (d.button) d.button.textContent = 'Type it in the chat'; }
+      );
+    });
 
     if(isDemo) applyBootPayload();
     else initWidget({

@@ -12,6 +12,19 @@
     var Receipts = window.OrgXPanelReceipts || null;
     var Expect = window.OrgXExpectations || null;
     var root = document.getElementById('panel');
+    if (Expect && root) Expect.bind(root);
+    // "Change this workstream in chat", from an opened workstream in an Agree on done bar.
+    if (Expect && root) root.addEventListener('ox-xp-edit', function onBarEdit(event) {
+      var d = event.detail || {};
+      var item = findItem(d.key);
+      var set = agreementOf(item);
+      if (!item || !set || !Launch) return;
+      var button = d.button;
+      Launch.send(Expect.editSentence(set, item.initiative_title || splitHeadline(item.question || item.title).headline, d.group)).then(function edited(outcome) {
+        if (button) button.textContent = outcome === 'sent' ? 'Sent to the chat' : outcome === 'copied' ? 'Copied. Paste it into the chat' : 'Type it in the chat';
+        announce(outcome === 'sent' ? 'Sent to the chat. Agree here once it reads right.' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send it. Type it in the chat.');
+      });
+    });
     var params = new URLSearchParams(window.location.search);
     var isGallery = params.get('gallery') === 'true';
     var APPROVAL_META_KEY = 'orgx/widgetApproval';
@@ -975,8 +988,7 @@
         // The bar is the packet: what OrgX drafted, where each check came from,
         // new since last time first, then per owner. No recommendation row.
         facts = [];
-        evidenceSlot = '<div class="xp-packet"><p class="xp-sum">' + esc(Expect.describe(bar) + ' Agents start when you agree.') + '</p>' +
-          Expect.listHtml(bar, { by: 'owner', idPrefix: 'xp-' + f.id }) +
+        evidenceSlot = '<div class="xp-packet">' + Expect.barHtml(bar, { key: f.id }) +
           (ui.rulings[f.id] ? '' : '<div class="xp-acts"><button type="button" class="text-btn" data-action="exp-edit" data-id="' + esc(f.id) + '">Edit in chat</button>' +
             '<span class="xp-hint">Change a check before you agree</span></div>') + '</div>';
       }
@@ -2522,6 +2534,26 @@
       { id: IDS.d3, version: isoAgo(26 * H), title: 'Publish the onboarding checklist v2?', urgency: 'medium', waiting_since: isoAgo(26 * H), initiative_title: 'Activation', blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', widget_actions: null, asker: 'Pace - Product', url: decisionUrl(IDS.d3) },
     ];
     var AGREE_ID = '5b1c9e2a-4f3d-4a8b-9e61-2c7d0a9f4b13';
+    // Volume: a bar the size a real initiative reaches (five owners, ~30 checks).
+    var VOLUME_CHECKS = (function volume() {
+      var owners = [
+        ['engineering-agent', 'Build the pricing page', ['Every PR is reviewed by a person:rule', 'The checkout e2e suite passes ten runs in a row:artifact_type:command', 'No regression in billing tests:artifact_type:command', 'Type checks pass:artifact_type:command', 'Old pricing URLs redirect:drafted:http', 'Prices render in the visitor’s currency:drafted:command', 'Lighthouse performance is 90 or higher:suggested:http', 'Plans match the billing catalog:learned:artifact:new', 'Feature flag guards the new page:learned:manual']],
+        ['design-agent', 'Pricing page design', ['Every state has a mobile layout at 375px:artifact_type:artifact', 'Contrast passes WCAG AA:artifact_type:command', 'The plan table reads without horizontal scroll:learned:artifact', 'Empty and error states are designed:drafted:artifact']],
+        ['marketing-agent', 'Launch post and email', ['Ends with one clear call to action:learned:manual', 'No claim without a source:artifact_type:artifact', 'Brand voice check passes:artifact_type:command', 'A person approves before it sends:rule', 'Subject line under 50 characters:suggested:artifact', 'The email links to the live page:drafted:http']],
+        ['sales-agent', 'Trial follow-up', ['Every trial owner gets one follow-up:artifact_type:manual', 'No outbound email without approval:rule', 'Follow-up cites the new plan:drafted:artifact', 'Unsubscribed contacts are excluded:rule']],
+        ['operations-agent', 'Rollout and monitoring', ['Rollback plan is written down:artifact_type:artifact', 'Error rate alert is set for checkout:learned:http:new', 'On-call knows the launch window:drafted:manual']],
+      ];
+      var out = [];
+      owners.forEach(function each(o) {
+        o[2].forEach(function c(spec) {
+          var p = spec.split(':');
+          out.push({ scope: 'workstream', scope_label: o[1], owner_agent: o[0], statement: p[0], source: p[1], verify: p[2] && p[2] !== 'new' ? p[2] : 'manual', new_since_last: p.indexOf('new') !== -1, source_label: p[1] === 'learned' ? 'your call on #32' + (out.length + 10) : null });
+        });
+      });
+      out.push({ scope: 'initiative', statement: 'The launch stays inside the approved budget', source: 'rule', verify: 'manual' });
+      return out;
+    })();
+
     function galleryBar() {
       function c(owner, statement, source, verify, extra) {
         return Object.assign({ id: null, scope: owner ? 'workstream' : 'initiative', scope_id: null, statement: statement, verify: verify, required: source === 'rule', source: source,
@@ -2545,11 +2577,13 @@
     }
     function galleryFocus(item) {
       if (item && item.agreement) {
+        var bar = galleryBar();
+        if (params.get('state') === 'agree-volume') bar.checks = VOLUME_CHECKS.map(function fill(c) { return Object.assign({ id: null, scope_id: null, required: c.source === 'rule', source_ref: null, source_label: null, new_since_last: false }, c); });
         return {
           type: 'decision', id: item.id, kind: 'decision', version: item.version, question: 'Is this what done means for “Launch the new pricing page”?', urgency: 'high',
           waiting_since: item.waiting_since, initiative_title: item.initiative_title, recommendation: null, evidence: [], evidence_total: 0,
           consequence_if_approved: null, consequence_if_rejected: null, blocked: true, decide_in_orgx_reason: null, options: [], multiselect: false,
-          widget_actions: null, asker: null, asker_kind: 'system', expectations: galleryBar(), url: item.url,
+          widget_actions: null, asker: null, asker_kind: 'system', expectations: bar, url: item.url,
         };
       }
       var packets = {};
@@ -2677,6 +2711,7 @@
           break;
         }
         case 'agree':
+        case 'agree-volume':
         case 'agreed':
         case 'agree-sent-back': {
           var agreeRow = { id: AGREE_ID, version: isoAgo(20 * 60 * 1000), title: 'Agree on what done means for “Launch the new pricing page”', urgency: 'high', waiting_since: isoAgo(20 * 60 * 1000),

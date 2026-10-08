@@ -137,8 +137,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 170991,
-      "hash": "ee4f38592e21",
+      "bytes": 171157,
+      "hash": "a70793a39b35",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -432,8 +432,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 85014,
-      "hash": "b81d5b4a885e",
+      "bytes": 87481,
+      "hash": "2f2f608b0839",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
