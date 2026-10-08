@@ -327,6 +327,16 @@
       }
     },
     {
+      "name": "orgx_widget_receipt_call",
+      "title": "Your call on a work receipt",
+      "description": "App-only: records a person's call on a Work Ledger receipt from the OrgX panel: done, partly done, not done or blocked. The ledger keeps the latest call per receipt; it overrides the agent's own guess and teaches OrgX what done means. USE WHEN: the person presses a call on a receipt in the OrgX panel. DO NOT USE: from a model; models read receipts with orgx_search scope=work_ledger.",
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
       "name": "get_agent_status",
       "title": "Get Agent Status",
       "description": "Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Successful calls record metered MCP allowance usage but do not change business records. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read related blocker context.",

@@ -51,7 +51,7 @@ Before opening review, confirm all of the following in the portal:
 - a fresh **Scan Tools** result matches the deployed tool names,
   descriptions, schemas, security schemes, annotations, `_meta`, UI resources,
   CSP, and verified domains;
-- every one of the 27 `chatgpt` profile tools has a non-null, exact
+- every one of the 28 `chatgpt` profile tools has a non-null, exact
   `outputSchema`, and every standard widget resource includes
   `_meta.ui.domain=https://mcp.useorgx.com` on that profile;
 - no other version of this MCP-backed plugin is already under review.
@@ -78,7 +78,9 @@ OrgX panel's global (sidebar) and thread entrypoints. It reads the session
 workspace's pending decisions and accepted proof, and never takes a
 workspace argument. Approve and Send back in the panel call
 `orgx_widget_decide` with a single-use token from the result `_meta`, which
-the model never sees.
+the model never sees. The panel's Done tab also reads Work Ledger receipts
+(views `receipts` and `receipt`), and its "Your call" control records a
+person's call on a receipt's outcome through `orgx_widget_receipt_call`.
 
 `orgx_submit_receipt` renders the Receipt widget
 (`ui://widget/proof-receipt.html`): how far the proof got (recorded,
@@ -131,13 +133,15 @@ when any of these drift: the runtime `tools/list`, the bootstrap's
 
 Visibility has one rule (`src/toolVisibility.ts`): every listed tool is
 model-callable (`ui.visibility: ["model","app"]`, `openai/visibility:
-"public"`) except the three widget-only tools, which are hidden from the model
+"public"`) except the four widget-only tools, which are hidden from the model
 and callable by widgets (`ui.visibility: ["app"]`, `openai/visibility:
 "private"`, `openai/widgetAccessible: true`):
 
 - `orgx_widget_decide` — settles a decision after a person clicks; it also
   requires the single-use HMAC widget approval token the model never sees;
 - `orgx_panel_snapshot` — the OrgX panel's read;
+- `orgx_widget_receipt_call` — records a person's call (done, partly, not
+  done, blocked) on a Work Ledger receipt after they click in the panel;
 - `resume_agent_run` — the agent-status widget's Resume button.
 
 Every tool a widget calls is also `openai/widgetAccessible: true`. The
@@ -268,7 +272,7 @@ Allowed when needed for the user request:
 
 OrgX treats a missing or catch-all `outputSchema` on any submitted tool as a
 blocking current-release gate. Do not submit or resubmit until a fresh
-`tools/list` confirms that all 27 `chatgpt` profile tools publish exact,
+`tools/list` confirms that all 28 `chatgpt` profile tools publish exact,
 tool-specific schemas. A permissive catch-all `outputSchema` is not an
 acceptable substitute because it does not describe the object the tool actually
 returns.

@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-07T18:35:24.050Z",
-  "sourceHash": "35e9f723b4027bfb",
+  "generatedAt": "2026-10-08T17:57:30.623Z",
+  "sourceHash": "75aa1b5e9c077fb6",
   "version": "1.0.0",
-  "totalTools": 107,
+  "totalTools": 108,
   "categories": [
     "Agents",
     "Billing",
@@ -1704,10 +1704,27 @@
           },
           "view": {
             "type": "string",
+            "maxLength": 32,
+            "description": "Optional extra view. \"work\" adds what agents are running and what waits on you; \"workspaces\" adds the workspaces the panel can switch to; \"history\" adds decisions settled in the range; \"receipts\" adds the Work Ledger receipts for the range (or for `query`); \"receipt\" adds one receipt in full with each criterion's verdict."
+          },
+          "range": {
+            "type": "string",
             "enum": [
-              "work"
+              "today",
+              "7d",
+              "30d"
             ],
-            "description": "Optional extra view. \"work\" adds what agents are running and what waits on you."
+            "description": "For views \"history\" and \"receipts\": today, 7d or 30d. Defaults to 7d."
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "For view \"receipts\": a Work Ledger filter instead of the range, e.g. \"pr:3236\" for the work behind a merge."
+          },
+          "receipt_id": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "For view \"receipt\": the receipt to read in full."
           }
         },
         "additionalProperties": false,
@@ -1717,6 +1734,50 @@
         "initiatives:read"
       ],
       "readOnly": true,
+      "source": "inline",
+      "profiles": [
+        "v2",
+        "chatgpt"
+      ]
+    },
+    {
+      "id": "orgx_widget_receipt_call",
+      "title": "Your call on a work receipt",
+      "description": "App-only: records a person's call on a Work Ledger receipt from the OrgX panel: done, partly done, not done or blocked. The ledger keeps the latest call per receipt; it overrides the agent's own guess and teaches OrgX what done means. USE WHEN: the person presses a call on a receipt in the OrgX panel. DO NOT USE: from a model; models read receipts with orgx_search scope=work_ledger.",
+      "category": "Decisions",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "receipt_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "The Work Ledger receipt the call is about."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "partially_succeeded",
+              "failed",
+              "blocked"
+            ],
+            "description": "The person's call on the outcome."
+          }
+        },
+        "required": [
+          "receipt_id",
+          "status"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "decisions:write",
+        "agents:write",
+        "initiatives:write"
+      ],
+      "readOnly": false,
       "source": "inline",
       "profiles": [
         "v2",
@@ -4136,6 +4197,21 @@
             "type": "number",
             "minimum": 0,
             "description": "Per-task or canary spend cap used during the validation run, when known."
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Model that did the work, as its provider names it (e.g. \"claude-opus-5-5\"). Always pass it: a receipt that does not say which model ran cannot be compared with another."
+          },
+          "model_provider": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "Provider of model when it cannot be read from the name (anthropic, openai, google…)."
+          },
+          "agent_work_receipt": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "A complete Agent Work Receipt (v0.2), stored verbatim instead of one built from the other fields. Include actor.runtime and actor.model, and ideally extensions[\"org.orgx.review/v1\"]: criteria frozen before the work, one check per criterion, output attached."
           },
           "status": {
             "type": "string",

@@ -35,6 +35,7 @@ describe('buildAgentWorkReceiptImportRequest', () => {
       receipt_type: 'proof',
       summary: 'Merged PR #142 unblocking the auth refactor',
       business_outcome: 'Auth refactor ships this week',
+      model: 'claude-opus-5-5',
       entity_type: 'task',
       entity_id: '11111111-1111-4111-8111-111111111111',
       artifact_id: '22222222-2222-4222-8222-222222222222',
@@ -69,11 +70,12 @@ describe('buildAgentWorkReceiptImportRequest', () => {
     expect(receipt.intent.objective).toBe('Auth refactor ships this week');
     expect(receipt.intent.metadata.receipt_type).toBe('proof');
 
-    // actor carries agent_type + verbatim client runtime
+    // actor carries agent_type, the verbatim client runtime, and the model
     expect(receipt.actor).toEqual({
       type: 'agent',
       id: 'engineering',
       runtime: { name: 'claude-code' },
+      model: { provider: 'anthropic', name: 'claude-opus-5-5' },
     });
 
     // authority stays unknown but records the spend cap honestly
@@ -281,7 +283,7 @@ describe('buildAgentWorkReceiptImportRequest', () => {
     const receipt = body.receipt as Record<string, any>;
     expect(receipt.timestamps.started_at).toBe(ISSUED_AT);
     expect(receipt.timestamps.duration_ms).toBeUndefined();
-    expect(warnings).toEqual([
+    expect(warnings.filter((w) => !w.startsWith('model was not given'))).toEqual([
       'started_at was not a valid RFC 3339 timestamp and was not forwarded; duration is recorded as unknown',
     ]);
   });
@@ -292,7 +294,7 @@ describe('buildAgentWorkReceiptImportRequest', () => {
       summary: 'Work',
       started_at: '2027-01-01T00:00:00.000Z',
     });
-    expect(warnings).toEqual([
+    expect(warnings.filter((w) => !w.startsWith('model was not given'))).toEqual([
       'started_at was in the future and was not forwarded; duration is recorded as unknown',
     ]);
   });
@@ -307,8 +309,8 @@ describe('buildAgentWorkReceiptImportRequest', () => {
       { receiptId: undefined }
     );
     expect(body.idempotency_key).toBe('retry-key--7--second-attempt-');
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain('idempotency_key was normalized');
+    expect(warnings.filter((w) => !w.startsWith('model was not given'))).toHaveLength(1);
+    expect(warnings.find((w) => w.includes('idempotency_key'))).toContain('idempotency_key was normalized');
     // deterministic: the same legacy key always maps to the same v1 key
     expect(normalizeV1IdempotencyKey('retry key #7 (second attempt)')).toEqual({
       key: 'retry-key--7--second-attempt-',
@@ -359,5 +361,34 @@ describe('shouldFallBackToLegacyReceipts', () => {
     expect(shouldFallBackToLegacyReceipts(422)).toBe(false);
     expect(shouldFallBackToLegacyReceipts(500)).toBe(false);
     expect(shouldFallBackToLegacyReceipts(undefined)).toBe(false);
+  });
+});
+
+describe('receipts say which model did the work', () => {
+  it('records the model when the agent names it', () => {
+    const { body, warnings } = buildAgentWorkReceiptImportRequest(
+      { receipt_type: 'proof', summary: 'Shipped', model: 'claude-opus-5-5' },
+      { workspaceId: '00000000-0000-4000-8000-000000000001', sourceClient: 'claude-code', issuedAt: '2026-10-08T10:00:00.000Z', receiptId: 'r1' }
+    );
+    expect(body.receipt.actor).toMatchObject({ runtime: { name: 'claude-code' }, model: { provider: 'anthropic', name: 'claude-opus-5-5' } });
+    expect(warnings.some((w) => w.startsWith('model was not given'))).toBe(false);
+  });
+  it('says so when the model is missing', () => {
+    const { warnings } = buildAgentWorkReceiptImportRequest(
+      { receipt_type: 'proof', summary: 'Shipped' },
+      { workspaceId: '00000000-0000-4000-8000-000000000001', sourceClient: 'claude-code', issuedAt: '2026-10-08T10:00:00.000Z', receiptId: 'r1' }
+    );
+    expect(warnings.some((w) => w.startsWith('model was not given'))).toBe(true);
+  });
+  it('passes a full receipt through verbatim and reports what it leaves out', () => {
+    const receipt = { schema_version: 'agent-work-receipt/v0.2', receipt_id: 'x', actor: { type: 'agent', id: 'a', runtime: { name: 'codex' } } };
+    const { body, warnings } = buildAgentWorkReceiptImportRequest(
+      { receipt_type: 'proof', summary: 'Shipped', agent_work_receipt: receipt, idempotency_key: 'k1' },
+      { workspaceId: '00000000-0000-4000-8000-000000000001', sourceClient: 'claude-code' }
+    );
+    expect(body.receipt).toBe(receipt);
+    expect(body.idempotency_key).toBe('k1');
+    expect(warnings.join(' ')).toMatch(/actor\.model is missing/);
+    expect(warnings.join(' ')).toMatch(/org\.orgx\.review\/v1/);
   });
 });

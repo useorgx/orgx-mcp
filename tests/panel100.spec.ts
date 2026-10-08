@@ -219,26 +219,31 @@ describe('In progress at scale', () => {
 describe('Done over a time range', () => {
   it('reads the history for the range once, lists it and opens a receipt beside it', async () => {
     const m = await openWith(snapshot());
-    m.calls.callServerTool.mockResolvedValueOnce({ structuredContent: snapshot({
-      generated_at: '2026-10-02T12:06:00.000Z',
-      history: { status: 'ok', range: '7d', items: [{ id: 'h1', title: 'Ship 4.1?', outcome: 'approved', settled_at: '2026-10-01T10:00:00.000Z', url: 'https://useorgx.com/decisions/h1' }] },
-    }) });
+    // Done opens on Work (its receipts read first); Decisions is one press away.
+    m.calls.callServerTool
+      .mockResolvedValueOnce({ structuredContent: snapshot({ receipts: { status: 'ok', query: 'since:2026-09-26', total: 0, items: [], reason: null } }) })
+      .mockResolvedValueOnce({ structuredContent: snapshot({
+        generated_at: '2026-10-02T12:06:00.000Z',
+        history: { status: 'ok', range: '7d', items: [{ id: 'h1', title: 'Ship 4.1?', outcome: 'approved', settled_at: '2026-10-01T10:00:00.000Z', url: 'https://useorgx.com/decisions/h1' }] },
+      }) });
     click(m, '[data-tab="done"]');
+    await m.flush(); await m.flush();
+    click(m, '[data-action="done-lens"][data-id="decisions"]');
     await m.flush();
     click(m, '[data-action="done-range"][data-id="7d"]');
     await m.flush(); await m.flush();
-    expect(m.calls.callServerTool.mock.calls[0]![0]).toMatchObject({ name: 'orgx_panel_snapshot', arguments: { view: 'history', range: '7d' } });
+    expect(m.calls.callServerTool.mock.calls[1]![0]).toMatchObject({ name: 'orgx_panel_snapshot', arguments: { view: 'history', range: '7d' } });
     expect(doc(m).querySelector('.pn-done-sum')!.textContent).toContain('1 decision settled in the last 7 days');
     click(m, '[data-action="receipt"][data-id="h1"]');
     await m.flush();
     expect(doc(m).querySelector('.pn-md-detail .md-title')!.textContent).toBe('Ship 4.1?');
     expect(doc(m).querySelector('.pn-md-detail .rt-line')!.textContent).toContain('Approved in OrgX');
-    // Back to 7 days again: no second read.
+    // Back to 7 days again: no second read (the two reads are Work's receipts and this history).
     click(m, '[data-action="done-range"][data-id="session"]');
     await m.flush();
     click(m, '[data-action="done-range"][data-id="7d"]');
     await m.flush();
-    expect(m.calls.callServerTool).toHaveBeenCalledTimes(1);
+    expect(m.calls.callServerTool).toHaveBeenCalledTimes(2);
   });
 });
 

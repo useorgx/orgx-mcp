@@ -6,7 +6,8 @@
  * page asks for the gallery; it is never inlined into the MCP Apps resource
  * (keep it off MCP_APPS_SHARED_COMPONENT_PATHS and the build allowlists).
  *
- *   OrgXPanelGallery.boot(ctx) -> { run, work, history, focus, workspaces }
+ *   OrgXPanelGallery.boot(ctx) -> { run, work, history, focus, workspaces,
+ *                                   receipts, receipt, behind }
  *
  * ctx is the panel's own state and functions: ui, params, render, accept,
  * clock, and useShare(modelContext), which swaps in a share controller.
@@ -335,6 +336,37 @@
       render();
     }
 
+    function galleryReceipts(range) {
+      var rows = [
+        ['Fix the flaky checkout test and open a PR', 'Eli', 'succeeded', 'verified', 'accepted', [3, 0, 1], ['useorgx/orgx#3236']],
+        ['Draft the launch post for the new pricing', 'Mark', 'succeeded', 'unverified', null, [2, 0, 2], []],
+        ['Add rate limiting to the public API', 'Eli', 'partially_succeeded', 'verified', null, [2, 1, 0], ['useorgx/orgx#3237']],
+        ['Build an ICP list of 50 founder-led SaaS companies', 'Sage', 'succeeded', 'unverified', 'accepted', [1, 0, 2], []],
+        ['Audit the onboarding flow for friction', 'Dana', 'failed', 'failed', 'rejected', [0, 2, 1], []],
+        ['Write a runbook for a failed deploy', 'Orion', 'succeeded', 'unverified', null, [0, 0, 0], []],
+      ];
+      var n = range === 'today' ? 2 : range === '7d' ? 5 : 6;
+      return { status: 'ok', query: 'since:', total: n, reason: null, items: rows.slice(0, n).map(function r(x, i) {
+        return { id: 'rcpt-' + i, at: new Date(Date.now() - (i + 1) * 4 * 3600 * 1000).toISOString(), actor: x[1], summary: x[0], outcome: x[2], verification: x[3], accepted: x[4],
+          work_type: null, area: null, entity_title: i < 3 ? 'Release initiative' : null, criteria: { met: x[5][0], unmet: x[5][1], unknown: x[5][2] }, prs: x[6], confidence: i === 1 ? 0.5 : 0.8 };
+      }) };
+    }
+    function galleryReceipt(id) {
+      var row = ui.receiptRows[id] || galleryReceipts('30d').items[0];
+      var texts = ['The checkout suite passes ten runs in a row', 'The fix has a regression test', 'No new console errors on checkout', 'The PR is reviewed by a person'];
+      var crit = [];
+      ['met', 'unmet', 'unknown'].forEach(function k(status) {
+        for (var i = 0; i < row.criteria[status]; i += 1) crit.push({ id: 'c' + crit.length, text: texts[crit.length % texts.length], kind: 'test', status: status, confidence: status === 'unknown' ? null : 0.85 });
+      });
+      return { status: 'ok', id: id, row: row, objective: null, outcome_summary: row.outcome === 'failed' ? 'Stopped after two attempts; the flow still drops users at step 3.' : 'Opened the change and ran the checks listed below.',
+        criteria: crit, artifacts: row.prs.map(function a(pr) { return { kind: 'pull_request', name: pr, url: 'https://github.com/' + pr.replace('#', '/pull/') }; }),
+        uncertain: row.criteria.unknown ? ['no evidence either way for: ' + texts[3]] : [], workstream_title: null, cost_usd: 0.42, completed_at: row.at, reason: null };
+    }
+    function galleryBehind(pr) {
+      var all = galleryReceipts('30d').items.filter(function m(r) { return r.prs.some(function has(x) { return x.slice(-pr.length - 1) === '#' + pr; }); });
+      return { status: 'ok', query: 'pr:' + pr, total: all.length, items: all, reason: null };
+    }
+
     function galleryHistory(range) {
       var titles = ['Ship release 4.1 to production?', 'Approve the Q4 pricing page copy', 'Allow gh pr merge 3221', 'Rotate the staging database password', 'Publish the September changelog', 'Pause the low-intent ads campaign'];
       var n = range === 'today' ? 2 : range === '7d' ? 5 : 6;
@@ -375,7 +407,10 @@
       ] };
     }
 
-    return { run: runGallery, work: galleryWork, history: galleryHistory, focus: galleryFocus, workspaces: galleryWorkspaces };
+    return {
+      run: runGallery, work: galleryWork, history: galleryHistory, focus: galleryFocus, workspaces: galleryWorkspaces,
+      receipts: galleryReceipts, receipt: galleryReceipt, behind: galleryBehind,
+    };
   }
 
   global.OrgXPanelGallery = { boot: boot };

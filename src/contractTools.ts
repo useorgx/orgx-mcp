@@ -20,7 +20,7 @@ import {
 import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 import { WORK_LEASE_DESCRIPTION, workLeaseInputSchema } from './workLeases';
 import { ControllerDomainSchema } from './controllerStatusContract';
-import { PANEL_SNAPSHOT_TOOL_CONTRACT, PANEL_TOOL_META } from './panelSurface';
+import { PANEL_SNAPSHOT_TOOL_CONTRACT, PANEL_TOOL_META, RECEIPT_CALL_TOOL_CONTRACT, RECEIPT_CALL_TOOL_META } from './panelSurface';
 
 export const V2_ORGX_TOOL_IDS = [
   'orgx_bootstrap',
@@ -518,6 +518,9 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       model_tier: z.enum(['standard', 'balanced', 'precision', 'local', 'sonnet', 'opus']).optional().describe('Model tier used for the run being receipted. For validation rungs before calibrated expansion, use standard.'),
       budget_mode: z.enum(['cheapest_valid', 'balanced', 'highest_quality']).optional().describe('Budget posture used for the run being receipted. For validation rungs before calibrated expansion, use cheapest_valid.'),
       max_cost_usd: z.number().nonnegative().optional().describe('Per-task or canary spend cap used during the validation run, when known.'),
+      model: z.string().max(120).optional().describe('Model that did the work, as its provider names it (e.g. "claude-opus-5-5"). Always pass it: a receipt that does not say which model ran cannot be compared with another.'),
+      model_provider: z.string().max(60).optional().describe('Provider of model when it cannot be read from the name (anthropic, openai, google…).'),
+      agent_work_receipt: z.record(z.unknown()).optional().describe('A complete Agent Work Receipt (v0.2), stored verbatim instead of one built from the other fields. Include actor.runtime and actor.model, and ideally extensions["org.orgx.review/v1"]: criteria frozen before the work, one check per criterion, output attached.'),
       // Without these two, a receipt could only ever say "completed". The API
       // write path defaulted status to 'completed' on every insert and stamped
       // started_at = completed_at = now(), so failure was unrepresentable and
@@ -1296,6 +1299,10 @@ export const INLINE_TOOL_CONTRACTS = {
   orgx_panel_snapshot: {
     ...PANEL_SNAPSHOT_TOOL_CONTRACT,
     _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
+  },
+  orgx_widget_receipt_call: {
+    ...RECEIPT_CALL_TOOL_CONTRACT,
+    _meta: RECEIPT_CALL_TOOL_META as unknown as Record<string, unknown>,
   },
   review_artifact: {
     id: 'review_artifact',

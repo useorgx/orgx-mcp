@@ -9,6 +9,7 @@
     var Views = window.OrgXPanelViews || null;
     var Tour = window.OrgXPanelTour || null;
     var Start = window.OrgXPanelStart || null;
+    var Receipts = window.OrgXPanelReceipts || null;
     var root = document.getElementById('panel');
     var params = new URLSearchParams(window.location.search);
     var isGallery = params.get('gallery') === 'true';
@@ -56,6 +57,16 @@
       history: {},
       historyPhase: 'idle',
       donePage: 1,
+      // Done › Work: Work Ledger receipts per range, the open one, and its full read.
+      doneLens: 'work',
+      receipts: {},
+      receiptsPhase: 'idle',
+      receiptSel: null,
+      receiptDetail: {},
+      receiptRows: {},
+      receiptCalls: {},
+      // Needs you: the receipt behind the open decision (by decision id).
+      behind: {},
       whyOpen: null,
       // Start: the composer's text, who takes it, how, and the last send's outcome.
       startText: '',
@@ -243,7 +254,19 @@
     function looksRaw(text) {
       return /^[\s{[<"]/.test(text) || /^[\s{}[\]"',:]*$/.test(text) || /"\s*:/.test(text) || /\b(?:undefined|null|NaN)\b/.test(text);
     }
+    /**
+     * ChatGPT checks a widget's calls against its own saved copy of the OrgX
+     * tools. When that copy is older than the panel, a new view or tool is
+     * refused before it reaches OrgX. Say how to fix it instead of echoing the
+     * validator.
+     */
+    var STALE_TOOLS = 'ChatGPT is using an older copy of the OrgX tools. Refresh the OrgX app in ChatGPT settings, then try again.';
+    function staleTools(error) {
+      var raw = [error && error.message, error && error.details && error.details.raw].filter(function str(v) { return typeof v === 'string'; }).join(' ');
+      return /connector schema validation|not in allowed enum|unrecognized key|additional propert|tool not found|unknown tool|no such tool/i.test(raw);
+    }
     function safeErrorText(error, fallback, max) {
+      if (staleTools(error)) return STALE_TOOLS;
       var message = error && typeof error.message === 'string' ? error.message.trim() : '';
       if (!message || looksRaw(message) || message.length > (max || 160) || /tool (?:request|execution) failed/i.test(message)) return fallback;
       return message;
@@ -620,7 +643,7 @@
         parts.push('<div class="notice receipt" data-tone="teal" role="status">' + ICON.check +
           '<p><strong>' + esc(verb) + '</strong> ' + (receiptCommand ? '<code>' + esc(receiptCommand) + '</code>' : esc(receiptTitle.headline)) + '</p>' +
           (receiptEntry && Views && Views.trailMarks ? Views.trailMarks(receiptEntry) : '') +
-          (ui.session.length ? '<button type="button" class="text-btn" data-action="tab" data-tab="done">In Done</button>' : '') + '</div>');
+          (ui.session.length ? '<button type="button" class="text-btn" data-action="done-decisions">In Done</button>' : '') + '</div>');
         armReceiptDismiss();
       }
       return parts.join('');
@@ -949,6 +972,8 @@
         body.commands.map(function cmd(c) { return '<div class="q-cmd"><span>Command</span><pre><code>' + esc(c) + '</code></pre></div>'; }).join('') +
         (facts.length ? '<dl class="facts">' + facts.join('') + '</dl>' : '') +
         evidenceHtml(f) + whyHtml(f) +
+        // The work this decision would let through, read before deciding, not after.
+        behindFor(f) +
         '<div class="actions">' + footerFor(f) + error + '</div>' +
         shareHtml(f) + (Launch && !ui.rulings[f.id] ? Launch.chipsHtml('packet', { title: head.headline }) : '') + '</section>';
     }
@@ -1132,10 +1157,18 @@
           { sel: ui.workSel, filter: ui.workFilter, query: ui.workQuery, expanded: ui.workExpanded });
       }
       if (ui.tab === 'done' && Views) {
+        var workRange = workRangeOf(ui.doneRange);
         return html + Views.doneHtml({
+          lens: ui.doneLens,
+          receipts: ui.receipts[workRange] ? withRow(ui.receipts[workRange]) : null,
+          receiptsPhase: ui.receiptsPhase,
+          rsel: ui.receiptSel,
+          receiptDetail: ui.receiptSel ? ui.receiptDetail[ui.receiptSel] || null : null,
+          receiptPhase: ui.receiptSel && !ui.receiptDetail[ui.receiptSel] ? 'loading' : 'ready',
+          receiptCall: ui.receiptSel ? ui.receiptCalls[ui.receiptSel] : undefined,
           session: ui.session,
           sel: ui.openReceipt,
-          range: ui.doneRange,
+          range: ui.doneLens === 'work' ? workRange : ui.doneRange,
           history: ui.history[ui.doneRange] || null,
           historyPhase: ui.historyPhase,
           page: ui.donePage,
@@ -1191,6 +1224,14 @@
         '<h2 class="cm-h" id="cm-h">You’re clear.</h2>' +
         '<p class="cm-sub">Nothing needs your decision. ' + esc(moving) + (see ? ' ' + see : '') + '</p>' +
         prompt + '</section>' + proofHtml(s, true);
+    }
+
+    /** The receipt behind the open decision, once read; starts the read the first time. */
+    function behindFor(focus) {
+      if (!Receipts) return '';
+      if (ui.behind[focus.id] === undefined) later(function read() { maybeFetchBehind(focus); }, 0);
+      var b = ui.behind[focus.id];
+      return b && b !== 'loading' ? Receipts.behindHtml(b) : '';
     }
 
     /** One way to the Start tab from any view, instead of prompt lists everywhere. */
@@ -1345,7 +1386,9 @@
         ui.composer = changed ? null : ui.composer;
         ui.startWhoOpen = false;
         if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); return; }
-        render();
+        // Done › Work reads its receipts the first time it opens; the read renders the loading rows.
+        if (tab === 'done' && ui.doneLens === 'work' && Receipts && !ui.receipts[workRangeOf(ui.doneRange)]) fetchReceipts(workRangeOf(ui.doneRange));
+        else render();
         if (changed && !quiet) {
           var t = root.querySelector('#pn-tab-' + tab);
           if (t) t.focus();
@@ -1383,6 +1426,7 @@
       ui.doneRange = range || 'session';
       ui.openReceipt = null;
       ui.donePage = 1;
+      if (ui.doneLens === 'work' && Receipts) { ui.receiptSel = null; fetchReceipts(workRangeOf(ui.doneRange)); return; }
       if (ui.doneRange === 'session' || isGallery) {
         if (isGallery && ui.doneRange !== 'session') ui.history[ui.doneRange] = gallery.history(ui.doneRange);
         render();
@@ -1402,11 +1446,113 @@
         ui.history[asked] = data && data.history ? data.history : { status: 'unavailable', range: asked, items: [] };
         ui.historyPhase = 'ready';
         if (ui.doneRange === asked) render();
-      }, function onHistoryError() {
+      }, function onHistoryError(error) {
         if (gen !== ui.generation) return;
-        ui.history[asked] = { status: 'unavailable', range: asked, items: [] };
+        ui.history[asked] = { status: 'unavailable', range: asked, items: [], reason: safeErrorText(error, 'Decision history could not be read right now.', 160) };
         ui.historyPhase = 'ready';
         if (ui.doneRange === asked) render();
+      });
+    }
+
+    /** Work receipts read by range; "This session" is a decisions idea, so Work shows 7 days. */
+    function workRangeOf(range) { return range === 'today' || range === '30d' ? range : '7d'; }
+    /** A receipt list with the open receipt's row kept, even when it came from elsewhere (a decision). */
+    function withRow(list) {
+      if (!ui.receiptSel || !list || list.status !== 'ok' || !ui.receiptRows[ui.receiptSel]) return list;
+      if (list.items.some(function has(r) { return r.id === ui.receiptSel; })) return list;
+      return Object.assign({}, list, { items: [ui.receiptRows[ui.receiptSel]].concat(list.items) });
+    }
+    function rememberRows(list) {
+      if (list && list.items) list.items.forEach(function keep(r) { ui.receiptRows[r.id] = r; });
+    }
+
+    function fetchReceipts(range) {
+      var cached = ui.receipts[range];
+      if (cached && cached.status === 'ok') { render(); return; }
+      if (isGallery) { ui.receipts[range] = gallery.receipts(range); rememberRows(ui.receipts[range]); ui.receiptsPhase = 'ready'; render(); return; }
+      ui.receiptsPhase = 'loading';
+      delete ui.receipts[range];
+      render();
+      var gen = ui.generation;
+      R.callToolResult('orgx_panel_snapshot', { view: 'receipts', range: range }).then(function onReceipts(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        if (isSnapshot(data)) accept(data, result.meta || null, 'refresh');
+        ui.receipts[range] = data && data.receipts ? data.receipts : { status: 'unavailable', query: '', total: 0, items: [], reason: null };
+        rememberRows(ui.receipts[range]);
+        ui.receiptsPhase = ui.receipts[range].status === 'ok' ? 'ready' : 'failed';
+        if (ui.tab === 'done') render();
+      }, function onReceiptsError(error) {
+        if (gen !== ui.generation) return;
+        ui.receipts[range] = { status: 'unavailable', query: '', total: 0, items: [], reason: safeErrorText(error, 'Work receipts could not be read right now.', 160) };
+        ui.receiptsPhase = 'failed';
+        if (ui.tab === 'done') render();
+      });
+    }
+
+    function openWorkReceipt(id) {
+      ui.receiptSel = !id || ui.receiptSel === id ? null : id;
+      render();
+      var open = ui.receiptSel;
+      if (!open || ui.receiptDetail[open]) return;
+      if (isGallery) { ui.receiptDetail[open] = gallery.receipt(open); render(); return; }
+      var gen = ui.generation;
+      R.callToolResult('orgx_panel_snapshot', { view: 'receipt', receipt_id: open }).then(function onReceipt(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        ui.receiptDetail[open] = data && data.receipt ? data.receipt : { status: 'unavailable', id: open, reason: null, criteria: [], artifacts: [], uncertain: [] };
+        if (data && data.receipt && data.receipt.row) ui.receiptRows[open] = data.receipt.row;
+        if (ui.receiptSel === open) render();
+      }, function onReceiptError(error) {
+        if (gen !== ui.generation) return;
+        ui.receiptDetail[open] = { status: 'unavailable', id: open, reason: safeErrorText(error, 'This receipt could not be read right now.', 160), criteria: [], artifacts: [], uncertain: [] };
+        if (ui.receiptSel === open) render();
+      });
+    }
+
+    /** A person's call on a receipt, recorded in the ledger; the row shows it at once. */
+    function recordReceiptCall(id, status) {
+      if (!id || !status) return;
+      ui.receiptCalls[id] = { status: status, phase: 'saving' };
+      render();
+      var done = function saved() {
+        ui.receiptCalls[id] = { status: status, phase: 'saved' };
+        var row = ui.receiptRows[id];
+        if (row) row.outcome = status;
+        Object.keys(ui.receipts).forEach(function each(k) {
+          (ui.receipts[k].items || []).forEach(function upd(r) { if (r.id === id) r.outcome = status; });
+        });
+        render();
+        announce('Recorded your call.');
+      };
+      if (isGallery) { later(done, 400); return; }
+      R.callToolResult('orgx_widget_receipt_call', { receipt_id: id, status: status }).then(function onCall(result) {
+        var data = result && result.data;
+        if (data && data.recorded) { done(); return; }
+        ui.receiptCalls[id] = { status: status, phase: 'failed', reason: (data && data.reason) || null };
+        render();
+      }, function onCallError(error) {
+        ui.receiptCalls[id] = { status: status, phase: 'failed', reason: safeErrorText(error, 'Your call could not be recorded. Try again.', 160) };
+        render();
+      });
+    }
+
+    /** The work behind the open decision: the ledger's receipts for its PR, read once per decision. */
+    function maybeFetchBehind(focus) {
+      if (!Receipts || !focus || ui.behind[focus.id] !== undefined) return;
+      var pr = Receipts.prOf([focus.title, focus.question, focus.detail].filter(Boolean).join('\n'));
+      if (!pr) { ui.behind[focus.id] = null; return; }
+      ui.behind[focus.id] = 'loading';
+      if (isGallery) { ui.behind[focus.id] = gallery.behind(pr); rememberRows(ui.behind[focus.id]); later(render, 0); return; }
+      var gen = ui.generation;
+      R.callToolResult('orgx_panel_snapshot', { view: 'receipts', query: 'pr:' + pr, focus: { kind: 'decision', id: focus.id } }).then(function onBehind(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        ui.behind[focus.id] = data && data.receipts ? data.receipts : null;
+        rememberRows(ui.behind[focus.id]);
+        if (ui.tab === 'needs' && ui.snapshot && ui.snapshot.focus && ui.snapshot.focus.id === focus.id) render();
+      }, function onBehindError() {
+        ui.behind[focus.id] = null;
       });
     }
 
@@ -1970,6 +2116,47 @@
           if (agentEl) { agentEl.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' }); var firstRow = agentEl.querySelector('.wk-row'); if (firstRow) firstRow.focus({ preventScroll: true }); }
           break;
         case 'done-range': transition('swap', function range() { setDoneRange(id); }); break;
+        // From a ruling's confirmation: Done, on the decisions this panel settled.
+        case 'done-decisions':
+          ui.doneLens = 'decisions';
+          if (!ui.history[ui.doneRange] && ui.doneRange !== 'session') ui.doneRange = 'session';
+          setTab('done');
+          break;
+        case 'done-lens':
+          transition('swap', function lens() {
+            ui.doneLens = id === 'decisions' ? 'decisions' : 'work';
+            ui.donePage = 1;
+            setDoneRange(ui.doneLens === 'work' ? workRangeOf(ui.doneRange) : ui.doneRange);
+            focusFirst('[data-action="done-lens"][aria-pressed="true"]');
+          });
+          break;
+        case 'work-receipt':
+          transition('detail', function openRc() {
+            openWorkReceipt(id);
+            focusFirst(ui.receiptSel ? '.pn-md-detail .md-close' : '.rc-row');
+          });
+          break;
+        case 'behind-open':
+          ui.doneLens = 'work';
+          setTab('done', true, function showBehind() {
+            fetchReceipts(workRangeOf(ui.doneRange));
+            ui.receiptSel = null;
+            openWorkReceipt(id);
+            focusFirst('.pn-md-detail .md-close');
+          });
+          break;
+        case 'receipt-call': recordReceiptCall(id, el.getAttribute('data-status')); break;
+        case 'receipt-iterate': {
+          var rrow = ui.receiptRows[id] || (ui.receiptDetail[id] && ui.receiptDetail[id].row);
+          if (!rrow || !Launch || !Receipts) break;
+          el.setAttribute('aria-busy', 'true');
+          Launch.send(Receipts.iterateSentence(rrow)).then(function iterated(outcome) {
+            el.removeAttribute('aria-busy');
+            el.textContent = outcome === 'sent' ? 'Sent to the chat' : outcome === 'copied' ? 'Copied. Paste it into the chat' : 'Type it in the chat';
+            announce(outcome === 'sent' ? 'Sent to the chat.' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send it. Type it in the chat.');
+          });
+          break;
+        }
         case 'done-more': transition('expand', function more() { ui.donePage += 1; render(); }); break;
         case 'start-open': setTab('start', true, function focusComposer() { focusFirst('#st-text'); }); break;
         case 'start-who':
@@ -2212,7 +2399,6 @@
       fetchSnapshot(null, 'resume');
       if (ui.tab === 'work' && !ui.work) fetchWork();
     });
-
 
     /**
      * The gallery's fixtures live in panel-gallery.js, which is not inlined

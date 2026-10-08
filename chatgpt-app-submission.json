@@ -212,6 +212,18 @@
         "destructive_justification": "Read-only; nothing is changed or deleted."
       }
     },
+    "orgx_widget_receipt_call": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Records the person's call on one Work Ledger receipt's outcome (done, partly, not done, blocked) when they click in the OrgX panel.",
+        "open_world_justification": "Changes only the OrgX Work Ledger's record of that receipt; it does not act in external systems.",
+        "destructive_justification": "Appends one call; the ledger keeps every call and the latest wins, so nothing is overwritten or deleted. Widget-only, so a model cannot call it."
+      }
+    },
     "get_agent_status": {
       "annotations": {
         "readOnlyHint": false,

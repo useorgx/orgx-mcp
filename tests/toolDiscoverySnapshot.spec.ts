@@ -13,7 +13,7 @@ import {
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { CLAUDE_DIRECTORY_TOOL_ADAPTERS } from '../src/claudeDirectoryTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
-import { PANEL_SNAPSHOT_TOOL_CONTRACT } from '../src/panelSurface';
+import { PANEL_SNAPSHOT_TOOL_CONTRACT, RECEIPT_CALL_TOOL_CONTRACT } from '../src/panelSurface';
 import {
   TOOL_PROFILES,
   WIDGET_AFFORDANCE_SURFACE,
@@ -96,6 +96,7 @@ function collectAllTools(): Map<string, string> {
   // Registered from src/panelSurface.ts (one call in index.ts); its
   // description is locked like any definition-backed tool.
   map.set(PANEL_SNAPSHOT_TOOL_CONTRACT.id, PANEL_SNAPSHOT_TOOL_CONTRACT.description);
+  map.set(RECEIPT_CALL_TOOL_CONTRACT.id, RECEIPT_CALL_TOOL_CONTRACT.description);
   return map;
 }
 
