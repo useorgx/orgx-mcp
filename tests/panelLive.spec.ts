@@ -492,7 +492,7 @@ describe('panel live client', () => {
       [{ total: 1, blocked: 1 }, true],
     ]);
     // The rows themselves come along, so In progress can render from the feed.
-    expect(work.mock.calls[1]![0].items).toEqual([{ id: 't1', agent: 'Agent', title: 'Task', state: 'blocked' }]);
+    expect(work.mock.calls[1]![0].items).toEqual([expect.objectContaining({ id: 't1', agent: 'Agent', title: 'Task', state: 'blocked', stale: false })]);
     expect(stale).not.toHaveBeenCalled();
   });
 

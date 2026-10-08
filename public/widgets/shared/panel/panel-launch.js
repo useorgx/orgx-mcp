@@ -76,7 +76,6 @@
     work: ['status', 'delegate'],
     done: ['check', 'next', 'launch'],
     packet: ['risk', 'wait'],
-    tips: ['next', 'status', 'brief', 'delegate', 'pulse'],
   };
 
   function prompts(kind, ctx) {
@@ -117,25 +116,6 @@
       }).join('') + '</div>';
   }
 
-  /** One tip line, or nothing when the person has learned it or turned it off. */
-  function tipHtml(ctx, shownKinds) {
-    ctx = ctx || {};
-    if (memory.dismissed >= 2 || memory.sent >= 3) return '';
-    // Never repeat a prompt the visible section already shows.
-    var shown = {};
-    (shownKinds || []).forEach(function each(kind) { prompts(kind, ctx).slice(0, 4).forEach(function mark(p) { shown[p.key] = true; }); });
-    var pool = prompts('tips', ctx).filter(function fresh(p) { return !shown[p.key]; });
-    if (!pool.length) return '';
-    var p = pool[memory.opens % pool.length];
-    return '<p class="pn-tip"><span class="pn-tip-l">Try in chat</span>' +
-      '<button type="button" class="pn-tip-p" data-action="launch" data-key="' + esc(p.key) + '" data-prompt="' + esc(p.text) + '" data-tip="true">“' + esc(p.text) + '”</button>' +
-      '<button type="button" class="pn-tip-x" data-action="tip-dismiss" aria-label="Hide chat tips">' +
-      '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></p>';
-  }
-
-  function noteOpen() { memory.opens += 1; save(); }
-  function noteDismiss() { memory.dismissed += 1; save(); }
-
   function copy(text) {
     var nav = global.navigator;
     if (nav && nav.clipboard && typeof nav.clipboard.writeText === 'function') {
@@ -174,10 +154,7 @@
     prompts: prompts,
     sectionHtml: sectionHtml,
     chipsHtml: chipsHtml,
-    tipHtml: tipHtml,
     send: send,
-    noteOpen: noteOpen,
-    noteDismiss: noteDismiss,
     _state: function state() { return Object.assign({}, memory); },
     _reset: function reset() { memory = { dismissed: 0, sent: 0, opens: 0 }; save(); },
   };

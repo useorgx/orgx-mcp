@@ -29,6 +29,24 @@ import {
 
 const decideActionSchema = z.enum(['approve', 'reject']);
 const panelItemKindSchema = z.enum(['decision', 'approval', 'action']);
+const panelReceiptRowSchema = z
+  .object({
+    id: z.string(),
+    at: z.string().nullable(),
+    actor: z.string().nullable(),
+    summary: z.string(),
+    outcome: z.string().nullable(),
+    verification: z.string().nullable(),
+    accepted: z.string().nullable(),
+    work_type: z.string().nullable(),
+    area: z.string().nullable(),
+    entity_title: z.string().nullable(),
+    criteria: z.object({ met: z.number(), unmet: z.number(), unknown: z.number() }).strict(),
+    prs: z.array(z.string()),
+    confidence: z.number().nullable(),
+  })
+  .strict();
+const panelAskerKindSchema = z.enum(['agent', 'floor', 'unnamed', 'system']);
 /** The app's per-item widget_actions contract, as the panel carries it (clipped). */
 const panelWidgetActionsSchema = z
   .object({
@@ -150,6 +168,8 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             kind: panelItemKindSchema,
             widget_actions: panelWidgetActionsSchema.nullable(),
             asker: z.string().nullable(),
+            asker_kind: panelAskerKindSchema.optional(),
+            session_label: z.string().nullable().optional(),
             detail: z.string().nullable().optional(),
             url: z.string(),
           })
@@ -186,6 +206,18 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           multiselect: z.boolean(),
           widget_actions: panelWidgetActionsSchema.nullable(),
           asker: z.string().nullable(),
+          asker_kind: panelAskerKindSchema.optional(),
+          session_label: z.string().nullable().optional(),
+          why: z
+            .object({
+              authority: z.string().nullable(),
+              policy: z.string().nullable(),
+              uncertainty: z.array(z.string()),
+              run_url: z.string().nullable(),
+              initiative_url: z.string().nullable(),
+            })
+            .strict()
+            .optional(),
           url: z.string(),
         })
         .strict()
@@ -223,6 +255,9 @@ export const WIDGET_OUTPUT_SCHEMAS = {
                 title: z.string(),
                 state: z.enum(['blocked', 'running', 'queued']),
                 url: z.string(),
+                domain: z.string().nullable().optional(),
+                updated_at: z.string().nullable().optional(),
+                stale: z.boolean().optional(),
               })
               .strict()
           ),
@@ -239,11 +274,76 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         })
         .strict()
         .optional(),
+      history: z
+        .object({
+          status: z.enum(['ok', 'unavailable']),
+          range: z.enum(['today', '7d', '30d']),
+          items: z.array(
+            z
+              .object({
+                id: z.string(),
+                title: z.string(),
+                outcome: z.enum(['approved', 'declined', 'cancelled', 'superseded']),
+                settled_at: z.string().nullable(),
+                url: z.string(),
+              })
+              .strict()
+          ),
+          reason: z.string().nullable().optional(),
+        })
+        .strict()
+        .optional(),
+      // Work Ledger receipts (src/panelReceipts.ts).
+      receipts: z
+        .object({
+          status: z.enum(['ok', 'unavailable']),
+          query: z.string(),
+          total: z.number(),
+          items: z.array(panelReceiptRowSchema),
+          reason: z.string().nullable(),
+        })
+        .strict()
+        .optional(),
+      receipt: z
+        .object({
+          status: z.enum(['ok', 'unavailable']),
+          id: z.string(),
+          row: panelReceiptRowSchema.nullable(),
+          objective: z.string().nullable(),
+          outcome_summary: z.string().nullable(),
+          criteria: z.array(
+            z
+              .object({
+                id: z.string(),
+                text: z.string(),
+                kind: z.string().nullable(),
+                status: z.enum(['met', 'unmet', 'unknown']),
+                confidence: z.number().nullable(),
+              })
+              .strict()
+          ),
+          artifacts: z.array(z.object({ kind: z.string(), name: z.string(), url: z.string().nullable() }).strict()),
+          uncertain: z.array(z.string()),
+          workstream_title: z.string().nullable(),
+          cost_usd: z.number().nullable(),
+          completed_at: z.string().nullable(),
+          reason: z.string().nullable(),
+        })
+        .strict()
+        .optional(),
       // The panel's own live feed (see src/live/panelFeed.ts).
       live: streamGrantSchema.optional(),
     })
     .strict(),
 
+  orgx_widget_receipt_call: z
+    .object({
+      recorded: z.boolean(),
+      receipt_id: z.string(),
+      status: z.enum(['succeeded', 'partially_succeeded', 'failed', 'blocked']).nullable(),
+      reason: z.string().nullable(),
+    })
+    .strict(),
   get_agent_status: z
     .object({
       agents: z.array(agentSchema),

@@ -70,7 +70,12 @@ function withQuery(path: string, query: Record<string, string | undefined> = {})
   return qs ? `${path}?${qs}` : path;
 }
 
-/** Mission control, or an initiative's live room (only the focus keys each page reads). */
+/**
+ * An initiative's live room, or (without one) the page the focus names. The
+ * legacy mission-control view is built around a single initiative and renders
+ * an empty graph without one, so it is never the destination: a task, run,
+ * workstream or milestone opens its own page, and anything else opens Runs.
+ */
 function livePath(
   initiativeId?: string,
   focus: Record<string, string | undefined> = {}
@@ -83,14 +88,11 @@ function livePath(
       artifact: focus.artifact,
     });
   }
-  return withQuery('/live', {
-    view: 'mission-control',
-    workstream: focus.workstream,
-    milestone: focus.milestone,
-    task: focus.task,
-    run: focus.run,
-    session: focus.session,
-  });
+  if (clean(focus.task)) return `/tasks/${seg(focus.task!)}`;
+  if (clean(focus.run)) return `/runs/${seg(focus.run!)}`;
+  if (clean(focus.workstream)) return `/workstreams/${seg(focus.workstream!)}`;
+  if (clean(focus.milestone)) return `/milestones/${seg(focus.milestone!)}`;
+  return '/runs';
 }
 
 /**
@@ -186,12 +188,11 @@ export function buildLiveUrl(
     // The live room reads its focus keys; a session belongs to mission control.
     path = livePath(initiativeId, rest);
   } else {
-    path = withQuery('/live', {
-      view: 'mission-control',
-      ...rest,
-      session: sessionId,
-      center: workspace ?? rest.center,
-    });
+    // No initiative: no live room. Runs is the workspace's running work and
+    // scopes itself to the active workspace (it reads no ?center).
+    path = livePath(undefined, rest);
+    void sessionId;
+    void workspace;
   }
   return new URL(path, ORGX_APP_BASE_URL).toString();
 }

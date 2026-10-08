@@ -326,12 +326,16 @@ describe('polish: what the production panel got wrong', () => {
   it('leads repeated rows with what differs, and keeps Review quiet', async () => {
     const m = await openWith(mergesSnapshot());
     const subs = Array.from(doc(m).querySelectorAll('.row .row-sub.is-cmd')).map((n) => n.textContent);
-    expect(subs).toEqual(['gh pr merge 3237', 'gh pr merge 3238']);
+    // The whole queue: the open decision stays in its group, marked, so the
+    // list's count is the attention line's count.
+    expect(subs).toEqual(['gh pr merge 3236', 'gh pr merge 3237', 'gh pr merge 3238']);
+    expect(doc(m).querySelector('.row.is-current[aria-current="true"] .row-sub')!.textContent).toBe('gh pr merge 3236');
+    expect(doc(m).querySelector('.queue-n')!.textContent).toBe('3');
     // One group: the shared title once, with a count, then a line per decision.
     const group = doc(m).querySelector('.qgroup')!;
     expect(group.querySelector('.qgroup-t')!.textContent).toBe(TITLE);
-    expect(group.querySelector('.qgroup-n')!.textContent).toBe('2');
-    expect(group.querySelectorAll('.row.grow')).toHaveLength(2);
+    expect(group.querySelector('.qgroup-n')!.textContent).toBe('3');
+    expect(group.querySelectorAll('.row.grow')).toHaveLength(3);
     // Rendered text only (the inlined gallery fixture carries the sentence too).
     const holders = Array.from(doc(m).querySelectorAll('body *'))
       .filter((el) => el.tagName !== 'SCRIPT' && el.children.length === 0 && (el.textContent || '').includes(TITLE));
@@ -366,7 +370,7 @@ describe('polish: In progress agrees with its count', () => {
     await m.flush(); await m.flush(); await m.flush();
     const view = doc(m).querySelector('.pn-work')!;
     expect(view.textContent).not.toContain('could not be read');
-    expect(view.querySelectorAll('.pn-row')).toHaveLength(2);
+    expect(view.querySelectorAll('.wk-row')).toHaveLength(2);
     expect(doc(m).querySelector('#pn-tab-work .pn-tab-n')!.textContent).toBe('2');
   });
 

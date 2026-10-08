@@ -2576,6 +2576,8 @@ export class OrgXMcp extends McpAgent<
     status?: string | null;
     query?: string | null;
     fields?: string[] | null;
+    orderBy?: string;
+    orderDirection?: 'asc' | 'desc';
   }): Promise<Array<Record<string, unknown>>> {
     const page = await this.fetchEntityCollectionPage(params);
     return page.records;
@@ -2594,6 +2596,8 @@ export class OrgXMcp extends McpAgent<
     fields?: string[] | null;
     createdFrom?: string;
     createdTo?: string;
+    orderBy?: string;
+    orderDirection?: 'asc' | 'desc';
   }): Promise<EntitySearchPage> {
     const search = buildEntityCollectionSearchParams(params);
 
@@ -3162,6 +3166,55 @@ export class OrgXMcp extends McpAgent<
           });
           return null;
         }
+      },
+      // Read only when Done is opened: approved and declined decisions, by last update.
+      // Each status reads on its own, so one failure keeps the other; an
+      // ordered read that is refused retries unordered (the panel sorts by
+      // settled time itself). Only when nothing could be read does it throw,
+      // with the cause, so the panel can say why.
+      fetchDecisionHistory: async ({ workspaceId }) => {
+        const read = async (status: string) => {
+          const base = { type: 'decision', userId: userId(), workspaceId, status, limit: 40 };
+          try {
+            return await this.fetchEntityCollection({ ...base, orderBy: 'updated_at', orderDirection: 'desc' });
+          } catch (ordered) {
+            console.warn('[panel] ordered decision history read failed; retrying unordered', { workspaceId, status, error: ordered instanceof Error ? ordered.message : String(ordered) });
+            return this.fetchEntityCollection(base);
+          }
+        };
+        const reads = await Promise.allSettled([read('approved'), read('declined')]);
+        const ok = reads.filter((r): r is PromiseFulfilledResult<Array<Record<string, unknown>>> => r.status === 'fulfilled');
+        if (!ok.length) {
+          const cause = (reads[0] as PromiseRejectedResult).reason;
+          console.warn('[panel] decision history read failed', { workspaceId, error: cause instanceof Error ? cause.message : String(cause) });
+          throw cause;
+        }
+        return ok.flatMap((r) => r.value);
+      },
+      fetchLedgerReceipts: async ({ workspaceId, query, limit }) => {
+        const qs = new URLSearchParams({ workspace_id: workspaceId, q: query, limit: String(limit) });
+        const response = await callOrgxApiJson(this.env, `/api/v1/work-ledger/receipts?${qs.toString()}`, undefined, actor(userId()));
+        return response.json();
+      },
+      recordReceiptCall: async ({ workspaceId, receiptId, status }) => {
+        const response = await callOrgxApiJson(
+          this.env,
+          '/api/v1/work-ledger/decisions',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              ...(workspaceId ? { workspace_id: workspaceId } : {}),
+              decision: { kind: 'outcome', subject: receiptId, value: { status } },
+            }),
+          },
+          actor(userId())
+        );
+        await response.json().catch(() => null);
+      },
+      fetchLedgerReceipt: async ({ workspaceId, id }) => {
+        const qs = new URLSearchParams({ workspace_id: workspaceId });
+        const response = await callOrgxApiJson(this.env, `/api/v1/work-ledger/receipts/${encodeURIComponent(id)}?${qs.toString()}`, undefined, actor(userId()));
+        return response.json();
       },
       // Read only when the person opens the workspace switcher.
       fetchWorkspaces: async () => {

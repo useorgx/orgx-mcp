@@ -22,7 +22,7 @@ describe('panel v2 tabs', () => {
   it('shows Needs you, In progress and Done with honest counts', async () => {
     const m = await open();
     const tabs = Array.from(doc(m).querySelectorAll('.pn-tab')).map((t) => t.textContent);
-    expect(tabs).toEqual(['Needs you2', 'In progress', 'Done0']);
+    expect(tabs).toEqual(['Needs you2', 'In progress', 'Done0', 'Start']);
     expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('needs');
   });
 
@@ -42,7 +42,7 @@ describe('panel v2 tabs', () => {
     await m.flush(); await m.flush();
     expect(m.calls.callServerTool).toHaveBeenCalledTimes(1);
     expect(m.calls.callServerTool.mock.calls[0]![0]).toMatchObject({ name: 'orgx_panel_snapshot', arguments: { view: 'work' } });
-    const rows = Array.from(doc(m).querySelectorAll('.pn-work .pn-row-t')).map((n) => n.textContent);
+    const rows = Array.from(doc(m).querySelectorAll('.pn-work .wk-t')).map((n) => n.textContent);
     expect(rows).toEqual(['Design plan', 'Reconcile telemetry']);
     expect(doc(m).querySelector('#pn-tab-work .pn-tab-n')!.textContent).toBe('2');
     expect(doc(m).querySelector('#pn-tab-work .pn-tab-n')!.getAttribute('data-tone')).toBe('red');
@@ -64,8 +64,9 @@ describe('panel v2 tabs', () => {
     needs.focus();
     needs.dispatchEvent(new m.dom.window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     await m.flush();
-    expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('done');
-    expect(doc(m).activeElement!.id).toBe('pn-tab-done');
+    // Left from the first tab wraps to the last: Start.
+    expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('start');
+    expect(doc(m).activeElement!.id).toBe('pn-tab-start');
   });
 
   it('keeps a receipt in Done for a decision settled in this panel', async () => {
@@ -76,16 +77,20 @@ describe('panel v2 tabs', () => {
     doc(m).querySelector('ox-footer[data-id]')!.dispatchEvent(new m.dom.window.CustomEvent('ox-primary', { bubbles: true }));
     await m.flush(); await m.flush();
     expect(doc(m).querySelector('#pn-tab-done .pn-tab-n')!.textContent).toBe('1');
+    // Done opens on Work; the decisions this panel settled are one press away.
     click(m, '[data-tab="done"]');
+    await m.flush();
+    click(m, '[data-action="done-lens"][data-id="decisions"]');
     await m.flush();
     const done = doc(m).querySelector('.pn-done')!;
     expect(done.textContent).toContain('Ship release 4.2?');
     expect(done.textContent).toContain('Approved by you');
     click(m, `[data-action="receipt"][data-id="${D1}"]`);
     await m.flush();
-    expect(doc(m).querySelector(`#rc-${D1}`)!.hasAttribute('hidden')).toBe(false);
+    // The receipt opens in the detail pane beside the list.
+    expect(doc(m).querySelector(`[data-action="receipt"][data-id="${D1}"]`)!.getAttribute('aria-pressed')).toBe('true');
     // The lightweight receipt: decided and recorded proven, the outcome named as missing.
-    const lines = Array.from(doc(m).querySelectorAll(`#rc-${D1} .rt-line`)).map((l) => [l.getAttribute('data-s'), l.textContent]);
+    const lines = Array.from(doc(m).querySelectorAll('.pn-md-detail .rt-line')).map((l) => [l.getAttribute('data-s'), l.textContent]);
     expect(lines.map((l) => l[0])).toEqual(['pass', 'pass', 'none']);
     expect(lines[1]![1]).toContain('Recorded in OrgX');
     expect(lines[2]![1]).toContain('not on this receipt yet');
@@ -116,22 +121,32 @@ describe('panel lightweight receipt after a decision', () => {
     expect(receipt.textContent).toContain('Approved by you');
     expect(receipt.querySelector('.rt')!.getAttribute('aria-label')).toBe('Decided: proven. Recorded: proven. Outcome: no proof');
     // Done holds the receipt; the one-line notice does not repeat it there.
-    click(m, '[data-tab="done"]');
+    click(m, '[data-action="done-decisions"]');
     await m.flush();
     expect(doc(m).querySelector('.notice.receipt')).toBeNull();
-    expect(doc(m).querySelector('.pn-done-sum')!.textContent).toContain('1 settled');
+    expect(doc(m).querySelector('.pn-done-sum')!.textContent).toContain('1 decision settled');
   });
 });
 
 describe('panel v2 start work in chat', () => {
+  // Calm: one way to Start; the sentence is composed there and sent as a user message.
+  async function composeInStart(m: Mounted, text: string) {
+    // Calm: the empty state's prompt opens Start with the cursor in the composer.
+    click(m, '[data-action="start-open"]');
+    await m.flush();
+    expect(doc(m).activeElement!.id).toBe('st-text');
+    const ta = doc(m).querySelector('#st-text') as HTMLTextAreaElement;
+    ta.value = text;
+    ta.dispatchEvent(new m.dom.window.Event('input', { bubbles: true }));
+  }
+
   it('posts the exact sentence as a user message', async () => {
     const m = await open(snapshot({ queue: [], focus: null, attention: { pending: 0, oldest_at: null, blocking: false }, proof: { last_accepted: null, completed_unaccepted: 1 } }), {});
-    const prompt = doc(m).querySelector('.pn-launch [data-action="launch"]') as HTMLButtonElement;
-    expect(prompt.textContent).toContain('Help me start a new initiative in OrgX');
-    prompt.click();
+    await composeInStart(m, 'Launch the pricing page');
+    click(m, '[data-action="start-send"]');
     await m.flush(); await m.flush();
-    expect(m.calls.sendMessage).toHaveBeenCalledWith({ role: 'user', content: [{ type: 'text', text: 'Help me start a new initiative in OrgX' }] });
-    expect(prompt.getAttribute('data-sent')).toBe('sent');
+    expect(m.calls.sendMessage).toHaveBeenCalledWith({ role: 'user', content: [{ type: 'text', text: 'Start a new initiative in OrgX: Launch the pricing page.' }] });
+    expect(doc(m).querySelector('.st-status')!.getAttribute('data-outcome')).toBe('sent');
   });
 
   it('never shows launch prompts above a pending decision', async () => {
@@ -147,21 +162,22 @@ describe('panel v2 start work in chat', () => {
     m.calls.sendMessage.mockRejectedValueOnce(new Error('not supported'));
     const writeText = vi.fn(async () => undefined);
     Object.defineProperty(m.dom.window.navigator, 'clipboard', { configurable: true, value: { writeText } });
-    const prompt = doc(m).querySelector('.pn-launch [data-action="launch"]') as HTMLButtonElement;
-    prompt.click();
+    await composeInStart(m, 'Launch the pricing page');
+    click(m, '[data-action="start-send"]');
     await m.flush(); await m.flush();
-    expect(writeText).toHaveBeenCalledWith('Help me start a new initiative in OrgX');
-    expect(prompt.getAttribute('data-sent')).toBe('copied');
-    expect(prompt.textContent).toContain('Paste it into the chat');
+    expect(writeText).toHaveBeenCalledWith('Start a new initiative in OrgX: Launch the pricing page.');
+    expect(doc(m).querySelector('.st-status')!.textContent).toContain('Paste it into the chat');
+    // Copied, not sent: the text stays so the person can still edit it.
+    expect((doc(m).querySelector('#st-text') as HTMLTextAreaElement).value).toBe('Launch the pricing page');
   });
 
-  it('stops the tip line after two dismissals', async () => {
+  it('offers one next prompt when calm, not a prompt and a tip', async () => {
     const calm = snapshot({ queue: [], focus: null, attention: { pending: 0, oldest_at: null, blocking: false }, proof: { last_accepted: null, completed_unaccepted: 1 } });
     const m = await open(calm, {});
-    expect(doc(m).querySelector('.pn-tip')).not.toBeNull();
-    click(m, '[data-action="tip-dismiss"]'); await m.flush();
-    click(m, '[data-action="tip-dismiss"]'); await m.flush();
+    expect(doc(m).querySelectorAll('[data-action="start-open"]')).toHaveLength(1);
     expect(doc(m).querySelector('.pn-tip')).toBeNull();
+    // In progress has not been read: the empty state claims nothing about it.
+    expect(doc(m).querySelector('.cm-sub')!.textContent!.trim()).toBe('Nothing needs your decision.');
   });
 });
 

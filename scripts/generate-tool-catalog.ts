@@ -117,6 +117,7 @@ const TOOL_CATEGORY_MAP: Record<string, string> = {
   get_pending_decisions: 'Decisions',
   approve_decision: 'Decisions',
   orgx_panel_snapshot: 'Decisions',
+  orgx_widget_receipt_call: 'Decisions',
   reject_decision: 'Decisions',
   get_decision_history: 'Decisions',
 
@@ -488,6 +489,17 @@ const INLINE_TOOL_METADATA: Array<{
     ),
     readOnly:
       INLINE_TOOL_CONTRACTS.orgx_panel_snapshot.annotations.readOnlyHint,
+  },
+  {
+    id: INLINE_TOOL_CONTRACTS.orgx_widget_receipt_call.id,
+    title: INLINE_TOOL_CONTRACTS.orgx_widget_receipt_call.title,
+    description: INLINE_TOOL_CONTRACTS.orgx_widget_receipt_call.description,
+    inputSchema: z.object(INLINE_TOOL_CONTRACTS.orgx_widget_receipt_call.inputSchema),
+    securityScopes: extractScopes(
+      INLINE_TOOL_CONTRACTS.orgx_widget_receipt_call.securitySchemes
+    ),
+    readOnly:
+      INLINE_TOOL_CONTRACTS.orgx_widget_receipt_call.annotations.readOnlyHint,
   },
   {
     id: 'account_status',

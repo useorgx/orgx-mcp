@@ -8,6 +8,8 @@
     var Launch = window.OrgXPanelLaunch || null;
     var Views = window.OrgXPanelViews || null;
     var Tour = window.OrgXPanelTour || null;
+    var Start = window.OrgXPanelStart || null;
+    var Receipts = window.OrgXPanelReceipts || null;
     var root = document.getElementById('panel');
     var params = new URLSearchParams(window.location.search);
     var isGallery = params.get('gallery') === 'true';
@@ -45,7 +47,33 @@
       workPhase: 'idle',
       session: [],
       openReceipt: null,
-      launchNoted: false,
+      // In progress: selected task, state filter, search, agents shown in full.
+      workSel: null,
+      workFilter: 'all',
+      workQuery: '',
+      workExpanded: {},
+      // Done: time range, history per range, selected receipt, page.
+      doneRange: 'session',
+      history: {},
+      historyPhase: 'idle',
+      donePage: 1,
+      // Done › Work: Work Ledger receipts per range, the open one, and its full read.
+      doneLens: 'work',
+      receipts: {},
+      receiptsPhase: 'idle',
+      receiptSel: null,
+      receiptDetail: {},
+      receiptRows: {},
+      receiptCalls: {},
+      // Needs you: the receipt behind the open decision (by decision id).
+      behind: {},
+      whyOpen: null,
+      // Start: the composer's text, who takes it, how, and the last send's outcome.
+      startText: '',
+      startAgent: '',
+      startVerb: '',
+      startStatus: null,
+      startWhoOpen: false,
       tourChecked: false,
       // Live feed: connection status, and what it says In progress holds
       // before (or without) the full In progress read.
@@ -169,10 +197,16 @@
       return out;
     }
     function inline(text) {
+      // "PR #3239 (https://github.com/…/pull/3239)" says the number twice once
+      // the URL becomes a link: keep only the link.
+      text = String(text == null ? '' : text).replace(/\b(?:PR|pull request) #(\d+) \((https?:\/\/github\.com\/[^\s)]+\/pull\/\1)\)/gi, '$2');
       return esc(text)
         .replace(/\bhttps?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)]/g, function link(url) {
           var raw = url.replace(/&amp;/g, '&');
-          return '<a href="' + url + '" data-action="open" data-url="' + url + '">' + esc(raw.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48)) + '</a>';
+          // A pull request reads as one: "PR #3239 ↗", not a truncated URL.
+          var pr = /github\.com\/[^/]+\/[^/]+\/(pull|issues)\/(\d+)/.exec(raw);
+          var label = pr ? (pr[1] === 'pull' ? 'PR #' : 'Issue #') + pr[2] + ' ↗' : raw.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48);
+          return '<a href="' + url + '" class="' + (pr ? 'pr-link' : '') + '" data-action="open" data-url="' + url + '">' + esc(label) + '</a>';
         })
         .replace(/`([^`]{1,200})`/g, '<code>$1</code>')
         .replace(/\b([0-9a-f]{12,64})\b/g, function hash(m, h) { return '<code title="' + h + '">' + h.slice(0, 10) + '</code>'; });
@@ -449,8 +483,12 @@
         body = '<p class="ws-note" role="alert">' + esc(ui.wsError || 'Your workspaces could not be loaded.') + '</p>' +
           '<button type="button" class="quiet-btn" data-action="workspaces-retry">Try again</button>';
       } else {
-        var items = ui.workspaces ? ui.workspaces.items : [];
-        body = '<ul class="ws-list" role="list">' + items.map(function item(w) {
+        var all = ui.workspaces ? ui.workspaces.items : [];
+        var wq = String(ui.wsQuery || '').trim().toLowerCase();
+        var items = wq ? all.filter(function match(w) { return w.name.toLowerCase().indexOf(wq) !== -1; }) : all;
+        var filter = all.length > 8
+          ? '<label class="ws-filter"><span class="sr-only">Find a workspace</span><input type="search" data-action="ws-query" placeholder="Find a workspace" value="' + esc(ui.wsQuery || '') + '" autocomplete="off"></label>' : '';
+        body = filter + (items.length ? '' : '<p class="ws-note">No workspace matches “' + esc(ui.wsQuery) + '”.</p>') + '<ul class="ws-list" role="list">' + items.map(function item(w) {
           var busy = ui.wsPhase === 'switching' && ui.wsSwitchingTo === w.id;
           return '<li><button type="button" class="ws-item" data-action="switch-workspace" data-id="' + esc(w.id) + '"' +
             (w.current ? ' aria-current="true"' : '') + (busy ? ' aria-busy="true"' : '') +
@@ -462,7 +500,7 @@
           (ui.wsError ? '<p class="ws-note" role="alert">' + esc(ui.wsError) + '</p>' : '') +
           '<p class="ws-note">You can also ask ChatGPT to switch your OrgX workspace.</p>';
       }
-      return '<div id="pn-ws-menu" class="ws-menu" role="region" aria-label="Workspaces">' + body + '</div>';
+      return '<div id="pn-ws-menu" class="ws-menu" role="dialog" aria-label="Switch workspace">' + body + '</div>';
     }
 
     function openWorkspaces() {
@@ -501,6 +539,7 @@
     function closeWorkspaces(restoreFocus) {
       if (!ui.wsOpen) return;
       ui.wsOpen = false;
+      ui.wsQuery = '';
       ui.wsError = null;
       if (ui.wsPhase === 'failed') ui.wsPhase = 'idle';
       render();
@@ -594,7 +633,7 @@
         parts.push('<div class="notice receipt" data-tone="teal" role="status">' + ICON.check +
           '<p><strong>' + esc(verb) + '</strong> ' + (receiptCommand ? '<code>' + esc(receiptCommand) + '</code>' : esc(receiptTitle.headline)) + '</p>' +
           (receiptEntry && Views && Views.trailMarks ? Views.trailMarks(receiptEntry) : '') +
-          (ui.session.length ? '<button type="button" class="text-btn" data-action="tab" data-tab="done">In Done</button>' : '') + '</div>');
+          (ui.session.length ? '<button type="button" class="text-btn" data-action="done-decisions">In Done</button>' : '') + '</div>');
         armReceiptDismiss();
       }
       return parts.join('');
@@ -772,7 +811,14 @@
         var settledApproved = /approv|accept|confirm|grant|allow/.test(ruling.status || '');
         var settledDeclined = /declin|reject|deni|denied|sent_back|cancel/.test(ruling.status || '');
         var frames = {
-          saving: { state: 'saving', heading: ruling.action === 'approve' ? 'Recording your approval' : 'Recording it', detail: 'nothing else changes yet' },
+          // Say what is happening, and keep the pressed button's own label (with
+          // the kit's spinner) so the footer does not jump to "Saving…".
+          saving: {
+            state: 'saving',
+            heading: 'Sending “' + ((ruling.action === 'approve' ? ruling.approveLabel : ruling.rejectLabel) || (ruling.action === 'approve' ? 'Approve' : 'Send back')) + '” to OrgX',
+            detail: 'confirming in a moment',
+            primary: (ruling.action === 'approve' ? ruling.approveLabel : ruling.rejectLabel) || '',
+          },
           waiting: { state: 'waiting', heading: 'Recorded', detail: 'checking status in OrgX', action: 'Check now' },
           recorded: { state: 'stale', heading: 'Decision recorded', detail: 'Status is unconfirmed. Check the receipt before continuing.', action: 'Receipt ↗' },
           failed: { state: 'failed', heading: 'Could not continue', detail: 'OrgX reports the next step failed or was cancelled. Check the receipt.', action: 'Receipt ↗' },
@@ -784,7 +830,7 @@
         };
         var fr = frames[ruling.phase] || frames.saving;
         return '<ox-footer variant="confirms-in-orgx" state="' + fr.state + '" heading="' + esc(fr.heading) + '" detail="' + esc(fr.detail) + '"' +
-          (fr.action ? ' action-label="' + esc(fr.action) + '"' : '') + ' data-id="' + esc(f.id) + '"></ox-footer>';
+          (fr.action ? ' action-label="' + esc(fr.action) + '"' : '') + (fr.primary ? ' primary-label="' + esc(fr.primary) + '"' : '') + ' data-id="' + esc(f.id) + '"></ox-footer>';
       }
       if (ui.composer && ui.composer.id === f.id) return composerHtml(f);
       if (tokenFor(f.id)) {
@@ -825,7 +871,9 @@
         return '<div class="share-row"><span>Shared with chat</span><span aria-hidden="true">·</span>' +
           '<button type="button" class="text-btn" data-action="stop-share">Stop sharing</button></div>';
       }
-      return '<div class="share-row"><button type="button" class="text-btn" data-action="share" data-id="' + esc(f.id) + '">Share with chat</button></div>';
+      return '<div class="share-row"><button type="button" class="pn-chip share" data-action="share" data-id="' + esc(f.id) + '">' +
+        '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8.5l4-2.5M6 7.5l4 2.5"/><circle cx="4.5" cy="8" r="2"/><circle cx="11.5" cy="5" r="2"/><circle cx="11.5" cy="11" r="2"/></svg>' +
+        '<span>Share with chat</span></button><span class="share-hint">ChatGPT can then read this decision</span></div>';
     }
 
     function actionErrorHtml(style) {
@@ -834,9 +882,54 @@
         (e.refresh ? ' <button type="button" class="text-btn" data-action="refresh">Refresh</button>' : '') + '</p>';
     }
 
+    var GLYPH = {
+      floor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M9.5 12.2l1.8 1.8 3.4-3.6"/></svg>',
+      agent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 7V4M9.5 12h.01M14.5 12h.01M9.5 15.5h5"/></svg>',
+    };
+    /**
+     * Who is asking, honestly. The floor's stops arrive as "OrgX System" and
+     * some run approvals as just "Agent"; neither names the agent behind the
+     * work, so the panel says what it knows instead of inventing an identity.
+     */
+    function askerAvatar(kind, name, size) {
+      if (kind === 'floor') return '<span class="ax ax-floor ax-' + size + '" title="Stopped by the OrgX floor">' + GLYPH.floor + '</span>';
+      if (kind === 'unnamed') return '<span class="ax ax-agent ax-' + size + '" title="An agent (not named)">' + GLYPH.agent + '</span>';
+      return Views ? Views.avatar(kind === 'agent' ? name || '' : '', size) : '';
+    }
+    function askerPhrase(f) {
+      if (f.asker_kind === 'floor') return 'Stopped by the OrgX floor' + (f.session_label ? ' · ' + f.session_label : '');
+      if (f.asker_kind === 'unnamed') return 'An agent asks';
+      return f.asker ? f.asker + ' asks' : '';
+    }
+
+    /**
+     * Why you are being asked, from the review packet: what it blocks, why only
+     * a person can answer, the policy that stopped it, what is uncertain, and
+     * where it came from. Closed by default; the question stays the headline.
+     */
+    function whyHtml(f) {
+      var why = f.why || {};
+      var lines = [];
+      if (f.blocked) lines.push(['Blocking', 'Work stays stopped until you decide.']);
+      if (why.policy) lines.push(['Policy', why.policy]);
+      if (why.authority) lines.push(['Why you', why.authority]);
+      (why.uncertainty || []).forEach(function u(text) { lines.push(['Uncertain', text]); });
+      if (f.session_label && f.asker_kind === 'floor') lines.push(['Where', 'The floor paused an action in an ' + f.session_label + ' before it ran.']);
+      var refs = [];
+      if (why.run_url) refs.push('<button type="button" class="pn-chip" data-action="open" data-url="' + esc(why.run_url) + '">Source run ↗</button>');
+      if (why.initiative_url) refs.push('<button type="button" class="pn-chip" data-action="open" data-url="' + esc(why.initiative_url) + '">Initiative ↗</button>');
+      if (!lines.length && !refs.length) return '';
+      var open = ui.whyOpen === f.id;
+      return '<div class="why"><button type="button" class="why-t" data-action="why" data-id="' + esc(f.id) + '" aria-expanded="' + open + '" aria-controls="why-' + esc(f.id) + '">' +
+        '<span>Why you’re asked</span><span class="why-n">' + (lines.length + refs.length) + '</span><span class="why-chev" aria-hidden="true">›</span></button>' +
+        '<div class="why-b" id="why-' + esc(f.id) + '"' + (open ? '' : ' hidden') + '>' +
+        (lines.length ? '<dl class="why-l">' + lines.map(function l(x) { return '<div><dt>' + esc(x[0]) + '</dt><dd>' + inline(x[1]) + '</dd></div>'; }).join('') + '</dl>' : '') +
+        (refs.length ? '<div class="why-refs">' + refs.join('') + '</div>' : '') + '</div></div>';
+    }
+
     function packetHtml(f, headingTag) {
-      var metaBits = [f.asker ? f.asker + ' asks' : '', f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
-      var askerAvatar = Views ? '<span class="pn-asker" aria-hidden="true">' + Views.avatar(f.asker || '', 'inline') + '</span>' : '';
+      var metaBits = [askerPhrase(f), f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
+      var askerAvatarHtml = '<span class="pn-asker" aria-hidden="true">' + askerAvatar(f.asker_kind, f.asker, 'inline') + '</span>';
       var error = ui.actionError && ui.actionError.id === f.id ? actionErrorHtml() : '';
       var changed = ui.changedSince
         ? '<div class="notice" role="status"><p>Changed since ' + esc(ui.changedSince) + '</p></div>' : '';
@@ -857,7 +950,7 @@
         facts.push('<div class="fact"><dt>If approved</dt><dd>' + inline(f.consequence_if_approved || body.ifApproved) + '</dd></div>');
       }
       return '<section class="packet enter" aria-labelledby="pk-q">' + changed +
-        '<p class="meta">' + askerAvatar +
+        '<p class="meta">' + askerAvatarHtml +
         // "Normal · Blocking work" says two things at once; blocking is the one that matters.
         (f.blocked && (f.urgency === 'medium' || f.urgency === 'low') ? '' : '<span class="urgency" data-u="' + esc(f.urgency) + '">' + esc(urgencyLabel(f.urgency)) + '</span>') +
         (f.blocked ? (f.urgency === 'medium' || f.urgency === 'low' ? '' : '<span aria-hidden="true">·</span>') + '<span class="blocked-tag">Blocking work</span>' : '') +
@@ -868,7 +961,9 @@
         (body.lede.length ? '<p class="q-body">' + inline(body.lede.join(' ')) + '</p>' : '') +
         body.commands.map(function cmd(c) { return '<div class="q-cmd"><span>Command</span><pre><code>' + esc(c) + '</code></pre></div>'; }).join('') +
         (facts.length ? '<dl class="facts">' + facts.join('') + '</dl>' : '') +
-        evidenceHtml(f) +
+        evidenceHtml(f) + whyHtml(f) +
+        // The work this decision would let through, read before deciding, not after.
+        behindFor(f) +
         '<div class="actions">' + footerFor(f) + error + '</div>' +
         shareHtml(f) + (Launch && !ui.rulings[f.id] ? Launch.chipsHtml('packet', { title: head.headline }) : '') + '</section>';
     }
@@ -883,7 +978,10 @@
       var meta = [item.blocked && calmUrgency ? 'Blocking work' : urgencyLabel(item.urgency), ago(item.waiting_since), item.initiative_title].filter(Boolean).join(' · ');
       var acts = '';
       var opening = ui.readState.phase === 'loading' && ui.readState.focusId === item.id;
-      if (ui.readState.phase !== 'idle') {
+      var current = Boolean(ui.snapshot.focus && ui.snapshot.focus.id === item.id && !ruling);
+      if (current) {
+        acts = '<div class="row-acts"><span class="row-open">Open</span></div>';
+      } else if (ui.readState.phase !== 'idle') {
         acts = '<div class="row-acts"><button type="button" class="mini" data-action="select" data-id="' + esc(item.id) + '"' +
           (opening ? ' aria-disabled="true"' : '') + '>' + (opening ? 'Opening…' : 'Review') + '</button></div>';
       } else if (ruling) {
@@ -907,12 +1005,12 @@
       var arrived = ui.seenRows && !ui.seenRows[item.id];
       if (grouped) {
         // Inside a group the title is the group's; the line is what differs.
-        return '<li class="row grow' + (arrived ? ' arrive' : '') + '" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + ' ' + (item.detail || '') + '. ' + meta) + '">' +
+        return '<li class="row grow' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + ' ' + (item.detail || '') + '. ' + meta) + '">' +
           distinguisherHtml(item) + '<span class="row-meta"><span>' + esc(meta) + '</span></span></button>' + acts +
           (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
       }
-      return '<li class="row' + (arrived ? ' arrive' : '') + '" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
-        (Views ? '<span class="row-av" aria-hidden="true">' + Views.avatar(item.asker || '', 'row') + '</span>' : '') +
+      return '<li class="row' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
+        '<span class="row-av" aria-hidden="true">' + askerAvatar(item.asker_kind, item.asker, 'row') + '</span>' +
         // Repeated titles step back to one muted line; what differs leads.
         (repeatedTitle && distinguisherHtml(item)
           ? distinguisherHtml(item) + '<span class="row-title is-repeat">' + esc(splitHeadline(item.title).headline) + '</span>'
@@ -939,7 +1037,7 @@
         var distinct = members.every(function has(item) { return Boolean(distinguisherHtml(item)); });
         if (members.length < 2 || !distinct) return members.map(function one(item) { return rowHtml(item); }).join('');
         var gid = 'grp-' + members[0].id;
-        return '<li class="qgroup" aria-labelledby="' + gid + '"><p class="qgroup-h" id="' + gid + '"><span class="qgroup-t">' + esc(key) + '</span>' +
+        return '<li class="qgroup" aria-labelledby="' + gid + '"><p class="qgroup-h" id="' + gid + '"><span class="row-av" aria-hidden="true">' + askerAvatar(members[0].asker_kind, members[0].asker, 'row') + '</span><span class="qgroup-t">' + esc(key) + '</span>' +
           '<span class="qgroup-n">' + members.length + '</span></p><ul class="qgroup-rows" role="list">' +
           members.map(function member(item) { return rowHtml(item, { grouped: true }); }).join('') + '</ul></li>';
       }).join('');
@@ -978,7 +1076,7 @@
       }
       if (p.completed_unaccepted > 0) {
         html += '<p class="proof-sub">' + p.completed_unaccepted.toLocaleString() + (p.completed_unaccepted === 1 ? ' finished output waits' : ' finished outputs wait') + ' for acceptance' +
-          ' <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.workLedger()) + '">Review in OrgX ↗</button></p>';
+          ' <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.workLedger({ center: s.workspace && s.workspace.id, range: '30d' })) + '">Review in OrgX ↗</button></p>';
       }
       return html ? '<div class="proof">' + html + '</div>' : '';
     }
@@ -986,9 +1084,21 @@
     function skeletonHtml() {
       // Cold start: the header frame and the real OrgX mark revealing in the
       // space the content will take, so nothing shifts when data lands.
-      var frame = ui.mode === 'global' ? '<header class="top"><span class="pn-mark-slot"></span><div class="top-id"><span class="brand">OrgX</span></div></header>' : '';
-      var reveal = Brand ? Brand.bootHtml() : '<div aria-hidden="true"><span class="sk sk-line" style="width:56%;margin-top:16px"></span><span class="sk sk-title"></span><span class="sk sk-btn"></span></div>';
-      return frame + reveal + '<p class="sr-only">Loading your decisions.</p>';
+      // The panel's own shape, arriving: header, attention line, queue and the
+      // decision, shimmering in place, so the first paint lands without a jump.
+      var mark = Brand ? '<span class="pn-mark-slot pn-breathe">' + Brand.mark(22) + '</span>' : '<span class="pn-mark-slot"></span>';
+      var frame = ui.mode === 'global'
+        ? '<header class="top">' + mark + '<div class="top-id"><span class="sk sk-ws"></span></div><span class="sk sk-tab"></span><span class="sk sk-tab"></span><span class="sk sk-tab"></span></header>'
+        : '';
+      var rows = '';
+      for (var i = 0; i < 4; i += 1) rows += '<div class="sk-row" style="--i:' + i + '"><span class="sk sk-av"></span><span class="sk-lines"><span class="sk sk-line" style="width:' + (86 - i * 11) + '%"></span><span class="sk sk-line sk-short"></span></span></div>';
+      var shape = '<div class="pn-skel" aria-hidden="true"><div class="sk-att"><span class="sk sk-dot"></span><span class="sk sk-line" style="width:38%"></span></div>' +
+        '<div class="sk-split"><div class="sk-list">' + rows + '</div>' +
+        '<div class="sk-detail"><span class="sk sk-line sk-meta"></span><span class="sk sk-title"></span><span class="sk sk-title sk-t2"></span>' +
+        '<span class="sk sk-line" style="width:92%"></span><span class="sk sk-line" style="width:84%"></span><span class="sk sk-block"></span>' +
+        '<span class="sk-acts"><span class="sk sk-btn sk-ghost"></span><span class="sk sk-btn"></span></span></div></div>' +
+        '<p class="sk-cap">Reading your workspace</p></div>';
+      return frame + shape + '<p class="sr-only">Loading your decisions.</p>';
     }
 
     function signedOutHtml() {
@@ -1030,45 +1140,113 @@
       }
       var calm = s.attention.pending === 0;
       var ctx = launchContext(s);
+      if (ui.tab === 'start' && Start) return html + startViewHtml(ctx);
       if (ui.tab === 'work' && Views) {
         var wv = workView();
-        return html + Views.workHtml(wv.work, wv.phase, Launch ? Launch.sectionHtml(wv.work && wv.work.items.length ? 'work' : 'work-empty', ctx, { heading: 'Start or delegate work' }) : '');
+        return html + Views.workHtml(wv.work, wv.phase, startLinkHtml(wv.work && wv.work.items.length ? 'Start or delegate more work' : 'Start work'),
+          { sel: ui.workSel, filter: ui.workFilter, query: ui.workQuery, expanded: ui.workExpanded });
       }
       if (ui.tab === 'done' && Views) {
+        var workRange = workRangeOf(ui.doneRange);
         return html + Views.doneHtml({
+          lens: ui.doneLens,
+          receipts: ui.receipts[workRange] ? withRow(ui.receipts[workRange]) : null,
+          receiptsPhase: ui.receiptsPhase,
+          rsel: ui.receiptSel,
+          receiptDetail: ui.receiptSel ? ui.receiptDetail[ui.receiptSel] || null : null,
+          receiptPhase: ui.receiptSel && !ui.receiptDetail[ui.receiptSel] ? 'loading' : 'ready',
+          receiptCall: ui.receiptSel ? ui.receiptCalls[ui.receiptSel] : undefined,
           session: ui.session,
-          openId: ui.openReceipt,
-          proofHtml: proofHtml(s, false),
-          launch: Launch ? Launch.sectionHtml('done', Object.assign({}, ctx, { title: ui.session[0] ? ui.session[0].title : '' }), { heading: 'Keep it moving', limit: 3 }) : '',
-        }) + tipHtml(ctx, ['done']);
+          sel: ui.openReceipt,
+          range: ui.doneLens === 'work' ? workRange : ui.doneRange,
+          history: ui.history[ui.doneRange] || null,
+          historyPhase: ui.historyPhase,
+          page: ui.donePage,
+          workspaceId: s.workspace && s.workspace.id,
+          overviewHtml: proofHtml(s, true),
+          launch: startLinkHtml('Start something next'),
+        });
       }
-      if (isFirstUse(s)) {
-        return html + '<p class="lede">This workspace has no decisions or accepted work yet.</p>' +
-          '<p class="sub">Start something: ask ChatGPT in plain words, and OrgX plans it, runs it and brings decisions back here.</p>' +
-          (Launch ? Launch.sectionHtml('calm', ctx, { heading: 'Start your first initiative' }) : '') +
-          '<button type="button" class="secondary-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>';
-      }
-      if (calm) return html + attentionLine(s) + proofHtml(s, true) + (Launch ? Launch.sectionHtml('calm', ctx) : '') + tipHtml(ctx, ['calm']);
-      var others = s.queue.filter(function notFocus(item) { return !s.focus || item.id !== s.focus.id; });
+      if (isFirstUse(s)) return html + calmHtml(s, true);
+      if (calm) return html + calmHtml(s);
+      // The whole queue, with the open decision marked in place: the list's
+      // count is the attention line's count, never one short of it.
       var hidden = Math.max(0, s.attention.pending - s.queue.length);
       html += '<div class="pn-split">' +
         '<div class="pn-att">' + attentionLine(s) + '</div>' +
         '<div class="pn-detail">' + (s.focus ? packetHtml(s.focus, 'h2') : '') + '</div>' +
-        (others.length ? '<div class="pn-list"><h2 class="queue-head">' + (s.focus ? 'Also waiting' : 'Waiting on you') + ' <span class="queue-n">' + others.length + '</span></h2><ul class="queue">' + queueRowsHtml(others) + '</ul>' +
+        (s.queue.length > 1 || !s.focus ? '<div class="pn-list"><h2 class="queue-head">Your queue <span class="queue-n">' + s.attention.pending + '</span></h2><ul class="queue">' + queueRowsHtml(s.queue) + '</ul>' +
           (hidden ? '<p class="sub">' + hidden + ' more in OrgX. <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.decisions({ status: 'pending' })) + '">All decisions ↗</button></p>' : '') + '</div>' : '') +
         '</div>';
       return html;
+    }
+
+    /**
+     * Nothing needs a decision. Say so once, show the work that is moving
+     * without the person (so "clear" never reads as "idle"), and invite the
+     * next thing: a prompt that opens Start with the cursor already in it.
+     */
+    function calmHtml(s, firstUse) {
+      var w = workView().work;
+      var items = w && w.items ? w.items : [];
+      var agents = {};
+      items.forEach(function n(i) { agents[i.agent] = true; });
+      var nAgents = Object.keys(agents).length;
+      var blocked = items.filter(function b(i) { return i.state === 'blocked'; }).length;
+      // Only say what is known: before In progress has been read, say nothing about it.
+      var moving = !w ? ''
+        : items.length ? nAgents + (nAgents === 1 ? ' agent is' : ' agents are') + ' working on ' + items.length + (items.length === 1 ? ' task' : ' tasks') + (blocked ? ', ' + blocked + ' blocked' : '') + '.'
+        : 'No agent work is running right now.';
+      var glyph = '<span class="cm-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>';
+      var prompt = Start && ui.mode === 'global'
+        ? '<button type="button" class="cm-prompt" data-action="start-open"><span class="cm-pp">What should get done next?</span><span class="cm-go" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span></button>'
+        : '';
+      var see = items.length ? '<button type="button" class="text-btn" data-action="tab" data-tab="work">See what’s running</button>' : '';
+      if (firstUse) {
+        // A new workspace: nothing to be clear of yet. Invite the first job.
+        return '<section class="pn-calm is-first" aria-labelledby="cm-h">' +
+          (Brand ? '<span class="cm-mark is-brand" aria-hidden="true">' + Brand.mark(26) + '</span>' : '') +
+          '<h2 class="cm-h" id="cm-h">Start your first piece of work.</h2>' +
+          '<p class="cm-sub">Say what should get done. OrgX plans it, runs it with your agents and brings decisions back here.</p>' +
+          (prompt || '<button type="button" class="pn-btn st-cta" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>') + '</section>';
+      }
+      return '<section class="pn-calm" aria-labelledby="cm-h">' + glyph +
+        '<h2 class="cm-h" id="cm-h">You’re clear.</h2>' +
+        '<p class="cm-sub">Nothing needs your decision. ' + esc(moving) + (see ? ' ' + see : '') + '</p>' +
+        prompt + '</section>' + proofHtml(s, true);
+    }
+
+    /** The receipt behind the open decision, once read; starts the read the first time. */
+    function behindFor(focus) {
+      if (!Receipts) return '';
+      if (ui.behind[focus.id] === undefined) later(function read() { maybeFetchBehind(focus); }, 0);
+      var b = ui.behind[focus.id];
+      return b && b !== 'loading' ? Receipts.behindHtml(b) : '';
+    }
+
+    /** One way to the Start tab from any view, instead of prompt lists everywhere. */
+    function startLinkHtml(label) {
+      if (!Start || ui.mode !== 'global') return '';
+      return '<div class="st-link"><button type="button" class="pn-btn ghost" data-action="tab" data-tab="start">' +
+        '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>' +
+        esc(label) + '</button></div>';
+    }
+
+    function startViewHtml(ctx) {
+      var busy = {};
+      var w = workView().work;
+      if (w && w.items) w.items.forEach(function n(i) { busy[i.agent] = (busy[i.agent] || 0) + 1; });
+      return Start.html({ text: ui.startText, agent: ui.startAgent, verb: ui.startVerb, status: ui.startStatus, initiative: ctx.initiative || '', workAgents: busy, whoOpen: ui.startWhoOpen });
+    }
+
+    function startSentence() {
+      return Start ? Start.sentence(ui.startVerb || (ui.startAgent ? 'delegate' : 'initiative'), { text: ui.startText, agent: ui.startAgent }) : '';
     }
 
     function launchContext(s) {
       var initiative = null;
       (s && s.queue || []).some(function pick(item) { initiative = item.initiative_title || null; return Boolean(initiative); });
       return { initiative: initiative };
-    }
-    function tipHtml(ctx, shownKinds) {
-      if (!Launch) return '';
-      if (!ui.launchNoted) { ui.launchNoted = true; Launch.noteOpen(); }
-      return Launch.tipHtml(ctx, shownKinds);
     }
 
     function threadHtml(s) {
@@ -1188,18 +1366,27 @@
       later(startTour, 600);
     }
 
-    function setTab(tab, quiet) {
-      if (['needs', 'work', 'done'].indexOf(tab) === -1) return;
+    function setTab(tab, quiet, after) {
+      if (['needs', 'work', 'done', 'start'].indexOf(tab) === -1 || (tab === 'start' && !Start)) return;
       var changed = ui.tab !== tab;
-      ui.tab = tab;
-      ui.composer = changed ? null : ui.composer;
-      if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); return; }
-      render();
-      if (changed && !quiet) {
-        var t = root.querySelector('#pn-tab-' + tab);
-        if (t) t.focus();
-        announce(tab === 'needs' ? 'Needs you.' : tab === 'work' ? 'In progress.' : 'Done.');
+      var order = ['needs', 'work', 'done', 'start'];
+      var dir = order.indexOf(tab) >= order.indexOf(ui.tab) ? 'fwd' : 'back';
+      function apply() {
+        ui.tab = tab;
+        ui.composer = changed ? null : ui.composer;
+        ui.startWhoOpen = false;
+        if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); return; }
+        // Done › Work reads its receipts the first time it opens; the read renders the loading rows.
+        if (tab === 'done' && ui.doneLens === 'work' && Receipts && !ui.receipts[workRangeOf(ui.doneRange)]) fetchReceipts(workRangeOf(ui.doneRange));
+        else render();
+        if (changed && !quiet) {
+          var t = root.querySelector('#pn-tab-' + tab);
+          if (t) t.focus();
+          announce(tab === 'needs' ? 'Needs you.' : tab === 'work' ? 'In progress.' : tab === 'done' ? 'Done.' : 'Start.');
+        }
+        if (after) after();
       }
+      if (changed) transition('tab', apply, dir); else apply();
     }
 
     /**
@@ -1213,12 +1400,189 @@
         var live = window.OrgXLinks.live();
         return {
           work: { status: 'ok', total: ui.liveWork.items.length, items: ui.liveWork.items.map(function row(i) {
-            return { id: i.id, agent: i.agent, title: i.title, state: i.state === 'running' || i.state === 'blocked' ? i.state : 'queued', url: live };
+            return {
+              id: i.id, agent: i.agent, title: i.title, state: i.state === 'running' || i.state === 'blocked' ? i.state : 'queued',
+              url: i.url || live, domain: i.domain || null, updated_at: i.updated_at || null, stale: Boolean(i.stale),
+            };
           }) },
           phase: ui.workPhase === 'loading' ? 'loading' : 'ready',
         };
       }
       return { work: ui.work, phase: ui.workPhase };
+    }
+
+    /** Done's range. "This session" is local; the others read OrgX's decision history once per range. */
+    function setDoneRange(range) {
+      ui.doneRange = range || 'session';
+      ui.openReceipt = null;
+      ui.donePage = 1;
+      if (ui.doneLens === 'work' && Receipts) { ui.receiptSel = null; fetchReceipts(workRangeOf(ui.doneRange)); return; }
+      if (ui.doneRange === 'session' || isGallery) {
+        if (isGallery && ui.doneRange !== 'session') ui.history[ui.doneRange] = galleryHistory(ui.doneRange);
+        render();
+        return;
+      }
+      var cached = ui.history[ui.doneRange];
+      if (cached && cached.status === 'ok') { render(); return; }
+      ui.historyPhase = 'loading';
+      delete ui.history[ui.doneRange];
+      render();
+      var gen = ui.generation;
+      var asked = ui.doneRange;
+      R.callToolResult('orgx_panel_snapshot', { view: 'history', range: asked }).then(function onHistory(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        if (isSnapshot(data)) accept(data, result.meta || null, 'refresh');
+        ui.history[asked] = data && data.history ? data.history : { status: 'unavailable', range: asked, items: [] };
+        ui.historyPhase = 'ready';
+        if (ui.doneRange === asked) render();
+      }, function onHistoryError(error) {
+        if (gen !== ui.generation) return;
+        ui.history[asked] = { status: 'unavailable', range: asked, items: [], reason: safeErrorText(error, 'Decision history could not be read right now.', 160) };
+        ui.historyPhase = 'ready';
+        if (ui.doneRange === asked) render();
+      });
+    }
+
+    /** Work receipts read by range; "This session" is a decisions idea, so Work shows 7 days. */
+    function workRangeOf(range) { return range === 'today' || range === '30d' ? range : '7d'; }
+    /** A receipt list with the open receipt's row kept, even when it came from elsewhere (a decision). */
+    function withRow(list) {
+      if (!ui.receiptSel || !list || list.status !== 'ok' || !ui.receiptRows[ui.receiptSel]) return list;
+      if (list.items.some(function has(r) { return r.id === ui.receiptSel; })) return list;
+      return Object.assign({}, list, { items: [ui.receiptRows[ui.receiptSel]].concat(list.items) });
+    }
+    function rememberRows(list) {
+      if (list && list.items) list.items.forEach(function keep(r) { ui.receiptRows[r.id] = r; });
+    }
+
+    function fetchReceipts(range) {
+      var cached = ui.receipts[range];
+      if (cached && cached.status === 'ok') { render(); return; }
+      if (isGallery) { ui.receipts[range] = galleryReceipts(range); rememberRows(ui.receipts[range]); ui.receiptsPhase = 'ready'; render(); return; }
+      ui.receiptsPhase = 'loading';
+      delete ui.receipts[range];
+      render();
+      var gen = ui.generation;
+      R.callToolResult('orgx_panel_snapshot', { view: 'receipts', range: range }).then(function onReceipts(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        if (isSnapshot(data)) accept(data, result.meta || null, 'refresh');
+        ui.receipts[range] = data && data.receipts ? data.receipts : { status: 'unavailable', query: '', total: 0, items: [], reason: null };
+        rememberRows(ui.receipts[range]);
+        ui.receiptsPhase = ui.receipts[range].status === 'ok' ? 'ready' : 'failed';
+        if (ui.tab === 'done') render();
+      }, function onReceiptsError(error) {
+        if (gen !== ui.generation) return;
+        ui.receipts[range] = { status: 'unavailable', query: '', total: 0, items: [], reason: safeErrorText(error, 'Work receipts could not be read right now.', 160) };
+        ui.receiptsPhase = 'failed';
+        if (ui.tab === 'done') render();
+      });
+    }
+
+    function openWorkReceipt(id) {
+      ui.receiptSel = !id || ui.receiptSel === id ? null : id;
+      render();
+      var open = ui.receiptSel;
+      if (!open || ui.receiptDetail[open]) return;
+      if (isGallery) { ui.receiptDetail[open] = galleryReceipt(open); render(); return; }
+      var gen = ui.generation;
+      R.callToolResult('orgx_panel_snapshot', { view: 'receipt', receipt_id: open }).then(function onReceipt(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        ui.receiptDetail[open] = data && data.receipt ? data.receipt : { status: 'unavailable', id: open, reason: null, criteria: [], artifacts: [], uncertain: [] };
+        if (data && data.receipt && data.receipt.row) ui.receiptRows[open] = data.receipt.row;
+        if (ui.receiptSel === open) render();
+      }, function onReceiptError(error) {
+        if (gen !== ui.generation) return;
+        ui.receiptDetail[open] = { status: 'unavailable', id: open, reason: safeErrorText(error, 'This receipt could not be read right now.', 160), criteria: [], artifacts: [], uncertain: [] };
+        if (ui.receiptSel === open) render();
+      });
+    }
+
+    /** A person's call on a receipt, recorded in the ledger; the row shows it at once. */
+    function recordReceiptCall(id, status) {
+      if (!id || !status) return;
+      ui.receiptCalls[id] = { status: status, phase: 'saving' };
+      render();
+      var done = function saved() {
+        ui.receiptCalls[id] = { status: status, phase: 'saved' };
+        var row = ui.receiptRows[id];
+        if (row) row.outcome = status;
+        Object.keys(ui.receipts).forEach(function each(k) {
+          (ui.receipts[k].items || []).forEach(function upd(r) { if (r.id === id) r.outcome = status; });
+        });
+        render();
+        announce('Recorded your call.');
+      };
+      if (isGallery) { later(done, 400); return; }
+      R.callToolResult('orgx_widget_receipt_call', { receipt_id: id, status: status }).then(function onCall(result) {
+        var data = result && result.data;
+        if (data && data.recorded) { done(); return; }
+        ui.receiptCalls[id] = { status: status, phase: 'failed', reason: (data && data.reason) || null };
+        render();
+      }, function onCallError(error) {
+        ui.receiptCalls[id] = { status: status, phase: 'failed', reason: safeErrorText(error, 'Your call could not be recorded. Try again.', 160) };
+        render();
+      });
+    }
+
+    /** The work behind the open decision: the ledger's receipts for its PR, read once per decision. */
+    function maybeFetchBehind(focus) {
+      if (!Receipts || !focus || ui.behind[focus.id] !== undefined) return;
+      var pr = Receipts.prOf([focus.title, focus.question, focus.detail].filter(Boolean).join('\n'));
+      if (!pr) { ui.behind[focus.id] = null; return; }
+      ui.behind[focus.id] = 'loading';
+      if (isGallery) { ui.behind[focus.id] = galleryBehind(pr); rememberRows(ui.behind[focus.id]); later(render, 0); return; }
+      var gen = ui.generation;
+      R.callToolResult('orgx_panel_snapshot', { view: 'receipts', query: 'pr:' + pr, focus: { kind: 'decision', id: focus.id } }).then(function onBehind(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        ui.behind[focus.id] = data && data.receipts ? data.receipts : null;
+        rememberRows(ui.behind[focus.id]);
+        if (ui.tab === 'needs' && ui.snapshot && ui.snapshot.focus && ui.snapshot.focus.id === focus.id) render();
+      }, function onBehindError() {
+        ui.behind[focus.id] = null;
+      });
+    }
+
+    function galleryReceipts(range) {
+      var rows = [
+        ['Fix the flaky checkout test and open a PR', 'Eli', 'succeeded', 'verified', 'accepted', [3, 0, 1], ['useorgx/orgx#3236']],
+        ['Draft the launch post for the new pricing', 'Mark', 'succeeded', 'unverified', null, [2, 0, 2], []],
+        ['Add rate limiting to the public API', 'Eli', 'partially_succeeded', 'verified', null, [2, 1, 0], ['useorgx/orgx#3237']],
+        ['Build an ICP list of 50 founder-led SaaS companies', 'Sage', 'succeeded', 'unverified', 'accepted', [1, 0, 2], []],
+        ['Audit the onboarding flow for friction', 'Dana', 'failed', 'failed', 'rejected', [0, 2, 1], []],
+        ['Write a runbook for a failed deploy', 'Orion', 'succeeded', 'unverified', null, [0, 0, 0], []],
+      ];
+      var n = range === 'today' ? 2 : range === '7d' ? 5 : 6;
+      return { status: 'ok', query: 'since:', total: n, reason: null, items: rows.slice(0, n).map(function r(x, i) {
+        return { id: 'rcpt-' + i, at: new Date(Date.now() - (i + 1) * 4 * 3600 * 1000).toISOString(), actor: x[1], summary: x[0], outcome: x[2], verification: x[3], accepted: x[4],
+          work_type: null, area: null, entity_title: i < 3 ? 'Release initiative' : null, criteria: { met: x[5][0], unmet: x[5][1], unknown: x[5][2] }, prs: x[6], confidence: i === 1 ? 0.5 : 0.8 };
+      }) };
+    }
+    function galleryReceipt(id) {
+      var row = ui.receiptRows[id] || galleryReceipts('30d').items[0];
+      var texts = ['The checkout suite passes ten runs in a row', 'The fix has a regression test', 'No new console errors on checkout', 'The PR is reviewed by a person'];
+      var crit = [];
+      ['met', 'unmet', 'unknown'].forEach(function k(status) {
+        for (var i = 0; i < row.criteria[status]; i += 1) crit.push({ id: 'c' + crit.length, text: texts[crit.length % texts.length], kind: 'test', status: status, confidence: status === 'unknown' ? null : 0.85 });
+      });
+      return { status: 'ok', id: id, row: row, objective: null, outcome_summary: row.outcome === 'failed' ? 'Stopped after two attempts; the flow still drops users at step 3.' : 'Opened the change and ran the checks listed below.',
+        criteria: crit, artifacts: row.prs.map(function a(pr) { return { kind: 'pull_request', name: pr, url: 'https://github.com/' + pr.replace('#', '/pull/') }; }),
+        uncertain: row.criteria.unknown ? ['no evidence either way for: ' + texts[3]] : [], workstream_title: null, cost_usd: 0.42, completed_at: row.at, reason: null };
+    }
+    function galleryBehind(pr) {
+      var all = galleryReceipts('30d').items.filter(function m(r) { return r.prs.some(function has(x) { return x.slice(-pr.length - 1) === '#' + pr; }); });
+      return { status: 'ok', query: 'pr:' + pr, total: all.length, items: all, reason: null };
+    }
+
+    function galleryHistory(range) {
+      var titles = ['Ship release 4.1 to production?', 'Approve the Q4 pricing page copy', 'Allow gh pr merge 3221', 'Rotate the staging database password', 'Publish the September changelog', 'Pause the low-intent ads campaign'];
+      var n = range === 'today' ? 2 : range === '7d' ? 5 : 6;
+      return { status: 'ok', range: range, items: titles.slice(0, n).map(function item(t, i) {
+        return { id: 'h' + i + '-0000-4000-8000-000000000000', title: t, outcome: i % 4 === 3 ? 'declined' : 'approved', settled_at: new Date(Date.now() - (i + 1) * 5 * 3600 * 1000).toISOString(), url: decisionUrl('h' + i) };
+      }) };
     }
 
     /** In progress is read only when opened: the same snapshot with view "work". */
@@ -1287,15 +1651,26 @@
     }
 
     function galleryWork() {
+      var live = window.OrgXLinks.live();
+      var h = function hoursAgo(n) { return new Date(Date.now() - n * 3600 * 1000).toISOString(); };
+      var items = [
+        ['w1', 'Dana', 'Design', 'Design plan for OrgX Live', 'blocked', 3],
+        ['w2', 'Eli', 'Engineering', 'Reconcile launch telemetry fields', 'running', 0.2],
+        ['w3', 'Eli', 'Engineering', 'Upgrade the actual Mac and replay its backlog without duplicates', 'running', 150],
+        ['w4', 'Eli', 'Engineering', 'tokens.json to CSS variables and dashboard theme', 'queued', 30],
+        ['w5', 'Eli', 'Engineering', 'One AgentAvatar on ox-avatar', 'queued', 30],
+        ['w6', 'Eli', 'Engineering', 'Rebuild 12 widgets on orgx-ui-kit elements', 'queued', 31],
+        ['w7', 'Eli', 'Engineering', 'Widget-only orgx_approve tool', 'queued', 31],
+        ['w8', 'Mark', 'Marketing', 'Pricing page copy, variant B', 'running', 1],
+        ['w9', 'Orion', 'Operations', 'Agent routing fixture', 'blocked', 120],
+        ['w10', 'Orion', 'Operations', 'PR6: collect production proof and independent verification', 'blocked', 96],
+        ['w11', 'Sage', 'Sales', 'ICP list for founder-led SaaS', 'queued', 4],
+      ];
       return {
-        status: 'ok',
-        total: 4,
-        items: [
-          { id: 'w1', agent: 'Dana', title: 'Design plan for OrgX Live', state: 'blocked', url: window.OrgXLinks.live() },
-          { id: 'w2', agent: 'Eli', title: 'Reconcile launch telemetry fields', state: 'running', url: window.OrgXLinks.live() },
-          { id: 'w3', agent: 'Mark', title: 'Pricing page copy, variant B', state: 'running', url: window.OrgXLinks.live() },
-          { id: 'w4', agent: 'Sage', title: 'ICP list for founder-led SaaS', state: 'queued', url: window.OrgXLinks.live() },
-        ],
+        status: 'ok', total: items.length,
+        items: items.map(function row(x) {
+          return { id: x[0], agent: x[1], domain: x[2], title: x[3], state: x[4], url: live, updated_at: h(x[5]), stale: x[4] === 'running' && x[5] > 24 };
+        }),
       };
     }
     function fitQuestion() {
@@ -1413,9 +1788,11 @@
       var s = ui.snapshot;
       if (s && s.focus && s.focus.id === id && ui.readState.phase === 'idle') { render(); return; }
       if (isGallery) {
-        var item = findItem(id);
-        if (item) s.focus = Object.assign({}, s.focus || {}, galleryFocus(item));
-        render();
+        transition('detail', function showGallery() {
+          var item = findItem(id);
+          if (item) s.focus = Object.assign({}, s.focus || {}, galleryFocus(item));
+          render();
+        });
         return;
       }
       fetchSnapshot(id, 'select');
@@ -1722,6 +2099,7 @@
     }
 
     root.addEventListener('click', function onClick(event) {
+      if (ui.startWhoOpen && !event.target.closest('.st-menu, [data-action="start-who"]')) transition('menu', function dismiss() { ui.startWhoOpen = false; render(); });
       var el = event.target.closest('[data-action]');
       if (!el || !root.contains(el) || el.disabled) return;
       var action = el.getAttribute('data-action');
@@ -1729,7 +2107,7 @@
       // During the tour only the practice press is live; picks and send-back wait.
       if (tour && tour.active() && ['approve', 'option', 'toggle-option', 'reject-option', 'sendback', 'submit-sendback'].indexOf(action) !== -1) return;
       switch (action) {
-        case 'workspaces': if (ui.wsOpen) closeWorkspaces(true); else openWorkspaces(); break;
+        case 'workspaces': transition('menu', function toggleWs() { if (ui.wsOpen) closeWorkspaces(true); else openWorkspaces(); }); break;
         case 'workspaces-retry': ui.workspaces = null; ui.wsPhase = 'idle'; openWorkspaces(); break;
         case 'switch-workspace': switchWorkspace(id); break;
         case 'refresh': fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh'); break;
@@ -1764,10 +2142,113 @@
         case 'stop-share': stopShare(); break;
         case 'tab': setTab(el.getAttribute('data-tab')); break;
         case 'launch': launchPrompt(el); break;
-        case 'tip-dismiss': if (Launch) Launch.noteDismiss(); render(); focusFirst('[data-action="tab"][aria-selected="true"]'); break;
         case 'tour': startTour(); break;
         case 'work-retry': ui.workPhase = 'failed'; fetchWork(); break;
-        case 'receipt': ui.openReceipt = ui.openReceipt === id ? null : id; render(); focusFirst('[data-action="receipt"][data-id="' + id + '"]'); break;
+        case 'receipt':
+          transition('detail', function openReceipt() {
+            ui.openReceipt = !id || ui.openReceipt === id ? null : id;
+            render();
+            focusFirst(ui.openReceipt ? '.pn-md-detail .md-close' : '[data-action="receipt"][aria-pressed]');
+          });
+          break;
+        case 'work-select':
+          transition('detail', function openWork() {
+            ui.workSel = !id || ui.workSel === id ? null : id;
+            render();
+            focusFirst(ui.workSel ? '.pn-md-detail .md-close' : '.wk-row');
+          });
+          break;
+        case 'work-filter': ui.workFilter = id || 'all'; if (id === 'all') ui.workQuery = ''; render(); focusFirst('[data-action="work-filter"][aria-pressed="true"]'); break;
+        case 'agent-expand': transition('expand', function expand() { ui.workExpanded[id] = !ui.workExpanded[id]; render(); }); break;
+        case 'agent-focus':
+          // Show that agent's whole list in place rather than filtering it away.
+          ui.workFilter = 'all'; ui.workQuery = ''; ui.workExpanded[id] = true;
+          render();
+          var agentEl = root.querySelector('.ag[data-agent="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+          if (agentEl) { agentEl.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' }); var firstRow = agentEl.querySelector('.wk-row'); if (firstRow) firstRow.focus({ preventScroll: true }); }
+          break;
+        case 'done-range': transition('swap', function range() { setDoneRange(id); }); break;
+        // From a ruling's confirmation: Done, on the decisions this panel settled.
+        case 'done-decisions':
+          ui.doneLens = 'decisions';
+          if (!ui.history[ui.doneRange] && ui.doneRange !== 'session') ui.doneRange = 'session';
+          setTab('done');
+          break;
+        case 'done-lens':
+          transition('swap', function lens() {
+            ui.doneLens = id === 'decisions' ? 'decisions' : 'work';
+            ui.donePage = 1;
+            setDoneRange(ui.doneLens === 'work' ? workRangeOf(ui.doneRange) : ui.doneRange);
+            focusFirst('[data-action="done-lens"][aria-pressed="true"]');
+          });
+          break;
+        case 'work-receipt':
+          transition('detail', function openRc() {
+            openWorkReceipt(id);
+            focusFirst(ui.receiptSel ? '.pn-md-detail .md-close' : '.rc-row');
+          });
+          break;
+        case 'behind-open':
+          ui.doneLens = 'work';
+          setTab('done', true, function showBehind() {
+            fetchReceipts(workRangeOf(ui.doneRange));
+            ui.receiptSel = null;
+            openWorkReceipt(id);
+            focusFirst('.pn-md-detail .md-close');
+          });
+          break;
+        case 'receipt-call': recordReceiptCall(id, el.getAttribute('data-status')); break;
+        case 'receipt-iterate': {
+          var rrow = ui.receiptRows[id] || (ui.receiptDetail[id] && ui.receiptDetail[id].row);
+          if (!rrow || !Launch || !Receipts) break;
+          el.setAttribute('aria-busy', 'true');
+          Launch.send(Receipts.iterateSentence(rrow)).then(function iterated(outcome) {
+            el.removeAttribute('aria-busy');
+            el.textContent = outcome === 'sent' ? 'Sent to the chat' : outcome === 'copied' ? 'Copied. Paste it into the chat' : 'Type it in the chat';
+            announce(outcome === 'sent' ? 'Sent to the chat.' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send it. Type it in the chat.');
+          });
+          break;
+        }
+        case 'done-more': transition('expand', function more() { ui.donePage += 1; render(); }); break;
+        case 'start-open': setTab('start', true, function focusComposer() { focusFirst('#st-text'); }); break;
+        case 'start-who':
+          transition('menu', function toggleWho() {
+            ui.startWhoOpen = !ui.startWhoOpen;
+            render();
+            focusFirst(ui.startWhoOpen ? '.st-opt[aria-checked="true"]' : '[data-action="start-who"]');
+          });
+          break;
+        case 'start-agent':
+          ui.startAgent = id || '';
+          // Picking an agent means handing it to them; OrgX picks keeps the chosen verb.
+          if (id) ui.startVerb = 'delegate'; else if (ui.startVerb === 'delegate') ui.startVerb = '';
+          ui.startStatus = null;
+          transition('menu', function picked() { ui.startWhoOpen = false; render(); focusFirst('#st-text'); });
+          break;
+        case 'start-verb': ui.startVerb = id || ''; ui.startStatus = null; render(); focusFirst('[data-action="start-verb"][aria-checked="true"]'); break;
+        case 'start-fill':
+          ui.startText = el.getAttribute('data-text') || '';
+          ui.startAgent = id || ui.startAgent;
+          if (ui.startAgent) ui.startVerb = 'delegate';
+          else if (/^Plan the next steps/.test(ui.startText)) ui.startVerb = 'plan';
+          ui.startStatus = null;
+          render();
+          var ta = root.querySelector('#st-text');
+          if (ta) { ta.focus(); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (_) { /* not a text input */ } }
+          break;
+        case 'start-send': {
+          var sentenceToSend = startSentence();
+          if (!sentenceToSend || !Launch) break;
+          el.setAttribute('aria-busy', 'true');
+          Launch.send(sentenceToSend).then(function sentStart(outcome) {
+            ui.startStatus = outcome;
+            if (outcome === 'sent') ui.startText = '';
+            render();
+            announce(outcome === 'sent' ? 'Sent to the chat.' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send it. Type it in the chat.');
+          });
+          break;
+        }
+        case 'why': transition('expand', function why() { ui.whyOpen = ui.whyOpen === id ? null : id; render(); focusFirst('[data-action="why"]'); }); break;
         default: break;
       }
     });
@@ -1789,6 +2270,33 @@
         if (err && (err.field === field || (field === 'note' && err.field === 'reason'))) clearFieldError(id);
       }
       if (id) syncFooter(id);
+      if (area.matches('textarea[data-action="start-text"]')) {
+        ui.startText = area.value;
+        ui.startStatus = null;
+        var preview = root.querySelector('.st-preview');
+        var go = root.querySelector('[data-action="start-send"]');
+        var said = startSentence();
+        if (preview) preview.innerHTML = Start.previewHtml({ text: ui.startText, agent: ui.startAgent, verb: ui.startVerb });
+        if (go) { go.disabled = !said; if (said) go.removeAttribute('aria-disabled'); else go.setAttribute('aria-disabled', 'true'); }
+        var st = root.querySelector('.st-status');
+        if (st) st.remove();
+        return;
+      }
+      if (area.matches('input[data-action="ws-query"]')) {
+        ui.wsQuery = area.value;
+        var wcaret = area.selectionStart;
+        render();
+        var wsAgain = root.querySelector('input[data-action="ws-query"]');
+        if (wsAgain) { wsAgain.focus(); try { wsAgain.setSelectionRange(wcaret, wcaret); } catch (_) { /* not a text input */ } }
+        return;
+      }
+      if (area.matches('input[data-action="work-query"]')) {
+        ui.workQuery = area.value;
+        var caret = area.selectionStart;
+        render();
+        var again = root.querySelector('input[data-action="work-query"]');
+        if (again) { again.focus(); try { again.setSelectionRange(caret, caret); } catch (_) { /* not a text input */ } }
+      }
     });
     function clearFieldError(id) {
       if (ui.fieldErrors[id]) ui.fieldErrors[id].message = '';
@@ -1857,15 +2365,22 @@
     document.addEventListener('keydown', function onKey(event) {
       var tabEl = event.target && event.target.closest ? event.target.closest('.pn-tab') : null;
       if (tabEl && (event.key === 'ArrowRight' || event.key === 'ArrowLeft' || event.key === 'Home' || event.key === 'End')) {
-        var order = ['needs', 'work', 'done'];
+        var order = Start ? ['needs', 'work', 'done', 'start'] : ['needs', 'work', 'done'];
         var at = order.indexOf(tabEl.getAttribute('data-tab'));
         var next = event.key === 'Home' ? 0 : event.key === 'End' ? order.length - 1 : (at + (event.key === 'ArrowRight' ? 1 : -1) + order.length) % order.length;
         event.preventDefault();
         setTab(order[next]);
         return;
       }
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.target && event.target.id === 'st-text') {
+        event.preventDefault();
+        var goBtn = root.querySelector('[data-action="start-send"]');
+        if (goBtn && !goBtn.disabled) goBtn.click();
+        return;
+      }
       if (event.key !== 'Escape') return;
-      if (ui.wsOpen) { event.preventDefault(); closeWorkspaces(true); return; }
+      if (ui.startWhoOpen) { event.preventDefault(); transition('menu', function esc() { ui.startWhoOpen = false; render(); focusFirst('[data-action="start-who"]'); }); return; }
+      if (ui.wsOpen) { event.preventDefault(); transition('menu', function escWs() { closeWorkspaces(true); }); return; }
       if (ui.composer) { event.preventDefault(); closeComposer(); return; }
       if (ui.evidenceOpen) {
         event.preventDefault();
@@ -1913,6 +2428,9 @@
       ui.actionError = null; ui.changedSince = null; ui.chatCannotDecide = false;
       ui.listOpen = false; ui.evidenceOpen = false; ui.wholeQ = null;
       ui.tab = 'needs'; ui.work = null; ui.workPhase = 'idle'; ui.session = []; ui.openReceipt = null;
+      ui.workSel = null; ui.workFilter = 'all'; ui.workQuery = ''; ui.workExpanded = {};
+      ui.doneRange = 'session'; ui.history = {}; ui.historyPhase = 'idle'; ui.donePage = 1;
+      ui.startStatus = null; ui.startWhoOpen = false;
       ui.wsOpen = false; ui.wsPhase = 'idle'; ui.workspaces = null; ui.wsError = null; ui.wsSwitchingTo = null;
       ui.seenRows = null; ui.lastCounts = null;
       share = X.createShareController({ modelContext: ext.modelContext });
@@ -2051,13 +2569,17 @@
           // The production shape: several merge approvals that share one title
           // and differ only in the PR named in the question, whose command runs
           // straight into the approval wording, plus one blocking run approval.
+          // Shaped like production: the whole question as the title, the
+          // command on its own line, the floor as the asker.
           var mergeTitle = 'The OrgX floor stopped a merge action in a agent-cli session and is waiting for you.';
-          var merges = [3236, 3237, 3238, 3234].map(function merge(pr, i) {
+          var merges = [3236, 3237, 3238, 3239].map(function merge(pr, i) {
             var id = '5b1e0c3a-1d2f-4c3b-9a8e-0000000032' + String(30 + i);
+            var question = mergeTitle + '\n\nAgent\'s reason: PR #' + pr + ' (https://github.com/hopeatina/orgx/pull/' + pr + ') adds accessible decision action tiles. All GitHub checks pass; please review and decide whether to merge.\n\nCommand:\ngh pr merge ' + pr + '\n\nApprove to let exactly this action run once in the next 24 hours. Decline and the agent is told to continue without it.';
             return {
-              id: id, version: isoAgo((8 * 24 - i) * H), title: mergeTitle, urgency: 'medium', waiting_since: isoAgo(8 * D), initiative_title: null,
-              blocked: true, decide_in_orgx_reason: null, option_count: 0, kind: 'action', widget_actions: null, asker: null, url: decisionUrl(id),
-              detail: mergeTitle + ' All GitHub checks pass on PR #' + pr + '; please review and decide whether to merge. Command: gh pr merge ' + pr + ' Approve to let exactly this action run once in the next 24 hours.',
+              id: id, version: isoAgo((8 * 24 - i) * H), title: question.slice(0, 160), urgency: 'medium', waiting_since: isoAgo(8 * D), initiative_title: null,
+              blocked: true, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', asker: null, asker_kind: 'floor', session_label: 'agent-cli session', url: decisionUrl(id),
+              widget_actions: { kind: 'decision', actions: ['approve', 'reject'], labels: { approve: 'Allow once', reject: 'Deny' }, reject_requires_reason: false, answer: null, selection: null },
+              detail: question,
             };
           });
           s = baseSnapshot();
@@ -2066,7 +2588,9 @@
           var first = merges[0];
           s.focus = Object.assign(galleryFocus(FIXTURE_QUEUE[0]), {
             id: first.id, version: first.version, urgency: 'medium', blocked: true, waiting_since: first.waiting_since, initiative_title: null, asker: null, url: first.url,
-            question: first.detail, recommendation: null, evidence: [], evidence_total: 0, consequence_if_approved: null,
+            question: first.detail, recommendation: { status: 'unavailable', action: null }, evidence: [], evidence_total: 0, consequence_if_approved: null,
+            asker_kind: 'floor', session_label: 'agent-cli session', widget_actions: first.widget_actions,
+            why: { authority: 'This gate blocks work until an authorized person answers.', policy: null, uncertainty: [], run_url: null, initiative_url: window.OrgXLinks.initiative('14985d6c-214c-4f9e-96ac-4f6b254e1770') },
           });
           tokens = allTokens(s);
           break;
@@ -2316,6 +2840,36 @@
 
     function reducedMotion() {
       return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    /**
+     * Run a state change and its render as one view transition, so what leaves
+     * and what arrives move together: tabs slide in the direction travelled,
+     * menus grow from their trigger and shrink back, the detail pane rises in
+     * and the header stays put. `change` renders and moves focus itself; it
+     * runs synchronously when transitions are unavailable or motion is
+     * reduced, so callers never depend on the animation.
+     */
+    function transition(kind, change, dir) {
+      var html = document.documentElement;
+      var can = typeof document.startViewTransition === 'function' && !reducedMotion() && document.visibilityState !== 'hidden';
+      if (!can) {
+        change();
+        if (kind === 'tab' && !reducedMotion()) {
+          var view = root.querySelector('#pn-view, .pn-split, .pn-calm');
+          if (view) view.classList.add('pn-enter');
+        }
+        return;
+      }
+      html.setAttribute('data-vt', kind);
+      if (dir) html.setAttribute('data-vt-dir', dir); else html.removeAttribute('data-vt-dir');
+      var vt = document.startViewTransition(change);
+      vt.finished.then(clear, clear);
+      function clear() {
+        if (html.getAttribute('data-vt') !== kind) return;
+        html.removeAttribute('data-vt');
+        html.removeAttribute('data-vt-dir');
+      }
     }
 
     function liveRefresh() {

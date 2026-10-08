@@ -26,6 +26,8 @@
     "shared/panel/panel-brand.js",
     "shared/panel/panel-launch.js",
     "shared/panel/panel-live.js",
+    "shared/panel/panel-receipts.js",
+    "shared/panel/panel-start.js",
     "shared/panel/panel-tour.js",
     "shared/panel/panel-views.js",
     "shared/panel/panel.css",
@@ -298,8 +300,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 1565,
-      "hash": "f78f76725c0f",
+      "bytes": 1676,
+      "hash": "74bb4897a265",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -318,6 +320,8 @@
         "shared/panel/panel-brand.js",
         "shared/panel/panel-launch.js",
         "shared/panel/panel-live.js",
+        "shared/panel/panel-receipts.js",
+        "shared/panel/panel-start.js",
         "shared/panel/panel-tour.js",
         "shared/panel/panel-views.js",
         "shared/panel/panel.css",
@@ -521,8 +525,8 @@
     },
     "work-ledger": {
       "file": "public/widgets/work-ledger.html",
-      "bytes": 49718,
-      "hash": "e4a8d1262205",
+      "bytes": 50329,
+      "hash": "9a59d73301e1",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",

@@ -173,7 +173,12 @@ export function buildPanelLiveGraph(raw: unknown, feedId: string): WorkGraph {
         kind: 'task',
         owner: item.agent,
         phase: WORK_PHASE[item.state] ?? 'pending',
-        status: item.state,
+        // "stale" rides the status so the panel shows "No update" exactly as
+        // its own read would; the phase stays executing for the cadence.
+        status: item.stale ? 'stale' : item.state,
+        ...(item.domain ? { domain: item.domain } : {}),
+        ...(item.updated_at ? { updatedAt: item.updated_at } : {}),
+        ...(item.url ? { href: item.url } : {}),
       });
     }
   }
