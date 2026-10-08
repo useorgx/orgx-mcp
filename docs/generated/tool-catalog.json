@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-07T18:35:24.050Z",
-  "sourceHash": "35e9f723b4027bfb",
+  "generatedAt": "2026-10-08T14:01:55.599Z",
+  "sourceHash": "8e203267a7797259",
   "version": "1.0.0",
   "totalTools": 107,
   "categories": [
@@ -1705,9 +1705,10 @@
           "view": {
             "type": "string",
             "enum": [
-              "work"
+              "work",
+              "workspaces"
             ],
-            "description": "Optional extra view. \"work\" adds what agents are running and what waits on you."
+            "description": "Optional extra view. \"work\" adds what agents are running and what waits on you; \"workspaces\" adds the workspaces the panel can switch to."
           }
         },
         "additionalProperties": false,
@@ -4136,6 +4137,21 @@
             "type": "number",
             "minimum": 0,
             "description": "Per-task or canary spend cap used during the validation run, when known."
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Model that did the work, as its provider names it (e.g. \"claude-opus-5-5\"). Always pass it: a receipt that does not say which model ran cannot be compared with another."
+          },
+          "model_provider": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "Provider of model when it cannot be read from the name (anthropic, openai, google…)."
+          },
+          "agent_work_receipt": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "A complete Agent Work Receipt (v0.2), stored verbatim instead of one built from the other fields. Include actor.runtime and actor.model, and ideally extensions[\"org.orgx.review/v1\"]: criteria frozen before the work, one check per criterion, output attached."
           },
           "status": {
             "type": "string",
