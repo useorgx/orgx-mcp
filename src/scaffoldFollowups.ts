@@ -1,5 +1,11 @@
 import { callOrgxApiJson, type OrgxApiEnv } from './orgxApi';
 import { canLaunchWithCredentialStatus } from './scaffoldControl';
+import {
+  findExpectationSet,
+  heldLaunchFromError,
+  type ExpectationSet,
+} from './expectations';
+import { splitWidgetApprovalMeta } from './widgetApprovalMeta';
 import type { ScaffoldStageName } from './mcpInvocationTelemetry';
 
 export type ScaffoldAgentAssignment = {
@@ -51,6 +57,10 @@ export type ScaffoldLaunchResult = {
   needs_credentials?: boolean;
   next_steps?: string[];
   start_agents_hint?: string;
+  /** OrgX held the launch until a person agrees on what done means. */
+  held_for_agreement?: boolean;
+  /** The "Agree on done" decision holding the launch, when OrgX names it. */
+  decision_id?: string | null;
 };
 
 export type ScaffoldStreamSnapshot = {
@@ -85,6 +95,13 @@ export type ScaffoldFollowupResult = {
   launch?: ScaffoldLaunchResult;
   streams?: ScaffoldStreamSnapshot;
   fallback_agent_dispatch?: ScaffoldFallbackAgentDispatch;
+  /** The bar OrgX drafted (or agreed) for this initiative, when the launch answer carries it. */
+  expectations?: ExpectationSet | null;
+  /**
+   * Widget-only approval material for the agreement decision. It goes in the
+   * tool result's _meta, never in structuredContent.
+   */
+  widget_meta?: Record<string, unknown> | null;
 };
 
 type FollowupStageName = Extract<
@@ -308,6 +325,8 @@ export async function runScaffoldPostCreateFollowups(params: {
   params.onStage?.('credential_check');
 
   let launch: ScaffoldLaunchResult | undefined;
+  let expectations: ExpectationSet | null = null;
+  let widget_meta: Record<string, unknown> | null = null;
   if (
     createdInitiativeId &&
     params.launchAfterCreate &&
@@ -345,7 +364,11 @@ export async function runScaffoldPostCreateFollowups(params: {
           userEmail,
         }
       );
-      const launchPayload = (await launchResponse.json()) as {
+      const rawLaunchPayload = (await launchResponse.json()) as Record<string, unknown>;
+      const split = splitWidgetApprovalMeta(rawLaunchPayload);
+      widget_meta = split.meta;
+      expectations = findExpectationSet(split.data, (split.data as Record<string, unknown>).data);
+      const launchPayload = split.data as {
         message?: string;
         transition?: { from: string; to: string };
         initiative_activation?: {
@@ -362,35 +385,55 @@ export async function runScaffoldPostCreateFollowups(params: {
         initiative_activation: launchPayload.initiative_activation,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const isSpawnGuard =
-        errorMessage.includes('spawn') ||
-        errorMessage.includes('guard') ||
-        errorMessage.includes('quality');
-      const isStreamError =
-        errorMessage.includes('stream') || errorMessage.includes('activation');
-      launch = {
-        attempted: true,
-        ok: false,
-        error: errorMessage,
-        error_kind: isSpawnGuard
-          ? 'spawn_guard_blocked'
-          : isStreamError
-          ? 'stream_creation_failed'
-          : 'launch_failed',
-        next_steps: isSpawnGuard
-          ? [
-              'Check agent quality scores',
-              'Approve pending decisions to unblock',
-              'Then say "start agents" to retry',
-            ]
-          : [
-              'Try re-running the same prompt (transient failures happen)',
-              'Say "start agents" to retry launch',
-            ],
-        start_agents_hint:
-          'Say "start agents" to retry launching this initiative.',
-      };
+      const held = heldLaunchFromError(error);
+      if (held) {
+        expectations = held.expectations;
+        launch = {
+          attempted: true,
+          ok: false,
+          held_for_agreement: true,
+          decision_id: held.decision_id,
+          error_kind: 'expectation_agreement_pending',
+          message:
+            'Launch is waiting for you to agree on what done means. It starts when you agree.',
+          next_steps: [
+            'Agree on what done means in Needs you (the OrgX panel or the decisions view)',
+            'Or say what to change and OrgX redrafts it',
+          ],
+          start_agents_hint:
+            'Agents start when you agree on what done means in Needs you.',
+        };
+      } else {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isSpawnGuard =
+          errorMessage.includes('spawn') ||
+          errorMessage.includes('guard') ||
+          errorMessage.includes('quality');
+        const isStreamError =
+          errorMessage.includes('stream') || errorMessage.includes('activation');
+        launch = {
+          attempted: true,
+          ok: false,
+          error: errorMessage,
+          error_kind: isSpawnGuard
+            ? 'spawn_guard_blocked'
+            : isStreamError
+            ? 'stream_creation_failed'
+            : 'launch_failed',
+          next_steps: isSpawnGuard
+            ? [
+                'Check agent quality scores',
+                'Approve pending decisions to unblock',
+                'Then say "start agents" to retry',
+              ]
+            : [
+                'Try re-running the same prompt (transient failures happen)',
+                'Say "start agents" to retry launch',
+              ],
+          start_agents_hint:
+            'Say "start agents" to retry launching this initiative.',
+        };
+      }
     }
   } else if (createdInitiativeId) {
     launch = { attempted: false, ok: false };
@@ -593,5 +636,7 @@ export async function runScaffoldPostCreateFollowups(params: {
     launch,
     streams,
     fallback_agent_dispatch,
+    ...(expectations ? { expectations } : {}),
+    ...(widget_meta ? { widget_meta } : {}),
   };
 }

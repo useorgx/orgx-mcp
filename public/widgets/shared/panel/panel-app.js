@@ -10,7 +10,21 @@
     var Tour = window.OrgXPanelTour || null;
     var Start = window.OrgXPanelStart || null;
     var Receipts = window.OrgXPanelReceipts || null;
+    var Expect = window.OrgXExpectations || null;
     var root = document.getElementById('panel');
+    if (Expect && root) Expect.bind(root);
+    // "Change this workstream in chat", from an opened workstream in an Agree on done bar.
+    if (Expect && root) root.addEventListener('ox-xp-edit', function onBarEdit(event) {
+      var d = event.detail || {};
+      var item = findItem(d.key);
+      var set = agreementOf(item);
+      if (!item || !set || !Launch) return;
+      var button = d.button;
+      Launch.send(Expect.editSentence(set, item.initiative_title || splitHeadline(item.question || item.title).headline, d.group)).then(function edited(outcome) {
+        if (button) button.textContent = outcome === 'sent' ? 'Sent to the chat' : outcome === 'copied' ? 'Copied. Paste it into the chat' : 'Type it in the chat';
+        announce(outcome === 'sent' ? 'Sent to the chat. Agree here once it reads right.' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send it. Type it in the chat.');
+      });
+    });
     var params = new URLSearchParams(window.location.search);
     var isGallery = params.get('gallery') === 'true';
     var APPROVAL_META_KEY = 'orgx/widgetApproval';
@@ -282,7 +296,7 @@
       return code;
     }
     var PAST = {
-      approve: 'Approved', 'approve and continue': 'Approved', 'approve selected': 'Approved', 'grant access': 'Access granted',
+      approve: 'Approved', 'agree · start work': 'Agreed', agree: 'Agreed', 'approve and continue': 'Approved', 'approve selected': 'Approved', 'grant access': 'Access granted',
       'allow once': 'Allowed once', 'allow and continue': 'Allowed', 'send answer': 'Answer sent', 'send guidance and retry': 'Guidance sent',
       'confirm and continue': 'Confirmed', 'confirm selection': 'Confirmed', confirm: 'Confirmed', 'accept plan': 'Plan accepted',
       'apply edit': 'Edit applied', retry: 'Retry approved', 'retry and continue': 'Retry approved', acknowledge: 'Acknowledged',
@@ -306,7 +320,23 @@
         requiresReason: o.requires_reason === true,
       };
     }
+    /** The bar on an "Agree on done" decision (expectation_agreement), or null. */
+    function agreementOf(f) {
+      return Expect && f ? Expect.fromDecision(f) : null;
+    }
+    function isAgreementItem(f) {
+      return Boolean(f && (f.agreement === true || agreementOf(f)));
+    }
+    /** An agreement says what agreeing does; a generic "Approve" would not. */
     function choicesFor(f) {
+      var spec = baseChoicesFor(f);
+      if (isAgreementItem(f)) {
+        if (spec.approve && /^(approve|confirm)$/i.test(spec.approve.label)) spec.approve.label = 'Agree · start work';
+        if (spec.reject && /^(reject|decline)$/i.test(spec.reject.label)) spec.reject.label = 'Send back';
+      }
+      return spec;
+    }
+    function baseChoicesFor(f) {
       var raw = f.widget_actions;
       var kind = kindOf(f);
       if (raw && !Array.isArray(raw) && Array.isArray(raw.actions)) {
@@ -430,6 +460,8 @@
       return '';
     }
     function quickDecide(item) {
+      // Agreeing on done means reading the bar first: the row opens it.
+      if (isAgreementItem(item)) return false;
       var c = choicesFor(item);
       return Boolean(c.approve && !c.selection && !(c.answer && c.answer.approve));
     }
@@ -790,6 +822,7 @@
       }
       if (sel && !draft.picked.length && sel.requiredFor.approve) return { heading: 'Choose one', detail: 'recorded in OrgX', primary: '', disabled: false };
       if (sel && draft.picked.length) return { heading: 'You picked ' + optionLabel(f, draft.picked[0]), detail: detail, primary: c.approve.label, disabled: !ready };
+      if (isAgreementItem(f)) return { heading: 'Agree on done', detail: ready ? 'agents start when you agree' : detail, primary: c.approve.label, disabled: !ready };
       return { heading: 'Decide here', detail: detail, primary: c.approve.label, disabled: !ready };
     }
     function syncFooter(id) {
@@ -944,6 +977,7 @@
       var changed = ui.changedSince
         ? '<div class="notice" role="status"><p>Changed since ' + esc(ui.changedSince) + '</p></div>' : '';
       var facts = [];
+      var evidenceSlot = '';
       var head = splitHeadline(f.question);
       var body = structureBody(head.body);
       body.facts.forEach(function fact(x) {
@@ -959,6 +993,15 @@
       if (f.consequence_if_approved || body.ifApproved) {
         facts.push('<div class="fact"><dt>If approved</dt><dd>' + inline(f.consequence_if_approved || body.ifApproved) + '</dd></div>');
       }
+      var bar = agreementOf(f);
+      if (bar) {
+        // The bar is the packet: what OrgX drafted, where each check came from,
+        // new since last time first, then per owner. No recommendation row.
+        facts = [];
+        evidenceSlot = '<div class="xp-packet">' + Expect.barHtml(bar, { key: f.id }) +
+          (ui.rulings[f.id] ? '' : '<div class="xp-acts"><button type="button" class="text-btn" data-action="exp-edit" data-id="' + esc(f.id) + '">Edit in chat</button>' +
+            '<span class="xp-hint">Change a check before you agree</span></div>') + '</div>';
+      }
       return '<section class="packet enter" aria-labelledby="pk-q">' + changed +
         '<p class="meta">' + askerAvatarHtml +
         // "Normal · Blocking work" says two things at once; blocking is the one that matters.
@@ -971,11 +1014,11 @@
         (body.lede.length ? '<p class="q-body">' + inline(body.lede.join(' ')) + '</p>' : '') +
         body.commands.map(function cmd(c) { return '<div class="q-cmd"><span>Command</span><pre><code>' + esc(c) + '</code></pre></div>'; }).join('') +
         (facts.length ? '<dl class="facts">' + facts.join('') + '</dl>' : '') +
-        evidenceHtml(f) + whyHtml(f) +
+        (evidenceSlot || evidenceHtml(f)) + whyHtml(f) +
         // The work this decision would let through, read before deciding, not after.
         behindFor(f) +
         '<div class="actions">' + footerFor(f) + error + '</div>' +
-        shareHtml(f) + (Launch && !ui.rulings[f.id] ? Launch.chipsHtml('packet', { title: head.headline }) : '') + '</section>';
+        shareHtml(f) + (Launch && !ui.rulings[f.id] && !bar ? Launch.chipsHtml('packet', { title: head.headline }) : '') + '</section>';
     }
 
     function rowHtml(item, opts) {
@@ -1893,8 +1936,10 @@
       delete ui.tokens[id]; // spent here; a refusal that leaves the item open hands it back
       render();
       var args = Object.assign({ decision_id: id, action: action, approval_token: token }, draft.args);
+      var agreeing = isAgreementItem(item);
       function doneDetail(status) {
         if (!status) return 'recorded; status not available yet';
+        if (agreeing) return action === 'approve' ? 'agents start; every receipt is judged against this bar' : 'OrgX redrafts it and asks again';
         if (c.kind === 'action') return action === 'approve' ? 'the action can run' : 'the action does not run';
         if (c.kind === 'approval') return action === 'approve' ? 'the run continues' : 'the run stops at this step';
         return action === 'approve' ? 'the agent can continue' : 'the agent reworks it';
@@ -2146,6 +2191,18 @@
           });
           break;
         case 'receipt-call': recordReceiptCall(id, el.getAttribute('data-status')); break;
+        case 'exp-edit': {
+          var fx = findItem(id);
+          var bx = agreementOf(fx);
+          if (!fx || !bx || !Launch) break;
+          el.setAttribute('aria-busy', 'true');
+          Launch.send(Expect.editSentence(bx, fx.initiative_title || splitHeadline(fx.question || fx.title).headline)).then(function edited(outcome) {
+            el.removeAttribute('aria-busy');
+            el.textContent = outcome === 'sent' ? 'Sent to the chat' : outcome === 'copied' ? 'Copied. Paste it into the chat' : 'Type it in the chat';
+            announce(outcome === 'sent' ? 'Sent to the chat. Agree here once it reads right.' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send it. Type it in the chat.');
+          });
+          break;
+        }
         case 'receipt-iterate': {
           var rrow = ui.receiptRows[id] || (ui.receiptDetail[id] && ui.receiptDetail[id].row);
           if (!rrow || !Launch || !Receipts) break;

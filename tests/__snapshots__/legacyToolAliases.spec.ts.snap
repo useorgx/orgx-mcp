@@ -17,7 +17,7 @@ exports[`listed tool surfaces > profile "chatgpt" lists byte-identical tool desc
   "orgx_command_status": "bf565a9dad855288",
   "orgx_decide": "304cf7a9c6e0c348",
   "orgx_inspect": "d95c7c71a1c9801b",
-  "orgx_panel_snapshot": "a3f75423b17ad14b",
+  "orgx_panel_snapshot": "5ab21a96dc7942ff",
   "orgx_plan": "557e952a03fc09a6",
   "orgx_recommend": "05f7fa9274c70448",
   "orgx_search": "f99fd7c7687f97c8",
@@ -29,7 +29,7 @@ exports[`listed tool surfaces > profile "chatgpt" lists byte-identical tool desc
   "reject_decision": "c5bedfd37dd63ed2",
   "resume_agent_run": "5c016323dee7914e",
   "review_artifact": "326e48293c3f656d",
-  "scaffold_initiative": "93f1b3c5eda771cc",
+  "scaffold_initiative": "21fd5da8fea984b6",
 }
 `;
 
@@ -116,7 +116,7 @@ exports[`listed tool surfaces > profile "commander" lists byte-identical tool de
   "orgx_submit_receipt": "1047a94c280599cf",
   "orgx_tail": "d27b33e1225e6ac8",
   "orgx_write": "83d98b5670c2e8b9",
-  "scaffold_initiative": "93f1b3c5eda771cc",
+  "scaffold_initiative": "21fd5da8fea984b6",
 }
 `;
 
@@ -197,7 +197,7 @@ exports[`listed tool surfaces > profile "full" lists byte-identical tool descrip
   "orgx_expect": "215505c6582ecf93",
   "orgx_free_audit": "2564eefddf9d0826",
   "orgx_inspect": "d95c7c71a1c9801b",
-  "orgx_panel_snapshot": "a3f75423b17ad14b",
+  "orgx_panel_snapshot": "5ab21a96dc7942ff",
   "orgx_plan": "557e952a03fc09a6",
   "orgx_poll_attention": "5c6cc9bfb10f8625",
   "orgx_poll_question": "f9a8910b2190ca6b",
@@ -225,7 +225,7 @@ exports[`listed tool surfaces > profile "full" lists byte-identical tool descrip
   "resume_agent_run": "5c016323dee7914e",
   "resume_plan_session": "b836de74a1f20d0a",
   "review_artifact": "326e48293c3f656d",
-  "scaffold_initiative": "93f1b3c5eda771cc",
+  "scaffold_initiative": "21fd5da8fea984b6",
   "score_next_up_queue": "48c368c412cb805e",
   "scoring_config": "978827eec8a0dbc8",
   "spawn_agent_task": "7564e8148f1ad541",
@@ -286,7 +286,7 @@ exports[`listed tool surfaces > profile "planner" lists byte-identical tool desc
   "orgx_request_question": "86e1d5eca987ab0e",
   "orgx_search": "f99fd7c7687f97c8",
   "orgx_write": "83d98b5670c2e8b9",
-  "scaffold_initiative": "93f1b3c5eda771cc",
+  "scaffold_initiative": "21fd5da8fea984b6",
 }
 `;
 
@@ -326,7 +326,7 @@ exports[`listed tool surfaces > profile "v2" lists byte-identical tool descripto
   "orgx_emit_execution_graph": "ba185b07f418aaf7",
   "orgx_expect": "215505c6582ecf93",
   "orgx_inspect": "d95c7c71a1c9801b",
-  "orgx_panel_snapshot": "a3f75423b17ad14b",
+  "orgx_panel_snapshot": "5ab21a96dc7942ff",
   "orgx_plan": "557e952a03fc09a6",
   "orgx_poll_attention": "5c6cc9bfb10f8625",
   "orgx_poll_question": "f9a8910b2190ca6b",
@@ -347,7 +347,7 @@ exports[`listed tool surfaces > profile "v2" lists byte-identical tool descripto
   "request_independent_artifact_review": "57cf65c7729ecfd4",
   "resume_agent_run": "5c016323dee7914e",
   "review_artifact": "326e48293c3f656d",
-  "scaffold_initiative": "93f1b3c5eda771cc",
+  "scaffold_initiative": "21fd5da8fea984b6",
   "spawn_agent_task": "7564e8148f1ad541",
   "track_project_progress": "4580c88252fd709e",
 }

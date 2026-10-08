@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="shared/kit/ox-tokens.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
+  <link rel="stylesheet" href="shared/expectations.css" />
   <script src="shared/kit/ox-elements-core.js"></script>
   <script src="shared/kit/ox-elements-footer.js"></script>
   <script src="shared/kit/ox-elements-avatar.js"></script>
@@ -16,6 +17,7 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/interaction-kit.js"></script>
+  <script src="shared/expectations.js"></script>
   <script src="shared/live-machine.js"></script>
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
@@ -379,6 +381,11 @@
     :root[data-embed="og-decision"] .dq-queue,
     :root[data-embed="og-decision"] .dq-history,
     :root[data-embed="og-decision"] .dq-last { display: none; }
+      /* Agree on done: the bar is the packet (shared/expectations.css draws the rows). */
+    .dq-bar { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .dq-bar-sum { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ox-text-2); text-wrap: pretty; }
+    .dq-bar-acts { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+    .dq-bar-hint { font-size: 12px; color: var(--ox-text-muted); }
   </style>
   <link rel="stylesheet" href="shared/widget-theme.css" />
 </head>
@@ -450,7 +457,7 @@
       'validation-error', 'decide-reason', 'batch-ready', 'batch-result', 'batch-unavailable'];
     var isContractFixture = CONTRACT_FIXTURES.includes(fixtureState);
     // packet: what the app sends from a review packet with no recommendation (live QA, 2026-10-02).
-    var isDemo = ['urgent', 'populated', 'long', 'resolved', 'packet'].includes(fixtureState) || isFooterFixture || isOptionFixture || isContractFixture;
+    var isDemo = ['urgent', 'populated', 'long', 'resolved', 'packet', 'agree'].includes(fixtureState) || isFooterFixture || isOptionFixture || isContractFixture;
     var demoNow = Date.now();
     var data = isDemo ? {
       summary: { critical: 1, high: 2 },
@@ -627,6 +634,25 @@
         packetItem('p2', 'Production verification of MCP PR #424: admission, privacy and plan compatibility changes are deployed as f9c40d233e4e13809d9f901b005fe3410b37a4b0. A green deployment alone does not approve broad plugin marketing.', { review_packet: { id: 'pkt-p2', headDecisionId: 'p2', question: 'Production verification of MCP PR #424: admission, privacy and plan compatibility changes are deployed as f9c40d233e4e13809d9f901b005fe3410b37a4b0. A green deployment alone does not approve broad plugin marketing.', outcome: 'Plugin directory launch', current: { state: 'pending', blocked: true }, evidence: [], uncertainty: 'Onboarding telemetry for fresh accounts is not correlated yet.', recommendation: { status: 'ready', action: 'Hold marketing until the fresh-account flow is verified.' }, consequences: {} } }),
       ];
     }
+    // agree: the "Agree on done" decision OrgX raises before an initiative launches.
+    if (fixtureState === 'agree' && data) {
+      var ck = function(owner, statement, source, verify, extra) { return Object.assign({ scope: 'workstream', owner_agent: owner, statement: statement, source: source, verify: verify }, extra || {}); };
+      data.decisions = [{
+        id: 'x1', urgency: 'high', type: 'expectation_agreement', decision_kind: 'expectation_agreement', sourceLabel: 'Launch the new pricing page',
+        summary: 'Is this what done means for “Launch the new pricing page”?',
+        created_at: new Date(demoNow - 20 * 60 * 1000).toISOString(),
+        widget_actions: demoActions({ labels: { approve: 'Approve', reject: 'Send back' }, reject_requires_reason: true }),
+        expectations: { status: 'drafted', decision_id: 'x1', checks: [
+          ck('engineering-agent', 'Plans on the page match the billing catalog', 'learned', 'artifact', { new_since_last: true, source_label: 'your call on #3211' }),
+          ck('engineering-agent', 'Every PR is reviewed by a person', 'rule', 'manual'),
+          ck('engineering-agent', 'The checkout e2e suite passes ten runs in a row', 'artifact_type', 'command'),
+          ck('engineering-agent', 'Lighthouse performance is 90 or higher', 'suggested', 'http'),
+          ck('marketing-agent', 'Ends with one clear call to action', 'learned', 'manual', { source_label: 'your call on the launch post' }),
+          ck('marketing-agent', 'No claim without a source', 'artifact_type', 'artifact'),
+          { scope: 'initiative', statement: 'No outbound email goes out without approval', source: 'rule', verify: 'manual' },
+        ] },
+      }].concat(data.decisions.slice(1, 3));
+    }
     if (isContractFixture && data) {
       if (fixtureState === 'batch-ready' || fixtureState === 'batch-result' || fixtureState === 'batch-unavailable') {
         data.decisions.push(Object.assign({}, CONTRACT_ITEMS['gateway-action']), Object.assign({}, CONTRACT_ITEMS['access-request']));
@@ -635,7 +661,7 @@
       }
     }
     // Demo-only stand-ins for the widget approval tokens a real result carries in its _meta.
-    var demoApprovalTokens = isDemo ? { p1: 'demo-approval-token', p2: 'demo-approval-token', d2: 'demo-approval-token', d3: 'demo-approval-token', d4: 'demo-approval-token', d5: 'demo-approval-token', c1: 'demo-approval-token', c2: 'demo-approval-token', c3: 'demo-approval-token', c4: 'demo-approval-token', c5: 'demo-approval-token', c7: 'demo-approval-token' } : null;
+    var demoApprovalTokens = isDemo ? { x1: 'demo-approval-token', p1: 'demo-approval-token', p2: 'demo-approval-token', d2: 'demo-approval-token', d3: 'demo-approval-token', d4: 'demo-approval-token', d5: 'demo-approval-token', c1: 'demo-approval-token', c2: 'demo-approval-token', c3: 'demo-approval-token', c4: 'demo-approval-token', c5: 'demo-approval-token', c7: 'demo-approval-token' } : null;
     if (fixtureState === 'long' && data) {
       data.decisions[0].summary = 'Approve the founder continuity launch story, linked artifact evidence, decision provenance language, responsive social preview, CTA hierarchy, and cross-agent continuation receipt before the scheduled release window';
       data.decisions[0].context += ' This long-content fixture verifies wrapping and disclosure behavior across compact hosts.';
@@ -1292,6 +1318,32 @@
       return (isContractActions(raw) ? fromContract(raw, decision) : fromProvisional(raw, decision)) || fromOptions(decision, packet);
     };
     var choicesFor = (d) => d.choices || resolveChoices(d, null);
+    /** An agreement says what agreeing does; a generic "Approve" would not. */
+    var agreementChoices = (choices, bar) => {
+      if (!bar || !choices) return choices;
+      const next = { ...choices };
+      if (next.approve && /^(approve|confirm)$/i.test(next.approve.label)) next.approve = { ...next.approve, label: 'Agree · start work' };
+      if (next.reject && /^(reject|decline)$/i.test(next.reject.label)) next.reject = { ...next.reject, label: 'Send back' };
+      return next;
+    };
+    window.editBarInChat = (id, button, group) => {
+      const d = getDecisionById(id);
+      if (!d || !d.expectations || !window.OrgXExpectations) return;
+      const text = window.OrgXExpectations.editSentence(d.expectations, d.source_label || d.headline, group);
+      const say = (t) => { if (button) button.textContent = t; };
+      if (isDemo) { say('Sent to the chat'); return; }
+      const app = rt() && rt().getApp ? rt().getApp() : null;
+      let attempt = null;
+      try {
+        if (app && typeof app.sendMessage === 'function') attempt = Promise.resolve(app.sendMessage({ role: 'user', content: [{ type: 'text', text }] }));
+        else if (window.openai && typeof window.openai.sendFollowUpMessage === 'function') attempt = Promise.resolve(window.openai.sendFollowUpMessage({ prompt: text }));
+      } catch (_) { attempt = null; }
+      (attempt || Promise.reject(new Error('unavailable'))).then(() => say('Sent to the chat'), () => {
+        const nav = window.navigator;
+        if (nav && nav.clipboard && nav.clipboard.writeText) nav.clipboard.writeText(text).then(() => say('Copied · paste it in the chat'), () => say('Type it in the chat'));
+        else say('Type it in the chat');
+      });
+    };
     var selectedFor = (id) => (Array.isArray(optionSelections[id]) ? optionSelections[id] : []);
     var optionById = (d, optionId) => {
       const s = choicesFor(d).selection;
@@ -1418,6 +1470,8 @@
         decision.assigned_agent,
         decision.domain
       );
+      // "Agree on done": the bar is the packet.
+      const bar = window.OrgXExpectations ? window.OrgXExpectations.fromDecision(decision) : null;
       const isSystemDecision =
         !rawOwner ||
         ['system', 'orgx', 'orgx system'].includes(rawOwner.toLowerCase()) ||
@@ -1454,7 +1508,8 @@
         if_approved: ifApproved,
         if_rejected: ifRejected,
         evidence_items: normalizeEvidenceItems((packet && packet.evidence) || decision.evidence),
-        choices: resolveChoices(decision, packet),
+        choices: agreementChoices(resolveChoices(decision, packet), bar),
+        expectations: bar,
         created_at:
           firstString(decision.created_at, decision.createdAt, decision.updated_at) ||
           new Date().toISOString(),
@@ -1575,6 +1630,7 @@
       'confirm and continue': 'Confirmed', 'confirm selection': 'Confirmed', confirm: 'Confirmed', 'accept plan': 'Plan accepted',
       'apply edit': 'Edit applied', retry: 'Retry approved', 'retry and continue': 'Retry approved', acknowledge: 'Acknowledged',
       'send back': 'Sent back', deny: 'Denied', decline: 'Declined', reject: 'Rejected', 'request changes': 'Changes requested', 'stop here': 'Stopped',
+      'agree · start work': 'Agreed', agree: 'Agreed',
     };
     var pastTense = (d, action) => {
       const c = choicesFor(d);
@@ -1582,6 +1638,7 @@
       return PAST[String(label || '').toLowerCase()] || (action === 'approve' ? 'Approved' : 'Sent back');
     };
     var doneDetail = (d, action, who) => {
+      if (d.expectations) return action === 'approve' ? 'agents start; every receipt is judged against this bar' : 'OrgX redrafts it and asks again';
       const kind = choicesFor(d).kind;
       if (kind === 'action') return action === 'approve' ? 'the action can run' : 'the action does not run';
       if (kind === 'approval') return action === 'approve' ? who + ' continues the run' : who + ' stops at this step';
@@ -1616,6 +1673,7 @@
         if (sel && draft.picked.length) {
           return { ...base, state: 'needs-you', heading: 'You picked ' + optionLabel(d, draft.picked[0]), detail, primary: c.approve.label, disabled: !ready, slot };
         }
+        if (d.expectations) return { ...base, state: 'needs-you', heading: 'Agree on done', detail: ready ? 'agents start when you agree' : detail, primary: c.approve.label, disabled: !ready, slot };
         return { ...base, state: 'needs-you', heading: 'Finishes here', detail, primary: c.approve.label, disabled: !ready, slot };
       }
       const approving = st.action === 'approve';
@@ -2097,6 +2155,11 @@
     };
 
     // Option buttons and fields are delegated: their ids come from the server and never reach an inline handler.
+    if (window.OrgXExpectations) window.OrgXExpectations.bind(document.getElementById('content'));
+    document.getElementById('content').addEventListener('ox-xp-edit', (event) => {
+      const d = event.detail || {};
+      window.editBarInChat(d.key, d.button, d.group);
+    });
     document.getElementById('content').addEventListener('click', (event) => {
       const button = event.target && event.target.closest ? event.target.closest('.dq-opt[data-option-id]') : null;
       if (!button || button.disabled) return;
@@ -2308,6 +2371,8 @@
     }
     var batchEligible = (d) => {
       if (!d || isSettled(d) || actionStates[d.id] || !getApprovalToken(d.id)) return false;
+      // Agreeing on done means reading the bar: never part of a batch.
+      if (d.expectations || (window.OrgXExpectations && window.OrgXExpectations.isAgreement(d))) return false;
       const c = choicesFor(d);
       return Boolean(c.approve && !c.selection && !(c.answer && c.answer.approve));
     };
@@ -2509,7 +2574,15 @@
       if (!recLine && kind !== 'decision' && !owner.isSystem) {
         recLine = `<div><div class="dq-rec">${renderAvatar(owner.label, 'inline', false, d)}<span>${escapeHtml(owner.name)}</span><span class="role">${kind === 'action' ? 'wants to run this action' : 'is paused until you approve'}</span></div></div>`;
       }
-      const evidenceHtml = shownEvidence.length
+      const bar = d.expectations && window.OrgXExpectations ? d.expectations : null;
+      if (bar) recLine = '';
+      const barHtml = bar
+        ? `<div class="dq-bar">
+            ${window.OrgXExpectations.barHtml(bar, { key: d.id })}
+            ${canDecideHere && !actionStates[d.id] ? `<div class="dq-bar-acts"><button type="button" class="dq-text-btn" onclick="editBarInChat('${escapeHtml(d.id)}', this)">Edit in chat</button><span class="dq-bar-hint">Change a check before you agree</span></div>` : ''}
+          </div>`
+        : '';
+      const evidenceHtml = bar ? barHtml : shownEvidence.length
         ? `<div class="dq-evidence" role="list">
             ${shownEvidence.map((item) => `<ox-receipt-row status="${escapeHtml(item.status)}" label="${escapeHtml(item.label)}"${item.at ? ` value="${escapeHtml(timeAgo(item.at))}"` : ''}${item.url ? ` href="${escapeHtml(item.url)}"` : ''}>${escapeHtml(item.label)}</ox-receipt-row>`).join('')}
             ${isOgDecisionEmbed || evidence.length <= shownEvidence.length ? '' : `<a class="ox-open" ${linkAttrs(decisionUrl)}>All ${evidence.length} evidence items in OrgX</a>`}
