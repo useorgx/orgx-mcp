@@ -226,3 +226,13 @@ describe('Needs you: the work behind a decision', () => {
     expect(behind.compareDocumentPosition(doc(m).querySelector('.packet .actions')!) & 4).toBeTruthy();
   });
 });
+
+describe('when ChatGPT has an older copy of the OrgX tools', () => {
+  it('says to refresh the app instead of echoing the validator', async () => {
+    const m = await openWith(snapshot());
+    m.calls.callServerTool.mockRejectedValue(new Error("Parameters failed connector schema validation: view [enum]: Value 'receipts' not in allowed enum"));
+    click(m, '[data-tab="done"]');
+    await m.flush(); await m.flush();
+    expect(doc(m).querySelector('.pn-done .notice')!.textContent).toContain('Refresh the OrgX app in ChatGPT settings');
+  });
+});

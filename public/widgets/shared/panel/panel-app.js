@@ -252,7 +252,19 @@
     function looksRaw(text) {
       return /^[\s{[<"]/.test(text) || /^[\s{}[\]"',:]*$/.test(text) || /"\s*:/.test(text) || /\b(?:undefined|null|NaN)\b/.test(text);
     }
+    /**
+     * ChatGPT checks a widget's calls against its own saved copy of the OrgX
+     * tools. When that copy is older than the panel, a new view or tool is
+     * refused before it reaches OrgX. Say how to fix it instead of echoing the
+     * validator.
+     */
+    var STALE_TOOLS = 'ChatGPT is using an older copy of the OrgX tools. Refresh the OrgX app in ChatGPT settings, then try again.';
+    function staleTools(error) {
+      var raw = [error && error.message, error && error.details && error.details.raw].filter(function str(v) { return typeof v === 'string'; }).join(' ');
+      return /connector schema validation|not in allowed enum|unrecognized key|additional propert|tool not found|unknown tool|no such tool/i.test(raw);
+    }
     function safeErrorText(error, fallback, max) {
+      if (staleTools(error)) return STALE_TOOLS;
       var message = error && typeof error.message === 'string' ? error.message.trim() : '';
       if (!message || looksRaw(message) || message.length > (max || 160) || /tool (?:request|execution) failed/i.test(message)) return fallback;
       return message;
