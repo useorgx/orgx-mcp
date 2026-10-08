@@ -388,6 +388,9 @@ function mountPanel(callTool: (...args: unknown[]) => unknown = () => Promise.re
   ensureCssEscape();
   window.eval(readSharedScript('openai-extensions.js'));
   window.eval(readSharedScript('interaction-kit.js'));
+  // The gallery's fixtures are their own module, which the page loads for
+  // ?gallery=true; load it up front so the panel boots it synchronously.
+  window.eval(readSharedScript('panel/panel-gallery.js'));
   mountWidget('orgx-panel', { callTool });
   // Gallery fixtures run on the standalone protocol; route the panel's calls to the stub.
   (window as unknown as { OrgXWidgetRuntime: { callTool: unknown } }).OrgXWidgetRuntime.callTool = callTool;
