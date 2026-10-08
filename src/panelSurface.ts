@@ -108,8 +108,12 @@ export const PANEL_SNAPSHOT_TOOL_CONTRACT = {
     focus: PANEL_FOCUS_SCHEMA.optional().describe(
       'Optional decision to show as the review packet. Defaults to the most urgent pending decision.'
     ),
+    // A plain string, checked here: ChatGPT validates widget calls against its
+    // saved copy of this schema, so a new view in an enum is refused until the
+    // app is refreshed. Unknown views are ignored.
     view: z
-      .enum(['work', 'workspaces', 'history', 'receipts', 'receipt'])
+      .string()
+      .max(32)
       .optional()
       .describe('Optional extra view. "work" adds what agents are running and what waits on you; "workspaces" adds the workspaces the panel can switch to; "history" adds decisions settled in the range; "receipts" adds the Work Ledger receipts for the range (or for `query`); "receipt" adds one receipt in full with each criterion\'s verdict.'),
     range: z

@@ -248,6 +248,23 @@ export function buildAgentWorkReceiptImportRequest(
 ): BuildAgentWorkReceiptResult {
   const warnings: string[] = [];
   const issuedAt = options.issuedAt ?? new Date().toISOString();
+
+  // A complete receipt the agent built itself goes through untouched: it is
+  // the producer's object (and may be hashed), so the worker never rewrites
+  // it. What it leaves out is reported instead.
+  const supplied = readRecord(args.agent_work_receipt);
+  if (supplied && typeof supplied.schema_version === 'string' && supplied.schema_version.startsWith('agent-work-receipt/')) {
+    const suppliedActor = readRecord(supplied.actor);
+    if (!readRecord(suppliedActor?.runtime)) warnings.push('agent_work_receipt.actor.runtime is missing: name the harness that ran the work.');
+    if (!readRecord(suppliedActor?.model)) warnings.push('agent_work_receipt.actor.model is missing: name the model, so this receipt can be compared with another.');
+    if (!readRecord(readRecord(supplied.extensions)?.['org.orgx.review/v1'])) warnings.push("agent_work_receipt has no extensions['org.orgx.review/v1']: the receipt review will derive sources and per-criterion proof and mark them missing.");
+    const key = nonEmptyString(args.idempotency_key);
+    const normalizedKey = key ? normalizeV1IdempotencyKey(key).key : undefined;
+    return {
+      body: { workspace_id: options.workspaceId, receipt: supplied, ...(normalizedKey ? { idempotency_key: normalizedKey } : {}) },
+      warnings,
+    };
+  }
   const summary =
     nonEmptyString(args.summary) ?? 'Receipt submitted without a summary';
   const receiptType = nonEmptyString(args.receipt_type) ?? 'proof';
@@ -320,13 +337,22 @@ export function buildAgentWorkReceiptImportRequest(
 
   // ------------------------------------------------------------------- actor
   const actorId = agentType ?? sourceClient ?? 'orgx-mcp-agent';
+  // The model that did the work, when the agent says. Without it two receipts
+  // for the same task cannot be compared, so its absence is reported.
+  const modelName = nonEmptyString(args.model);
   const actor: JsonRecord = {
     type: 'agent',
     id: shortString(actorId),
     ...(sourceClient
       ? { runtime: { name: shortString(sourceClient) } }
       : {}),
+    ...(modelName
+      ? { model: { provider: shortString(nonEmptyString(args.model_provider) ?? providerOfModel(modelName)), name: shortString(modelName) } }
+      : {}),
   };
+  if (!modelName) {
+    warnings.push('model was not given, so the receipt cannot say which model did the work; pass model (for example "claude-opus-5-5").');
+  }
 
   // --------------------------------------------------------------- authority
   const maxCostUsd =
@@ -489,4 +515,15 @@ export function shouldFallBackToLegacyReceipts(
   statusCode: number | undefined
 ): boolean {
   return statusCode === 404 || statusCode === 401;
+}
+
+/** The provider that names a model id this way, or 'unknown'. */
+export function providerOfModel(model: string): string {
+  const id = model.toLowerCase();
+  if (/^claude/.test(id) || id.startsWith('anthropic/')) return 'anthropic';
+  if (/^(gpt|o\d|codex|chatgpt)/.test(id) || id.startsWith('openai/')) return 'openai';
+  if (/^gemini/.test(id) || id.startsWith('google/')) return 'google';
+  if (/^grok/.test(id)) return 'xai';
+  if (/^deepseek/.test(id)) return 'deepseek';
+  return 'unknown';
 }
