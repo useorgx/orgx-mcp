@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08T18:00:39.753Z",
+  "generatedAt": "2026-10-08T18:15:56.816Z",
   "sourceHash": "eb979db4a976845d",
   "version": "1.0.0",
   "totalTools": 108,
@@ -1704,13 +1704,7 @@
           },
           "view": {
             "type": "string",
-            "enum": [
-              "work",
-              "workspaces",
-              "history",
-              "receipts",
-              "receipt"
-            ],
+            "maxLength": 32,
             "description": "Optional extra view. \"work\" adds what agents are running and what waits on you; \"workspaces\" adds the workspaces the panel can switch to; \"history\" adds decisions settled in the range; \"receipts\" adds the Work Ledger receipts for the range (or for `query`); \"receipt\" adds one receipt in full with each criterion's verdict."
           },
           "range": {
