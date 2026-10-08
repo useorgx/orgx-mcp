@@ -52,6 +52,11 @@
       live: 'off',
       liveWork: null,
       renderPending: false,
+      // Workspace switcher: the list is read when it is opened.
+      wsOpen: false,
+      wsPhase: 'idle',
+      workspaces: null,
+      wsError: null,
     };
     var live = null;
     var tour = null;
@@ -396,7 +401,7 @@
       var synced = syncLabel();
       var refresh = ui.auth || ui.readState.phase === 'failed' ? '' : '<button type="button" class="quiet-btn" data-action="refresh">Refresh</button>';
       var nameHtml = name
-        ? (ui.mode === 'global' ? '<h1 class="ws" title="' + esc(name) + '">' + esc(name) + '</h1>' : '<span class="ws">' + esc(name) + '</span>')
+        ? (ui.mode === 'global' ? '<h1 class="ws-h">' + workspaceButtonHtml(name) + '</h1>' : '<span class="ws">' + esc(name) + '</span>')
         : (ui.mode === 'global' ? '<h1 class="sr-only">OrgX</h1>' : '');
       var mark = Brand ? '<span class="pn-mark-slot">' + Brand.mark(22) + '</span>' : '';
       var tabs = tabsHtml();
@@ -404,6 +409,116 @@
       return '<header class="top' + (tabs ? ' has-tabs' : '') + '">' + mark + '<div class="top-id"><span class="brand" aria-hidden="' + (name ? 'false' : 'true') + '">OrgX</span>' +
         (name ? '<span aria-hidden="true">·</span>' : '') + nameHtml + '</div>' + tabs +
         (synced ? '<span class="sync" data-live="' + esc(ui.live) + '"' + (ui.live === 'live' ? ' role="img" aria-label="Live: updates as they happen" title="Updates as they happen"' : '') + '>' + esc(synced) + '</span>' : '') + refresh + help + '</header>';
+    }
+
+    /** The workspace name doubles as the switcher's trigger. */
+    function workspaceButtonHtml(name) {
+      return '<button type="button" class="ws ws-btn" data-action="workspaces" aria-haspopup="true" aria-expanded="' + (ui.wsOpen ? 'true' : 'false') + '"' +
+        ' aria-controls="pn-ws-menu" title="Switch workspace"><span class="ws-n">' + esc(name) + '</span>' +
+        '<svg class="ws-caret" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        '<span class="sr-only">, switch workspace</span></button>';
+    }
+
+    function workspaceMenuHtml() {
+      if (!ui.wsOpen) return '';
+      var body;
+      if (ui.wsPhase === 'loading') {
+        body = '<p class="ws-note" role="status">Loading your workspaces…</p>';
+      } else if (ui.wsPhase === 'failed' || (ui.workspaces && ui.workspaces.status !== 'ok')) {
+        body = '<p class="ws-note" role="alert">' + esc(ui.wsError || 'Your workspaces could not be loaded.') + '</p>' +
+          '<button type="button" class="quiet-btn" data-action="workspaces-retry">Try again</button>';
+      } else {
+        var items = ui.workspaces ? ui.workspaces.items : [];
+        body = '<ul class="ws-list" role="list">' + items.map(function item(w) {
+          var busy = ui.wsPhase === 'switching' && ui.wsSwitchingTo === w.id;
+          return '<li><button type="button" class="ws-item" data-action="switch-workspace" data-id="' + esc(w.id) + '"' +
+            (w.current ? ' aria-current="true"' : '') + (busy ? ' aria-busy="true"' : '') +
+            (ui.wsPhase === 'switching' ? ' disabled' : '') + '>' +
+            '<span class="ws-item-n">' + esc(w.name) + '</span>' +
+            (w.current ? '<span class="ws-item-s">Current</span>' : busy ? '<span class="ws-item-s">Switching…</span>' : '') +
+            '</button></li>';
+        }).join('') + '</ul>' +
+          (ui.wsError ? '<p class="ws-note" role="alert">' + esc(ui.wsError) + '</p>' : '') +
+          '<p class="ws-note">You can also ask ChatGPT to switch your OrgX workspace.</p>';
+      }
+      return '<div id="pn-ws-menu" class="ws-menu" role="region" aria-label="Workspaces">' + body + '</div>';
+    }
+
+    function openWorkspaces() {
+      ui.wsOpen = true;
+      ui.wsError = null;
+      if (ui.workspaces && ui.workspaces.status === 'ok' && ui.wsPhase !== 'failed') { render(); focusFirst('.ws-item[aria-current="true"], .ws-item'); return; }
+      if (isGallery) {
+        ui.workspaces = { status: 'ok', items: [
+          { id: 'g-acme', name: 'Acme workspace', current: true },
+          { id: 'g-labs', name: 'Acme Labs', current: false },
+          { id: 'g-personal', name: 'Personal', current: false },
+        ] };
+        ui.wsPhase = 'ready';
+        render();
+        focusFirst('.ws-item[aria-current="true"]');
+        return;
+      }
+      ui.wsPhase = 'loading';
+      render();
+      var gen = ui.generation;
+      R.callToolResult('orgx_panel_snapshot', { view: 'workspaces' }).then(function onList(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        if (isSnapshot(data)) accept(data, result.meta || null, 'refresh');
+        ui.workspaces = data && data.workspaces ? data.workspaces : { status: 'unavailable', items: [] };
+        ui.wsPhase = ui.workspaces.status === 'ok' ? 'ready' : 'failed';
+        render();
+        if (ui.wsOpen) focusFirst('.ws-item[aria-current="true"], .ws-item, [data-action="workspaces-retry"]');
+      }, function onListError() {
+        if (gen !== ui.generation) return;
+        ui.wsPhase = 'failed';
+        render();
+      });
+    }
+
+    function closeWorkspaces(restoreFocus) {
+      if (!ui.wsOpen) return;
+      ui.wsOpen = false;
+      ui.wsError = null;
+      if (ui.wsPhase === 'failed') ui.wsPhase = 'idle';
+      render();
+      if (restoreFocus) focusFirst('[data-action="workspaces"]');
+    }
+
+    /**
+     * Switch through orgx_bootstrap, the same call a model makes to change the
+     * session's workspace, then read the panel again. The new snapshot carries
+     * the new workspace's live grant, so the feed follows on its own.
+     */
+    function switchWorkspace(id) {
+      var target = ui.workspaces && ui.workspaces.items.filter(function same(w) { return w.id === id; })[0];
+      if (!target || target.current || ui.wsPhase === 'switching') { closeWorkspaces(true); return; }
+      if (isGallery) {
+        ui.workspaces.items.forEach(function mark(w) { w.current = w.id === id; });
+        ui.snapshot.workspace = { id: ui.snapshot.workspace.id, name: target.name };
+        closeWorkspaces(true);
+        announce('Switched to ' + target.name + '.');
+        return;
+      }
+      ui.wsPhase = 'switching';
+      ui.wsSwitchingTo = id;
+      ui.wsError = null;
+      render();
+      R.callToolResult('orgx_bootstrap', { workspace_id: id }).then(function onSwitched() {
+        ui.wsPhase = 'idle';
+        ui.wsSwitchingTo = null;
+        ui.workspaces = null;
+        ui.wsOpen = false;
+        announce('Switched to ' + target.name + '.');
+        fetchSnapshot(null, 'switch');
+        focusFirst('[data-action="workspaces"]');
+      }, function onSwitchFailed(error) {
+        ui.wsPhase = 'ready';
+        ui.wsSwitchingTo = null;
+        ui.wsError = safeErrorText(error, 'Couldn’t switch. Try again, or ask ChatGPT to switch your OrgX workspace.', 160);
+        render();
+      });
     }
 
     /** "Live" while the feed is attached; otherwise when the panel last synced. */
@@ -792,10 +907,10 @@
     }
 
     function globalHtml(s) {
-      var html = header() + noticeHtml();
+      var html = header() + workspaceMenuHtml() + noticeHtml();
       if (s.state === 'no_workspace') {
-        return html + '<p class="lede">Choose a workspace in OrgX to see its decisions.</p>' +
-          '<button type="button" class="secondary-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>';
+        return html + '<p class="lede">Choose a workspace to see its decisions.</p>' +
+          '<button type="button" class="secondary-btn" data-action="workspaces" aria-haspopup="true" aria-controls="pn-ws-menu" aria-expanded="' + (ui.wsOpen ? 'true' : 'false') + '">Choose a workspace</button>';
       }
       if (s.state === 'degraded' && !s.queue.length) {
         return html + '<div class="notice" data-tone="amber" role="status"><p>The decision queue could not be loaded.</p>' +
@@ -1480,6 +1595,9 @@
       // During the tour only the practice press is live; picks and send-back wait.
       if (tour && tour.active() && ['approve', 'option', 'toggle-option', 'reject-option', 'sendback', 'submit-sendback'].indexOf(action) !== -1) return;
       switch (action) {
+        case 'workspaces': if (ui.wsOpen) closeWorkspaces(true); else openWorkspaces(); break;
+        case 'workspaces-retry': ui.workspaces = null; ui.wsPhase = 'idle'; openWorkspaces(); break;
+        case 'switch-workspace': switchWorkspace(id); break;
         case 'refresh': fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh'); break;
         case 'open': event.preventDefault(); openUrl(el.getAttribute('data-url'), event); break;
         case 'select': selectDecision(id); break;
@@ -1613,6 +1731,7 @@
         return;
       }
       if (event.key !== 'Escape') return;
+      if (ui.wsOpen) { event.preventDefault(); closeWorkspaces(true); return; }
       if (ui.composer) { event.preventDefault(); closeComposer(); return; }
       if (ui.evidenceOpen) {
         event.preventDefault();
@@ -1626,6 +1745,13 @@
         render();
         focusFirst('[data-action="choose"]');
       }
+    });
+
+    document.addEventListener('pointerdown', function closeOnOutside(event) {
+      if (!ui.wsOpen) return;
+      var t = event.target;
+      if (t && t.closest && (t.closest('#pn-ws-menu') || t.closest('[data-action="workspaces"]'))) return;
+      closeWorkspaces(false);
     });
 
     function dispose() {
@@ -1644,6 +1770,7 @@
       ui.actionError = null; ui.changedSince = null; ui.chatCannotDecide = false;
       ui.listOpen = false; ui.evidenceOpen = false; ui.wholeQ = null;
       ui.tab = 'needs'; ui.work = null; ui.workPhase = 'idle'; ui.session = []; ui.openReceipt = null;
+      ui.wsOpen = false; ui.wsPhase = 'idle'; ui.workspaces = null; ui.wsError = null; ui.wsSwitchingTo = null;
       share = X.createShareController({ modelContext: ext.modelContext });
       handledHint = { deepLink: null, context: null };
     }

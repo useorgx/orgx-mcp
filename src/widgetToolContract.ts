@@ -81,7 +81,9 @@ export const WIDGET_TOOL_CALLS: Readonly<Record<string, readonly string[]>> =
     'entity-card': ['orgx_command_status', 'orgx_inspect'],
     'initiative-pulse': [],
     'morning-brief': [],
-    'orgx-panel': ['orgx_command_status', 'orgx_panel_snapshot', 'orgx_widget_decide'],
+    // orgx_bootstrap is the panel's workspace switch: the same call a model
+    // makes to change the session's workspace.
+    'orgx-panel': ['orgx_bootstrap', 'orgx_command_status', 'orgx_panel_snapshot', 'orgx_widget_decide'],
     'plan-session-live': ['orgx_command_status', 'orgx_plan'],
     'proof-receipt': [],
     'scaffolded-initiative': ['orgx_act', 'orgx_command_status'],

@@ -229,6 +229,15 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         })
         .strict()
         .optional(),
+      workspaces: z
+        .object({
+          status: z.enum(['ok', 'unavailable']),
+          items: z.array(
+            z.object({ id: z.string(), name: z.string(), current: z.boolean() }).strict()
+          ),
+        })
+        .strict()
+        .optional(),
       // The panel's own live feed (see src/live/panelFeed.ts).
       live: streamGrantSchema.optional(),
     })

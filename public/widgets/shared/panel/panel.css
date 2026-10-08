@@ -587,3 +587,33 @@
   background: var(--ox-teal, #00c9a7);
 }
 .sync[data-live="reconnecting"] { color: var(--ox-text-muted); font-style: italic; }
+
+/* Workspace switcher: the name is the trigger, the list sits under the header. */
+.top-id .ws-h { display: flex; min-width: 0; }
+.ws-btn {
+  appearance: none; border: 0; background: none; padding: 4px 6px; margin: -4px -6px;
+  display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%;
+  font: inherit; font-size: 14px; font-weight: 500; color: var(--ox-text-muted);
+  border-radius: 8px; cursor: pointer; min-height: 32px;
+}
+.ws-btn:hover, .ws-btn[aria-expanded="true"] { color: var(--ox-text); background: var(--ox-hover, rgba(127, 127, 127, 0.08)); }
+.ws-btn:focus-visible { outline: 2px solid var(--ox-primary); outline-offset: 1px; }
+.ws-btn .ws-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ws-caret { width: 14px; height: 14px; flex: none; }
+.ws-menu {
+  margin: 0 0 12px; padding: 6px; border: 1px solid var(--ox-border); border-radius: 12px;
+  background: var(--ox-surface, transparent); max-width: 360px;
+}
+.ws-list { list-style: none; margin: 0; padding: 0; }
+.ws-item {
+  appearance: none; border: 0; background: none; width: 100%; min-height: 44px; padding: 8px 10px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font: inherit; font-size: 14px; color: var(--ox-text); text-align: left; border-radius: 8px; cursor: pointer;
+}
+.ws-item:hover:not([disabled]) { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); }
+.ws-item:focus-visible { outline: 2px solid var(--ox-primary); outline-offset: -2px; }
+.ws-item[disabled] { cursor: default; }
+.ws-item-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ws-item-s { flex: none; font-size: 12.5px; color: var(--ox-text-muted); }
+.ws-item[aria-current="true"] .ws-item-s { color: var(--ox-teal, #00c9a7); }
+.ws-note { margin: 6px 10px; font-size: 12.5px; line-height: 1.4; color: var(--ox-text-muted); }
