@@ -10,7 +10,21 @@
     var Tour = window.OrgXPanelTour || null;
     var Start = window.OrgXPanelStart || null;
     var Receipts = window.OrgXPanelReceipts || null;
+    var Expect = window.OrgXExpectations || null;
     var root = document.getElementById('panel');
+    if (Expect && root) Expect.bind(root);
+    // "Change this workstream in chat", from an opened workstream in an Agree on done bar.
+    if (Expect && root) root.addEventListener('ox-xp-edit', function onBarEdit(event) {
+      var d = event.detail || {};
+      var item = findItem(d.key);
+      var set = agreementOf(item);
+      if (!item || !set || !Launch) return;
+      var button = d.button;
+      Launch.send(Expect.editSentence(set, item.initiative_title || splitHeadline(item.question || item.title).headline, d.group)).then(function edited(outcome) {
+        if (button) button.textContent = outcome === 'sent' ? 'Sent to the chat' : outcome === 'copied' ? 'Copied. Paste it into the chat' : 'Type it in the chat';
+        announce(outcome === 'sent' ? 'Sent to the chat. Agree here once it reads right.' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send it. Type it in the chat.');
+      });
+    });
     var params = new URLSearchParams(window.location.search);
     var isGallery = params.get('gallery') === 'true';
     var APPROVAL_META_KEY = 'orgx/widgetApproval';
@@ -280,7 +294,7 @@
       return code;
     }
     var PAST = {
-      approve: 'Approved', 'approve and continue': 'Approved', 'approve selected': 'Approved', 'grant access': 'Access granted',
+      approve: 'Approved', 'agree · start work': 'Agreed', agree: 'Agreed', 'approve and continue': 'Approved', 'approve selected': 'Approved', 'grant access': 'Access granted',
       'allow once': 'Allowed once', 'allow and continue': 'Allowed', 'send answer': 'Answer sent', 'send guidance and retry': 'Guidance sent',
       'confirm and continue': 'Confirmed', 'confirm selection': 'Confirmed', confirm: 'Confirmed', 'accept plan': 'Plan accepted',
       'apply edit': 'Edit applied', retry: 'Retry approved', 'retry and continue': 'Retry approved', acknowledge: 'Acknowledged',
@@ -304,7 +318,23 @@
         requiresReason: o.requires_reason === true,
       };
     }
+    /** The bar on an "Agree on done" decision (expectation_agreement), or null. */
+    function agreementOf(f) {
+      return Expect && f ? Expect.fromDecision(f) : null;
+    }
+    function isAgreementItem(f) {
+      return Boolean(f && (f.agreement === true || agreementOf(f)));
+    }
+    /** An agreement says what agreeing does; a generic "Approve" would not. */
     function choicesFor(f) {
+      var spec = baseChoicesFor(f);
+      if (isAgreementItem(f)) {
+        if (spec.approve && /^(approve|confirm)$/i.test(spec.approve.label)) spec.approve.label = 'Agree · start work';
+        if (spec.reject && /^(reject|decline)$/i.test(spec.reject.label)) spec.reject.label = 'Send back';
+      }
+      return spec;
+    }
+    function baseChoicesFor(f) {
       var raw = f.widget_actions;
       var kind = kindOf(f);
       if (raw && !Array.isArray(raw) && Array.isArray(raw.actions)) {
@@ -428,6 +458,8 @@
       return '';
     }
     function quickDecide(item) {
+      // Agreeing on done means reading the bar first: the row opens it.
+      if (isAgreementItem(item)) return false;
       var c = choicesFor(item);
       return Boolean(c.approve && !c.selection && !(c.answer && c.answer.approve));
     }
@@ -792,6 +824,7 @@
       }
       if (sel && !draft.picked.length && sel.requiredFor.approve) return { heading: 'Choose one', detail: 'recorded in OrgX', primary: '', disabled: false };
       if (sel && draft.picked.length) return { heading: 'You picked ' + optionLabel(f, draft.picked[0]), detail: detail, primary: c.approve.label, disabled: !ready };
+      if (isAgreementItem(f)) return { heading: 'Agree on done', detail: ready ? 'agents start when you agree' : detail, primary: c.approve.label, disabled: !ready };
       return { heading: 'Decide here', detail: detail, primary: c.approve.label, disabled: !ready };
     }
     function syncFooter(id) {
@@ -946,6 +979,7 @@
       var changed = ui.changedSince
         ? '<div class="notice" role="status"><p>Changed since ' + esc(ui.changedSince) + '</p></div>' : '';
       var facts = [];
+      var evidenceSlot = '';
       var head = splitHeadline(f.question);
       var body = structureBody(head.body);
       body.facts.forEach(function fact(x) {
@@ -961,6 +995,15 @@
       if (f.consequence_if_approved || body.ifApproved) {
         facts.push('<div class="fact"><dt>If approved</dt><dd>' + inline(f.consequence_if_approved || body.ifApproved) + '</dd></div>');
       }
+      var bar = agreementOf(f);
+      if (bar) {
+        // The bar is the packet: what OrgX drafted, where each check came from,
+        // new since last time first, then per owner. No recommendation row.
+        facts = [];
+        evidenceSlot = '<div class="xp-packet">' + Expect.barHtml(bar, { key: f.id }) +
+          (ui.rulings[f.id] ? '' : '<div class="xp-acts"><button type="button" class="text-btn" data-action="exp-edit" data-id="' + esc(f.id) + '">Edit in chat</button>' +
+            '<span class="xp-hint">Change a check before you agree</span></div>') + '</div>';
+      }
       return '<section class="packet enter" aria-labelledby="pk-q">' + changed +
         '<p class="meta">' + askerAvatarHtml +
         // "Normal · Blocking work" says two things at once; blocking is the one that matters.
@@ -973,11 +1016,11 @@
         (body.lede.length ? '<p class="q-body">' + inline(body.lede.join(' ')) + '</p>' : '') +
         body.commands.map(function cmd(c) { return '<div class="q-cmd"><span>Command</span><pre><code>' + esc(c) + '</code></pre></div>'; }).join('') +
         (facts.length ? '<dl class="facts">' + facts.join('') + '</dl>' : '') +
-        evidenceHtml(f) + whyHtml(f) +
+        (evidenceSlot || evidenceHtml(f)) + whyHtml(f) +
         // The work this decision would let through, read before deciding, not after.
         behindFor(f) +
         '<div class="actions">' + footerFor(f) + error + '</div>' +
-        shareHtml(f) + (Launch && !ui.rulings[f.id] ? Launch.chipsHtml('packet', { title: head.headline }) : '') + '</section>';
+        shareHtml(f) + (Launch && !ui.rulings[f.id] && !bar ? Launch.chipsHtml('packet', { title: head.headline }) : '') + '</section>';
     }
 
     function rowHtml(item, opts) {
@@ -1576,13 +1619,19 @@
     function galleryReceipt(id) {
       var row = ui.receiptRows[id] || galleryReceipts('30d').items[0];
       var texts = ['The checkout suite passes ten runs in a row', 'The fix has a regression test', 'No new console errors on checkout', 'The PR is reviewed by a person'];
+      // Each check names where it came from; the learned one names the call behind it.
+      var sources = [['artifact_type', null], ['learned', 'your call on #3211'], ['drafted', null], ['rule', null]];
       var crit = [];
       ['met', 'unmet', 'unknown'].forEach(function k(status) {
-        for (var i = 0; i < row.criteria[status]; i += 1) crit.push({ id: 'c' + crit.length, text: texts[crit.length % texts.length], kind: 'test', status: status, confidence: status === 'unknown' ? null : 0.85 });
+        for (var i = 0; i < row.criteria[status]; i += 1) {
+          var src = sources[crit.length % sources.length];
+          crit.push({ id: 'c' + crit.length, text: texts[crit.length % texts.length], kind: 'test', status: status, confidence: status === 'unknown' ? null : 0.85, source: src[0], source_label: src[1] });
+        }
       });
       return { status: 'ok', id: id, row: row, objective: null, outcome_summary: row.outcome === 'failed' ? 'Stopped after two attempts; the flow still drops users at step 3.' : 'Opened the change and ran the checks listed below.',
         criteria: crit, artifacts: row.prs.map(function a(pr) { return { kind: 'pull_request', name: pr, url: 'https://github.com/' + pr.replace('#', '/pull/') }; }),
-        uncertain: row.criteria.unknown ? ['no evidence either way for: ' + texts[3]] : [], workstream_title: null, cost_usd: 0.42, completed_at: row.at, reason: null };
+        uncertain: row.criteria.unknown ? ['no evidence either way for: ' + texts[3]] : [], workstream_title: null, cost_usd: 0.42, completed_at: row.at, reason: null,
+        bar: { agreed_at: isoAgo(3 * D), agreed_by: 'you' } };
     }
     function galleryBehind(pr) {
       var all = galleryReceipts('30d').items.filter(function m(r) { return r.prs.some(function has(x) { return x.slice(-pr.length - 1) === '#' + pr; }); });
@@ -1957,8 +2006,10 @@
       delete ui.tokens[id]; // spent here; a refusal that leaves the item open hands it back
       render();
       var args = Object.assign({ decision_id: id, action: action, approval_token: token }, draft.args);
+      var agreeing = isAgreementItem(item);
       function doneDetail(status) {
         if (!status) return 'recorded; status not available yet';
+        if (agreeing) return action === 'approve' ? 'agents start; every receipt is judged against this bar' : 'OrgX redrafts it and asks again';
         if (c.kind === 'action') return action === 'approve' ? 'the action can run' : 'the action does not run';
         if (c.kind === 'approval') return action === 'approve' ? 'the run continues' : 'the run stops at this step';
         return action === 'approve' ? 'the agent can continue' : 'the agent reworks it';
@@ -2210,6 +2261,18 @@
           });
           break;
         case 'receipt-call': recordReceiptCall(id, el.getAttribute('data-status')); break;
+        case 'exp-edit': {
+          var fx = findItem(id);
+          var bx = agreementOf(fx);
+          if (!fx || !bx || !Launch) break;
+          el.setAttribute('aria-busy', 'true');
+          Launch.send(Expect.editSentence(bx, fx.initiative_title || splitHeadline(fx.question || fx.title).headline)).then(function edited(outcome) {
+            el.removeAttribute('aria-busy');
+            el.textContent = outcome === 'sent' ? 'Sent to the chat' : outcome === 'copied' ? 'Copied. Paste it into the chat' : 'Type it in the chat';
+            announce(outcome === 'sent' ? 'Sent to the chat. Agree here once it reads right.' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send it. Type it in the chat.');
+          });
+          break;
+        }
         case 'receipt-iterate': {
           var rrow = ui.receiptRows[id] || (ui.receiptDetail[id] && ui.receiptDetail[id].row);
           if (!rrow || !Launch || !Receipts) break;
@@ -2482,7 +2545,59 @@
       { id: IDS.d2, version: isoAgo(5 * H), title: 'Rotate billing API keys?', urgency: 'high', waiting_since: isoAgo(5 * H), initiative_title: 'Billing hardening', blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', widget_actions: null, asker: 'Orion - Operations', url: decisionUrl(IDS.d2) },
       { id: IDS.d3, version: isoAgo(26 * H), title: 'Publish the onboarding checklist v2?', urgency: 'medium', waiting_since: isoAgo(26 * H), initiative_title: 'Activation', blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', widget_actions: null, asker: 'Pace - Product', url: decisionUrl(IDS.d3) },
     ];
+    var AGREE_ID = '5b1c9e2a-4f3d-4a8b-9e61-2c7d0a9f4b13';
+    // Volume: a bar the size a real initiative reaches (five owners, ~30 checks).
+    var VOLUME_CHECKS = (function volume() {
+      var owners = [
+        ['engineering-agent', 'Build the pricing page', ['Every PR is reviewed by a person:rule', 'The checkout e2e suite passes ten runs in a row:artifact_type:command', 'No regression in billing tests:artifact_type:command', 'Type checks pass:artifact_type:command', 'Old pricing URLs redirect:drafted:http', 'Prices render in the visitor’s currency:drafted:command', 'Lighthouse performance is 90 or higher:suggested:http', 'Plans match the billing catalog:learned:artifact:new', 'Feature flag guards the new page:learned:manual']],
+        ['design-agent', 'Pricing page design', ['Every state has a mobile layout at 375px:artifact_type:artifact', 'Contrast passes WCAG AA:artifact_type:command', 'The plan table reads without horizontal scroll:learned:artifact', 'Empty and error states are designed:drafted:artifact']],
+        ['marketing-agent', 'Launch post and email', ['Ends with one clear call to action:learned:manual', 'No claim without a source:artifact_type:artifact', 'Brand voice check passes:artifact_type:command', 'A person approves before it sends:rule', 'Subject line under 50 characters:suggested:artifact', 'The email links to the live page:drafted:http']],
+        ['sales-agent', 'Trial follow-up', ['Every trial owner gets one follow-up:artifact_type:manual', 'No outbound email without approval:rule', 'Follow-up cites the new plan:drafted:artifact', 'Unsubscribed contacts are excluded:rule']],
+        ['operations-agent', 'Rollout and monitoring', ['Rollback plan is written down:artifact_type:artifact', 'Error rate alert is set for checkout:learned:http:new', 'On-call knows the launch window:drafted:manual']],
+      ];
+      var out = [];
+      owners.forEach(function each(o) {
+        o[2].forEach(function c(spec) {
+          var p = spec.split(':');
+          out.push({ scope: 'workstream', scope_label: o[1], owner_agent: o[0], statement: p[0], source: p[1], verify: p[2] && p[2] !== 'new' ? p[2] : 'manual', new_since_last: p.indexOf('new') !== -1, source_label: p[1] === 'learned' ? 'your call on #32' + (out.length + 10) : null });
+        });
+      });
+      out.push({ scope: 'initiative', statement: 'The launch stays inside the approved budget', source: 'rule', verify: 'manual' });
+      return out;
+    })();
+
+    function galleryBar() {
+      function c(owner, statement, source, verify, extra) {
+        return Object.assign({ id: null, scope: owner ? 'workstream' : 'initiative', scope_id: null, statement: statement, verify: verify, required: source === 'rule', source: source,
+          source_ref: null, source_label: null, owner_agent: owner, new_since_last: false }, extra || {});
+      }
+      return {
+        id: 'exp-402', status: 'drafted', version: '3', initiative_id: null, decision_id: AGREE_ID, agreed_at: null, agreed_by: null, omitted_count: 0, origin: 'app',
+        checks: [
+          c('engineering-agent', 'Plans on the page match the billing catalog', 'learned', 'artifact', { new_since_last: true, source_label: 'your call on #3211' }),
+          c('engineering-agent', 'Every PR is reviewed by a person', 'rule', 'manual'),
+          c('engineering-agent', 'The checkout e2e suite passes ten runs in a row', 'artifact_type', 'command'),
+          c('engineering-agent', 'Lighthouse performance is 90 or higher on the pricing page', 'suggested', 'http'),
+          c('engineering-agent', 'No regression in the existing billing tests', 'drafted', 'command'),
+          c('engineering-agent', 'The old pricing URLs redirect to the new page', 'drafted', 'http'),
+          c('engineering-agent', 'Prices render in the visitor’s currency', 'drafted', 'command'),
+          c('marketing-agent', 'Ends with one clear call to action', 'learned', 'manual', { source_label: 'your call on the launch post' }),
+          c('marketing-agent', 'No claim without a source', 'artifact_type', 'artifact'),
+          c(null, 'No outbound email goes out without approval', 'rule', 'manual'),
+        ],
+      };
+    }
     function galleryFocus(item) {
+      if (item && item.agreement) {
+        var bar = galleryBar();
+        if (params.get('state') === 'agree-volume') bar.checks = VOLUME_CHECKS.map(function fill(c) { return Object.assign({ id: null, scope_id: null, required: c.source === 'rule', source_ref: null, source_label: null, new_since_last: false }, c); });
+        return {
+          type: 'decision', id: item.id, kind: 'decision', version: item.version, question: 'Is this what done means for “Launch the new pricing page”?', urgency: 'high',
+          waiting_since: item.waiting_since, initiative_title: item.initiative_title, recommendation: null, evidence: [], evidence_total: 0,
+          consequence_if_approved: null, consequence_if_rejected: null, blocked: true, decide_in_orgx_reason: null, options: [], multiselect: false,
+          widget_actions: null, asker: null, asker_kind: 'system', expectations: bar, url: item.url,
+        };
+      }
       var packets = {};
       packets[IDS.d1] = {
         question: 'Ship release 4.2 to production?',
@@ -2605,6 +2720,20 @@
             why: { authority: 'This gate blocks work until an authorized person answers.', policy: null, uncertainty: [], run_url: null, initiative_url: window.OrgXLinks.initiative('14985d6c-214c-4f9e-96ac-4f6b254e1770') },
           });
           tokens = allTokens(s);
+          break;
+        }
+        case 'agree':
+        case 'agree-volume':
+        case 'agreed':
+        case 'agree-sent-back': {
+          var agreeRow = { id: AGREE_ID, version: isoAgo(20 * 60 * 1000), title: 'Agree on what done means for “Launch the new pricing page”', urgency: 'high', waiting_since: isoAgo(20 * 60 * 1000),
+            initiative_title: 'Launch the new pricing page', blocked: true, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', widget_actions: null, asker: null, asker_kind: 'system', agreement: true, url: decisionUrl(AGREE_ID) };
+          s.queue = [agreeRow].concat(s.queue);
+          s.attention = { pending: s.queue.length, oldest_at: s.queue[1].waiting_since, blocking: true };
+          s.focus = galleryFocus(agreeRow);
+          tokens = allTokens(s);
+          if (name === 'agreed') ui.rulings[AGREE_ID] = { action: 'approve', phase: 'confirmed', title: s.focus.question, approveLabel: 'Agree · start work', rejectLabel: 'Send back', kind: 'decision', detail: 'agents start; every receipt is judged against this bar' };
+          if (name === 'agree-sent-back') ui.rulings[AGREE_ID] = { action: 'reject', phase: 'rejected', title: s.focus.question, approveLabel: 'Agree · start work', rejectLabel: 'Send back', kind: 'decision', detail: 'OrgX redrafts it and asks again' };
           break;
         }
         case 'completed-not-accepted':

@@ -27,7 +27,7 @@ const SCAFFOLD_OUTPUT_KEYS = `
   entity_plan_preview_count first_agent_work external_sync benchmark_metrics hierarchy created_preview
   created_preview_count created_count failed_preview failed_preview_count failed_count ref_map ref_map_count
   ref_map_truncated scaffold_stream_url scaffold_session_id agent_assignment credential_status launch streams
-  billing_usage scaffold_usage fallback_agent_dispatch result_contract tool_hints estimated_time_seconds
+  billing_usage scaffold_usage fallback_agent_dispatch expectations result_contract tool_hints estimated_time_seconds
   estimated_cost client_activation live tool_id error_type
 `
   .trim()

@@ -10,6 +10,8 @@
  * own list of what is uncertain is passed through as written.
  */
 
+import { normalizeExpectationSource, type ExpectationSource } from './expectations';
+
 export const PANEL_RECEIPT_LIMIT = 50;
 export const PANEL_RECEIPT_CRITERIA_MAX = 40;
 
@@ -51,6 +53,16 @@ export interface PanelReceiptCriterion {
   kind: string | null;
   status: PanelCriterionStatus;
   confidence: number | null;
+  /** Where the check came from (your rule, the kind of work, a learned call…), when the ledger says. */
+  source?: ExpectationSource | null;
+  /** For a learned check: the call that produced it, in words, when the API names it. */
+  source_label?: string | null;
+}
+
+/** The agreed bar a receipt was judged against. */
+export interface PanelReceiptBar {
+  agreed_at: string | null;
+  agreed_by: string | null;
 }
 
 export interface PanelReceiptArtifact {
@@ -74,6 +86,8 @@ export interface PanelReceiptDetail {
   cost_usd: number | null;
   completed_at: string | null;
   reason: string | null;
+  /** The bar this receipt was judged against, when the ledger names an agreement. */
+  bar?: PanelReceiptBar | null;
 }
 
 type Rec = Record<string, unknown>;
@@ -149,7 +163,7 @@ function criteriaOfReceipt(receipt: Rec): PanelReceiptCriterion[] {
       const text = str(rec?.text);
       if (!id || !text) return [];
       const result = results.get(id);
-      return [{ id, text: clip(text, 400), kind: str(rec?.kind), status: criterionStatus(result?.status), confidence: num(result?.confidence) }];
+      return [{ id, text: clip(text, 400), kind: str(rec?.kind), status: criterionStatus(result?.status), confidence: num(result?.confidence), ...criterionSource(rec!) }];
     });
   }
   const ext = asRec(asRec(receipt.extensions)?.[TRAIL_EXT]);
@@ -158,8 +172,36 @@ function criteriaOfReceipt(receipt: Rec): PanelReceiptCriterion[] {
     const id = str(rec?.id);
     const text = str(rec?.text);
     if (!id || !text) return [];
-    return [{ id, text: clip(text, 400), kind: str(rec?.kind), status: criterionStatus(rec?.status), confidence: num(rec?.confidence) }];
+    return [{ id, text: clip(text, 400), kind: str(rec?.kind), status: criterionStatus(rec?.status), confidence: num(rec?.confidence), ...criterionSource(rec!) }];
   });
+}
+
+/**
+ * A criterion's source and, for a learned one, the call behind it. Only what
+ * the ledger wrote: no source means no chip, and a learned check without a
+ * named call says "learned" and nothing more.
+ */
+function criterionSource(rec: Rec): { source?: ExpectationSource; source_label?: string } {
+  const source = normalizeExpectationSource(rec.source ?? rec.source_kind);
+  if (!source) return {};
+  const from = asRec(rec.learned_from);
+  const label =
+    str(rec.source_label) ??
+    str(from?.label) ??
+    str(from?.title) ??
+    (str(from?.pr) ? `#${String(from!.pr).replace(/^#/, '')}` : null);
+  return label && source === 'learned' ? { source, source_label: clip(label, 120) } : { source };
+}
+
+/** The agreement a receipt's criteria came from: intent.expectations, intent.agreement, or the receipt's extension. */
+function barOf(receipt: Rec, intent: Rec | null): PanelReceiptBar | null {
+  const ext = asRec(asRec(receipt.extensions)?.['org.orgx.expectations/v1']);
+  for (const candidate of [asRec(intent?.expectations), asRec(intent?.expectation_set), asRec(intent?.agreement), ext]) {
+    const agreedAt = str(candidate?.agreed_at);
+    if (agreedAt) return { agreed_at: agreedAt, agreed_by: str(candidate?.agreed_by) };
+  }
+  const agreedAt = str(intent?.agreed_at);
+  return agreedAt ? { agreed_at: agreedAt, agreed_by: str(intent?.agreed_by) } : null;
 }
 
 function artifactUrl(kind: string, ref: Rec | null): string | null {
@@ -207,6 +249,7 @@ export function buildPanelReceiptDetail(payload: unknown, id: string, reason: st
     cost_usd: num(asRec(receipt.cost)?.total),
     completed_at: str(timestamps?.completed_at),
     reason: null,
+    bar: barOf(receipt, intent),
   };
 }
 
