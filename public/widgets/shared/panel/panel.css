@@ -11,7 +11,8 @@
       position: relative;
       min-height: 120px;
       padding: 0 var(--pn-gutter) 12px;
-      border-top: 1px solid var(--pn-edge);
+      border-top: 1px solid transparent;
+      border-image: linear-gradient(90deg, var(--pn-edge), color-mix(in srgb, var(--pn-edge) 35%, transparent) 55%, transparent) 1;
       font-size: 14px;
       line-height: 1.5;
     }
@@ -318,12 +319,14 @@
 .queue-n { margin-left: 4px; font-weight: 600; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
 @container pn (min-width: 760px) {
   /* Views without the split keep a readable measure. */
-  .panel > :not(.top):not(.pn-split):not(.notice) { max-width: 760px; }
+  .panel > :not(.top):not(.pn-split):not(.notice):not(.pn-boot) { max-width: 760px; }
   .pn-split {
     grid-template-columns: 320px minmax(0, 1fr); grid-template-rows: auto 1fr;
-    grid-template-areas: "att detail" "list detail"; margin: 0 calc(-1 * var(--pn-gutter));
+    grid-template-areas: "att att" "list detail"; margin: 0 calc(-1 * var(--pn-gutter));
   }
-  .pn-att, .pn-list { border-right: 1px solid var(--ox-border); padding: 0 var(--pn-gutter); }
+  .pn-att { padding: 0 var(--pn-gutter); border-bottom: 1px solid var(--ox-border); }
+  .pn-list { border-right: 1px solid var(--ox-border); padding: 0 var(--pn-gutter); }
+  .pn-detail { padding-top: 8px; }
   .pn-att ox-attention-line { margin: 0 calc(-1 * var(--pn-gutter)); }
   .pn-detail { padding: 0 28px 16px; }
   .pn-detail > * { max-width: 680px; }
@@ -405,14 +408,10 @@
 .pn-sk-av { width: 32px; height: 32px; border-radius: 50%; }
 .pn-sk-lines .sk-line { margin: 6px 0; }
 .pn-sk-chip { height: 22px; border-radius: 999px; }
-.pn-done-sum { margin: 4px 0 0; font-size: 14px; font-weight: 650; }
-.pn-nums { display: flex; gap: 16px; margin: 6px 0 10px; font-size: 12.5px; color: var(--ox-text-muted); }
-.pn-nums b { margin-right: 2px; font-size: 16px; color: var(--ox-text); font-variant-numeric: tabular-nums; }
-.pn-rc-ic { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font: 800 13px var(--ox-font); background: rgba(var(--ox-teal-rgb, 0, 201, 167), 0.14); color: var(--ox-teal); }
-.pn-rc-ic[data-tone="mute"] { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); color: var(--ox-text-muted); }
 .pn-rc-chev { color: var(--ox-text-muted); transition: transform 180ms var(--pn-ease); }
 .pn-rc.is-open .pn-rc-chev { transform: rotate(90deg); }
-.pn-rc-body { padding: 0 0 10px 38px; }
+.pn-rc-head { grid-template-columns: minmax(0, 1fr) auto auto; min-height: 52px; }
+.pn-rc-body { padding: 0 0 10px; }
 .pn-history { display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; min-height: 44px; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--ox-border); font-size: 12.5px; color: var(--ox-text-muted); }
 
 /* Cold start: the real mark reveals where the content will appear. */
@@ -617,3 +616,110 @@
 .ws-item-s { flex: none; font-size: 12.5px; color: var(--ox-text-muted); }
 .ws-item[aria-current="true"] .ws-item-s { color: var(--ox-teal, #00c9a7); }
 .ws-note { margin: 6px 10px; font-size: 12.5px; line-height: 1.4; color: var(--ox-text-muted); }
+
+
+/* ── Polish pass: layout, states and motion ─────────────────────────────── */
+
+/* A wide panel (ChatGPT's expanded sidebar) keeps one measure, centred, so the
+   tabs sit over the content they switch rather than a screen-width away. */
+@media (min-width: 1240px) {
+  .panel { max-width: 1200px; margin-inline: auto; }
+}
+
+/* Rows that share a title: the line that tells them apart. */
+.row-sub {
+  grid-column: 2; display: block; margin-top: 2px; min-width: 0;
+  font-size: 12.5px; line-height: 1.4; color: var(--ox-text-2, var(--ox-text-muted));
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.row-sub.is-cmd { font: 600 13px/1.4 var(--ox-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); color: var(--ox-text); margin-top: 0; }
+.row-title.is-repeat {
+  font-size: 12.5px; font-weight: 500; color: var(--ox-text-muted);
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; -webkit-line-clamp: unset;
+}
+
+/* Navigation stays quiet; only decisions wear the action colour. */
+.mini.ghost::before { border-color: var(--ox-border-strong, rgba(127, 127, 127, 0.35)); }
+.mini.ghost:hover::before { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); }
+.mini[aria-disabled="true"], .mini[disabled] { cursor: default; opacity: 0.55; }
+.mini[aria-disabled="true"]::before, .mini[disabled]::before { background: transparent; }
+.mini:not([disabled]):not([aria-disabled="true"]):active::before { transform: scale(0.97); }
+.mini::before { transition: background-color 160ms ease, transform 120ms var(--pn-ease); }
+.secondary-btn:active, .quiet-btn:active, .text-btn:active { opacity: 0.75; }
+
+/* The receipt: one line, a check, and a way to the full record. */
+.notice.receipt { gap: 8px; padding-block: 4px; }
+.notice.receipt p { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notice.receipt code { font-size: 12px; }
+.receipt-ic { width: 16px; height: 16px; color: var(--ox-teal, #00c9a7); }
+
+/* Focus: rings for the keyboard, inset on tabs so they never box the header. */
+.pn-tab:focus-visible { outline: 2px solid var(--ox-focus, rgba(191, 255, 0, 0.8)); outline-offset: -8px; border-radius: 12px; }
+:root[data-modality="pointer"] button:focus-visible,
+:root[data-modality="pointer"] a:focus-visible,
+:root[data-modality="pointer"] summary:focus-visible,
+:root[data-modality="pointer"] .mini:focus-visible::before { outline: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* A count that changed flashes once; no scale, no bounce. */
+  .pn-tab-n.tick { animation: pn-tick 700ms var(--pn-ease); }
+  @keyframes pn-tick { 0% { box-shadow: 0 0 0 0 rgba(var(--ox-primary-rgb), 0.55); } 100% { box-shadow: 0 0 0 6px rgba(var(--ox-primary-rgb), 0); } }
+  /* A decision that arrived live is noticed, then settles into the list. */
+  .row.arrive { animation: pn-arrive 1400ms var(--pn-ease); }
+  @keyframes pn-arrive { 0% { background: rgba(var(--ox-primary-rgb), 0.12); } 100% { background: transparent; } }
+  /* A decision settled elsewhere collapses out instead of vanishing. */
+  .row.leaving { overflow: hidden; transition: height 200ms var(--pn-ease), opacity 160ms ease, padding 200ms var(--pn-ease); height: 0 !important; opacity: 0; padding-block: 0; }
+  .notice.receipt { animation: pn-in 220ms var(--pn-ease); }
+  @keyframes pn-in { from { opacity: 0; transform: translateY(-2px); } }
+  .notice.receipt.leaving { transition: opacity 200ms ease; opacity: 0; }
+}
+
+/* ── Lightweight receipt: the Work Receipt's grammar, three marks ───────── */
+.rt { display: inline-flex; align-items: center; gap: 3px; flex: none; }
+.rt-m { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 6px; flex: none; }
+.rt-m svg { width: 12px; height: 12px; }
+.rt-m[data-s="pass"] { color: var(--ox-teal, #00c9a7); background: rgba(var(--ox-teal-rgb, 0, 201, 167), 0.12); }
+.rt-m[data-s="partial"] { color: var(--ox-warning, #f5b83d); background: rgba(var(--ox-warning-rgb, 251, 191, 36), 0.12); }
+.rt-m[data-s="fail"] { color: var(--ox-danger, #f43f5e); background: rgba(var(--ox-danger-rgb, 244, 63, 94), 0.12); }
+.rt-m[data-s="none"] { color: var(--ox-text-muted); background: transparent; }
+.rt-lines { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
+.rt-line { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 32px; font-size: 13px; }
+.rt-l { min-width: 0; color: var(--ox-text-2, var(--ox-text)); }
+.rt-l b { font-weight: 650; color: var(--ox-text); margin-right: 2px; }
+.rt-line[data-s="none"] .rt-l { color: var(--ox-text-muted); }
+.rt-v, .rt-t { color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+.rt-t { font-size: 12.5px; }
+.rt-miss { margin: 6px 0 2px; font-size: 12.5px; color: var(--ox-text-muted); }
+.notice.receipt .rt { margin-left: auto; }
+
+/* Done: one summary line, receipts as the substance. */
+.pn-done-sum { margin: 2px 0 10px; font-size: 13px; color: var(--ox-text-muted); }
+.pn-done-sum b { color: var(--ox-text); font-weight: 650; }
+.pn-rc-head .rt { margin-left: 8px; }
+
+/* ── Grouped decisions: the shared title once, a line per decision ──────── */
+.qgroup { list-style: none; border-bottom: 1px solid var(--ox-border); padding: 8px 0 4px; }
+.qgroup-h { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; min-width: 0; }
+.qgroup-t { flex: 1 1 auto; min-width: 0; font-size: 13.5px; font-weight: 600; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.qgroup-n { flex: none; min-width: 2ch; padding: 2px 7px; border-radius: 999px; text-align: center;
+  font: 650 11.5px/1.3 var(--ox-font); font-variant-numeric: tabular-nums;
+  background: var(--ox-hover, rgba(127, 127, 127, 0.08)); color: var(--ox-text-2, var(--ox-text-muted)); }
+.qgroup-rows { list-style: none; margin: 0; padding: 0 0 0 10px; border-left: 2px solid var(--ox-border); }
+.row.grow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px;
+  border-bottom: 0; padding: 2px 0; min-height: 44px; position: static; }
+.row.grow .row-main { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 0; padding: 4px 0; min-height: 0; }
+.row.grow .row-sub, .row.grow .row-meta { grid-column: 1; }
+.row.grow .row-sub { margin: 0; }
+.row.grow .row-meta { display: block; min-height: 0; padding: 0; font-size: 11.5px; }
+.row.grow .row-acts { position: static; margin: 0; padding: 0; }
+.pn-list .row.grow { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding-bottom: 2px; }
+.pn-list .row.grow .row-acts { margin: 0; }
+
+/* Narrow: the ask chips stay on one line and scroll, so the queue is not
+   pushed a screen down by two suggestions. */
+@container pn (max-width: 520px) {
+  .pn-asks { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--pn-gutter)); padding-inline: var(--pn-gutter); }
+  .pn-asks::-webkit-scrollbar { display: none; }
+  .pn-ask, .pn-asks-h { flex: none; }
+}

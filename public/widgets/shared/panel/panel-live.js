@@ -39,6 +39,7 @@
   /** Null when the feed could not read agent status this time. */
   function workSummary(graph) {
     var items = [];
+    var rows = [];
     var blocked = 0;
     var nodes = graph && Array.isArray(graph.nodes) ? graph.nodes : [];
     if (nodes.some(function unavailable(node) { return node && node.id === 'meta:work-unavailable'; })) return null;
@@ -46,9 +47,11 @@
       if (!node || typeof node.id !== 'string' || node.id.indexOf('work:') !== 0) return;
       items.push(node.id + '=' + (node.status || node.phase || ''));
       if (node.phase === 'blocked') blocked += 1;
+      // The panel's own In progress rows, in the feed's (and the snapshot's) order.
+      rows.push({ id: node.id.slice(5), agent: node.owner || 'Agent', title: node.title || 'Task', state: node.status || 'queued' });
     });
     items.sort();
-    return { signature: items.join('|'), total: items.length, blocked: blocked };
+    return { signature: items.join('|'), total: items.length, blocked: blocked, items: rows };
   }
 
   function signatureOf(map) {
@@ -148,7 +151,7 @@
       if (!work) return;
       var moved = lastWork !== null && lastWork !== work.signature;
       lastWork = work.signature;
-      if (opts.onWork) opts.onWork({ total: work.total, blocked: work.blocked }, moved);
+      if (opts.onWork) opts.onWork({ total: work.total, blocked: work.blocked, items: work.items }, moved);
     }
 
     function refreshGrant(grant) {

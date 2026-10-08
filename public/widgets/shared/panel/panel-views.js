@@ -28,7 +28,7 @@
   var TABS = [['needs', 'Needs you'], ['work', 'In progress'], ['done', 'Done']];
 
   /**
-   * opts: { active, counts: { needs, work, done }, tones: { needs, work, done } }.
+   * opts: { active, counts: { needs, work, done }, tones: { needs, work, done }, changed: { [tab]: true } }.
    * A count of null renders no badge (not loaded yet), never a fake zero.
    */
   function tabsHtml(opts) {
@@ -38,7 +38,7 @@
       var on = opts.active === t[0];
       var n = counts[t[0]];
       return '<button type="button" class="pn-tab" role="tab" id="pn-tab-' + t[0] + '" aria-selected="' + on + '" aria-controls="pn-view" tabindex="' + (on ? '0' : '-1') + '" data-action="tab" data-tab="' + t[0] + '">' +
-        '<span>' + t[1] + '</span>' + (typeof n === 'number' ? '<span class="pn-tab-n" data-tone="' + esc(tones[t[0]] || '') + '">' + n + '</span>' : '') + '</button>';
+        '<span>' + t[1] + '</span>' + (typeof n === 'number' ? '<span class="pn-tab-n' + (opts.changed && opts.changed[t[0]] ? ' tick' : '') + '" data-tone="' + esc(tones[t[0]] || '') + '">' + n + '</span>' : '') + '</button>';
     }).join('') + '</div>';
   }
 
@@ -92,19 +92,58 @@
    * known is shown: recorded by you (with time), and whether OrgX confirmed
    * the outcome. The rest of the story lives behind "Open receipt in OrgX".
    */
+  /**
+   * The lightweight receipt: what the panel actually knows about a settled
+   * decision, in the Work Receipt's grammar. Three marks (decided, recorded,
+   * outcome), each proven / partly / fails / no proof, and the missing one
+   * named. Nothing is shown as proven that the panel did not see: the outcome
+   * of a decision is never known here, so it is always the missing layer.
+   */
+  var MARK = {
+    pass: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4l2.9 2.9 6-6.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    partial: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 3a5 5 0 0 1 0 10z" fill="currentColor"/></svg>',
+    fail: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    none: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.4 2.2"/></svg>',
+  };
+  var STATE_WORD = { pass: 'proven', partial: 'partly', fail: 'fails', none: 'no proof' };
+
+  function trailOf(entry) {
+    var p = entry.phase;
+    var elsewhere = p === 'elsewhere';
+    var decided = { key: 'decided', name: 'Decided', s: 'pass', line: elsewhere ? 'Settled in OrgX' : (entry.verb || 'Decided') + ' by you', value: entry.at || '' };
+    var recorded = p === 'confirmed' || p === 'rejected' || elsewhere
+      ? { s: 'pass', line: elsewhere ? 'Outcome recorded in OrgX' : 'Recorded in OrgX' }
+      : p === 'failed'
+        ? { s: 'fail', line: 'OrgX did not record it' }
+        : p === 'recorded'
+          ? { s: 'partial', line: 'Not confirmed yet' }
+          : { s: 'partial', line: 'Recording' };
+    recorded.key = 'recorded'; recorded.name = 'Recorded'; recorded.value = entry.detail || '';
+    var outcome = { key: 'outcome', name: 'Outcome', s: 'none', line: 'not on this receipt yet; it lands in OrgX with the work', value: '' };
+    return [decided, recorded, outcome];
+  }
+
+  /** The three marks in a row, for a collapsed receipt or the post-decision line. */
+  function trailMarks(entry) {
+    var t = trailOf(entry);
+    return '<span class="rt" role="img" aria-label="' + esc(t.map(function said(m) { return m.name + ': ' + STATE_WORD[m.s]; }).join('. ')) + '">' +
+      t.map(function mark(m) { return '<span class="rt-m" data-s="' + m.s + '" title="' + esc(m.name + ': ' + STATE_WORD[m.s]) + '">' + MARK[m.s] + '</span>'; }).join('') + '</span>';
+  }
+
   function receiptHtml(entry, open) {
-    var confirmed = entry.phase === 'confirmed' || entry.phase === 'rejected';
-    var elsewhere = entry.phase === 'elsewhere';
-    var rows =
-      '<ox-receipt-row status="met" label="' + esc(elsewhere ? 'Settled in OrgX' : entry.verb + ' by you') + '" value="' + esc(entry.at || '') + '"></ox-receipt-row>' +
-      '<ox-receipt-row status="' + (confirmed || elsewhere ? 'met' : 'unverified') + '" label="' + esc(confirmed ? 'Confirmed by OrgX' : elsewhere ? 'Outcome recorded in OrgX' : 'Not confirmed yet') + '" detail="' + esc(entry.detail || '') + '"></ox-receipt-row>';
+    var t = trailOf(entry);
+    var lines = t.map(function line(m) {
+      return '<li class="rt-line" data-s="' + m.s + '"><span class="rt-m" data-s="' + m.s + '" aria-hidden="true">' + MARK[m.s] + '</span>' +
+        '<span class="rt-l"><b>' + esc(m.name) + '</b> ' + esc(m.line) + (m.value && m.key !== 'decided' ? ' · <span class="rt-v">' + esc(m.value) + '</span>' : '') + '</span>' +
+        (m.key === 'decided' && m.value ? '<span class="rt-t">' + esc(m.value) + '</span>' : '') + '</li>';
+    }).join('');
     return '<li class="pn-rc' + (open ? ' is-open' : '') + '">' +
       '<button type="button" class="pn-rc-head" data-action="receipt" data-id="' + esc(entry.id) + '" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="rc-' + esc(entry.id) + '">' +
-      '<span class="pn-rc-ic" data-tone="' + (entry.action === 'reject' ? 'mute' : 'teal') + '" aria-hidden="true">' + (entry.action === 'reject' ? '↩' : '✓') + '</span>' +
-      '<span class="pn-row-main"><span class="pn-row-t">' + esc(entry.title) + '</span><span class="pn-row-m">' + esc((elsewhere ? 'Settled in OrgX' : entry.verb + ' by you') + (entry.at ? ' · ' + entry.at : '')) + '</span></span>' +
-      '<span class="pn-rc-chev" aria-hidden="true">›</span></button>' +
-      '<div class="pn-rc-body" id="rc-' + esc(entry.id) + '"' + (open ? '' : ' hidden') + '><div role="list">' + rows + '</div>' +
-      '<button type="button" class="text-btn" data-action="open" data-url="' + esc(entry.url) + '">Open receipt in OrgX ↗</button></div></li>';
+      '<span class="pn-row-main"><span class="pn-row-t">' + esc(entry.title) + '</span><span class="pn-row-m">' + esc(t[0].line + (entry.at ? ' · ' + entry.at : '')) + '</span></span>' +
+      trailMarks(entry) + '<span class="pn-rc-chev" aria-hidden="true">›</span></button>' +
+      '<div class="pn-rc-body" id="rc-' + esc(entry.id) + '"' + (open ? '' : ' hidden') + '><ul class="rt-lines" role="list">' + lines + '</ul>' +
+      // The missing layer is named once, on its own line above; this only offers where to look.
+      '<p class="rt-miss"><button type="button" class="text-btn" data-action="open" data-url="' + esc(entry.url) + '">Open receipt in OrgX ↗</button></p></div></li>';
   }
 
   /** opts: { session, openId, proofHtml, launch } */
@@ -115,9 +154,12 @@
     var ledger = l && l.workLedger ? l.workLedger() : 'https://useorgx.com/work-ledger';
     var approved = session.filter(function a(e) { return e.action === 'approve' && e.phase !== 'elsewhere'; }).length;
     var back = session.filter(function r(e) { return e.action === 'reject' && e.phase !== 'elsewhere'; }).length;
+    var recorded = session.filter(function r(e) { return e.phase === 'confirmed' || e.phase === 'rejected' || e.phase === 'elsewhere'; }).length;
+    // One line, not a scoreboard: the receipts below are the substance.
     var summary = session.length
-      ? '<p class="pn-done-sum">You settled ' + session.length + (session.length === 1 ? ' decision' : ' decisions') + ' since opening the panel.</p>' +
-        '<p class="pn-nums"><span><b>' + approved + '</b> approved</span><span><b>' + back + '</b> sent back</span></p>'
+      ? '<p class="pn-done-sum"><b>' + session.length + ' settled</b> here' +
+        [approved ? approved + ' approved' : '', back ? back + ' sent back' : '', recorded === session.length ? 'all recorded in OrgX' : (session.length - recorded) + ' not confirmed yet']
+          .filter(Boolean).map(function bit(b) { return ' <span aria-hidden="true">·</span> ' + esc(b); }).join('') + '</p>'
       : '<p class="pn-done-sum">Decisions you settle here collect as receipts.</p>';
     var list = session.length ? '<ul class="pn-rcs" role="list">' + session.map(function each(e) { return receiptHtml(e, e.id === opts.openId); }).join('') + '</ul>' : '';
     return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
@@ -128,5 +170,5 @@
       (opts.launch || '') + '</section>';
   }
 
-  global.OrgXPanelViews = { tabsHtml: tabsHtml, workHtml: workHtml, doneHtml: doneHtml, receiptHtml: receiptHtml, avatar: avatar };
+  global.OrgXPanelViews = { tabsHtml: tabsHtml, workHtml: workHtml, doneHtml: doneHtml, receiptHtml: receiptHtml, trailMarks: trailMarks, trailOf: trailOf, avatar: avatar };
 })(typeof window !== 'undefined' ? window : globalThis);

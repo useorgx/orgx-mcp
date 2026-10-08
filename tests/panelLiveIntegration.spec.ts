@@ -285,3 +285,96 @@ describe('workspace switcher', () => {
     expect(doc(m).querySelector('[data-action="workspaces-retry"]')).not.toBeNull();
   });
 });
+
+describe('polish: what the production panel got wrong', () => {
+  const TITLE = 'The OrgX floor stopped a merge action in a agent-cli session and is waiting for you.';
+  const M = ['66666666-6666-4666-8666-666666666661', '66666666-6666-4666-8666-666666666662', '66666666-6666-4666-8666-666666666663'];
+  const mergeDetail = (pr: number) =>
+    `${TITLE} All GitHub checks pass on PR #${pr}; please review. Command: gh pr merge ${pr} Approve to let exactly this action run once in the next 24 hours.`;
+
+  function mergesSnapshot() {
+    const base = snapshot();
+    const queue = M.map((id, i) => ({
+      ...(base.queue as Array<Record<string, unknown>>)[0],
+      id, title: TITLE, urgency: 'medium', blocked: true, kind: 'action', detail: mergeDetail(3236 + i),
+    }));
+    return snapshot({
+      attention: { pending: 3, oldest_at: '2026-09-30T10:00:00.000Z', blocking: true },
+      queue,
+      focus: { ...(base.focus as Record<string, unknown>), id: M[0], question: mergeDetail(3236), urgency: 'medium', blocked: true, recommendation: null, consequence_if_approved: null },
+    });
+  }
+
+  async function openWith(data: Record<string, unknown>) {
+    const m = await mountPanel({}, {}, (win) => {
+      (win as unknown as Record<string, unknown>).EventSource = class { addEventListener() {} close() {} };
+    });
+    const tracked = Object.assign(m, { sources: [] as FakeSource[] });
+    mounted.push(tracked);
+    m.app().ontoolresult({ structuredContent: data, _meta: { 'orgx/widgetApproval': { approval_tokens: Object.fromEntries(M.map((id) => [id, 't'])) } } });
+    await m.flush();
+    return tracked;
+  }
+
+  it('keeps the command in the code block and the approval wording out of it', async () => {
+    const m = await openWith(mergesSnapshot());
+    expect(doc(m).querySelector('.q-cmd code')!.textContent).toBe('gh pr merge 3236');
+    const facts = Array.from(doc(m).querySelectorAll('.fact')).map((f) => f.textContent);
+    expect(facts.some((t) => /If approved.*Let exactly this action run once/.test(t || ''))).toBe(true);
+  });
+
+  it('leads repeated rows with what differs, and keeps Review quiet', async () => {
+    const m = await openWith(mergesSnapshot());
+    const subs = Array.from(doc(m).querySelectorAll('.row .row-sub.is-cmd')).map((n) => n.textContent);
+    expect(subs).toEqual(['gh pr merge 3237', 'gh pr merge 3238']);
+    // One group: the shared title once, with a count, then a line per decision.
+    const group = doc(m).querySelector('.qgroup')!;
+    expect(group.querySelector('.qgroup-t')!.textContent).toBe(TITLE);
+    expect(group.querySelector('.qgroup-n')!.textContent).toBe('2');
+    expect(group.querySelectorAll('.row.grow')).toHaveLength(2);
+    // Rendered text only (the inlined gallery fixture carries the sentence too).
+    const holders = Array.from(doc(m).querySelectorAll('body *'))
+      .filter((el) => el.tagName !== 'SCRIPT' && el.children.length === 0 && (el.textContent || '').includes(TITLE));
+    expect(holders.map((el) => el.className)).toEqual(['q', 'qgroup-t']); // packet heading + group header, never per row
+    const review = doc(m).querySelector('.row [data-action="select"].mini') as HTMLElement;
+    expect(review.classList.contains('ghost')).toBe(true);
+    expect(review.classList.contains('approve')).toBe(false);
+  });
+
+  it('says "Blocking work" instead of "Normal · Blocking work"', async () => {
+    const m = await openWith(mergesSnapshot());
+    const meta = doc(m).querySelector('.packet .meta')!.textContent || '';
+    expect(meta).toContain('Blocking work');
+    expect(meta).not.toContain('Normal');
+    expect(doc(m).querySelector('.row .row-meta')!.textContent).not.toContain('Normal');
+  });
+
+  it('keeps acceptance stats out of the decision view', async () => {
+    const m = await openWith(mergesSnapshot());
+    expect(doc(m).querySelector('.pn-detail .proof')).toBeNull();
+  });
+});
+
+describe('polish: In progress agrees with its count', () => {
+  it('shows the live feed rows when the panel read fails, never "could not be read" under a count', async () => {
+    const m = await open();
+    m.sources[0]!.open();
+    m.sources[0]!.send(graph({ [D1]: 'v1', [D2]: 'v1' }, { t1: 'running', t2: 'blocked' }));
+    await m.flush();
+    m.calls.callServerTool.mockRejectedValueOnce(new Error('timed out'));
+    (doc(m).querySelector('[data-tab="work"]') as HTMLElement).click();
+    await m.flush(); await m.flush(); await m.flush();
+    const view = doc(m).querySelector('.pn-work')!;
+    expect(view.textContent).not.toContain('could not be read');
+    expect(view.querySelectorAll('.pn-row')).toHaveLength(2);
+    expect(doc(m).querySelector('#pn-tab-work .pn-tab-n')!.textContent).toBe('2');
+  });
+
+  it('still says it could not read anything when there is no feed either', async () => {
+    const m = await open();
+    m.calls.callServerTool.mockRejectedValueOnce(new Error('timed out'));
+    (doc(m).querySelector('[data-tab="work"]') as HTMLElement).click();
+    await m.flush(); await m.flush();
+    expect(doc(m).querySelector('.pn-work')!.textContent).toContain('could not be read');
+  });
+});

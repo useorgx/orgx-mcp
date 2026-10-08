@@ -150,6 +150,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             kind: panelItemKindSchema,
             widget_actions: panelWidgetActionsSchema.nullable(),
             asker: z.string().nullable(),
+            detail: z.string().nullable().optional(),
             url: z.string(),
           })
           .strict()

@@ -3153,7 +3153,13 @@ export class OrgXMcp extends McpAgent<
             userId: id,
           });
           return normalizeAgentStatusPayload(enriched);
-        } catch {
+        } catch (error) {
+          // Logged because the panel shows only "could not be read"; this line
+          // is what says whether it was a timeout, a refusal or a bad payload.
+          console.warn('[panel] agent status read failed', {
+            workspaceId,
+            error: error instanceof Error ? error.message : String(error),
+          });
           return null;
         }
       },

@@ -131,6 +131,7 @@
 
     var ICON = {
       ext: '<svg class="pn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V14"/><path d="M14 4h6v6M20 4l-9 9"/></svg>',
+      check: '<svg class="pn-ic receipt-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
       doc: '<svg class="pn-ic ev-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z" fill="currentColor" fill-opacity=".12" stroke="none"/><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 15.5h4"/></svg>',
     };
     var HEADLINE_MAX = 96;
@@ -176,14 +177,34 @@
         .replace(/`([^`]{1,200})`/g, '<code>$1</code>')
         .replace(/\b([0-9a-f]{12,64})\b/g, function hash(m, h) { return '<code title="' + h + '">' + h.slice(0, 10) + '</code>'; });
     }
+    /**
+     * Split a command from the instruction run on after it. Agents write
+     * "Command: gh pr merge 3236 Approve to let exactly this action run once…"
+     * with no full stop, which put the consequence inside the code block.
+     */
+    function splitCommand(text) {
+      var m = /^(.*?\S)\s+((?:Approve|Approving|Allow|Deny|Reject|Decline)\b.*)$/.exec(text);
+      return m ? { cmd: m[1].replace(/\.$/, ''), tail: m[2] } : { cmd: String(text).replace(/\.$/, ''), tail: '' };
+    }
     function structureBody(text) {
       var parts = { lede: [], facts: [], commands: [], ifApproved: '' };
       sentences(text).forEach(function sort(line) {
         var bare = line.replace(/[.!]$/, '');
         var m = /^([A-Z][\w’' -]{2,28}?)\s*:\s+(.+)$/.exec(line);
         var label = m ? m[1].trim() : '';
-        if (m && /^(?:command|run|cmd|shell)$/i.test(label)) { parts.commands.push(m[2].replace(/\.$/, '')); return; }
-        if (CLI.test(bare) && !/\s(?:the|to|and|because)\s/i.test(bare)) { parts.commands.push(bare); return; }
+        var split;
+        if (m && /^(?:command|run|cmd|shell)$/i.test(label)) {
+          split = splitCommand(m[2]);
+          parts.commands.push(split.cmd);
+          if (split.tail) sort(split.tail);
+          return;
+        }
+        if (CLI.test(bare) && !/\s(?:the|to|and|because)\s/i.test(splitCommand(bare).cmd)) {
+          split = splitCommand(bare);
+          parts.commands.push(split.cmd);
+          if (split.tail) sort(split.tail);
+          return;
+        }
         if (!parts.ifApproved && /^(?:approve|approving)\b.{0,40}\b(?:to|lets?|will|runs?)\b/i.test(line)) {
           parts.ifApproved = line.replace(/^(?:approve|approving)\s+(?:to\s+)?/i, '').replace(/^\w/, function up(c) { return c.toUpperCase(); });
           return;
@@ -536,7 +557,14 @@
         ? ui.work.items.some(function b(i) { return i.state === 'blocked'; })
         : Boolean(ui.liveWork && ui.liveWork.blocked);
       var workCount = workRead ? ui.work.total : ui.liveWork ? ui.liveWork.total : null;
+      var counts = { needs: s.attention.pending, work: workCount, done: ui.session.length };
+      ui.countChanged = {};
+      Object.keys(counts).forEach(function diff(k) {
+        if (ui.lastCounts && ui.lastCounts[k] !== undefined && ui.lastCounts[k] !== null && counts[k] !== ui.lastCounts[k]) ui.countChanged[k] = true;
+      });
+      ui.lastCounts = counts;
       return Views.tabsHtml({
+        changed: ui.countChanged,
         active: ui.tab,
         counts: { needs: s.attention.pending, work: workCount, done: ui.session.length },
         tones: { needs: s.attention.pending ? (s.attention.blocking ? 'red' : 'amber') : '', work: blocked ? 'red' : '', done: ui.session.length ? 'teal' : '' },
@@ -557,15 +585,41 @@
         parts.push('<div class="notice" data-tone="amber" role="status"><p>Showing the snapshot from ' + esc(clock(ui.syncedAt)) +
           '. The latest snapshot could not be loaded.</p><button type="button" class="text-btn" data-action="refresh">Refresh</button></div>');
       }
-      if (ui.lastRuling) {
+      // One line, then it gets out of the way: Done keeps the receipt.
+      if (ui.lastRuling && ui.tab !== 'done') {
         var receiptTitle = splitHeadline(ui.lastRuling.title);
         var receiptCommand = structureBody(receiptTitle.body).commands[0];
-        parts.push('<div class="notice" data-tone="teal" role="status"><p>' +
-          (ui.lastRuling.elsewhere ? 'Settled in OrgX: ' : ui.lastRuling.verb ? ui.lastRuling.verb + ' by you: ' : ui.lastRuling.action === 'approve' ? 'Approved by you: ' : 'Sent back by you: ') +
-          (receiptCommand ? '<code>' + esc(receiptCommand) + '</code>' : esc(receiptTitle.headline)) + '</p>' +
-          (receiptTitle.body ? '<details class="receipt-details"><summary>Decision details</summary><p>' + inline(receiptTitle.body) + '</p></details>' : '') + '</div>');
+        var receiptEntry = ui.session.filter(function same(e) { return e.id === ui.lastRuling.id; })[0];
+        var verb = ui.lastRuling.elsewhere ? 'Settled in OrgX' : (ui.lastRuling.verb || (ui.lastRuling.action === 'approve' ? 'Approved' : 'Sent back')) + ' by you';
+        parts.push('<div class="notice receipt" data-tone="teal" role="status">' + ICON.check +
+          '<p><strong>' + esc(verb) + '</strong> ' + (receiptCommand ? '<code>' + esc(receiptCommand) + '</code>' : esc(receiptTitle.headline)) + '</p>' +
+          (receiptEntry && Views && Views.trailMarks ? Views.trailMarks(receiptEntry) : '') +
+          (ui.session.length ? '<button type="button" class="text-btn" data-action="tab" data-tab="done">In Done</button>' : '') + '</div>');
+        armReceiptDismiss();
       }
       return parts.join('');
+    }
+
+    var receiptTimer = null;
+    var receiptShown = null;
+    /** The receipt line fades after a few seconds unless the person is reading it. */
+    function armReceiptDismiss() {
+      if (receiptShown === ui.lastRuling) return;
+      receiptShown = ui.lastRuling;
+      if (receiptTimer) window.clearTimeout(receiptTimer);
+      var shown = ui.lastRuling;
+      receiptTimer = window.setTimeout(function fade() {
+        receiptTimer = null;
+        if (ui.lastRuling !== shown) return;
+        var el = root.querySelector('.notice.receipt');
+        if (el && (el.matches(':hover') || el.contains(document.activeElement))) { receiptShown = null; armReceiptDismiss(); return; }
+        if (el) el.classList.add('leaving');
+        window.setTimeout(function gone() {
+          if (ui.lastRuling !== shown) return;
+          ui.lastRuling = null;
+          if (typeof liveRender === 'function') liveRender(); else render();
+        }, 220);
+      }, 6000);
     }
 
     function evidenceHtml(f) {
@@ -796,14 +850,17 @@
         facts.push('<div class="fact"><dt>Recommendation</dt><dd>' + esc(f.recommendation.action) +
           (f.recommendation.status === 'unverified' ? ' <span class="sub">(unverified)</span>' : '') + '</dd></div>');
       } else if (f.recommendation && kindOf(f) === 'decision') {
+        // Said, quietly: no recommendation is information for a decision.
         facts.push('<div class="fact"><dt>Recommendation</dt><dd class="quiet">No recommendation yet</dd></div>');
       }
       if (f.consequence_if_approved || body.ifApproved) {
         facts.push('<div class="fact"><dt>If approved</dt><dd>' + inline(f.consequence_if_approved || body.ifApproved) + '</dd></div>');
       }
       return '<section class="packet enter" aria-labelledby="pk-q">' + changed +
-        '<p class="meta">' + askerAvatar + '<span class="urgency" data-u="' + esc(f.urgency) + '">' + esc(urgencyLabel(f.urgency)) + '</span>' +
-        (f.blocked ? '<span aria-hidden="true">·</span><span class="blocked-tag">Blocking work</span>' : '') +
+        '<p class="meta">' + askerAvatar +
+        // "Normal · Blocking work" says two things at once; blocking is the one that matters.
+        (f.blocked && (f.urgency === 'medium' || f.urgency === 'low') ? '' : '<span class="urgency" data-u="' + esc(f.urgency) + '">' + esc(urgencyLabel(f.urgency)) + '</span>') +
+        (f.blocked ? (f.urgency === 'medium' || f.urgency === 'low' ? '' : '<span aria-hidden="true">·</span>') + '<span class="blocked-tag">Blocking work</span>' : '') +
         (metaBits.length ? '<span aria-hidden="true">·</span><span class="meta-text" title="' + esc(metaBits.join(' · ')) + '">' + esc(metaBits.join(' · ')) + '</span>' : '<span class="meta-text"></span>') +
         (tokenFor(f.id) || ui.rulings[f.id] ? '<button type="button" class="ox-open" data-action="open" data-url="' + esc(f.url) + '" aria-label="Open this decision in OrgX">Open in OrgX</button>' : '') + '</p>' +
         '<' + headingTag + ' id="pk-q" tabindex="-1" class="q' + (ui.wholeQ === f.id ? ' is-whole' : '') + '">' + esc(head.headline) + '</' + headingTag + '>' +
@@ -816,12 +873,14 @@
         shareHtml(f) + (Launch && !ui.rulings[f.id] ? Launch.chipsHtml('packet', { title: head.headline }) : '') + '</section>';
     }
 
-    function rowHtml(item) {
+    function rowHtml(item, opts) {
+      var grouped = Boolean(opts && opts.grouped);
       var ruling = ui.rulings[item.id];
       var repeatedTitle = ui.snapshot.queue.some(function repeated(other) {
         return other.id !== item.id && splitHeadline(other.title).headline === splitHeadline(item.title).headline;
       });
-      var meta = [urgencyLabel(item.urgency), ago(item.waiting_since), item.initiative_title].filter(Boolean).join(' · ');
+      var calmUrgency = item.urgency === 'medium' || item.urgency === 'low';
+      var meta = [item.blocked && calmUrgency ? 'Blocking work' : urgencyLabel(item.urgency), ago(item.waiting_since), item.initiative_title].filter(Boolean).join(' · ');
       var acts = '';
       var opening = ui.readState.phase === 'loading' && ui.readState.focusId === item.id;
       if (ui.readState.phase !== 'idle') {
@@ -836,7 +895,7 @@
       } else if (tokenFor(item.id) && (!quickDecide(item) || repeatedTitle)) {
         var c0 = choicesFor(item);
         var open = repeatedTitle ? 'Review' : c0.selection ? 'Choose' : c0.answer ? 'Answer' : 'Open';
-        acts = '<div class="row-acts"><button type="button" class="mini approve" data-action="select" data-id="' + esc(item.id) + '" aria-label="' + esc(open + ': ' + item.title) + '">' + open + '</button></div>';
+        acts = '<div class="row-acts"><button type="button" class="mini' + (repeatedTitle ? ' ghost' : ' approve') + '" data-action="select" data-id="' + esc(item.id) + '" aria-label="' + esc(open + ': ' + item.title) + '">' + open + '</button></div>';
       } else if (tokenFor(item.id) && !(ui.composer && ui.composer.id === item.id)) {
         var c = choicesFor(item);
         acts = '<div class="row-acts">' +
@@ -845,10 +904,60 @@
       }
       var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
       var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : '';
-      return '<li class="row" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
+      var arrived = ui.seenRows && !ui.seenRows[item.id];
+      if (grouped) {
+        // Inside a group the title is the group's; the line is what differs.
+        return '<li class="row grow' + (arrived ? ' arrive' : '') + '" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + ' ' + (item.detail || '') + '. ' + meta) + '">' +
+          distinguisherHtml(item) + '<span class="row-meta"><span>' + esc(meta) + '</span></span></button>' + acts +
+          (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
+      }
+      return '<li class="row' + (arrived ? ' arrive' : '') + '" data-row="' + esc(item.id) + '"><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
         (Views ? '<span class="row-av" aria-hidden="true">' + Views.avatar(item.asker || '', 'row') + '</span>' : '') +
-        '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span><span class="row-meta"><span>' + esc(kindTag + meta) + '</span></span></button>' + acts +
+        // Repeated titles step back to one muted line; what differs leads.
+        (repeatedTitle && distinguisherHtml(item)
+          ? distinguisherHtml(item) + '<span class="row-title is-repeat">' + esc(splitHeadline(item.title).headline) + '</span>'
+          : '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span>') +
+        '<span class="row-meta"><span>' + esc(kindTag + meta) + '</span></span></button>' + acts +
         (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
+    }
+
+    /**
+     * The queue, with decisions that share a title folded into one group: the
+     * title once with a count, then one compact line per decision led by what
+     * differs. Five "merge stopped" approvals are one thing to scan, not five.
+     */
+    function queueRowsHtml(items) {
+      var order = [];
+      var groups = {};
+      items.forEach(function bucket(item) {
+        var key = splitHeadline(item.title).headline;
+        if (!groups[key]) { groups[key] = []; order.push(key); }
+        groups[key].push(item);
+      });
+      return order.map(function render(key) {
+        var members = groups[key];
+        var distinct = members.every(function has(item) { return Boolean(distinguisherHtml(item)); });
+        if (members.length < 2 || !distinct) return members.map(function one(item) { return rowHtml(item); }).join('');
+        var gid = 'grp-' + members[0].id;
+        return '<li class="qgroup" aria-labelledby="' + gid + '"><p class="qgroup-h" id="' + gid + '"><span class="qgroup-t">' + esc(key) + '</span>' +
+          '<span class="qgroup-n">' + members.length + '</span></p><ul class="qgroup-rows" role="list">' +
+          members.map(function member(item) { return rowHtml(item, { grouped: true }); }).join('') + '</ul></li>';
+      }).join('');
+    }
+
+    /**
+     * Rows that share a title differ somewhere in the question: usually the
+     * command or the PR. Show that, so five "merge stopped" rows read as five
+     * different merges.
+     */
+    function distinguisherHtml(item) {
+      var head = splitHeadline(item.detail || '');
+      var source = head.body || (head.headline !== splitHeadline(item.title).headline ? head.headline : '');
+      if (!source) return '';
+      var body = structureBody(source);
+      var text = body.commands[0] || body.lede[0] || (body.facts[0] ? body.facts[0].v : '') || source;
+      if (!text) return '';
+      return '<span class="row-sub' + (body.commands[0] ? ' is-cmd' : '') + '">' + esc(text.length > 90 ? text.slice(0, 89) + '…' : text) + '</span>';
     }
 
     function proofHtml(s, calm) {
@@ -922,7 +1031,8 @@
       var calm = s.attention.pending === 0;
       var ctx = launchContext(s);
       if (ui.tab === 'work' && Views) {
-        return html + Views.workHtml(ui.work, ui.workPhase, Launch ? Launch.sectionHtml(ui.work && ui.work.items.length ? 'work' : 'work-empty', ctx, { heading: 'Start or delegate work' }) : '');
+        var wv = workView();
+        return html + Views.workHtml(wv.work, wv.phase, Launch ? Launch.sectionHtml(wv.work && wv.work.items.length ? 'work' : 'work-empty', ctx, { heading: 'Start or delegate work' }) : '');
       }
       if (ui.tab === 'done' && Views) {
         return html + Views.doneHtml({
@@ -943,8 +1053,8 @@
       var hidden = Math.max(0, s.attention.pending - s.queue.length);
       html += '<div class="pn-split">' +
         '<div class="pn-att">' + attentionLine(s) + '</div>' +
-        '<div class="pn-detail">' + (s.focus ? packetHtml(s.focus, 'h2') : '') + proofHtml(s, false) + '</div>' +
-        (others.length ? '<div class="pn-list"><h2 class="queue-head">' + (s.focus ? 'Also waiting' : 'Waiting on you') + ' <span class="queue-n">' + others.length + '</span></h2><ul class="queue">' + others.map(rowHtml).join('') + '</ul>' +
+        '<div class="pn-detail">' + (s.focus ? packetHtml(s.focus, 'h2') : '') + '</div>' +
+        (others.length ? '<div class="pn-list"><h2 class="queue-head">' + (s.focus ? 'Also waiting' : 'Waiting on you') + ' <span class="queue-n">' + others.length + '</span></h2><ul class="queue">' + queueRowsHtml(others) + '</ul>' +
           (hidden ? '<p class="sub">' + hidden + ' more in OrgX. <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.decisions({ status: 'pending' })) + '">All decisions ↗</button></p>' : '') + '</div>' : '') +
         '</div>';
       return html;
@@ -1040,6 +1150,11 @@
           ui.composer.focus = false;
         }
       }
+      if (ui.snapshot && ui.snapshot.state === 'ok') {
+        var seen = {};
+        ui.snapshot.queue.forEach(function mark(item) { seen[item.id] = true; });
+        ui.seenRows = seen;
+      }
       window.requestAnimationFrame(fitQuestion);
       if (R && R.reportSize) R.reportSize();
       if (tour) tour.refresh();
@@ -1085,6 +1200,25 @@
         if (t) t.focus();
         announce(tab === 'needs' ? 'Needs you.' : tab === 'work' ? 'In progress.' : 'Done.');
       }
+    }
+
+    /**
+     * What In progress shows. The panel's own read when it has one; otherwise
+     * the live feed's rows (the same projection, without proof enrichment), so
+     * the tab never says "13" over a body that says it could not read anything.
+     */
+    function workView() {
+      if (ui.work && ui.work.status === 'ok') return { work: ui.work, phase: ui.workPhase };
+      if (ui.liveWork && ui.liveWork.items) {
+        var live = window.OrgXLinks.live();
+        return {
+          work: { status: 'ok', total: ui.liveWork.items.length, items: ui.liveWork.items.map(function row(i) {
+            return { id: i.id, agent: i.agent, title: i.title, state: i.state === 'running' || i.state === 'blocked' ? i.state : 'queued', url: live };
+          }) },
+          phase: ui.workPhase === 'loading' ? 'loading' : 'ready',
+        };
+      }
+      return { work: ui.work, phase: ui.workPhase };
     }
 
     /** In progress is read only when opened: the same snapshot with view "work". */
@@ -1198,7 +1332,7 @@
         var r = ui.rulings[id];
         if (!findItem(id) && (r.phase === 'confirmed' || r.phase === 'rejected' || r.phase === 'elsewhere')) {
           ui.lastRuling = {
-            action: r.action, title: r.title, elsewhere: r.phase === 'elsewhere',
+            id: id, action: r.action, title: r.title, elsewhere: r.phase === 'elsewhere',
             verb: r.phase === 'confirmed' ? pastTense(r.approveLabel, 'approve') : r.phase === 'rejected' ? pastTense(r.rejectLabel, 'reject') : '',
           };
           delete ui.rulings[id];
@@ -1747,6 +1881,15 @@
       }
     });
 
+    document.addEventListener('pointerdown', function pointerModality() {
+      document.documentElement.setAttribute('data-modality', 'pointer');
+    }, true);
+    document.addEventListener('keydown', function keyModality(event) {
+      if (event.key === 'Tab' || event.key.indexOf('Arrow') === 0 || event.key === 'Enter' || event.key === ' ' || event.key === 'Escape') {
+        document.documentElement.setAttribute('data-modality', 'keyboard');
+      }
+    }, true);
+
     document.addEventListener('pointerdown', function closeOnOutside(event) {
       if (!ui.wsOpen) return;
       var t = event.target;
@@ -1771,6 +1914,7 @@
       ui.listOpen = false; ui.evidenceOpen = false; ui.wholeQ = null;
       ui.tab = 'needs'; ui.work = null; ui.workPhase = 'idle'; ui.session = []; ui.openReceipt = null;
       ui.wsOpen = false; ui.wsPhase = 'idle'; ui.workspaces = null; ui.wsError = null; ui.wsSwitchingTo = null;
+      ui.seenRows = null; ui.lastCounts = null;
       share = X.createShareController({ modelContext: ext.modelContext });
       handledHint = { deepLink: null, context: null };
     }
@@ -1903,6 +2047,30 @@
           s.proof.completed_unaccepted = 0;
           tokens = {};
           break;
+        case 'merges': {
+          // The production shape: several merge approvals that share one title
+          // and differ only in the PR named in the question, whose command runs
+          // straight into the approval wording, plus one blocking run approval.
+          var mergeTitle = 'The OrgX floor stopped a merge action in a agent-cli session and is waiting for you.';
+          var merges = [3236, 3237, 3238, 3234].map(function merge(pr, i) {
+            var id = '5b1e0c3a-1d2f-4c3b-9a8e-0000000032' + String(30 + i);
+            return {
+              id: id, version: isoAgo((8 * 24 - i) * H), title: mergeTitle, urgency: 'medium', waiting_since: isoAgo(8 * D), initiative_title: null,
+              blocked: true, decide_in_orgx_reason: null, option_count: 0, kind: 'action', widget_actions: null, asker: null, url: decisionUrl(id),
+              detail: mergeTitle + ' All GitHub checks pass on PR #' + pr + '; please review and decide whether to merge. Command: gh pr merge ' + pr + ' Approve to let exactly this action run once in the next 24 hours.',
+            };
+          });
+          s = baseSnapshot();
+          s.queue = merges.concat([Object.assign({}, FIXTURE_QUEUE[1])]);
+          s.attention = { pending: s.queue.length, oldest_at: isoAgo(8 * D), blocking: true };
+          var first = merges[0];
+          s.focus = Object.assign(galleryFocus(FIXTURE_QUEUE[0]), {
+            id: first.id, version: first.version, urgency: 'medium', blocked: true, waiting_since: first.waiting_since, initiative_title: null, asker: null, url: first.url,
+            question: first.detail, recommendation: null, evidence: [], evidence_total: 0, consequence_if_approved: null,
+          });
+          tokens = allTokens(s);
+          break;
+        }
         case 'completed-not-accepted':
           s = calmSnapshot();
           s.proof = { last_accepted: null, completed_unaccepted: 2 };
@@ -2134,7 +2302,20 @@
       });
       if (!dropped) return;
       announce(dropped === 1 ? 'A decision was settled elsewhere.' : dropped + ' decisions were settled elsewhere.');
-      liveRender();
+      // The count changes now; the row collapses out before the repaint, so
+      // the eye sees which one left rather than the list jumping.
+      var badge = root.querySelector('#pn-tab-needs .pn-tab-n');
+      if (badge) { badge.textContent = String(s.attention.pending); badge.classList.add('tick'); }
+      var leaving = ids.map(function row(id) { return root.querySelector('[data-row="' + id + '"]'); }).filter(Boolean);
+      if (!leaving.length || reducedMotion()) { liveRender(); return; }
+      leaving.forEach(function mark(el) { el.style.height = el.offsetHeight + 'px'; });
+      void root.offsetHeight; // commit the pinned heights so the collapse transitions from them
+      leaving.forEach(function mark(el) { el.classList.add('leaving'); });
+      window.setTimeout(liveRender, 200);
+    }
+
+    function reducedMotion() {
+      return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
 
     function liveRefresh() {
