@@ -29,6 +29,23 @@ import {
 
 const decideActionSchema = z.enum(['approve', 'reject']);
 const panelItemKindSchema = z.enum(['decision', 'approval', 'action']);
+const panelReceiptRowSchema = z
+  .object({
+    id: z.string(),
+    at: z.string().nullable(),
+    actor: z.string().nullable(),
+    summary: z.string(),
+    outcome: z.string().nullable(),
+    verification: z.string().nullable(),
+    accepted: z.string().nullable(),
+    work_type: z.string().nullable(),
+    area: z.string().nullable(),
+    entity_title: z.string().nullable(),
+    criteria: z.object({ met: z.number(), unmet: z.number(), unknown: z.number() }).strict(),
+    prs: z.array(z.string()),
+    confidence: z.number().nullable(),
+  })
+  .strict();
 const panelAskerKindSchema = z.enum(['agent', 'floor', 'unnamed', 'system']);
 /** The app's per-item widget_actions contract, as the panel carries it (clipped). */
 const panelWidgetActionsSchema = z
@@ -272,6 +289,45 @@ export const WIDGET_OUTPUT_SCHEMAS = {
               })
               .strict()
           ),
+          reason: z.string().nullable().optional(),
+        })
+        .strict()
+        .optional(),
+      // Work Ledger receipts (src/panelReceipts.ts).
+      receipts: z
+        .object({
+          status: z.enum(['ok', 'unavailable']),
+          query: z.string(),
+          total: z.number(),
+          items: z.array(panelReceiptRowSchema),
+          reason: z.string().nullable(),
+        })
+        .strict()
+        .optional(),
+      receipt: z
+        .object({
+          status: z.enum(['ok', 'unavailable']),
+          id: z.string(),
+          row: panelReceiptRowSchema.nullable(),
+          objective: z.string().nullable(),
+          outcome_summary: z.string().nullable(),
+          criteria: z.array(
+            z
+              .object({
+                id: z.string(),
+                text: z.string(),
+                kind: z.string().nullable(),
+                status: z.enum(['met', 'unmet', 'unknown']),
+                confidence: z.number().nullable(),
+              })
+              .strict()
+          ),
+          artifacts: z.array(z.object({ kind: z.string(), name: z.string(), url: z.string().nullable() }).strict()),
+          uncertain: z.array(z.string()),
+          workstream_title: z.string().nullable(),
+          cost_usd: z.number().nullable(),
+          completed_at: z.string().nullable(),
+          reason: z.string().nullable(),
         })
         .strict()
         .optional(),
@@ -280,6 +336,14 @@ export const WIDGET_OUTPUT_SCHEMAS = {
     })
     .strict(),
 
+  orgx_widget_receipt_call: z
+    .object({
+      recorded: z.boolean(),
+      receipt_id: z.string(),
+      status: z.enum(['succeeded', 'partially_succeeded', 'failed', 'blocked']).nullable(),
+      reason: z.string().nullable(),
+    })
+    .strict(),
   get_agent_status: z
     .object({
       agents: z.array(agentSchema),

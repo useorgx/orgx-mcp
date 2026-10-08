@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-07T18:35:24.050Z",
-  "sourceHash": "35e9f723b4027bfb",
+  "generatedAt": "2026-10-08T16:41:05.466Z",
+  "sourceHash": "e41c32e10766e4aa",
   "version": "1.0.0",
-  "totalTools": 107,
+  "totalTools": 108,
   "categories": [
     "Agents",
     "Billing",
@@ -1705,9 +1705,32 @@
           "view": {
             "type": "string",
             "enum": [
-              "work"
+              "work",
+              "workspaces",
+              "history",
+              "receipts",
+              "receipt"
             ],
-            "description": "Optional extra view. \"work\" adds what agents are running and what waits on you."
+            "description": "Optional extra view. \"work\" adds what agents are running and what waits on you; \"workspaces\" adds the workspaces the panel can switch to; \"history\" adds decisions settled in the range; \"receipts\" adds the Work Ledger receipts for the range (or for `query`); \"receipt\" adds one receipt in full with each criterion's verdict."
+          },
+          "range": {
+            "type": "string",
+            "enum": [
+              "today",
+              "7d",
+              "30d"
+            ],
+            "description": "For views \"history\" and \"receipts\": today, 7d or 30d. Defaults to 7d."
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "For view \"receipts\": a Work Ledger filter instead of the range, e.g. \"pr:3236\" for the work behind a merge."
+          },
+          "receipt_id": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "For view \"receipt\": the receipt to read in full."
           }
         },
         "additionalProperties": false,
@@ -1720,6 +1743,49 @@
       "source": "inline",
       "profiles": [
         "v2",
+        "chatgpt"
+      ]
+    },
+    {
+      "id": "orgx_widget_receipt_call",
+      "title": "Your call on a work receipt",
+      "description": "App-only: records a person's call on a Work Ledger receipt from the OrgX panel: done, partly done, not done or blocked. The ledger keeps the latest call per receipt; it overrides the agent's own guess and teaches OrgX what done means. USE WHEN: the person presses a call on a receipt in the OrgX panel. DO NOT USE: from a model; models read receipts with orgx_search scope=work_ledger.",
+      "category": "Decisions",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "receipt_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "The Work Ledger receipt the call is about."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "partially_succeeded",
+              "failed",
+              "blocked"
+            ],
+            "description": "The person's call on the outcome."
+          }
+        },
+        "required": [
+          "receipt_id",
+          "status"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "decisions:write",
+        "agents:write",
+        "initiatives:write"
+      ],
+      "readOnly": false,
+      "source": "inline",
+      "profiles": [
         "chatgpt"
       ]
     },
