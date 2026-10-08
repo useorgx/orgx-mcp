@@ -240,6 +240,7 @@ import {
   resolveFeedIdForTool,
   GENERATED_WIDGET_TTL_MS,
 } from './live/streamGrant';
+import { LIVE_REFRESH_USAGE_CLASS, PANEL_FEED_TYPE } from './live/panelFeed';
 import { hydrateTaskContext } from './taskContextHydrator';
 import {
   loadArtifactReviewEnvelope,
@@ -3055,9 +3056,13 @@ export class OrgXMcp extends McpAgent<
 
   /**
    * Read-only adapter for the OrgX panel. It exposes the session workspace,
-   * the pending-decisions read (with the widget approval channel) and the
-   * artifact read, and nothing that changes session state: no
-   * maybeUpdateSessionInitiativeContext, no live grant, no saved workspace.
+   * the pending-decisions read (with the widget approval channel), the
+   * artifact read and the panel's own live grant, and nothing that changes
+   * session state: no maybeUpdateSessionInitiativeContext, no saved workspace.
+   *
+   * The panel is app-only (a model cannot call it), so its reads are marked
+   * `live_refresh`: keeping the panel current does not spend the person's MCP
+   * call allowance. The app enforces which tools that may cover.
    */
   private panelSurfaceHost(): PanelSurfaceHost {
     const userId = () => this.props?.userId ?? this.sessionAuth.userId ?? null;
@@ -3099,6 +3104,7 @@ export class OrgXMcp extends McpAgent<
               tool_id: 'get_pending_decisions',
               args: { workspace_id: workspaceId, limit, _widget_meta_channel: true },
               user_id: id ? this.resolveOrgxUserId(id) ?? id : null,
+              usage_class: LIVE_REFRESH_USAGE_CLASS,
             }),
           },
           actor(id)
@@ -3130,6 +3136,7 @@ export class OrgXMcp extends McpAgent<
                 tool_id: 'get_agent_status',
                 args: { workspace_id: workspaceId },
                 user_id: id ? this.resolveOrgxUserId(id) ?? id : null,
+                usage_class: LIVE_REFRESH_USAGE_CLASS,
               }),
             },
             actor(id)
@@ -3149,6 +3156,22 @@ export class OrgXMcp extends McpAgent<
         } catch {
           return null;
         }
+      },
+      liveGrant: async (workspaceId) => {
+        if (!this.env.LIVE_FEED || !this.env.MCP_JWT_SECRET) return null;
+        const id = userId();
+        if (!id) return null;
+        return buildStreamGrant({
+          feedType: PANEL_FEED_TYPE,
+          feedId: workspaceId,
+          serverUrl: this.env.MCP_SERVER_URL,
+          secret: this.env.MCP_JWT_SECRET,
+          // Re-reading the panel is the refresh: its result carries a new grant.
+          refreshTool: 'orgx_panel_snapshot',
+          refreshArgs: {},
+          userId: id,
+          orgxUserId: this.resolveOrgxUserId(id),
+        });
       },
       run: (runner) => this.withOrgx(runner, 'orgx_panel_snapshot'),
     };

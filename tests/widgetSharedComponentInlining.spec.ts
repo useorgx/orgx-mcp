@@ -132,8 +132,14 @@ describe('MCP Apps shared-component inlining', () => {
       checked += 1;
 
       const sanitized = sanitizeMcpAppsHtml(raw, { sharedComponents });
+      // The OrgX panel drives the store headless through panel-live.js and
+      // renders its own UI, so it does not load the generic live panel.
+      const headless = raw.includes('shared/panel/panel-live.js');
+      const required = headless
+        ? liveScripts.filter((path) => path !== 'shared/live-panel.js').concat('shared/panel/panel-live.js')
+        : liveScripts;
 
-      for (const path of liveScripts) {
+      for (const path of required) {
         // The external reference must be gone...
         expect(
           sanitized,
@@ -150,17 +156,20 @@ describe('MCP Apps shared-component inlining', () => {
       // so order is a hard dependency, not a preference.
       const machineAt = sanitized.indexOf('data-inline-asset="shared/live-machine.js"');
       const storeAt = sanitized.indexOf('data-inline-asset="shared/live-store.js"');
-      const panelAt = sanitized.indexOf('data-inline-asset="shared/live-panel.js"');
+      const panelAt = sanitized.indexOf(
+        headless ? 'data-inline-asset="shared/panel/panel-live.js"' : 'data-inline-asset="shared/live-panel.js"'
+      );
       expect(machineAt, `${widgetFile}: machine missing`).toBeGreaterThan(-1);
       expect(storeAt, `${widgetFile}: store before machine`).toBeGreaterThan(machineAt);
-      expect(panelAt, `${widgetFile}: panel before machine`).toBeGreaterThan(machineAt);
+      // The headless reader calls the store, so it must also follow it.
+      expect(panelAt, `${widgetFile}: panel before store`).toBeGreaterThan(headless ? storeAt : machineAt);
 
       // And the runtime that reads the `live` block is present.
       expect(sanitized).toContain('function maybeAttachLive');
     }
 
     // Guard against the loop silently matching nothing.
-    expect(checked).toBe(11);
+    expect(checked).toBe(12);
   }, 30000);
 
   // Inlines the ~316KB MCP Apps SDK into every registered widget, so this is

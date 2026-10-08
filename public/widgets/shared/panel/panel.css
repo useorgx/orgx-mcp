@@ -306,6 +306,8 @@
   }
   .top.has-tabs .pn-tabs::-webkit-scrollbar { display: none; }
   .top.has-tabs .sync { display: none; }
+  /* Narrow with tabs: the dot alone still says the panel is live. */
+  .top.has-tabs .sync[data-live="live"] { display: inline-flex; font-size: 0; gap: 0; }
 }
 
 /* Needs you: one DOM; a single column on a phone, queue beside the decision when wide. */
@@ -577,3 +579,11 @@
 @keyframes pn-msg { 0%, 18% { opacity: 0; transform: translateX(-8px); } 30%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 @keyframes pn-pop2 { 0%, 10% { transform: scale(0); } 22% { transform: scale(1.15); } 30%, 100% { transform: scale(1); } }
 @keyframes pn-twinkle { 0%, 100% { opacity: 0; transform: scale(0.4); } 50% { opacity: 1; transform: scale(1); } }
+
+/* Live: a steady dot, not a spinner — it means "current", not "working". */
+.sync[data-live="live"] { display: inline-flex; align-items: center; gap: 6px; color: var(--ox-text-muted); }
+.sync[data-live="live"]::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--ox-teal, #00c9a7);
+}
+.sync[data-live="reconnecting"] { color: var(--ox-text-muted); font-style: italic; }

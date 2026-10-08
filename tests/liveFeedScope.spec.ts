@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { authHandler } from '../src/authHandler';
 import { signStreamToken } from '../src/streamToken';
-import { FEED_VIEWER_HEADER } from '../src/live/feedRegistry';
+import { FEED_VIEWER_HEADER, FEED_VIEWER_ORGX_HEADER } from '../src/live/feedRegistry';
 
 /**
  * Durable Object keying for live feeds.
@@ -57,13 +57,14 @@ function env(binding: ReturnType<typeof createLiveFeedBinding>) {
 async function openStream(
   feedType: string,
   feedId: string,
-  options: { userId?: string; headers?: Record<string, string> } = {}
+  options: { userId?: string; orgxUserId?: string; headers?: Record<string, string> } = {}
 ) {
   const binding = createLiveFeedBinding();
   const token = await signStreamToken({
     feedType,
     feedId,
     ...(options.userId ? { userId: options.userId } : {}),
+    ...(options.orgxUserId ? { orgxUserId: options.orgxUserId } : {}),
     secret: SECRET,
   });
   const response = await authHandler.fetch(
@@ -162,5 +163,34 @@ describe('the viewer header is not caller-controlled', () => {
     );
     expect(response.status).toBe(403);
     expect(binding.names).toEqual([]);
+  });
+});
+
+describe('the panel feed', () => {
+  const WS = '11111111-1111-4111-8111-111111111111';
+  const UUID = '22222222-2222-4222-8222-222222222222';
+
+  it('gets one Durable Object per viewer and workspace', async () => {
+    const a = await openStream('panel', WS, { userId: 'user-a' });
+    const b = await openStream('panel', WS, { userId: 'user-b' });
+    expect(a.binding.names).toEqual([`panel:${WS}:user-a`]);
+    expect(b.binding.names).toEqual([`panel:${WS}:user-b`]);
+  });
+
+  it('forwards the canonical OrgX id from the token and never from the caller', async () => {
+    const { binding } = await openStream('panel', WS, {
+      userId: 'user-a',
+      orgxUserId: UUID,
+      headers: { [FEED_VIEWER_ORGX_HEADER]: 'victim-uuid' },
+    });
+    expect(binding.forwarded[0]!.headers.get(FEED_VIEWER_ORGX_HEADER)).toBe(UUID);
+  });
+
+  it('drops a caller-supplied canonical id when the token has none', async () => {
+    const { binding } = await openStream('panel', WS, {
+      userId: 'user-a',
+      headers: { [FEED_VIEWER_ORGX_HEADER]: 'victim-uuid' },
+    });
+    expect(binding.forwarded[0]!.headers.get(FEED_VIEWER_ORGX_HEADER)).toBeNull();
   });
 });

@@ -5,7 +5,7 @@
  * plain request ChatGPT turns into a real OrgX tool call, and each line
  * says what OrgX does with it, never a tool id. Mapping (ChatGPT profile):
  *
- *   launch   -> scaffold_initiative   plan     -> orgx_plan
+ *   launch   -> scaffold_initiative   plan     -> orgx_plan (existing initiative only)
  *   delegate -> orgx_spawn            status   -> get_agent_status
  *   next     -> orgx_recommend        brief    -> get_morning_brief
  *   pulse    -> get_initiative_pulse  risk/wait/check -> orgx_inspect, orgx_command_status
@@ -50,11 +50,14 @@
   load();
 
   var CATALOG = {
-    launch: function () { return { text: 'Help me start a new initiative in OrgX', does: 'Sets up the initiative, its plan and its first agents' }; },
+    // Start creates something new; plan works on something that exists. They
+    // used to share the word "plan" and read as the same thing, so plan is only
+    // offered for a named initiative and says nothing changes until accepted.
+    launch: function () { return { text: 'Help me start a new initiative in OrgX', does: 'Creates a new initiative with its workstreams and tasks' }; },
     plan: function (ctx) {
       return ctx.initiative
-        ? { text: 'Plan the next steps for ' + clip(ctx.initiative, 60) + ' in OrgX', does: 'Drafts a plan you review before anything runs' }
-        : { text: 'Plan my next milestone in OrgX', does: 'Drafts a plan you review before anything runs' };
+        ? { text: 'Plan the next steps for ' + clip(ctx.initiative, 60) + ' in OrgX', does: 'Drafts next steps for ' + clip(ctx.initiative, 40) + '. Nothing changes until you accept it' }
+        : null;
     },
     delegate: function () { return { text: 'Hand a task to an OrgX agent', does: 'Picks the right agent and starts the work' }; },
     status: function () { return { text: 'What are my OrgX agents working on right now?', does: 'Reads live agent status' }; },

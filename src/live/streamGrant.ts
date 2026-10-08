@@ -61,6 +61,8 @@ export async function buildStreamGrant(input: {
   refreshTool: string;
   refreshArgs?: Record<string, string>;
   userId?: string;
+  /** Canonical OrgX user UUID, signed into the token for user-scoped feeds. */
+  orgxUserId?: string | null;
 }): Promise<StreamGrant | null> {
   const feed = getFeed(input.feedType);
   if (!feed) return null;
@@ -70,6 +72,7 @@ export async function buildStreamGrant(input: {
     feedType: input.feedType,
     feedId: input.feedId,
     ...(input.userId ? { userId: input.userId } : {}),
+    ...(input.orgxUserId ? { orgxUserId: input.orgxUserId } : {}),
     secret: input.secret,
     ttlMs: LIVE_GRANT_TTL_MS,
   });

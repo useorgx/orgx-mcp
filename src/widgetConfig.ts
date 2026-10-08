@@ -150,7 +150,8 @@ export const WIDGET_CSP_NEEDS: Readonly<Record<string, WidgetCspNeeds>> =
     'artifact-review': { connect: true, cdnMedia: true },
     'plan-session-live': { connect: true, cdnMedia: false },
     'proof-receipt': { connect: false, cdnMedia: false },
-    'orgx-panel': { connect: false, cdnMedia: false },
+    // Connects to its own live feed on the MCP origin.
+    'orgx-panel': { connect: true, cdnMedia: false },
   });
 
 export function widgetCspNeedsForUri(uri: string): WidgetCspNeeds {
@@ -375,13 +376,14 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   'shared/openai-extensions.js',
   'shared/panel-interaction-state.js',
   // The OrgX panel, split into focused modules (styles, brand and boot,
-  // start-work prompts, first-use tour, tab views, controller). The
+  // start-work prompts, first-use tour, tab views, live updates, controller). The
   // controller loads last.
   'shared/panel/panel.css',
   'shared/panel/panel-brand.js',
   'shared/panel/panel-launch.js',
   'shared/panel/panel-tour.js',
   'shared/panel/panel-views.js',
+  'shared/panel/panel-live.js',
   'shared/panel/panel-app.js',
 ];
 

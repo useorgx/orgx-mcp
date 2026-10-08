@@ -25,6 +25,7 @@ import {
   getFeed,
   FEED_ROUTE_PATTERN,
   FEED_VIEWER_HEADER,
+  FEED_VIEWER_ORGX_HEADER,
 } from './live/feedRegistry';
 import { callOrgxApiRaw, type OrgxApiEnv } from './orgxApi';
 import { diffGraphs, type WorkGraphDelta } from './live/delta';
@@ -40,6 +41,19 @@ const ERROR_STREAK_LIMIT = 3;
 const MAX_CLIENTS = 64;
 /** A single stuck consumer must not stall the fan-out for everyone else. */
 const CLIENT_WRITE_TIMEOUT_MS = 5_000;
+/**
+ * How long a feed stays stopped after an error that says polling must not
+ * continue (a billed panel poll). Long enough that reconnecting widgets cannot
+ * turn it back into a polling loop, short enough to recover after a deploy.
+ */
+const HALT_MS = 10 * 60 * 1000;
+const HALT_STORAGE_KEY = 'live-feed-halt';
+/**
+ * A cached graph older than this is re-polled before it is served. Once the
+ * last client leaves, the alarm stops and the graph stops moving; handing that
+ * to a new client would show it state the upstream has already moved past.
+ */
+const STALE_GRAPH_MS = 15_000;
 
 export type LiveFeedEvent =
   | { type: 'snapshot'; feedType: string; feedId: string; data: WorkGraph; ts: number }
@@ -81,12 +95,21 @@ export class LiveFeedDO {
   private seq = 0;
   /** Viewer id for user-scoped feeds, from the edge's verified header. */
   private viewerId: string | null = null;
+  /** The viewer's canonical OrgX UUID, when the token carried one. */
+  private viewerOrgxId: string | null = null;
   /**
    * The in-flight poll, whatever started it. Guarding only cold starts left the
    * reverse overlap open: an alarm poll issued first could return *after* a
    * newer cold poll and overwrite the graph with older data.
    */
   private firstPoll: Promise<void> | null = null;
+  /** Set by an error marked `halt`; no polls run before this time. */
+  private haltedUntil = 0;
+  private haltMessage = '';
+  /** The halt is persisted so an evicted, re-created instance still honours it. */
+  private haltLoaded = false;
+  /** When the last successful poll finished. */
+  private lastPolledAt = 0;
 
   constructor(
     private readonly ctx: DurableObjectState,
@@ -143,6 +166,8 @@ export class LiveFeedDO {
     // inbound copy first, so this is not caller-controlled.
     const viewer = request.headers.get(FEED_VIEWER_HEADER);
     if (viewer) this.viewerId = viewer;
+    const viewerOrgx = request.headers.get(FEED_VIEWER_ORGX_HEADER);
+    if (viewer && viewerOrgx) this.viewerOrgxId = viewerOrgx;
 
     return this.handleStream(request, feedType, feedId);
   }
@@ -269,12 +294,29 @@ export class LiveFeedDO {
       // simultaneous cold connections do not both call upstream — the second
       // poll would return null (nothing changed) and that client would attach
       // with no base at all, then discard every delta that followed.
-      if (!this.lastGraph) {
+      await this.loadHalt();
+      if (this.isHalted()) {
+        await this.writeTo(client.writer, {
+          type: 'error',
+          message: this.haltMessage,
+          retryable: false,
+          ts: Date.now(),
+        });
+        return;
+      }
+      const stale = this.lastGraph !== null && Date.now() - this.lastPolledAt > STALE_GRAPH_MS;
+      if (!this.lastGraph || stale) {
         try {
           await this.ensureFirstGraph(feedType, feedId);
         } catch (error) {
-          await this.writeTo(client.writer, this.errorEvent(error));
-          return;
+          this.noteHalt(error);
+          // With nothing cached, or a halted feed, the client gets the error.
+          // An aged graph is still a better start than nothing; the alarm
+          // armed below retries the poll.
+          if (!this.lastGraph || this.isHalted()) {
+            await this.writeTo(client.writer, this.errorEvent(error));
+            return;
+          }
         }
       }
 
@@ -457,6 +499,7 @@ export class LiveFeedDO {
       if (event) await this.fanOut(event);
     } catch (error) {
       this.errorStreak += 1;
+      this.noteHalt(error);
       const event = this.errorEvent(error);
       this.log(this.errorStreak >= ERROR_STREAK_LIMIT ? 'error' : 'warn', 'poll_failed', {
         streak: this.errorStreak,
@@ -468,7 +511,42 @@ export class LiveFeedDO {
     if (this.clients.size > 0) await this.scheduleNextPoll();
   }
 
+  private isHalted(): boolean {
+    return Date.now() < this.haltedUntil;
+  }
+
+  private async loadHalt(): Promise<void> {
+    if (this.haltLoaded) return;
+    this.haltLoaded = true;
+    try {
+      const stored = await this.ctx.storage.get?.<{ until: number; message: string }>(HALT_STORAGE_KEY);
+      if (stored && typeof stored.until === 'number' && stored.until > this.haltedUntil) {
+        this.haltedUntil = stored.until;
+        this.haltMessage = stored.message || 'feed_halted';
+      }
+    } catch {
+      // Storage unavailable: the in-memory halt still applies to this instance.
+    }
+  }
+
+  /** Stop polling for HALT_MS when an error says the next poll must not run. */
+  private noteHalt(error: unknown): void {
+    if (!error || typeof error !== 'object' || (error as { halt?: unknown }).halt !== true) return;
+    this.haltedUntil = Date.now() + HALT_MS;
+    this.haltMessage = error instanceof Error ? error.message : 'feed_halted';
+    this.log('error', 'feed_halted', { message: this.haltMessage, untilMs: this.haltedUntil });
+    const put = this.ctx.storage.put?.bind(this.ctx.storage);
+    if (put) {
+      this.ctx.waitUntil(
+        Promise.resolve(put(HALT_STORAGE_KEY, { until: this.haltedUntil, message: this.haltMessage })).catch(() => {})
+      );
+    }
+  }
+
   private async scheduleNextPoll(): Promise<void> {
+    // A halted feed lets its alarm lapse; a connection after the halt expires
+    // restarts it through backfill.
+    if (this.isHalted()) return;
     const feed = getFeed(this.feedType);
     let delay = feed ? cadenceFor(feed, this.lastGraph) : 10_000;
     // Back off the poll rate while upstream is failing, so a degraded OrgX API
@@ -489,37 +567,45 @@ export class LiveFeedDO {
       return null;
     }
 
-    // Path only — callOrgxApiRaw owns the origin, so a feed cannot pin itself to
-    // the primary and miss the configured fallback.
-    const apiPath = feed.buildUrl(feedId, '');
-
     const startedAt = Date.now();
+    const viewer = feed.scope === 'user' ? this.viewerId : null;
+    const viewerOrgx = viewer ? this.viewerOrgxId : null;
     // Routing through callOrgxApiRaw rather than a bare fetch buys the signed
     // actor token (required for user-scoped upstreams), the fallback origin,
     // and the shared timeout policy. The first version hand-rolled the service
-    // key here and got none of that.
-    const response = await callOrgxApiRaw(
-      this.env,
-      apiPath,
-      { signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) },
-      {
-        accept: 'application/json',
-        ...(feed.scope === 'user' && this.viewerId ? { userId: this.viewerId } : {}),
+    // key here and got none of that. Path only — callOrgxApiRaw owns the origin,
+    // so a feed cannot pin itself to the primary and miss the fallback.
+    const request = (path: string, init: RequestInit) =>
+      callOrgxApiRaw(
+        this.env,
+        path,
+        { ...init, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) },
+        {
+          accept: 'application/json',
+          ...(viewer ? { userId: viewer } : {}),
+          ...(viewerOrgx ? { orgxUserId: viewerOrgx } : {}),
+        }
+      );
+
+    let raw: unknown;
+    if (feed.load) {
+      raw = await feed.load({ feedId, viewerId: viewer, viewerOrgxId: viewerOrgx, request });
+    } else {
+      const response = await request(feed.buildUrl ? feed.buildUrl(feedId, '') : '', {});
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        throw Object.assign(new Error(`API ${response.status}: ${body.slice(0, 200)}`), {
+          // 4xx other than 429 will not fix themselves on retry.
+          retryable: response.status === 429 || response.status >= 500,
+        });
       }
-    );
+      raw = await response.json();
+    }
     const latencyMs = Date.now() - startedAt;
     this.pollCount += 1;
     this.lastPollMs = latencyMs;
+    this.lastPolledAt = Date.now();
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      throw Object.assign(new Error(`API ${response.status}: ${body.slice(0, 200)}`), {
-        // 4xx other than 429 will not fix themselves on retry.
-        retryable: response.status === 429 || response.status >= 500,
-      });
-    }
-
-    const raw = await response.json();
     const graph = feed.normalize(raw, feedId);
     const ts = Date.now();
     this.errorStreak = 0;
