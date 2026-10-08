@@ -1,4 +1,5 @@
 import type { BatchCreateSummary } from './batchCreate';
+import { normalizeSuggestedChecks } from './expectations';
 import type {
   MaterializedDependencyEdge,
   ScaffoldContractWarning,
@@ -57,6 +58,20 @@ function omitScaffoldInputKeys(
   keys: Iterable<string>
 ) {
   return omitKeys(obj, new Set([...keys, ...DIRECT_ECONOMICS_KEYS]));
+}
+
+// Checks a caller suggests for "done" ride on the node's metadata, never as a
+// column: the entity validators reject unknown top-level fields.
+const SUGGESTED_CHECK_KEYS = ['suggested_checks', 'suggestedChecks'];
+
+function suggestedChecksMetadata(
+  node: Record<string, unknown>,
+  metadata: Record<string, unknown>
+): Record<string, unknown> {
+  const checks = normalizeSuggestedChecks(
+    node.suggested_checks ?? node.suggestedChecks ?? metadata.suggested_checks
+  );
+  return checks.length ? { suggested_checks: checks } : {};
 }
 
 function ensureRef(input: Record<string, unknown>, fallback: string): string {
@@ -828,7 +843,7 @@ export function buildScaffoldInitiativeBatch(
     const wsEntity = withDefaultSequence(
       omitScaffoldInputKeys(
         ws,
-        ['milestones', 'ownerAgent', 'primaryAgent', 'objective_ids']
+        ['milestones', 'ownerAgent', 'primaryAgent', 'objective_ids', ...SUGGESTED_CHECK_KEYS]
       ),
       wsIdx + 1
     );
@@ -931,6 +946,7 @@ export function buildScaffoldInitiativeBatch(
       ...(wsMetadataAssignedNames.length > 0
         ? { assigned_agent_names: wsMetadataAssignedNames }
         : {}),
+      ...suggestedChecksMetadata(ws, wsMetadata),
     };
 
     batch.push({
@@ -956,10 +972,17 @@ export function buildScaffoldInitiativeBatch(
       const msEntityBase = withDefaultSequence(
         omitScaffoldInputKeys(
           ms,
-          ['tasks', 'ownerAgent', 'primaryAgent', 'objective_ids']
+          ['tasks', 'ownerAgent', 'primaryAgent', 'objective_ids', ...SUGGESTED_CHECK_KEYS]
         ),
         msIdx + 1
       );
+      if (SUGGESTED_CHECK_KEYS.some((key) => key in ms)) {
+        warnings.push({
+          code: 'suggested_checks_on_milestone_ignored',
+          message:
+            'suggested_checks belong on a workstream or a task; the ones on a milestone were not kept.',
+        });
+      }
       const msTaskCount = Math.max(1, msTasks.length);
       const msExpectedTokens = Math.max(8_000, msTaskCount * 4_500);
       const msExpectedHours = msExpectedTokens / TOKENS_PER_HOUR;
@@ -1057,6 +1080,7 @@ export function buildScaffoldInitiativeBatch(
                 'taskType',
                 'work_type',
                 'workType',
+                ...SUGGESTED_CHECK_KEYS,
               ]
             ),
             tIdx + 1
@@ -1124,6 +1148,7 @@ export function buildScaffoldInitiativeBatch(
           ...(taskDefaultAgentName
             ? { assigned_agent_names: [taskDefaultAgentName] }
             : {}),
+          ...suggestedChecksMetadata(task, taskMetadata),
         };
         batch.push({
           ...taskEntity,

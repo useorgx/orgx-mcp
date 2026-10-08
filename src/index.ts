@@ -194,6 +194,11 @@ import {
   buildScaffoldDraftResult,
 } from './scaffoldResponse';
 import {
+  expectationSummaryText,
+  scaffoldExpectationSet,
+  suggestedExpectationSet,
+} from './expectations';
+import {
   buildFirstAgentWorkState,
   deriveScaffoldIdempotencyKey,
   getScaffoldBillingDataGaps,
@@ -10673,7 +10678,7 @@ export class OrgXMcp extends McpAgent<
       .array(z.record(z.unknown()))
       .optional()
       .describe(
-        'Workstreams shaped as [{title|name, milestones:[{title, tasks:[{title}]}]}]. Nested records may also include ref, description, dependencies, objectives, estimates, owners, status, priority, and context.'
+        'Workstreams as [{title|name, milestones:[{title, tasks:[{title}]}]}]. Nested records may include ref, description, dependencies, objectives, estimates, owners, status, priority, context, suggested_checks.'
       );
 
     if (shouldRegister('scaffold_initiative'))
@@ -11324,6 +11329,7 @@ export class OrgXMcp extends McpAgent<
               contractWarnings: allContractWarnings,
               dependencyEdges: materializedDependencies,
               coordinationDependency,
+              expectations: suggestedExpectationSet(batch),
             });
             telemetryTrace.mark('draft_response');
             recordScaffoldTelemetry({
@@ -11341,7 +11347,7 @@ export class OrgXMcp extends McpAgent<
             return {
               content: buildClientAwareContentBlocks({
                 data: draftPayload,
-                summary: draftPayload.summary,
+                summary: `${draftPayload.summary}${expectationSummaryText(draftPayload.expectations ?? null)}`,
                 sourceClient,
               }),
               structuredContent: draftPayload,
@@ -11441,6 +11447,15 @@ export class OrgXMcp extends McpAgent<
             streams,
             fallback_agent_dispatch,
           } = followups;
+          // "Done means": OrgX's own bar when the launch (or the created
+          // initiative) carries one, else the checks the caller suggested.
+          const scaffoldExpectations = scaffoldExpectationSet({
+            followupExpectations: followups.expectations,
+            results: result.results,
+            batch,
+            refMap: result.ref_map,
+            launch,
+          });
 
               // ── Scaffold stream session ──
               // Push created entities as SSE events into ScaffoldSessionDO so the
@@ -11573,6 +11588,7 @@ export class OrgXMcp extends McpAgent<
                 billingUsage: billingUsage ?? undefined,
                 scaffoldUsage: scaffold_usage,
                 fallbackAgentDispatch: fallback_agent_dispatch,
+                expectations: scaffoldExpectations,
               });
 
 	          const activationSummary =
@@ -11630,6 +11646,8 @@ export class OrgXMcp extends McpAgent<
 		            ? launch.attempted
 		              ? launch.ok
 		                ? `\n\nLaunch: ${launch.message ?? 'Initiative launched'}${activationSummary}${streamSnapshotSummary}${fallbackDispatchSummary}${agentAssignmentSummary}${startAgentsHint}`
+		                : launch.held_for_agreement
+		                ? `\n\nLaunch: ${launch.message}`
 		                : `\n\nLaunch warning: ${launch.error ?? 'unknown error'}${launch.next_steps ? '\nNext steps: ' + launch.next_steps.join('. ') : ''}`
 		              : launch.queued_async
 		                ? `\n\nLaunch: queued asynchronously after scaffold creation${agentAssignmentSummary}${startAgentsHint}`
@@ -11734,6 +11752,7 @@ export class OrgXMcp extends McpAgent<
                 liveUrl ? `\n\n📺 Live view: ${liveUrl}` : '',
                 scaffold_stream_url ? `\n🌊 Real-time stream: ${scaffold_stream_url}` : '',
                 launchSummary,
+                expectationSummaryText(scaffoldExpectations, launch),
                 activationPayload.text,
               ].join('').trim();
 
@@ -11744,6 +11763,11 @@ export class OrgXMcp extends McpAgent<
                   sourceClient,
                 }),
                 structuredContent: finalPayload,
+                // Approval material for the "Agree on done" decision reaches
+                // the widget only, never the model.
+                ...(followups.widget_meta
+                  ? { _meta: { [WIDGET_APPROVAL_META_KEY]: followups.widget_meta } }
+                  : {}),
               };
             } catch (error) {
               recordScaffoldTelemetry({
