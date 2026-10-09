@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { CHATGPT_PUBLIC_SURFACE } from '../toolProfiles';
 import { feedBindingForTool } from '../live/streamGrant';
 import { CANONICAL_OUTPUT_SCHEMAS } from './canonical';
@@ -6,11 +7,16 @@ import {
   makeErrorCompatibleSchema,
   makePortableJsonAdvertisedSchema,
   streamGrantSchema,
+  jsonValueSchema,
   type OutputSchema,
   type SourceOutputSchema,
 } from './shared';
 import { OUTPUT_SCHEMA_ALIASES, V2_OUTPUT_SCHEMAS } from './v2';
 import { WIDGET_OUTPUT_SCHEMAS } from './widgets';
+import { WORKFLOW_TOOL_ADAPTERS, EXTENDED_WORKFLOW_TOOL_ADAPTERS, WORKFLOW_OUTPUT_SCHEMAS } from '../workflowTools';
+import { RECEIPT_OPERATION_OUTPUT_SCHEMAS } from '../receiptOperationTools';
+import { WIDGET_OPERATION_OUTPUT_SCHEMAS } from '../widgetOperations';
+import { WORKFLOW_COMPLETION_OUTPUT_SCHEMA } from '../workflowCompletion';
 
 type ChatGptPublicTool = (typeof CHATGPT_PUBLIC_SURFACE)[number];
 
@@ -57,6 +63,10 @@ const SCAFFOLD_TYPED_SCALAR_PROPERTIES = new Set([
 // nested values as opaque so strict JSON Schema clients do not reject newer
 // response fields that the server's full Zod validators already accept.
 const COMPACT_NESTED_OUTPUT_TOOLS = new Set<ChatGptPublicTool>([
+  ...WORKFLOW_TOOL_ADAPTERS.map((tool) => tool.id),
+  ...EXTENDED_WORKFLOW_TOOL_ADAPTERS.map((tool) => tool.id),
+  ...Object.keys(RECEIPT_OPERATION_OUTPUT_SCHEMAS),
+  ...Object.keys(WIDGET_OPERATION_OUTPUT_SCHEMAS),
   'get_agent_status',
   'get_morning_brief',
   'get_initiative_pulse',
@@ -71,10 +81,33 @@ const COMPACT_NESTED_OUTPUT_TOOLS = new Set<ChatGptPublicTool>([
   'review_artifact',
 ]);
 
-const rawOutputSchemas = {
+const compatibilityOutputSchemas: Record<string, SourceOutputSchema> = {
   ...CANONICAL_OUTPUT_SCHEMAS,
   ...WIDGET_OUTPUT_SCHEMAS,
-} satisfies Record<ChatGptPublicTool, SourceOutputSchema>;
+};
+const operationOutputSchemas = Object.fromEntries(
+  [...WORKFLOW_TOOL_ADAPTERS, ...EXTENDED_WORKFLOW_TOOL_ADAPTERS].map((tool) => {
+    const target = tool.outputSchemaToolId;
+    const schema = WORKFLOW_OUTPUT_SCHEMAS[tool.id] ?? compatibilityOutputSchemas[target]
+      ?? compatibilityOutputSchemas[OUTPUT_SCHEMA_ALIASES[target]] ?? V2_OUTPUT_SCHEMAS[target];
+    if (!schema) throw new Error(`Missing output schema for operation ${tool.id} (${target})`);
+    return [tool.id, schema];
+  })
+);
+const rawOutputSchemas: Record<string, SourceOutputSchema> = {
+  ...compatibilityOutputSchemas,
+  ...operationOutputSchemas,
+  ...RECEIPT_OPERATION_OUTPUT_SCHEMAS,
+  ...WIDGET_OPERATION_OUTPUT_SCHEMAS,
+  orgx_complete_work_with_proof: WORKFLOW_COMPLETION_OUTPUT_SCHEMA,
+  orgx_open_artifact_review: z.object({
+    artifact: z.record(jsonValueSchema).nullable(),
+    reviewContract: z.record(jsonValueSchema).nullable().optional(),
+    reviewContractSource: z.enum(['canonical', 'entity_fallback']).optional(),
+    available_actions: z.array(z.object({ id: z.enum(['approve', 'request_changes']) }).catchall(jsonValueSchema)).optional(),
+  }).strict(),
+  orgx_widget_select_workspace: CANONICAL_OUTPUT_SCHEMAS.orgx_bootstrap,
+};
 
 const outputSchemas = Object.fromEntries(
   Object.entries(rawOutputSchemas).map(([name, schema]) => {
@@ -98,7 +131,7 @@ const outputSchemas = Object.fromEntries(
 
 export const OPENAI_OUTPUT_SCHEMAS: Readonly<
   Record<ChatGptPublicTool, OutputSchema>
-> = Object.freeze(outputSchemas);
+> = Object.freeze(Object.fromEntries(CHATGPT_PUBLIC_SURFACE.map((name) => [name, outputSchemas[name]])));
 
 export function getOpenAiOutputSchema(
   toolName: string
@@ -118,13 +151,18 @@ export function getToolOutputSchema(
 ): OutputSchema | undefined {
   const reviewed = getOpenAiOutputSchema(toolName);
   if (reviewed) return reviewed;
+  if (Object.prototype.hasOwnProperty.call(outputSchemas, toolName)) return outputSchemas[toolName];
   const aliasTarget = Object.prototype.hasOwnProperty.call(
     OUTPUT_SCHEMA_ALIASES,
     toolName
   )
     ? OUTPUT_SCHEMA_ALIASES[toolName]
     : undefined;
-  if (aliasTarget) return getOpenAiOutputSchema(aliasTarget);
+  if (aliasTarget) {
+    const aliasSchema = getOpenAiOutputSchema(aliasTarget)
+      ?? (Object.prototype.hasOwnProperty.call(outputSchemas, aliasTarget) ? outputSchemas[aliasTarget] : undefined);
+    if (aliasSchema) return aliasSchema;
+  }
   const schema = Object.prototype.hasOwnProperty.call(V2_OUTPUT_SCHEMAS, toolName)
     ? V2_OUTPUT_SCHEMAS[toolName] : undefined;
   return schema && feedBindingForTool(toolName)

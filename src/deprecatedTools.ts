@@ -13,15 +13,8 @@ export type DeprecatedToolWarning = {
   routed: boolean;
 };
 
-const DEPRECATION_ANNOUNCED_AT_ISO = '2026-03-23T00:00:00.000Z';
-export const DEPRECATION_WINDOW_DAYS = 90;
-export const DEPRECATION_SUNSET_AT_ISO = new Date(
-  Date.parse(DEPRECATION_ANNOUNCED_AT_ISO) +
-    DEPRECATION_WINDOW_DAYS * 24 * 60 * 60 * 1000
-).toISOString();
-export const DEPRECATION_SUNSET_HEADER = new Date(
-  DEPRECATION_SUNSET_AT_ISO
-).toUTCString();
+/** The owner updates clients and reconnects as part of the coordinated release. */
+export const MCP_COMPATIBILITY_RETIREMENT_POLICY = 'coordinated-upgrade';
 
 type DeprecatedToolRoute = {
   replacementToolId: string;
@@ -240,37 +233,33 @@ export function resolveDeprecatedToolCall(
 
 export function withDeprecatedToolWarningHeaders(
   response: Response,
-  warning?: DeprecatedToolWarning
+  warning?: DeprecatedToolWarning | DeprecatedToolWarning[]
 ): Response {
-  if (!warning) {
+  const warnings = Array.isArray(warning) ? warning : warning ? [warning] : [];
+  if (!warnings.length) {
     return response;
   }
-
+  const first = warnings[0];
   const headers = new Headers(response.headers);
-  headers.set('x-orgx-deprecated-tool', warning.deprecatedToolId);
-  headers.set('x-orgx-replacement-tool', warning.replacementToolId);
-  headers.set('x-orgx-deprecation-routed', warning.routed ? 'true' : 'false');
-  headers.set('x-orgx-deprecation-sunset-at', DEPRECATION_SUNSET_AT_ISO);
-  headers.set(
-    'x-orgx-deprecation-window-days',
-    String(DEPRECATION_WINDOW_DAYS)
-  );
-  headers.set('Sunset', DEPRECATION_SUNSET_HEADER);
-
-  if (warning.replacementAction) {
-    headers.set('x-orgx-replacement-action', warning.replacementAction);
+  headers.set('x-orgx-deprecated-tool', first.deprecatedToolId);
+  headers.set('x-orgx-replacement-tool', first.replacementToolId);
+  headers.set('x-orgx-deprecation-routed', first.routed ? 'true' : 'false');
+  headers.set('x-orgx-deprecation-retirement-policy', MCP_COMPATIBILITY_RETIREMENT_POLICY);
+  headers.delete('x-orgx-deprecation-min-quiet-days');
+  // Remove stale declarations from old middleware; no automatic expiry exists.
+  headers.delete('x-orgx-deprecation-sunset-at');
+  headers.delete('x-orgx-deprecation-window-days');
+  headers.delete('Sunset');
+  if (warnings.length > 1) {
+    headers.set('x-orgx-deprecated-tools', [...new Set(warnings.map((item) => item.deprecatedToolId))].slice(0, 16).join(', '));
+    headers.set('x-orgx-deprecated-call-count', String(warnings.length));
   }
-
-  const replacement = warning.replacementAction
-    ? `${warning.replacementToolId} (action=${warning.replacementAction})`
-    : warning.replacementToolId;
-  const suffix = warning.routed
-    ? ` The request was routed automatically. Migrate before ${DEPRECATION_SUNSET_AT_ISO}.`
-    : ` The legacy tool was left in place for compatibility. Migrate before ${DEPRECATION_SUNSET_AT_ISO}.`;
-  headers.set(
-    'Warning',
-    `299 orgx-mcp "${warning.deprecatedToolId} is deprecated; use ${replacement}.${suffix}"`
-  );
+  if (first.replacementAction) headers.set('x-orgx-replacement-action', first.replacementAction);
+  else headers.delete('x-orgx-replacement-action');
+  const replacement = first.replacementAction
+    ? `${first.replacementToolId} (action=${first.replacementAction})` : first.replacementToolId;
+  const suffix = first.routed ? ' The request was routed automatically.' : ' The legacy call was retained.';
+  headers.set('Warning', `299 orgx-mcp "${first.deprecatedToolId} is deprecated; use ${replacement}.${suffix} Update the client and reconnect to refresh OrgX tools."`);
 
   return new Response(response.body, {
     status: response.status,

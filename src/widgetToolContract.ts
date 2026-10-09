@@ -10,7 +10,6 @@
  *
  * This module is the single source of truth for:
  *   - which tools each widget calls (checked against the widget source in CI),
- *   - the legacy names the widget runtime rewrites to canonical tools,
  *   - which tools are widget-only (hidden from the model, callable by widgets),
  *   - where a profile intentionally serves a widget without one of its tools.
  *
@@ -37,6 +36,9 @@ export const WIDGET_ONLY_TOOL_IDS = [
   'orgx_panel_snapshot',
   'orgx_widget_receipt_call',
   'resume_agent_run',
+  'orgx_widget_select_workspace',
+  'orgx_widget_approve_artifact',
+  'orgx_widget_request_artifact_changes',
 ] as const;
 
 const WIDGET_ONLY_TOOL_ID_SET = new Set<string>(WIDGET_ONLY_TOOL_IDS);
@@ -46,23 +48,12 @@ export function isWidgetOnlyTool(toolId: string): boolean {
 }
 
 /**
- * Legacy tool names a widget (or a live grant's refresh tool) may still use,
- * rewritten by the widget runtime to the canonical tool before the host sees
- * the call. Mirrors TOOL_ALIASES in public/widgets/shared/widget-runtime.js.
- *
- * get_pending_decisions is not on any public profile. orgx_decide
- * action=list_pending runs the same read (orgx_decide → approve_agent_work →
- * get_pending_decisions) and returns the same payload and widget approval
- * tokens.
+ * The current widget uses the explicit operation catalog directly. Retain the
+ * exported map for the source contract check; it deliberately has no aliases.
  */
 export const WIDGET_RUNTIME_TOOL_ALIASES: Readonly<
   Record<string, { tool: string; args: Readonly<Record<string, unknown>> }>
-> = Object.freeze({
-  get_pending_decisions: Object.freeze({
-    tool: 'orgx_decide',
-    args: Object.freeze({ action: 'list_pending' }),
-  }),
-});
+> = Object.freeze({});
 
 export function resolveWidgetCalledTool(name: string): string {
   return Object.prototype.hasOwnProperty.call(WIDGET_RUNTIME_TOOL_ALIASES, name)
@@ -77,24 +68,23 @@ export function resolveWidgetCalledTool(name: string): string {
  */
 export const WIDGET_TOOL_CALLS: Readonly<Record<string, readonly string[]>> =
   Object.freeze({
-    'agent-status': ['orgx_command_status', 'resume_agent_run'],
-    'artifact-review': ['orgx_act', 'orgx_command_status', 'orgx_decide'],
-    decisions: ['get_pending_decisions', 'orgx_command_status', 'orgx_widget_decide'],
-    'entity-card': ['orgx_command_status', 'orgx_inspect'],
+    'agent-status': ['orgx_get_operation_status', 'resume_agent_run'],
+    'artifact-review': ['orgx_get_operation_status', 'orgx_widget_approve_artifact', 'orgx_widget_request_artifact_changes'],
+    decisions: ['orgx_get_operation_status', 'orgx_list_pending_decisions', 'orgx_widget_decide'],
+    'entity-card': ['orgx_get_operation_status', 'orgx_inspect'],
     'initiative-pulse': [],
     'morning-brief': [],
-    // orgx_bootstrap is the panel's workspace switch: the same call a model
-    // makes to change the session's workspace.
-    'orgx-panel': ['orgx_bootstrap', 'orgx_command_status', 'orgx_panel_snapshot', 'orgx_widget_decide', 'orgx_widget_receipt_call'],
-    'plan-session-live': ['orgx_command_status', 'orgx_plan'],
+    // Reads and a person's workspace selection are separate operations.
+    'orgx-panel': ['orgx_get_operation_status', 'orgx_get_work_receipt', 'orgx_list_work_receipts', 'orgx_panel_snapshot', 'orgx_widget_decide', 'orgx_widget_receipt_call', 'orgx_widget_select_workspace'],
+    'plan-session-live': ['orgx_get_operation_status', 'orgx_record_plan_edit'],
     'proof-receipt': [],
     // orgx_widget_decide: "Agree and launch" settles the Agree on done decision
     // with its single-use approval token.
-    'scaffolded-initiative': ['orgx_act', 'orgx_command_status', 'orgx_widget_decide'],
+    'scaffolded-initiative': ['orgx_get_operation_status', 'orgx_launch_initiative', 'orgx_widget_decide'],
     'search-results': ['orgx_search'],
-    'task-spawned': ['orgx_command_status'],
-    'work-ledger': ['get_operator_chronicle'],
-    'workspace-map': ['orgx_bootstrap'],
+    'task-spawned': ['orgx_get_operation_status'],
+    'work-ledger': ['orgx_get_operator_brief'],
+    'workspace-map': ['orgx_get_workspace_context'],
   });
 
 /** Canonical tools a widget calls (after runtime aliases). */
@@ -131,47 +121,21 @@ export const WIDGET_CALLABLE_TOOL_IDS: ReadonlySet<string> = new Set([
  * install steps hand out) may have none. CI fails on new gaps and on stale
  * entries.
  */
-const LIVE_REFRESH_ONLY =
-  'Live refresh only: when the stream token expires the widget keeps its last snapshot.';
-
 export const WIDGET_CALL_PROFILE_EXCEPTIONS: Readonly<
   Record<string, Readonly<Record<string, string>>>
 > = Object.freeze({
-  'claude-directory': {},
-  'read-only': {
-    orgx_command_status:
-      'Fail-closed fallback keeps its seven informational tools.',
-    resume_agent_run: 'Fail-closed fallback has no write tools.',
-  },
   'claude-plugin': {
-    orgx_widget_decide:
-      'Claude Code renders no widgets; decisions are settled in OrgX.',
-    resume_agent_run: 'Claude Code renders no widgets; agents use manage_lifecycle.',
+    orgx_get_workspace_context: 'Claude Code has no widget host; bootstrap binds session scope through its existing API.',
+    orgx_get_operation_status: 'Claude Code has no widget host; this profile retains its existing command-status API.',
+    orgx_get_agent_status: 'Claude Code has no widget host; live refresh retains the last widget snapshot.',
+    orgx_get_initiative_progress: 'Claude Code has no widget host; live refresh retains the last widget snapshot.',
+    orgx_get_operator_brief: 'Claude Code has no widget host; the existing chronicle read remains the API.',
+    orgx_list_pending_decisions: 'Claude Code has no widget host; the existing decision API remains available.',
+    orgx_widget_decide: 'Claude Code has no widget host; people record decisions in OrgX.',
+    resume_agent_run: 'Claude Code has no widget host; people resume stalled runs in OrgX.',
   },
-  memory: {
-    orgx_command_status: 'Agent memory profile; no widget polling.',
-    orgx_widget_decide: 'Agent memory profile; decisions are settled in OrgX.',
-    get_agent_status: LIVE_REFRESH_ONLY,
-    get_initiative_pulse: LIVE_REFRESH_ONLY,
-  },
-  commander: {
-    orgx_widget_decide: 'Agent profile; decisions are settled in OrgX.',
-    get_agent_status: LIVE_REFRESH_ONLY,
-    get_initiative_pulse: LIVE_REFRESH_ONLY,
-  },
-  planner: {
-    orgx_widget_decide: 'Agent profile; decisions are settled in OrgX.',
-    get_agent_status: LIVE_REFRESH_ONLY,
-    get_initiative_pulse: LIVE_REFRESH_ONLY,
-  },
-  executor: {
-    get_agent_status: LIVE_REFRESH_ONLY,
-    get_initiative_pulse: LIVE_REFRESH_ONLY,
-  },
-  observer: {
-    orgx_widget_decide: 'Read-only monitoring profile; decisions are settled in OrgX.',
-    get_agent_status: LIVE_REFRESH_ONLY,
-    get_initiative_pulse: LIVE_REFRESH_ONLY,
+  'read-only': {
+    resume_agent_run: 'Fail-closed fallback has no write tools.',
   },
 });
 

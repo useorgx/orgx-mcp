@@ -18,13 +18,7 @@
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
   <style>
-    /*
-     * Workspace map — the orgx_bootstrap result: which workspace this session
-     * is bound to, and every OrgX surface with what this session can do to
-     * it. It is the first card of a session, so it also carries the session
-     * states from canvas F8a/F8b: signed out, first use, degraded (a snapshot
-     * with Retry), another workspace, and waiting on OrgX after sign-in.
-     */
+
     :root {
       --ox-primary-rgb: 191, 255, 0;
     }
@@ -127,7 +121,7 @@
       list-style: none;
     }
 
-    /* A surface is a row, not a card inside the card: the whole row opens it. */
+
     .wm-surface { border-top: 1px solid var(--ox-border); }
     .wm-surface:first-child { border-top: 0; }
 
@@ -181,7 +175,7 @@
 
     .wm-surface[data-idle='true'] .wm-name { color: var(--ox-text-2); }
 
-    /* A limit is information, not a request: a quiet tag beside the name. */
+
     .wm-tools {
       padding: 1px 7px;
       border: 1px solid var(--ox-border);
@@ -194,7 +188,7 @@
 
     .wm-go { width: 14px; height: 14px; color: var(--ox-text-muted); }
 
-    /* Session states (F8a/F8b): one centred column, one primary at most. */
+
     .wm-state {
       display: flex;
       flex-direction: column;
@@ -348,16 +342,7 @@
       return date ? window.OrgXTime.when(date) : '';
     };
 
-    /*
-     * What the card says about a surface.
-     *
-     * The payload names the tools that read and change each surface because the
-     * agent needs them to route. A person reading this card does not: listing
-     * `orgx_recommend orgx_tail` under "Read" put the agent's routing table in
-     * front of the human at session start. The tool ids stay in
-     * structuredContent, where the model reads them; the card says what this
-     * session can actually do with the surface.
-     */
+    // Show session restrictions without exposing tool identifiers.
     var capabilityLine = function (read, control) {
       // Most surfaces are both readable and changeable, so saying so on every
       // card is a line the eye learns to skip. What a person needs to see is
@@ -438,9 +423,20 @@
         '</div>');
     };
 
+    var renderWorkspaceContext = function (payload) {
+      var workspace = payload.workspace;
+      var initiative = payload.initiative && typeof payload.initiative === 'object' ? payload.initiative : null;
+      return shell('teal', '<div class="wm-state"><span class="wm-kicker">OrgX workspace</span><h1>' +
+        escapeHtml(workspace.name || workspace.title || workspace.id) + '</h1><p>This is the connected workspace.' +
+        (initiative ? ' Current initiative: ' + escapeHtml(initiative.title || initiative.name || initiative.id) + '.' : '') +
+        '</p><button type="button" class="ox-open" style="align-self:flex-start" data-action="open" data-url="' + ORGX_URL + '">Open OrgX</button></div>',
+        '<ox-footer variant="reads" state="fresh" heading="Context read" detail="work and approvals stay in OrgX" action-label="Open OrgX ↗"></ox-footer>');
+    };
+
     var render = function (payload) {
       var content = document.getElementById('content');
       if (payload !== undefined) {
+        if (payload && payload.data && typeof payload.data === 'object' && payload.data.workspace) payload = Object.assign({}, payload.data, { live: payload.live || payload.data.live });
         if (!payload) {
           if (state === 'loading' || !state) return;
         }
@@ -458,6 +454,10 @@
       var workspace = payload && payload.workspace && typeof payload.workspace === 'object' ? payload.workspace : null;
       if (!workspace && (!surfaces.length || view.phase === 'waiting')) {
         content.innerHTML = renderSignedOut();
+        return;
+      }
+      if (workspace && payload.surfaces === undefined) {
+        content.innerHTML = renderWorkspaceContext(payload);
         return;
       }
       if (!surfaces.length) {
@@ -531,16 +531,12 @@
 
     var SCOPE_ERRORS = /context_scope_mismatch|workspace_forbidden|workspace_access_denied|forbidden|not_member/;
 
-    /*
-     * Ask OrgX for the map again: after sign-in, on Retry, or to go back to
-     * your own workspace. The last map stays on screen until the answer lands.
-     */
     var recheck = function (args) {
       if (view.checking) return;
       view.checking = true;
       render();
       Promise.resolve()
-        .then(function () { return callTool('orgx_bootstrap', args || {}); })
+        .then(function () { return callTool('orgx_get_workspace_context', args || {}); })
         .then(function (result) {
           var next = window.OrgXWidgetRuntime.extractStructuredWidgetData(result, true);
           view.checking = false;

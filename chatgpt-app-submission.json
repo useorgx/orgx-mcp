@@ -8,357 +8,604 @@
     "category": "PRODUCTIVITY"
   },
   "tools": {
-    "orgx_bootstrap": {
+    "orgx_get_workspace_context": {
       "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "Not read-only: it persists the selected workspace and session continuity when context changes, while leaving business records unchanged.",
-        "open_world_justification": "Does not publish to public internet state or third-party systems.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+        "read_only_justification": "Read the authorized workspace, optional initiative context, and typed references. Does not select a workspace or create a session. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
     },
     "orgx_search": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "destructiveHint": false,
+        "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "Not strictly read-only: mixed relevance search records metered MCP allowance usage, although it does not change business records.",
-        "open_world_justification": "Operates only on private OrgX workspace data.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+        "read_only_justification": "Not strictly read-only: successful calls can record metered MCP allowance usage while leaving work records unchanged.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
     },
     "orgx_inspect": {
       "annotations": {
         "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_search for related records or orgx_recommend for a read-only next-step assessment. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_get_operator_brief": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Read workspace reporting, decision chronology, progress, proof, priorities, and gaps for a day, week, or 30-day window. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_get_next_actions": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not strictly read-only: successful calls can record metered MCP allowance usage while leaving work records unchanged.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_get_agent_status": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not strictly read-only: successful calls can record metered MCP allowance usage while leaving work records unchanged.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_get_initiative_progress": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Not strictly read-only: successful calls can record metered MCP allowance usage while leaving work records unchanged.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_get_operation_status": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Read a durable work command, run, or decision. Prefer operation_id returned by a prior operation; compatibility callers can supply kind and id together. Never starts or settles work. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_check_execution_readiness": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Read whether the authorized workspace has execution credentials and configuration before dispatching agent work. Never dispatches a run. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_start_plan": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
         "openWorldHint": false,
-        "destructiveHint": false
+        "idempotentHint": false
       },
       "justifications": {
-        "read_only_justification": "Hydrates one OrgX entity and related context without modifying state.",
-        "open_world_justification": "Operates only on private OrgX workspace data.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+        "read_only_justification": "Create a durable planning draft with a title and optional initial markdown. An optional retry key replays the same unedited draft; conflicting content or a draft edited since creation returns a conflict. Does not create executable work or dispatch agents. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
     },
-    "orgx_recommend": {
+    "orgx_read_plan": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Read a planning draft by session UUID or plan URI. If omitted, read the most recent active plan in the authenticated workspace. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_save_plan": {
       "annotations": {
         "readOnlyHint": false,
+        "destructiveHint": true,
         "openWorldHint": false,
-        "destructiveHint": false
+        "idempotentHint": false
       },
       "justifications": {
-        "read_only_justification": "Not strictly read-only: the default next-action mode records metered MCP allowance usage, although it does not change business records.",
-        "open_world_justification": "Operates only on private OrgX workspace data.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+        "read_only_justification": "Save the full markdown draft and its revision in OrgX. Optionally record an edit summary and require the expected revision. Does not complete planning or dispatch work. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Save the full markdown draft and its revision in OrgX. Optionally record an edit summary and require the expected revision. Does not complete planning or dispatch work. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
       }
     },
-    "orgx_write": {
+    "orgx_complete_plan": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
+        "destructiveHint": true,
+        "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "Creates or updates private OrgX entities, so it changes workspace state.",
-        "open_world_justification": "Initiative writes can publish a publicly visible live link outside the private OrgX workspace.",
-        "destructive_justification": "Update mode overwrites supplied fields and those changes may not be automatically recoverable."
+        "read_only_justification": "Save final markdown, complete the planning session, and optionally attach it to typed work targets. Does not start execution. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Save final markdown, complete the planning session, and optionally attach it to typed work targets. Does not start execution. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
       }
     },
-    "orgx_attach": {
+    "orgx_validate_initiative_plan": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Validate a deterministic hierarchy and source evidence in OrgX; return its digest and structural findings. Does not create records, launch agents, or invoke paid generation. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_create_initiative_hierarchy": {
       "annotations": {
         "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Atomically commit a deterministic initiative hierarchy in OrgX using a stable retry key. Creates work records without launching agents. Visibility defaults to private; source evidence is retained. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_create_initiative": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Create one initiative in its initial state without launching work or publishing a live link. Supply objectives when workspace policy requires them. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_create_workstream": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Create a workstream under an existing initiative. Does not dispatch agents or start the workstream. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_create_milestone": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Create a milestone under an existing workstream. Does not start or complete work. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_create_task": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Create one task under an existing workstream. Supply a milestone when workspace backlog policy requires one. Does not dispatch the task. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_update_work": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Apply a nonempty typed content patch to initiative, workstream, milestone, or task. Permits text, priority, dates, objectives, notes, and tags; cannot change workflow status, approvals, ownership authority, or execution policy. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Apply a nonempty typed content patch to initiative, workstream, milestone, or task. Permits text, priority, dates, objectives, notes, and tags; cannot change workflow status, approvals, ownership authority, or execution policy. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+      }
+    },
+    "orgx_estimate_agent_task": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_start_agent_task": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Dispatch one existing OrgX task under budget, deadline, acceptance, eligibility, and permission policy. Can incur model costs and act on connected services within the declared effect constraints. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Dispatch one existing OrgX task under budget, deadline, acceptance, eligibility, and permission policy. Can incur model costs and act on connected services within the declared effect constraints. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Dispatch one existing OrgX task under budget, deadline, acceptance, eligibility, and permission policy. Can incur model costs and act on connected services within the declared effect constraints. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+      }
+    },
+    "orgx_handoff_task": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Reassign an existing task to a specialist through the canonical handoff and dispatch lifecycle. Can incur model costs and connected-service effects; requires agent and initiative write grants. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Reassign an existing task to a specialist through the canonical handoff and dispatch lifecycle. Can incur model costs and connected-service effects; requires agent and initiative write grants. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Reassign an existing task to a specialist through the canonical handoff and dispatch lifecycle. Can incur model costs and connected-service effects; requires agent and initiative write grants. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+      }
+    },
+    "orgx_launch_initiative": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Launch an existing initiative after OrgX approval, budget, and readiness checks. May dispatch agents, incur model costs, and interact with connected services. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Launch an existing initiative after OrgX approval, budget, and readiness checks. May dispatch agents, incur model costs, and interact with connected services. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Launch an existing initiative after OrgX approval, budget, and readiness checks. May dispatch agents, incur model costs, and interact with connected services. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+      }
+    },
+    "orgx_pause_work": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Pause a hierarchy node through OrgX lifecycle control, propagating to descendant work and stopping active runs. Does not mark work complete. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Pause a hierarchy node through OrgX lifecycle control, propagating to descendant work and stopping active runs. Does not mark work complete. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Pause a hierarchy node through OrgX lifecycle control, propagating to descendant work and stopping active runs. Does not mark work complete. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+      }
+    },
+    "orgx_resume_work": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Resume paused work through canonical OrgX recovery, preserving attempt lineage and redispatching where permitted. Can incur costs and connected-service effects. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Resume paused work through canonical OrgX recovery, preserving attempt lineage and redispatching where permitted. Can incur costs and connected-service effects. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Resume paused work through canonical OrgX recovery, preserving attempt lineage and redispatching where permitted. Can incur costs and connected-service effects. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+      }
+    },
+    "orgx_retry_work": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Retry eligible work through canonical OrgX recovery, preserving attempt lineage and redispatching where permitted. Can incur costs and connected-service effects. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Retry eligible work through canonical OrgX recovery, preserving attempt lineage and redispatching where permitted. Can incur costs and connected-service effects. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Retry eligible work through canonical OrgX recovery, preserving attempt lineage and redispatching where permitted. Can incur costs and connected-service effects. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+      }
+    },
+    "orgx_cancel_work": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Cancel a hierarchy node through OrgX lifecycle control, propagating to descendant work and stopping active runs. Does not mark work complete. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Cancel a hierarchy node through OrgX lifecycle control, propagating to descendant work and stopping active runs. Does not mark work complete. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Cancel a hierarchy node through OrgX lifecycle control, propagating to descendant work and stopping active runs. Does not mark work complete. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+      }
+    },
+    "orgx_capture_decision": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Capture decision text, rationale, and context for human review. Returns its authoritative review state. Capturing a decision does not approve it or establish an accepted historical judgment. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_list_pending_decisions": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Read pending decisions awaiting human review in the selected workspace or initiative. Does not resolve decisions or dispatch work. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_open_decision_review": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Open the complete human review surface for one pending decision. The person selects the ruling; this operation does not approve, reject, or resume work. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_attach_artifact": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Register a named deliverable and provenance on an OrgX work target. A durable artifact URL is required. May trigger automatic evaluation using external model providers and incur model costs. Registered proof awaits review; attaching does not approve or complete work. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Register a named deliverable and provenance on an OrgX work target. A durable artifact URL is required. May trigger automatic evaluation using external model providers and incur model costs. Registered proof awaits review; attaching does not approve or complete work. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_open_artifact_review": {
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Read an artifact review packet and open the review widget. Supply an artifact ID, scope the next pending artifact to an entity, or use the authenticated workspace pending queue. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_request_independent_artifact_review": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Queue an independent evaluator for a completed artifact. OrgX chooses the evaluator and persists the assessment. May incur model costs or use external providers; the producing agent cannot choose the score. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Queue an independent evaluator for a completed artifact. OrgX chooses the evaluator and persists the assessment. May incur model costs or use external providers; the producing agent cannot choose the score. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_complete_work_with_proof": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Register typed proof, verify completion requirements, and apply the allowed work completion transition. May return proof recorded with completion blocked or awaiting review. Verification and human acceptance remain separate facts. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Register typed proof, verify completion requirements, and apply the allowed work completion transition. May return proof recorded with completion blocked or awaiting review. Verification and human acceptance remain separate facts. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Register typed proof, verify completion requirements, and apply the allowed work completion transition. May return proof recorded with completion blocked or awaiting review. Verification and human acceptance remain separate facts. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+      }
+    },
+    "orgx_submit_work_receipt": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
         "openWorldHint": false,
-        "destructiveHint": false
+        "idempotentHint": true
       },
       "justifications": {
-        "read_only_justification": "Attaches proof or artifact metadata to existing OrgX entities, so it changes workspace state.",
-        "open_world_justification": "Writes only to private OrgX workspace records.",
-        "destructive_justification": "Adds artifact context but does not delete or overwrite existing records irreversibly."
+        "read_only_justification": "Imports a durable producer receipt. Outcome, verification, and acceptance remain producer claims; import does not complete, verify, or accept work.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
     },
-    "orgx_act": {
+    "orgx_validate_work_receipt": {
       "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
-      },
-      "justifications": {
-        "read_only_justification": "Runs lifecycle actions such as validation, completion, pause, or delete, so it can change OrgX state.",
-        "open_world_justification": "Launch and resume actions can dispatch agent work that operates in connected systems.",
-        "destructive_justification": "Can run delete or irreversible lifecycle actions depending on the requested action."
-      }
-    },
-    "manage_lifecycle": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
-      },
-      "justifications": {
-        "read_only_justification": "Pauses, resumes, retries, or cancels running OrgX work and therefore changes execution state.",
-        "open_world_justification": "Resume and retry can redispatch descendant agents that may act in connected third-party systems.",
-        "destructive_justification": "Cancellation stops active runs and propagated descendant work, which cannot be restored as the same execution even though durable records remain."
-      }
-    },
-    "orgx_plan": {
-      "annotations": {
-        "readOnlyHint": false,
+        "readOnlyHint": true,
+        "destructiveHint": false,
         "openWorldHint": false,
-        "destructiveHint": false
+        "idempotentHint": true
       },
       "justifications": {
-        "read_only_justification": "Starts, edits, improves, or completes tracked OrgX plan sessions, so it can write session state.",
-        "open_world_justification": "Writes only to private OrgX planning state.",
-        "destructive_justification": "Changes planning records but does not delete records or perform irreversible external actions."
+        "read_only_justification": "Check one portable Agent Work Receipt v0.1 or v0.2 for schema and reference conformance without storing it. Checks identified criteria, evidence references and known review extensions. Conformance validates the document, not whether its evidence is true or whether work was accepted. Import separately enforces hosted compatibility and admission policy. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
     },
-    "orgx_spawn": {
+    "orgx_get_work_receipt": {
       "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
-      },
-      "justifications": {
-        "read_only_justification": "Can guard, classify, spawn, or hand off specialist agent work, so it may create private OrgX agent work.",
-        "open_world_justification": "Spawn and handoff modes may initiate agent work that uses connected third-party systems.",
-        "destructive_justification": "Spawn and handoff modes can dispatch work that is not automatically reversible after execution begins."
-      }
-    },
-    "orgx_decide": {
-      "annotations": {
-        "readOnlyHint": false,
+        "readOnlyHint": true,
+        "destructiveHint": false,
         "openWorldHint": false,
-        "destructiveHint": false
+        "idempotentHint": true
       },
       "justifications": {
-        "read_only_justification": "Creates or remembers private OrgX decisions, so it changes durable decision state.",
-        "open_world_justification": "Create, remember, and list stay inside OrgX; approve and reject only return a human-session review URL and never resume external work from MCP.",
-        "destructive_justification": "Does not resolve decisions, delete records, or resume work; approval and rejection must occur in the human review session."
+        "read_only_justification": "Read a receipt by its ledger UUID or opaque producer receipt ID in one workspace. Returns bounded evidence and criteria, producer claims, the separately recorded human outcome, related workstream and uncertainty. Reading cannot verify or accept work. The full document remains in OrgX. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
     },
-    "orgx_submit_receipt": {
+    "orgx_list_work_receipts": {
       "annotations": {
-        "readOnlyHint": false,
+        "readOnlyHint": true,
+        "destructiveHint": false,
         "openWorldHint": false,
-        "destructiveHint": false
+        "idempotentHint": true
       },
       "justifications": {
-        "read_only_justification": "Submits durable proof, attribution, quality, or outcome receipts, so it writes OrgX state.",
-        "open_world_justification": "Writes only to private OrgX workspace records.",
-        "destructive_justification": "Adds receipt records but does not delete records or perform irreversible external actions."
+        "read_only_justification": "Search the workspace receipt ledger within its 120-day window. Accepts free text and exact filters: outcome, verification, accepted, type, area, repo, actor, ws, entity, initiative, pr, file, since, until, conf, unmet and status. Results distinguish producer claims from OrgX human judgments and include matched terms. Does not run model inference or change judgments. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
     },
-    "approve_decision": {
+    "orgx_get_receipt_review_queue": {
       "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
-      },
-      "justifications": {
-        "read_only_justification": "Requests to settle a decision; the server refuses model-driven rulings and returns the review link where the person decides.",
-        "open_world_justification": "A person's approval, made in the decisions widget or in OrgX, can resume agent work that operates in connected systems.",
-        "destructive_justification": "Kept conservative: the decision it points to irreversibly resolves when the person approves."
-      }
-    },
-    "reject_decision": {
-      "annotations": {
-        "readOnlyHint": false,
+        "readOnlyHint": true,
+        "destructiveHint": false,
         "openWorldHint": false,
-        "destructiveHint": true
+        "idempotentHint": true
       },
       "justifications": {
-        "read_only_justification": "Requests to send a decision back; the server refuses model-driven rulings and returns the review link where the person decides.",
-        "open_world_justification": "Writes only to private OrgX decision records.",
-        "destructive_justification": "Rejection can irreversibly resolve or redirect a pending decision."
+        "read_only_justification": "Read the workspace calls waiting for a person: outcome, work type, entity mapping, area, links and proposed criteria. Results are suggestions with confidence, not verified facts. Human outcome judgments and criterion confirmations are made in the OrgX review UI; this tool cannot resolve them. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_record_plan_edit": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Append a change or feedback summary to the durable plan history. This records guidance only; it does not replace the markdown content or complete the plan. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
     },
     "orgx_widget_decide": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "destructiveHint": false,
+        "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "Records the person's approve or send-back ruling on one ordinary decision when they click in the decisions widget.",
-        "open_world_justification": "Changes only the OrgX decision record; it does not act in external systems.",
-        "destructive_justification": "Resolves one pending decision after an explicit click; widget-only and gated by a single-use approval token the model never sees, so a model cannot call it."
-      }
-    },
-    "orgx_command_status": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Reads the current state of a decision, agent run or work command the person can already see; it changes nothing.",
-        "open_world_justification": "Reads OrgX records only.",
-        "destructive_justification": "Read-only; nothing is changed or deleted."
+        "read_only_justification": "Records a person’s explicit widget interaction. Protected rulings require a version-bound capability carried in hidden widget metadata; models receive no human authority.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
     },
     "orgx_panel_snapshot": {
       "annotations": {
         "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "destructiveHint": false,
+        "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "Reads the person's pending decisions and accepted proof for the OrgX panel; it changes nothing. A ruling from the panel goes through orgx_widget_decide after an explicit click.",
-        "open_world_justification": "Reads OrgX records only.",
-        "destructive_justification": "Read-only; nothing is changed or deleted."
+        "read_only_justification": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only. This operation reads or validates data without changing durable business state.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
     },
     "orgx_widget_receipt_call": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "destructiveHint": false,
+        "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "Records the person's call on one Work Ledger receipt's outcome (done, partly, not done, blocked) when they click in the OrgX panel.",
-        "open_world_justification": "Changes only the OrgX Work Ledger's record of that receipt; it does not act in external systems.",
-        "destructive_justification": "Appends one call; the ledger keeps every call and the latest wins, so nothing is overwritten or deleted. Widget-only, so a model cannot call it."
-      }
-    },
-    "get_agent_status": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Not strictly read-only: successful calls record metered MCP allowance usage, although they do not change agent or business records.",
-        "open_world_justification": "Operates only on private OrgX workspace data.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
-      }
-    },
-    "get_initiative_pulse": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Not strictly read-only: successful calls record metered MCP allowance usage, although they do not change initiative or business records.",
-        "open_world_justification": "Operates only on private OrgX workspace data.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
-      }
-    },
-    "scaffold_initiative": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
-      },
-      "justifications": {
-        "read_only_justification": "Default launch mode creates an OrgX initiative hierarchy and starts assigned agents.",
-        "open_world_justification": "Launch mode dispatches agent work, and external_sync can create projects or tasks in connected work trackers such as Linear.",
-        "destructive_justification": "Default launch mode starts agent execution and optional external synchronization may not be automatically reversible."
-      }
-    },
-    "handoff_task": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": true,
-        "destructiveHint": true
-      },
-      "justifications": {
-        "read_only_justification": "Reassigns task ownership and can spawn a new agent run.",
-        "open_world_justification": "May initiate work that uses connected systems outside the immediate ChatGPT conversation.",
-        "destructive_justification": "Can dispatch or reassign work in a way that is not automatically reversible after execution begins."
-      }
-    },
-    "approve_agent_work": {
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Listing approval items may record usage or session state, while approve and reject only return a human-session review URL.",
-        "open_world_justification": "Does not resolve approval items or resume connected work from MCP; it only reads private OrgX state and returns a review URL.",
-        "destructive_justification": "Does not approve, reject, delete, or irreversibly change agent work from MCP."
-      }
-    },
-    "review_artifact": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Only retrieves the next matching artifact and renders it for review without changing review state.",
-        "open_world_justification": "Reads only private OrgX artifact records and does not publish to third-party systems.",
-        "destructive_justification": "Does not delete, overwrite, approve, reject, or otherwise modify the artifact."
-      }
-    },
-    "get_morning_brief": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Retrieves morning brief signals and value summaries without modifying records.",
-        "open_world_justification": "Operates only on private OrgX workspace data.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
-      }
-    },
-    "get_operator_chronicle": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Retrieves decision chronology, artifacts, PR receipts, priorities, goals, velocity, and reporting gaps without modifying records.",
-        "open_world_justification": "Operates only on private OrgX workspace data for the authenticated user.",
-        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
-      }
-    },
-    "check_execution_readiness": {
-      "annotations": {
-        "readOnlyHint": true,
-        "openWorldHint": false,
-        "destructiveHint": false
-      },
-      "justifications": {
-        "read_only_justification": "Checks configured execution credentials and readiness without dispatching work or modifying OrgX records.",
-        "open_world_justification": "Reads private OrgX workspace configuration and does not publish to external systems.",
-        "destructive_justification": "Does not dispatch, delete, overwrite, or irreversibly change workspace state."
+        "read_only_justification": "Records a person’s explicit widget interaction. Protected rulings require a version-bound capability carried in hidden widget metadata; models receive no human authority.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
     },
     "resume_agent_run": {
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false,
-        "destructiveHint": false
+        "destructiveHint": false,
+        "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "Sets one paused or auto-closed agent run back to running after the person clicks Resume in the agent-status widget.",
-        "open_world_justification": "Changes only the OrgX agent run record; it does not act in external systems.",
-        "destructive_justification": "Resuming is reversible (the run can be paused again) and deletes nothing; widget-only, hidden from the model."
+        "read_only_justification": "Records a person’s explicit widget interaction. Protected rulings require a version-bound capability carried in hidden widget metadata; models receive no human authority.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_widget_select_workspace": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Records a person’s explicit widget interaction. Protected rulings require a version-bound capability carried in hidden widget metadata; models receive no human authority.",
+        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
+        "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
+      }
+    },
+    "orgx_widget_approve_artifact": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Records a person’s explicit widget interaction. Protected rulings require a version-bound capability carried in hidden widget metadata; models receive no human authority.",
+        "open_world_justification": "Widget-only: record a person’s approval of the displayed artifact using its hidden, version-bound capability. Refuses stale, foreign, missing, or replayed capabilities. Applies OrgX review and continuation rules. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Widget-only: record a person’s approval of the displayed artifact using its hidden, version-bound capability. Refuses stale, foreign, missing, or replayed capabilities. Applies OrgX review and continuation rules. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+      }
+    },
+    "orgx_widget_request_artifact_changes": {
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Records a person’s explicit widget interaction. Protected rulings require a version-bound capability carried in hidden widget metadata; models receive no human authority.",
+        "open_world_justification": "Widget-only: record a person’s requested changes to the displayed artifact using its hidden, version-bound capability and required feedback. Applies the canonical OrgX rework flow and may dispatch connected agent work. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Widget-only: record a person’s requested changes to the displayed artifact using its hidden, version-bound capability and required feedback. Applies the canonical OrgX rework flow and may dispatch connected agent work. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
       }
     }
   },
   "test_cases": [
     {
-      "description": "Bootstrap the connected OrgX workspace and session guidance.",
+      "description": "Read the connected OrgX workspace context without selecting a workspace.",
       "user_prompt": "Start OrgX and show my workspace context.",
       "file_attachment_urls": null,
-      "tools_triggered": "orgx_bootstrap",
-      "expected_output": "Returns the connected workspace context, granted scopes, and safe next-step guidance without exposing access tokens, raw session IDs, or secrets.",
+      "tools_triggered": "orgx_get_workspace_context",
+      "expected_output": "Returns authorized workspace context and typed references without changing session selection or exposing OAuth credentials or human approval tokens.",
       "expected_output_url": null
     },
     {
       "description": "List the deterministic seeded decisions awaiting approval.",
       "user_prompt": "Show me the pending decisions that need approval today.",
       "file_attachment_urls": null,
-      "tools_triggered": "orgx_decide",
+      "tools_triggered": "orgx_list_pending_decisions",
       "expected_output": "Returns the three seeded pending decisions with title, status, urgency or priority, and enough context to approve or reject.",
       "expected_output_url": null
     },
@@ -374,7 +621,7 @@
       "description": "Render initiative health for a seeded initiative.",
       "user_prompt": "Give me the pulse for the Search Copilot Readiness initiative.",
       "file_attachment_urls": null,
-      "tools_triggered": "get_initiative_pulse",
+      "tools_triggered": "orgx_get_initiative_progress",
       "expected_output": "Returns the seeded initiative health, blockers if present, milestone/task summary, and the initiative-pulse widget.",
       "expected_output_url": null
     },
@@ -382,7 +629,7 @@
       "description": "Render the current agent status widget.",
       "user_prompt": "Show me what the OrgX agents are doing right now.",
       "file_attachment_urls": null,
-      "tools_triggered": "get_agent_status",
+      "tools_triggered": "orgx_get_agent_status",
       "expected_output": "Returns the seeded agent roster or active and idle agent state, and renders the agent-status widget without changing workspace state.",
       "expected_output_url": null
     }

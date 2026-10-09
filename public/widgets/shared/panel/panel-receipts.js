@@ -25,6 +25,48 @@
   function ago(iso) { var t = global.OrgXTime; return iso && t && t.relative ? t.relative(iso) : ''; }
   function links() { return global.OrgXLinks || null; }
 
+  function rec(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; }
+  function normalizeRow(value) {
+    var row = rec(value), claims = rec(row.producer_claims), assessment = rec(row.receipt_assessment);
+    var judgment = rec(row.human_judgment), counts = rec(row.criteria);
+    var hasClaims = Boolean(row.producer_claims);
+    var documentJudgment = judgment.scope === 'receipt_document';
+    var sameDocument = documentJudgment && typeof judgment.reviewed_receipt_id === 'string' && judgment.reviewed_receipt_id === row.receipt_id &&
+      (judgment.reviewed_receipt_revision || null) === (row.receipt_review_revision || null);
+    var humanOutcome = sameDocument ? judgment.outcome_status : null;
+    if (!humanOutcome && !documentJudgment && assessment.acceptance_status === 'human_reviewed') humanOutcome = assessment.outcome_status;
+    return Object.assign({}, row, {
+      id: row.external_receipt_id || row.externalId || row.receipt_id || row.id,
+      outcome: humanOutcome || claims.outcome_status || row.outcome || null,
+      outcome_source: humanOutcome ? 'human' : hasClaims ? 'producer' : row.outcome_source || null,
+      verification: hasClaims ? (assessment.verification_status === 'producer_reported' ? null : assessment.verification_status || null) : row.verification || null,
+      producer_verification: claims.verification_status || null,
+      accepted: hasClaims ? (assessment.acceptance_status === 'accepted' ? 'accepted' : assessment.acceptance_status === 'rejected' ? 'rejected' : null) : row.accepted || null,
+      criteria: { met: Number(counts.met) || 0, unmet: Number(counts.unmet) || 0, unknown: Number(counts.unknown) || 0 },
+      actor: row.actor || null, at: row.at || null, prs: row.prs || [],
+    });
+  }
+  function normalizeList(data, query) {
+    if (data && data.receipts) return data.receipts;
+    if (data && data.status && Array.isArray(data.items)) return data;
+    if (!data || data.ok === false || !Array.isArray(data.results)) return { status: 'unavailable', query: query || '', total: 0, items: [], reason: null };
+    return { status: 'ok', query: query || '', total: Number(data.total) || data.results.length, items: data.results.map(normalizeRow), reason: null };
+  }
+  function normalizeDetail(data, id, fallbackRow) {
+    if (data && data.receipt && data.receipt.status) return data.receipt;
+    if (data && data.status && data.id) return data;
+    if (!data || data.ok === false || !data.receipt_id) return { status: 'unavailable', id: id, row: fallbackRow || null, reason: null, criteria: [], artifacts: [], uncertain: [] };
+    var criteria = Array.isArray(data.criteria) ? data.criteria : [];
+    var row = normalizeRow(Object.assign({}, fallbackRow || {}, data, { criteria: criteria.reduce(function count(all, c) { all[c.status === 'met' ? 'met' : c.status === 'unmet' ? 'unmet' : 'unknown'] += 1; return all; }, { met: 0, unmet: 0, unknown: 0 }) }));
+    return { status: 'ok', id: id, row: row,
+      criteria: criteria.map(function criterion(c) { return Object.assign({}, c, { status: ['met', 'unmet'].indexOf(c.status) === -1 ? 'unknown' : c.status }); }),
+      artifacts: (Array.isArray(data.evidence) ? data.evidence : []).map(function evidence(e) { return { kind: e.kind || 'evidence', name: e.summary || e.id || 'Evidence', url: e.uri || null }; }),
+      criteria_total: Math.max(criteria.length, Number(data.criteria_total) || 0),
+      evidence_total: Math.max(Array.isArray(data.evidence) ? data.evidence.length : 0, Number(data.evidence_total) || 0),
+      uncertain: Array.isArray(data.uncertain) ? data.uncertain : [], objective: null, outcome_summary: null,
+    };
+  }
+
   var OUTCOME = {
     succeeded: ['Done', 'ok'],
     partially_succeeded: ['Partly done', 'warn'],
@@ -33,12 +75,16 @@
   };
   function outcomeOf(row) {
     var o = OUTCOME[String(row.outcome || '').toLowerCase()];
+    if (o && row.outcome_source === 'producer') return ['Agent reports ' + o[0].toLowerCase(), 'mute'];
     return o || [row.outcome ? String(row.outcome).replace(/_/g, ' ') : 'Recorded', 'mute'];
   }
   function verifiedOf(row) {
     var v = String(row.verification || '').toLowerCase();
     if (v === 'verified' || v === 'passed') return ['Checked after', 'ok'];
     if (v === 'failed') return ['Check failed', 'bad'];
+    var reported = String(row.producer_verification || '').toLowerCase();
+    if (reported === 'verified' || reported === 'passed') return ['Agent reports verified', 'mute'];
+    if (reported === 'failed') return ['Agent reports failed check', 'warn'];
     return ['Not checked after', 'mute'];
   }
   function acceptedOf(row) {
@@ -138,7 +184,8 @@
             return '<li class="rc-c" data-s="' + x.status + '"><span class="rc-cm" aria-hidden="true">' + MARK[x.status] + '</span>' +
               '<span class="rc-ct">' + esc(x.text) + (x.source ? '<span class="rc-src">' + sourceChip(x) + '</span>' : '') + '</span><span class="rc-cs">' + STATUS_WORD[x.status] + (guess && x.status !== 'unknown' ? ' · a guess' : '') + '</span></li>';
           }).join('') + '</ul>'
-          : '<p class="rc-quiet">No criteria were written down for this work, so nothing can be checked against them.</p>') + '</section>';
+          : '<p class="rc-quiet">No criteria were written down for this work, so nothing can be checked against them.</p>') +
+        (detail.criteria_total > crit.length ? '<p class="rc-quiet">Showing ' + crit.length + ' of ' + esc(detail.criteria_total) + ' checks. Open the Work Ledger for the complete receipt.</p>' : '') + '</section>';
       if (detail.outcome_summary) body += '<section class="rc-sec"><h4 class="rc-h">What happened</h4><p class="rc-p">' + esc(detail.outcome_summary) + '</p></section>';
       var arts = detail.artifacts || [];
       if (arts.length) {
@@ -147,7 +194,8 @@
           return '<li>' + (x.url
             ? '<button type="button" class="rc-art" data-action="open" data-url="' + esc(x.url) + '">' + esc(label) + ' ↗</button>'
             : '<span class="rc-art is-plain">' + esc(label) + '</span>') + '<span class="rc-ak">' + esc(String(x.kind).replace(/_/g, ' ')) + '</span></li>';
-        }).join('') + '</ul></section>';
+        }).join('') + '</ul>' +
+          (Math.max(arts.length, Number(detail.evidence_total) || 0) > Math.min(arts.length, 8) ? '<p class="rc-quiet">Showing ' + Math.min(arts.length, 8) + ' of ' + esc(Math.max(arts.length, Number(detail.evidence_total) || 0)) + ' evidence items. Open the Work Ledger for the complete receipt.</p>' : '') + '</section>';
       }
       var unsure = detail.uncertain || [];
       if (unsure.length) {
@@ -167,6 +215,7 @@
   var CALLS = [['succeeded', 'Done'], ['partially_succeeded', 'Partly'], ['failed', 'Not done'], ['blocked', 'Blocked']];
   /** call: { status, phase: 'saving'|'saved'|'failed', reason } or undefined */
   function callHtml(r, call) {
+    if (call && call.phase === 'unavailable') return '<section class="rc-sec rc-call" aria-label="Your call"><h4 class="rc-h">Your call</h4><p class="rc-cn">Review this receipt in the Work Ledger to record your call.</p></section>';
     var agentSays = outcomeOf(r)[0];
     var current = call && call.phase !== 'failed' ? call.status : null;
     var note = !call ? 'The agent says “' + agentSays + '”. Your call overrides it and teaches OrgX what done means here.'
@@ -176,7 +225,7 @@
     return '<section class="rc-sec rc-call" aria-label="Your call"><h4 class="rc-h">Your call</h4>' +
       '<div class="seg rc-calls" role="group" aria-label="Was this done?">' + CALLS.map(function c(x) {
         return '<button type="button" class="seg-b" data-action="receipt-call" data-id="' + esc(r.id) + '" data-status="' + x[0] + '" aria-pressed="' + (current === x[0]) + '"' +
-          (call && call.phase === 'saving' ? ' disabled' : '') + '>' + x[1] + '</button>';
+          (call && (call.phase === 'saving' || call.phase === 'saved') ? ' disabled' : '') + '>' + x[1] + '</button>';
       }).join('') + '</div><p class="rc-cn" role="status" data-phase="' + esc(call ? call.phase : 'idle') + '">' + esc(note) + '</p></section>';
   }
 
@@ -199,5 +248,5 @@
     return m ? m[1] : null;
   }
 
-  global.OrgXPanelReceipts = { listHtml: listHtml, detailHtml: detailHtml, behindHtml: behindHtml, iterateSentence: iterateSentence, prOf: prOf, pips: pips };
+  global.OrgXPanelReceipts = { normalizeList: normalizeList, normalizeDetail: normalizeDetail, listHtml: listHtml, detailHtml: detailHtml, behindHtml: behindHtml, iterateSentence: iterateSentence, prOf: prOf, pips: pips };
 })(typeof window !== 'undefined' ? window : globalThis);

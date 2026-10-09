@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import {
   getOpenAiOutputSchema,
+  getToolOutputSchema,
   OPENAI_OUTPUT_SCHEMAS,
 } from '../src/openaiOutputSchemas';
 import { CHATGPT_PUBLIC_SURFACE } from '../src/toolProfiles';
@@ -85,11 +86,66 @@ function findUnportableSchemaPositions(
 }
 
 describe('OpenAI public tool output schemas', () => {
-  it('covers exactly the 28 ChatGPT public tools', () => {
+  it('retains a verified alias output contract when its target leaves the public operation catalog', async () => {
+    expect(getOpenAiOutputSchema('get_initiative_pulse')).toBeUndefined();
+    expect(getToolOutputSchema('track_project_progress')).toBe(getToolOutputSchema('get_initiative_pulse'));
+    const server = new McpServer({ name: 'legacy-alias-output', version: '1' });
+    installToolResultGuidanceWrapper(server, null, undefined, undefined, false, 'legacy');
+    const output = { initiative_id: 'initiative', name: 'Migration', status: 'active', health_score: 95, progress_pct: 50 };
+    server.registerTool('track_project_progress', { inputSchema: {} }, async () => ({ content: [], structuredContent: output }));
+    const client = await connect(server);
+    try {
+      const listed = await client.listTools();
+      expect(listed.tools[0].outputSchema?.properties).toHaveProperty('initiative_id');
+      expect((await client.callTool({ name: 'track_project_progress', arguments: {} })).structuredContent).toEqual(output);
+    } finally {
+      await Promise.allSettled([client.close(), server.close()]);
+    }
+  });
+
+  it('keeps retained directory responses flat without borrowing current operation envelopes', async () => {
+    const outputs = {
+      orgx_start_plan: { session_id: 'plan', feature_name: 'Migration', current_plan: '# Plan' },
+      orgx_read_plan: { session_id: 'plan', current_plan: '# Plan', plan_version: 2 },
+      orgx_complete_plan: { session_id: 'plan', status: 'completed', plan_content: '# Accepted' },
+      orgx_record_plan_edit: { session_id: 'plan', edit_summary: 'Reviewed', plan_version: 3 },
+      orgx_list_pending_decisions: { pending: [], workspace_id: 'workspace' },
+      orgx_open_decision_review: { decision_id: 'decision', requires_human_approval: true, review_url: 'https://useorgx.test/review' },
+    };
+    for (const [profile, legacyDirectoryContracts] of [
+      ['claude-directory-legacy', false], ['claude-directory', false], ['full', false], ['full', true],
+    ] as const) {
+      const server = new McpServer({ name: `directory-output-${profile}`, version: '1' });
+      installToolResultGuidanceWrapper(server, null, undefined, undefined, true, profile, legacyDirectoryContracts);
+      for (const [name, output] of Object.entries(outputs)) {
+        server.registerTool(name, { inputSchema: {} }, async () => ({ content: [], structuredContent: output }));
+      }
+      // An explicitly verified adapter schema must never be discarded.
+      server.registerTool('orgx_improve_plan', { inputSchema: {}, outputSchema: z.object({ preserved: z.boolean() }) }, async () => ({ content: [], structuredContent: { preserved: true } }));
+      const client = await connect(server);
+      try {
+        const listed = await client.listTools();
+        for (const [name, output] of Object.entries(outputs)) {
+          const tool = listed.tools.find((tool) => tool.name === name)!;
+          if (profile === 'claude-directory-legacy' || legacyDirectoryContracts) {
+            expect(tool.outputSchema, name).toBeUndefined();
+            expect((await client.callTool({ name, arguments: {} })).structuredContent, name).toEqual(output);
+          } else {
+            expect(tool.outputSchema, name).toBeDefined();
+          }
+        }
+        expect(listed.tools.find((tool) => tool.name === 'orgx_improve_plan')?.outputSchema?.properties).toHaveProperty('preserved');
+      } finally {
+        await Promise.allSettled([client.close(), server.close()]);
+      }
+    }
+  });
+
+  it('covers exactly the 48 operation and widget contracts', () => {
     expect(Object.keys(OPENAI_OUTPUT_SCHEMAS)).toEqual([
       ...CHATGPT_PUBLIC_SURFACE,
     ]);
-    expect(Object.keys(OPENAI_OUTPUT_SCHEMAS)).toHaveLength(28);
+    expect(Object.keys(OPENAI_OUTPUT_SCHEMAS)).toHaveLength(48);
     expect(getOpenAiOutputSchema('not_a_public_tool')).toBeUndefined();
   });
 
@@ -133,7 +189,10 @@ describe('OpenAI public tool output schemas', () => {
         ).toEqual([]);
       }
 
-      const scaffold = listed.tools.find(
+      // Compatibility output contracts remain callable on the explicit legacy profile.
+      server.registerTool('scaffold_initiative', { inputSchema: {} }, async () => ({ content: [], isError: true }));
+      const compatibilityListed = await client.listTools();
+      const scaffold = compatibilityListed.tools.find(
         (tool) => tool.name === 'scaffold_initiative'
       );
       const scaffoldOutput = scaffold?.outputSchema as
@@ -154,15 +213,15 @@ describe('OpenAI public tool output schemas', () => {
       expect(scaffoldOutput?.properties?.dependency_edges).toEqual({});
 
       const compactNestedProperties = {
-        get_agent_status: 'agents',
-        get_initiative_pulse: 'workstreams',
-        get_operator_chronicle: 'chronicle',
-        check_execution_readiness: 'providers',
-        orgx_bootstrap: 'context_capsule',
+        orgx_get_agent_status: 'agents',
+        orgx_get_initiative_progress: 'workstreams',
+        orgx_get_operator_brief: 'chronicle',
+        orgx_check_execution_readiness: 'providers',
+        orgx_get_workspace_context: 'data',
         orgx_inspect: 'entity',
         orgx_search: 'results',
-        orgx_recommend: 'recommendations',
-        orgx_decide: 'decisions',
+        orgx_get_next_actions: 'recommendations',
+        orgx_list_pending_decisions: 'decisions',
       } as const;
       for (const [toolName, propertyName] of Object.entries(
         compactNestedProperties
@@ -184,7 +243,7 @@ describe('OpenAI public tool output schemas', () => {
 
   it('validates representative success, empty, and inline error-compatible outputs', () => {
     expect(
-      OPENAI_OUTPUT_SCHEMAS.manage_lifecycle.safeParse({
+      getToolOutputSchema('manage_lifecycle')!.safeParse({
         ok: true,
         action: 'pause',
         level: 'initiative',
@@ -200,12 +259,12 @@ describe('OpenAI public tool output schemas', () => {
     ).toBe(true);
 
     expect(
-      OPENAI_OUTPUT_SCHEMAS.review_artifact.safeParse({ artifact: null })
+      getToolOutputSchema('review_artifact')!.safeParse({ artifact: null })
         .success
     ).toBe(true);
 
     expect(
-      OPENAI_OUTPUT_SCHEMAS.scaffold_initiative.safeParse({
+      getToolOutputSchema('scaffold_initiative')!.safeParse({
         ok: false,
         error_kind: 'scaffold_initiative_failed',
         error: 'Workspace context could not be resolved.',
@@ -225,7 +284,7 @@ describe('OpenAI public tool output schemas', () => {
     it(`accepts every audited ${tool} result variant`, () => {
       for (const output of outputs) {
         expect(
-          OPENAI_OUTPUT_SCHEMAS[tool].safeParse(output).success,
+          getToolOutputSchema(tool)!.safeParse(output).success,
           JSON.stringify(output)
         ).toBe(true);
       }
@@ -240,7 +299,7 @@ describe('OpenAI public tool output schemas', () => {
       'scaffold_initiative',
     ] as const) {
       expect(
-        OPENAI_OUTPUT_SCHEMAS[tool].safeParse(COMMON_STRUCTURED_TOOL_ERROR)
+        getToolOutputSchema(tool)!.safeParse(COMMON_STRUCTURED_TOOL_ERROR)
           .success,
         tool
       ).toBe(true);

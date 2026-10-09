@@ -216,11 +216,11 @@ describe('panel live updates', () => {
 describe('workspace switcher', () => {
   const OTHER = '55555555-5555-4555-8555-555555555555';
 
-  it('lists workspaces when opened, switches through orgx_bootstrap, and follows the new feed', async () => {
+  it('lists workspaces when opened, switches through orgx_widget_select_workspace, and follows the new feed', async () => {
     const m = await open();
     const sws = snapshot().workspace as { id: string };
     m.calls.callServerTool.mockImplementation(async ({ name, arguments: args }: { name: string; arguments: Record<string, unknown> }) => {
-      if (name === 'orgx_bootstrap') return { structuredContent: { ok: true } };
+      if (name === 'orgx_widget_select_workspace') return { structuredContent: { ok: true } };
       if (args.view === 'workspaces') {
         return { structuredContent: snapshot({
           generated_at: '2026-10-02T12:01:00.000Z',
@@ -228,7 +228,10 @@ describe('workspace switcher', () => {
             { id: sws.id, name: 'Acme', current: true },
             { id: OTHER, name: 'Labs', current: false },
           ] },
-        }) };
+        }), _meta: { 'orgx/toolSurface': {
+          contract_version: 'orgx-mcp-operations/1', profile: 'chatgpt',
+          tools: ['orgx_widget_select_workspace'], widget_tools: { workspace_select: 'orgx_widget_select_workspace' },
+        } } };
       }
       return { structuredContent: { ...snapshot({ generated_at: '2026-10-02T12:02:00.000Z', workspace: { id: OTHER, name: 'Labs' } }), live: grant(OTHER) } };
     });
@@ -243,7 +246,7 @@ describe('workspace switcher', () => {
 
     (doc(m).querySelector(`[data-action="switch-workspace"][data-id="${OTHER}"]`) as HTMLElement).click();
     await m.flush(); await m.flush(); await m.flush();
-    expect(m.calls.callServerTool.mock.calls[1]![0]).toEqual({ name: 'orgx_bootstrap', arguments: { workspace_id: OTHER } });
+    expect(m.calls.callServerTool.mock.calls[1]![0]).toEqual({ name: 'orgx_widget_select_workspace', arguments: { workspace_id: OTHER } });
     expect(m.calls.callServerTool.mock.calls[2]![0]).toMatchObject({ name: 'orgx_panel_snapshot', arguments: {} });
     expect(doc(m).querySelector('.ws-btn')!.textContent).toContain('Labs');
     expect(doc(m).querySelector('#pn-ws-menu')).toBeNull();
@@ -255,14 +258,17 @@ describe('workspace switcher', () => {
   it('keeps the list open with a way forward when the switch fails', async () => {
     const m = await open();
     m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => {
-      if (name === 'orgx_bootstrap') throw new Error('nope');
+      if (name === 'orgx_widget_select_workspace') throw new Error('nope');
       return { structuredContent: snapshot({
         generated_at: '2026-10-02T12:01:00.000Z',
         workspaces: { status: 'ok', items: [
           { id: (snapshot().workspace as { id: string }).id, name: 'Acme', current: true },
           { id: OTHER, name: 'Labs', current: false },
         ] },
-      }) };
+      }), _meta: { 'orgx/toolSurface': {
+        contract_version: 'orgx-mcp-operations/1', profile: 'chatgpt',
+        tools: ['orgx_widget_select_workspace'], widget_tools: { workspace_select: 'orgx_widget_select_workspace' },
+      } } };
     });
     (doc(m).querySelector('[data-action="workspaces"]') as HTMLElement).click();
     await m.flush(); await m.flush();

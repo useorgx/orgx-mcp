@@ -19,9 +19,9 @@ Keep the submitted profile aligned with `src/toolProfiles.ts`, the operation reg
 | Documentation | <https://github.com/useorgx/orgx-mcp#readme> |
 | Support URL | <https://useorgx.com/support> |
 | Primary review contact | reviewers@useorgx.com |
-| Directory surface | 29 captured tools: 28 model-visible operations and one app-only resume action; separate reads, writes, and execution controls |
+| Directory surface | 48 captured tools: 41 model-visible operations and seven app-only widget operations; 40 core workflows plus one plan-edit journal operation; separate reads, writes, and execution controls |
 | OAuth scopes | Read scopes: `decisions:read`, `agents:read`, `initiatives:read`, `memory:read`. Operate adds `decisions:write`, `agents:write`, `initiatives:write`. |
-| Capabilities | Memory, planning, work creation/update, delegation, human decision review, artifact attachment, receipts, and proof completion; 8 coherent widget families; no prompts or skill packs |
+| Capabilities | Memory, planning, work creation/update, delegation, human decision review, artifact attachment, portable receipt validation/import/read/review, and proof completion; 14 shared widget families; no prompts or skill packs |
 | HTTPS Origin validation | Yes — every present MCP transport `Origin` is exact-allowlisted before auth/dispatch; invalid origins return `403`; no-`Origin` CLI traffic remains supported |
 | Publisher | OrgX (`com.useorgx/orgx-mcp` in the official MCP Registry) |
 | Support email | reviewers@useorgx.com |
@@ -34,6 +34,12 @@ submitting and do not change it to solve a listing-copy issue. Anthropic's MCP
 Connector Directory does not require a separate DNS or `.well-known`
 domain-ownership challenge; the owned link origins still need to be declared
 for widget deep links.
+
+The previous directory contract remains under `?profile=claude-directory-legacy`
+with 37 descriptors: its original 29 tools plus eight required widget
+dependencies. Submit the current 48-tool endpoint above, and confirm actual
+authenticated discovery after deployment before using these counts in the
+portal.
 
 ## Branding assets (verify 200 on submission day)
 
@@ -77,6 +83,14 @@ workspace's routing and budget controls. Four informational operations record
 metered MCP usage without changing business records. Optional worker analytics
 and session persistence are suppressed on the directory profile.
 
+Portable Agent Work Receipt v0.1/v0.2 imports preserve evidence, criteria,
+provenance, and producer claims. Validation is document conformance, and import
+does not independently verify work, record human acceptance, or change work
+status. The new core completion route supports tasks; retained parent behavior
+is marked compatibility. Rich hierarchy parity and uniform async operation
+durability remain staged core work. Protected receipt judgments require the
+compare-and-append migration and concurrency verification before release.
+
 Target users are founders and operators coordinating AI work across sessions,
 clients, and teammates. OrgX retains owners, decisions, artifacts, blockers,
 and evidence so another agent can continue with the same organizational context.
@@ -92,7 +106,9 @@ These match the reviewer runbook and the seeded reviewer workspace baseline.
 3. *"Show me what the OrgX agents are doing right now."*
    Expected: agent-status widget with the seeded roster.
 4. *"Create a reviewer test task, record a plan, attach the verification URL, and complete it with proof."*
-   Expected: scoped durable records, linked artifact, and verified completion.
+   Expected: scoped durable records, linked artifact, and completion only when
+   the task's canonical verification and acceptance gates pass; otherwise
+   preserved proof and an explicit blocked or failed result.
 5. *"Estimate engineering delegation for the reviewer test task without starting work."*
    Expected: candidate routes and cost context, no dispatched run.
 
@@ -134,10 +150,10 @@ See `docs/reviewer-invite-template.md` for the full email copy.
 
 - [ ] `pnpm type-check && pnpm test:anthropic-review && pnpm build && pnpm directory:preflight` green locally.
 - [ ] `MCP_BASE_URL=https://mcp.useorgx.com pnpm directory:preflight` green against production.
-- [ ] An authenticated `tools/list` for `?profile=claude-directory` returns exactly the 29 documented tools for an Operate grant, with titles and accurate safety hints; a Read grant excludes write operations.
+- [ ] An authenticated `tools/list` for `?profile=claude-directory` returns exactly the 48 documented tools for an Operate grant, with titles, exact input/output schemas, and accurate safety hints; a Read grant excludes write operations.
 - [ ] Every submitted tool has a current human-readable `title`, matching `annotations.title`, and all
   applicable tool hints in the portal scan.
-- [ ] `prompts/list` is empty and `resources/list` contains only the eight documented widget families (including their version/host compatibility variants).
+- [ ] `prompts/list` is empty and `resources/list` contains only the 14 documented shared widget families (including their version/host compatibility variants).
 - [ ] Invalid-Origin POST returns `403`; trusted Claude Origin is echoed (not `*`); a no-Origin CLI request reaches the normal OAuth flow.
 - [ ] Every branding asset URL in the table above returns 200 (curl -I).
 - [ ] Three to five authenticated response PNGs, each at least 1000 px wide,

@@ -145,15 +145,32 @@ async function main() {
     'Anthropic submission form must confirm HTTPS Origin validation'
   );
 
-  assert(claudeDirectoryTools.length === 29,
-    `Expected the broader 29-tool Claude directory contract, found ${claudeDirectoryTools.length}`);
+  assert(claudeDirectoryTools.length === 48,
+    `Expected the 48-tool portable Claude directory contract, found ${claudeDirectoryTools.length}`);
   const toolNames = new Set(claudeDirectoryTools.map((tool) => tool.id));
   for (const mixedRouter of ['orgx_write', 'orgx_act', 'orgx_plan', 'orgx_spawn', 'orgx_decide']) {
     assert(!toolNames.has(mixedRouter), `Mixed router must not be submitted: ${mixedRouter}`);
   }
   for (const tool of claudeDirectoryTools) {
-    assert(tool.title && tool.securityScopes?.length, `${tool.id} must have a title and OAuth contract`);
+    assert(tool.title && tool.securitySchemes?.length, `${tool.id} must have a title and security contract`);
+    assert(tool.securitySchemes.some((scheme) => scheme.type === 'noauth') || tool.securityScopes?.length,
+      `${tool.id} must declare its no-auth validation or OAuth scopes`);
     assert(typeof tool.readOnly === 'boolean', `${tool.id} must have a safety hint`);
+    assert(tool.securitySchemes?.length, `${tool.id} must publish the full OAuth security scheme`);
+    assert(typeof tool.annotations?.destructiveHint === 'boolean' && typeof tool.annotations?.openWorldHint === 'boolean',
+      `${tool.id} must publish destructive and external-effect hints`);
+    const isAppOnly = (serverJson.tools ?? []).find((entry) => entry.name === tool.id)?._meta?.['openai/visibility'] === 'private';
+    if (!isAppOnly) {
+      for (const selector of ['action', 'operation', 'mode']) {
+        assert(!Object.hasOwn(tool.inputSchema?.properties ?? {}, selector),
+          `${tool.id} must expose a fixed operation, not a model-visible ${selector} router`);
+      }
+    }
+  }
+
+  if (process.argv.includes('--local')) {
+    console.log(`Directory source preflight passed (${claudeDirectoryTools.length} tools); hosted/OAuth probes pending.`);
+    return;
   }
 
   const configuredBaseUrl =

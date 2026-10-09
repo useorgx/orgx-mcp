@@ -18,8 +18,7 @@
   <script src="shared/orgx-icons.js"></script>
 
   <style>
-    /* Escalation mode. Canvas R2 (review final), K1/K4 (receipts) and Q5 supply the shape.
-       Primaries are the kit's action lime; amber stays on the needs-you edge, glyph and chip. */
+
     :root { --ox-primary-rgb: 191, 255, 0; }
     .ox-icon { display: block; flex: none; }
 
@@ -67,12 +66,12 @@
     .sp { flex: 1; }
     .who2 { display: inline-flex; align-items: center; gap: 8px; flex: none; font-size: 12.5px; color: var(--ox-text-muted); white-space: nowrap; }
     .who2 b { color: var(--ox-text-2); font-weight: 600; }
-    /* Open in OrgX is the shared .ox-open; it keeps the header line compact. */
+
     .hd .ox-open { margin: -10px 0; }
     .bd { padding: 10px 18px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
     .meta { font-size: 12.5px; line-height: 1.35; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
 
-    /* Q5 / K1: the verdict first, the bar under it, the proof as rows. */
+
     .review-desk { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
     .review-control { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
     .review-status { display: flex; align-items: center; gap: 10px; min-height: 22px; flex-wrap: wrap; }
@@ -84,8 +83,7 @@
     .review-summary, .review-consequence { margin: 0; color: var(--ox-text-muted); font-size: 13px; line-height: 1.5; text-wrap: pretty; }
     .review-summary { color: var(--ox-text-2); }
 
-    /* The verdict in five seconds: one sentence, a bar with the line it has to clear,
-       and a checklist of what was checked (passed / failed / missing / not run). */
+
     .qv { --qv-signal: var(--ox-text-muted); display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 4px; border-radius: 14px;
       background: var(--ox-surface-subtle, rgba(127, 127, 127, .06)); border: 1px solid var(--ox-border); }
     .qv[data-quality-state="cleared"] { --qv-signal: var(--ox-teal); }
@@ -117,7 +115,7 @@
     .qv-check[data-status="failed"] .qv-state { color: var(--ox-danger-text, var(--ox-danger)); }
     .qv-check[data-status="missing"] .qv-state { color: var(--ox-warning); }
 
-    /* Scoring details: opens in place (.ox-collapse), no measured height, nothing jumps. */
+
     .qv-more { border-top: 1px solid var(--ox-border); margin: 0 -14px; padding: 0 14px; }
     .qv-more__toggle {
       display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0; border: 0; background: none;
@@ -137,7 +135,7 @@
     .receipts__more { margin: 6px 0 0; font-size: 12.5px; color: var(--ox-text-muted); }
     .receipts-label { margin: 0; font-size: 12.5px; font-weight: 650; color: var(--ox-text-muted); }
 
-    /* Q4: the artifact itself, read in one well with its tabs above. */
+
     .review-evidence { display: flex; flex-direction: column; min-width: 0; }
     .viewer-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--ox-border); overflow-x: auto; scrollbar-width: none; }
     .viewer-tab {
@@ -183,7 +181,7 @@
     .version-row__number { font-size: 13px; font-weight: 650; color: var(--ox-text); }
     .version-row__state { font-size: 12px; color: var(--ox-text-muted); }
 
-    /* A held approval reads as one line, not a banner. */
+
     .decision-row { display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.45; }
     .decision-row strong { color: var(--ox-text); font-weight: 650; }
     .decision-row span { color: var(--ox-text-muted); }
@@ -201,7 +199,7 @@
     .review-feedback:empty { display: none; }
     .review-feedback[data-tone="error"] { color: var(--ox-danger); }
 
-    /* Footer controls live in the kit footer's slots; they match its buttons. */
+
     .ft-btn {
       position: relative; overflow: hidden;
       min-height: 44px; margin: -4px 0; padding: 0 12px; border-radius: 9px; border: 1px solid transparent;
@@ -221,7 +219,7 @@
     .ft-btn__label { position: relative; }
     .ft-btn svg { width: 12px; height: 12px; position: relative; }
 
-    /* The decision leaves the surface before the receipt replaces it. */
+
     .stage.is-resolving { animation: review-exit 220ms var(--ox-ease, ease) forwards; }
     @keyframes review-exit { to { opacity: 0; transform: translateY(-4px); } }
 
@@ -241,17 +239,16 @@
       .qv-facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
       .qv-facts dd + dt { margin-top: 6px; }
       .who2 b { display: none; }
-      /* Phone: the link keeps a short visible label, "OrgX ↗", in a 44px target. */
+
       .hd .ox-open .ox-open__long { display: none; }
       .hd .ox-open { min-width: 44px; justify-content: center; }
-      /* Checks that didn't run are one line each on a phone (the label says it),
-         so the preview starts higher without hiding the verdict. */
+
       .qv-check[data-status="not-run"] { padding: 6px 0; align-items: center; }
       .qv-check[data-status="not-run"] > span > span { display: none; }
       .review-control { gap: 8px; }
     }
     @media (max-width: 420px) {
-      /* Compact controls so both fit beside the footer text at 375 px (the kit wraps them below otherwise). */
+
       .ft-btn { padding: 0 6px; gap: 4px; font-size: 12px; letter-spacing: -.01em; }
       .ft-btn--primary { padding: 0 6px; }
       .ft-btn--text[disabled] { padding: 0 4px; }
@@ -1484,7 +1481,7 @@
           '<span class="ft-btn__label">Request changes</span>' +
           '</button>' +
           '<button class="ft-btn ft-btn--text" type="button" data-composer-cancel hidden>Cancel</button>' +
-          '<button class="ft-btn ft-btn--primary" type="button" data-composer-submit hidden><span class="ft-btn__label">File decision</span></button>'
+          '<button class="ft-btn ft-btn--primary" type="button" data-composer-submit hidden><span class="ft-btn__label">Request changes</span></button>'
         );
       }
 
@@ -1607,15 +1604,15 @@
       }
 
       // When the ruling comes back as a queued command or run, follow it
-      // through orgx_command_status instead of calling it done on arrival.
+      // through orgx_get_operation_status instead of calling it done on arrival.
       function settleCommand(result) {
         const out = asRecord(readToolResult(result));
-        const candidates = [['command', firstString([out.command_id, out.commandId])], ['run', firstString([out.run_id, out.runId])]];
-        const ref = candidates.find(function (entry) { return UUID_RE.test(entry[1]); });
-        if (!ref) return Promise.resolve();
+        const candidates = [['operation', firstString([out.operation_id])], ['command', firstString([out.command_id, out.commandId])], ['run', firstString([out.run_id, out.runId])]];
+        const ref = candidates.find(function (entry) { return entry[0] === 'operation' ? Boolean(entry[1]) : UUID_RE.test(entry[1]); });
+        if (!ref) return Promise.resolve(out);
         return new Promise(function (resolve, reject) {
           function check() {
-            Promise.resolve(callTool('orgx_command_status', { kind: ref[0], id: ref[1] }))
+            Promise.resolve(callTool('orgx_get_operation_status', ref[0] === 'operation' ? { operation_id: ref[1] } : { kind: ref[0], id: ref[1] }))
               .then(function (statusResult) {
                 const status = asRecord(readToolResult(statusResult));
                 if (status.state === 'failed' || status.state === 'cancelled') {
@@ -1626,12 +1623,45 @@
                   setTimeout(check, Math.max(1000, status.next_poll_after_ms));
                   return;
                 }
-                resolve();
+                resolve(Object.assign({}, out, status));
               })
               .catch(reject);
           }
           check();
         });
+      }
+
+      function artifactReviewToken(id) {
+        const runtime = window.OrgXWidgetRuntime;
+        if (!runtime || !runtime.getToolResponseMetadata) return null;
+        const dedicated = asRecord(runtime.getToolResponseMetadata('orgx/artifactReview'));
+        const shared = asRecord(runtime.getToolResponseMetadata('orgx/widgetApproval'));
+        const token = asRecord(dedicated.approval_tokens)[id] || asRecord(shared.artifact_approval_tokens)[id] || asRecord(shared.approval_tokens)[id];
+        return typeof token === 'string' && token ? token : null;
+      }
+
+      function hasArtifactReviewAuthority(id) {
+        const runtime = window.OrgXWidgetRuntime;
+        // A standalone gallery can preview controls but has no host transport.
+        return Boolean(artifactReviewToken(id)) || Boolean(runtime && runtime.detectProtocol && runtime.detectProtocol() === 'standalone');
+      }
+
+      function artifactReviewArgs(artifact, note) {
+        const args = { artifact_id: artifact.id, expected_version: artifact.version };
+        if (note) args.note = note;
+        const token = artifactReviewToken(artifact.id);
+        if (token) args.approval_token = token;
+        return args;
+      }
+
+      function confirmedReviewArtifact(artifact, result, expectedStatus) {
+        const out = asRecord(result);
+        const updated = asRecord(out.artifact);
+        const status = firstString([updated.status, out.review_status, out.status]);
+        if (out.ok === false || out.applied === false || status !== expectedStatus) {
+          throw new Error('review_not_confirmed');
+        }
+        return Object.assign({}, artifact, updated, { status: status });
       }
 
       function setButtonLabel(button, text) {
@@ -1662,15 +1692,12 @@
           feedback.textContent = 'Recording approval and advancing the artifact…';
         }
         try {
-          const result = await callTool('orgx_act', {
-            type: 'artifact',
-            id: artifact.id,
-            action: 'approve',
-          });
-          await settleCommand(result);
+          const result = await callTool('orgx_widget_approve_artifact', artifactReviewArgs(artifact));
+          const settled = await settleCommand(result);
+          const updated = confirmedReviewArtifact(artifact, settled, 'approved');
           resolveStage(function () {
             activeReviewContract = null;
-            render(Object.assign({}, artifact, { status: 'approved' }));
+            render(updated);
           });
         } catch (err) {
           console.warn('[artifact-review] approve failed', err);
@@ -1704,31 +1731,19 @@
           feedback.textContent = 'Linking guidance to the artifact…';
         }
         try {
-          await callTool('orgx_decide', {
-            action: 'create',
-            title: 'Changes requested on ' + (artifact.name || 'artifact'),
-            summary: notes,
-            context: 'Artifact review change request',
-            entity_type: 'artifact',
-            entity_id: artifact.id,
-            initiative_id: artifact.entity_type === 'initiative' ? artifact.entity_id : undefined,
-          });
-          const result = await callTool('orgx_act', {
-            type: 'artifact',
-            id: artifact.id,
-            action: 'request_changes',
-          });
-          await settleCommand(result);
+          const result = await callTool('orgx_widget_request_artifact_changes', artifactReviewArgs(artifact, notes));
+          const settled = await settleCommand(result);
+          const updated = confirmedReviewArtifact(artifact, settled, 'changes_requested');
           resolveStage(function () {
             activeReviewContract = null;
-            render(Object.assign({}, artifact, { status: 'changes_requested' }));
+            render(updated);
           });
         } catch (err) {
           console.warn('[artifact-review] change request failed', err);
           if (button) {
             button.disabled = false;
             button.removeAttribute('aria-busy');
-            setButtonLabel(button, 'File decision');
+            setButtonLabel(button, 'Request changes');
           }
           if (input) input.disabled = false;
           setFooterMode('failed', 'changes', evidence);
@@ -1834,7 +1849,7 @@
         // What the reviewer is asked to do: sign (Approve / Request changes), resolve a blocker
         // in OrgX (never "signature" or Approve), or inspect a record (read-only).
         const mode = evidence.mode === 'resolve' || evidence.mode === 'inspect' ? evidence.mode : 'sign';
-        const canReview = mode === 'sign' && evidence.canReview !== false;
+        const canReview = mode === 'sign' && evidence.canReview !== false && hasArtifactReviewAuthority(artifact.id);
         const held = canReview && evidence.blocksApproval;
         const tone = rulingRecorded ? 'teal' : mode === 'resolve' ? 'red' : !canReview ? '' : 'amber';
         const chip = rulingRecorded

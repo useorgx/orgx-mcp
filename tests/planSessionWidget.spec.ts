@@ -122,9 +122,9 @@ describe('plan session widget', () => {
     expect(widgetHtml).toContain('min-height: 44px');
     expect(widgetHtml).toContain('shared/widget-runtime.js');
     expect(widgetHtml).toContain(
-      "window.OrgXWidgetRuntime.callTool('orgx_plan'"
+      "window.OrgXWidgetRuntime.callTool('orgx_record_plan_edit'"
     );
-    expect(widgetHtml).toContain("action: 'record_edit'");
+    expect(widgetHtml).not.toContain("action: 'record_edit'");
     expect(widgetHtml).toContain('edit_summary: summary');
     expect(widgetHtml).toContain(
       // OrgX has no plan-session page (/planning/sessions/:id was a 404); the shared builder decides.
@@ -178,8 +178,8 @@ describe('plan session widget', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(calls[0]).toEqual([
-      'orgx_plan',
-      { action: 'record_edit', session_id: 'plan-1', edit_summary: 'Outcome: Name the reviewer.' },
+      'orgx_record_plan_edit',
+      { session_id: 'plan-1', edit_summary: 'Outcome: Name the reviewer.' },
     ]);
     expect(footer().getAttribute('state')).toBe('failed');
     expect((doc.querySelector('[data-guidance-input]') as HTMLTextAreaElement).value).toBe('Name the reviewer.');

@@ -211,7 +211,7 @@ describe('agent-status widget goes live from its grant', () => {
     expect(original.closed).toBe(true);
 
     await vi.waitFor(() => expect(FakeEventSource.instances).toHaveLength(2));
-    expect(callTool).toHaveBeenCalledWith('get_agent_status', { initiative_id: 'init-1' });
+    expect(callTool).toHaveBeenCalledWith('orgx_get_agent_status', { initiative_id: 'init-1' });
     expect(FakeEventSource.latest.url).toContain('fresh-token');
   });
 

@@ -6,9 +6,10 @@ import {
 } from '../src/toolGuidance';
 import { buildBootstrapToolRouting } from '../src/bootstrapPayload';
 import { CLAUDE_DIRECTORY_SURFACE } from '../src/toolProfiles';
+import { installToolResultGuidanceWrapper } from '../src/toolResultRegistration';
 
 describe('tool result guidance', () => {
-  it('preserves only validated directory operation calls when explicitly enabled', () => {
+  it('preserves validated historical directory calls only on the explicit compatibility profile', () => {
     const visible = new Set(['orgx_read_plan', 'orgx_update_entity', 'orgx_check_delegation']);
     const result = sanitizeToolResultGuidance({ structuredContent: {
       suggested_next_calls: [
@@ -19,7 +20,7 @@ describe('tool result guidance', () => {
         { tool: 'orgx_delegate_work', args: { action: 'spawn', title: 'Hidden write', instructions: 'Do work' } },
         { tool: 'orgx_read_plan', args: { action: 'complete', plan_content: 'Cannot widen read' } },
       ],
-    } }, visible, true);
+    } }, visible, 'claude-directory-legacy');
     expect(result.structuredContent.suggested_next_calls).toEqual([
       { tool: 'orgx_read_plan', args: {} },
       { tool: 'orgx_update_entity', args: { type: 'task', id: 'task-1', fields: { title: 'Revised' } } },
@@ -32,22 +33,26 @@ describe('tool result guidance', () => {
     const result = sanitizeToolResultGuidance({ structuredContent: routing }, new Set(visible), true);
     expect(result.structuredContent.recommended_workflows).toEqual(routing.recommended_workflows);
     expect(result.structuredContent.recommended_workflows.plan_feature).toContain('orgx_start_plan');
-    expect(result.structuredContent.recommended_workflows.execute_task).toContain('orgx_delegate_work');
+    expect(result.structuredContent.recommended_workflows.execute_task).toContain('orgx_start_agent_task');
+    expect(result.structuredContent.recommended_workflows.preserve_work_receipt).toContain('orgx_validate_work_receipt');
   });
 
-  it('never advertises directory-only operations or widget-only calls in other profile guidance', () => {
+  it('shares current operation guidance across hosts and excludes app-only and profile-invisible calls', () => {
     const result = { structuredContent: {
       recommended_workflows: { continue: ['orgx_search', 'orgx_start_plan', 'resume_agent_run'] },
       next_call: { tool: 'orgx_read_plan', args: {} },
     } };
     const visible = new Set(['orgx_search', 'orgx_start_plan', 'orgx_read_plan', 'resume_agent_run']);
-    expect(sanitizeToolResultGuidance(result, visible).structuredContent).toEqual({
+    expect(sanitizeToolResultGuidance(result, visible, 'claude-plugin').structuredContent).toEqual({
       recommended_workflows: { continue: ['orgx_search'] }, next_call: null,
     });
     expect(sanitizeToolResultGuidance(result, visible, true).structuredContent).toEqual({
       recommended_workflows: { continue: ['orgx_search', 'orgx_start_plan'] },
       next_call: { tool: 'orgx_read_plan', args: {} },
     });
+    expect(sanitizeToolResultGuidance(result, visible).structuredContent).toEqual(
+      sanitizeToolResultGuidance(result, visible, true).structuredContent
+    );
   });
 
   it('preserves scored next actions while sanitizing their nested call breadcrumbs', () => {
@@ -104,7 +109,7 @@ describe('tool result guidance', () => {
           },
         },
       },
-      new Set(['orgx_search', 'orgx_recommend'])
+      new Set(['orgx_search', 'orgx_get_operator_brief'])
     );
 
     expect(result.structuredContent).toEqual({
@@ -113,10 +118,66 @@ describe('tool result guidance', () => {
       ],
       recommended_workflows: { continue: ['orgx_search'] },
       next_action: {
-        tool: 'orgx_recommend',
+        tool: 'orgx_get_operator_brief',
         label: 'Read the chronicle',
-        args: { mode: 'morning_brief', period: '30d' },
+        args: { period: '30d' },
       },
     });
+  });
+
+  it('validates new receipt, save, and status contracts without permitting hidden routing fields', () => {
+    const visible = new Set(['orgx_get_work_receipt', 'orgx_save_plan', 'orgx_get_operation_status']);
+    const id = '11111111-1111-4111-8111-111111111111';
+    const result = sanitizeToolResultGuidance({ structuredContent: { suggested_next_calls: [
+      { tool: 'orgx_get_work_receipt', args: { receipt_id: 'receipt-1' } },
+      { tool: 'orgx_get_work_receipt', args: { receipt_id: 'receipt-1', action: 'accept' } },
+      { tool: 'orgx_save_plan', args: { session_id: id, plan_content: '# Saved', expected_version: 3 } },
+      { tool: 'orgx_save_plan', args: { session_id: id, plan_content: '# Unsafe overwrite' } },
+      { tool: 'orgx_get_operation_status', args: { kind: 'run', id } },
+      { tool: 'orgx_get_operation_status', args: { kind: 'run' } },
+      { tool: 'orgx_get_operation_status', args: {} },
+    ] } }, visible);
+    expect(result.structuredContent.suggested_next_calls).toEqual([
+      { tool: 'orgx_get_work_receipt', args: { receipt_id: 'receipt-1' } },
+      { tool: 'orgx_save_plan', args: { session_id: id, plan_content: '# Saved', expected_version: 3 } },
+      { tool: 'orgx_get_operation_status', args: { kind: 'run', id } },
+    ]);
+  });
+
+  it('rewrites old router continuations into one advertised operation without human authority', () => {
+    const id = '11111111-1111-4111-8111-111111111111';
+    const cases = [
+      [{ tool: 'orgx_plan', args: { action: 'start', feature_name: 'Release', initial_plan: '# Plan' } }, { tool: 'orgx_start_plan', args: { title: 'Release', initial_plan: '# Plan' } }],
+      [{ tool: 'orgx_spawn', args: { action: 'spawn', task_id: id } }, { tool: 'orgx_start_agent_task', args: { task_id: id } }],
+      [{ tool: 'orgx_act', args: { action: 'launch', type: 'initiative', id } }, { tool: 'orgx_launch_initiative', args: { initiative_id: id } }],
+      [{ tool: 'manage_lifecycle', args: { action: 'pause', level: 'task', id } }, { tool: 'orgx_pause_work', args: { level: 'task', id } }],
+      [{ tool: 'orgx_write', args: { operation: 'create', type: 'task', title: 'Implement', workstream_id: id } }, { tool: 'orgx_create_task', args: { title: 'Implement', workstream_id: id } }],
+      [{ tool: 'approve_decision', args: { decision_id: id, note: 'Model judgment' } }, { tool: 'orgx_open_decision_review', args: { decision_id: id } }],
+    ];
+    for (const [raw, expected] of cases) {
+      expect(canonicalizeToolCallGuidance(raw, new Set(CLAUDE_DIRECTORY_SURFACE)), String(raw.tool)).toEqual(expected);
+    }
+  });
+
+  it('keeps valid legacy router calls only when the compatibility profile and grant expose them', () => {
+    const raw = { tool: 'orgx_spawn', args: { action: 'estimate', title: 'Route work' } };
+    expect(canonicalizeToolCallGuidance(raw, new Set(['orgx_spawn']), 'legacy')).toEqual(raw);
+    expect(canonicalizeToolCallGuidance(raw, new Set(['orgx_spawn']), 'v2')).toBeNull();
+    expect(canonicalizeToolCallGuidance(raw, new Set(['orgx_search']), 'legacy')).toBeNull();
+    expect(canonicalizeToolCallGuidance({ tool: 'orgx_read_plan', args: { action: 'complete' } }, new Set(['orgx_read_plan']))).toBeNull();
+  });
+
+  it('passes the actual profile through registration when an operation ID retains a legacy schema', async () => {
+    const current = { tool: 'orgx_start_plan', args: { title: 'Current plan' } };
+    const legacy = { tool: 'orgx_start_plan', args: { feature_name: 'Legacy plan' } };
+    async function invoke(profile: string) {
+      let handler!: () => Promise<{ structuredContent: { suggested_next_calls: unknown[] } }>;
+      const server = { registerTool: (_name: string, _config: unknown, callback: typeof handler) => { handler = callback; } };
+      installToolResultGuidanceWrapper(server as never, new Set(['orgx_start_plan']), undefined, undefined, false, profile);
+      server.registerTool('guidance-fixture', {}, async () => ({ structuredContent: { suggested_next_calls: [current, legacy] } }));
+      return (await handler()).structuredContent.suggested_next_calls;
+    }
+    expect(await invoke('chatgpt')).toEqual([current]);
+    expect(await invoke('claude-directory-legacy')).toEqual([legacy]);
   });
 });

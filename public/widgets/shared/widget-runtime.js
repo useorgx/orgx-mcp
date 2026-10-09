@@ -833,7 +833,7 @@
   // found"), network, host_unavailable, tool_failed; any other code is the
   // OrgX server's refusal, unchanged.
   var TOOL_ERROR_COPY = {
-    tool_unavailable: 'This chat\u2019s OrgX connection can\u2019t do this here. Open it in OrgX to continue.',
+    tool_unavailable: 'Refresh the OrgX app in ChatGPT settings to load the current tools, or open this work in OrgX.',
     network: 'Couldn\u2019t reach OrgX. Check the connection and try again.',
     host_unavailable: 'This view cannot act here. Open it in ChatGPT, Claude, or OrgX to continue.',
     tool_failed: 'That didn\u2019t go through. Try again, or open it in OrgX.',
@@ -915,6 +915,8 @@
     normalized.code = code;
     normalized.details = details;
     normalized.tool = toolName || (error && error.tool) || null;
+    if (error && error.status !== undefined) normalized.status = error.status;
+    if (error && error.statusCode !== undefined) normalized.statusCode = error.statusCode;
     if (error && error.result !== undefined) normalized.result = error.result;
     Object.defineProperty(normalized, 'orgxNormalized', { value: true });
     return normalized;
@@ -940,27 +942,25 @@
     return result;
   }
 
-  // Legacy names rewritten to listed tools; = WIDGET_RUNTIME_TOOL_ALIASES (CI).
-  var TOOL_ALIASES = {
-    get_pending_decisions: { tool: 'orgx_decide', args: { action: 'list_pending' } },
-  };
+  // Current widgets call the explicit operation catalog directly.
+  var TOOL_ALIASES = {};
 
   function resolveToolCall(name, args) {
-    var alias = Object.prototype.hasOwnProperty.call(TOOL_ALIASES, name) ? TOOL_ALIASES[name] : null;
-    if (!alias) return { name: name, args: args || {} };
-    return { name: alias.tool, args: Object.assign({}, args || {}, alias.args) };
+    return { name: name, args: args || {} };
   }
 
   // Result `_meta` is handed to the widget only, never to the model. Widgets
   // read approval tokens from it (see getToolResponseMetadata).
   var lastResultMeta = null;
   var receivedResultMeta = false;
+  var lastObservedToolSurface = null;
 
   function rememberResultMeta(result) {
     receivedResultMeta = true;
     // Authority belongs to this result. A result without metadata grants no authority.
     lastResultMeta = result && typeof result === 'object' && result._meta && typeof result._meta === 'object'
       ? result._meta : null;
+    lastObservedToolSurface = lastResultMeta && lastResultMeta['orgx/toolSurface'] || null;
   }
 
   function getToolResponseMetadata(key) {
@@ -972,6 +972,53 @@
     }
     if (!meta || typeof meta !== 'object') return null;
     return key ? (meta[key] === undefined ? null : meta[key]) : meta;
+  }
+
+  var WIDGET_TOOL_CHOICES = {
+    operation_status: ['orgx_get_operation_status'],
+    receipt_list: ['orgx_list_work_receipts'],
+    receipt_detail: ['orgx_get_work_receipt'],
+    workspace_select: ['orgx_widget_select_workspace'],
+  };
+
+  function getToolSurface() {
+    var surface = lastObservedToolSurface || getToolResponseMetadata('orgx/toolSurface');
+    if (!surface || surface.contract_version !== 'orgx-mcp-operations/1' ||
+        !Array.isArray(surface.tools) || !surface.widget_tools || typeof surface.widget_tools !== 'object') return null;
+    return surface;
+  }
+
+  // Metadata confirms that the connection imported the current operation.
+  // Server scopes and signed tokens still decide authority.
+  function getWidgetToolName(operation) {
+    var choices = WIDGET_TOOL_CHOICES[operation];
+    var surface = getToolSurface();
+    if (!choices || !surface) return null;
+    var name = surface.widget_tools[operation];
+    return choices.indexOf(name) !== -1 && surface.tools.indexOf(name) !== -1 ? name : null;
+  }
+
+  function callWidgetRead(name, args) {
+    var operation = ['operation_status', 'receipt_list', 'receipt_detail'].filter(function matches(key) {
+      return WIDGET_TOOL_CHOICES[key][0] === name;
+    })[0];
+    if (!operation) return Promise.reject(hostUnavailableError(name));
+    var surface = getToolSurface();
+    if (surface && !getWidgetToolName(operation)) return Promise.reject(hostUnavailableError(operation));
+    return callToolResultExact(name, args);
+  }
+
+  function callWidgetToolResult(name, args) {
+    if (name !== 'orgx_widget_select_workspace') return Promise.reject(hostUnavailableError(name));
+    var selected = getWidgetToolName('workspace_select');
+    if (!selected) {
+      var stale = new Error('Refresh the OrgX app in ChatGPT settings, then try again.');
+      stale.code = 'tool_unavailable';
+      return Promise.reject(stale);
+    }
+    var input = { workspace_id: args && args.workspace_id };
+    // Choose the known contract before dispatch. A failed write is never retried as another tool.
+    return callToolResultExact(selected, input);
   }
 
   var reportedSearchEvents = {};
@@ -1023,13 +1070,19 @@
   // widget-only result _meta (approval tokens) of a refresh it started.
   function callToolResult(name, args) {
     var call = resolveToolCall(name, args);
-    var normalize = function normalize(error) { throw normalizeToolError(error, name); };
+    return callToolResultExact(call.name, call.args, name);
+  }
+
+  function callToolResultExact(name, args, reportedName) {
+    var call = { name: name, args: args || {} };
+    var normalize = function normalize(error) { throw normalizeToolError(error, reportedName || name); };
     var activeProtocol = getProtocol();
     var finish = function finish(result) {
       rejectToolFailure(result);
       var meta = result && typeof result === 'object' && result._meta && typeof result._meta === 'object'
         ? result._meta
         : null;
+      if (meta && meta['orgx/toolSurface']) lastObservedToolSurface = meta['orgx/toolSurface'];
       return { data: extractStructuredWidgetData(result, true), meta: meta };
     };
     if (activeProtocol === 'chatgpt') {
@@ -1734,6 +1787,7 @@
     protocol = null;
     lastResultMeta = null;
     receivedResultMeta = false;
+    lastObservedToolSurface = null;
     hostLocale = null;
     hostTimeZone = null;
     formatterCache = {};
@@ -1748,6 +1802,8 @@
     McpAppsSDKBridge: McpAppsSDKBridge,
     callTool: callTool,
     callToolResult: callToolResult,
+    callWidgetRead: callWidgetRead,
+    callWidgetToolResult: callWidgetToolResult,
     detectProtocol: detectProtocol,
     applyTheme: applyTheme,
     extractStructuredWidgetData: extractStructuredWidgetData,
@@ -1761,6 +1817,8 @@
     TOOL_ALIASES: TOOL_ALIASES,
     getTheme: getTheme,
     getToolResponseMetadata: getToolResponseMetadata,
+    getToolSurface: getToolSurface,
+    getWidgetToolName: getWidgetToolName,
     getToolCallState: getToolCallState,
     getWidgetSessionId: getWidgetSessionId,
     initWidget: initWidget,

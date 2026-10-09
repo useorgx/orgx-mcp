@@ -5,6 +5,8 @@ import {
   BOOTSTRAP_RECOMMENDED_WORKFLOWS,
   BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE,
   CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS,
+  LEGACY_BOOTSTRAP_RECOMMENDED_WORKFLOWS,
+  LEGACY_CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS,
   V2_PUBLIC_TOOL_IDS,
   buildBootstrapToolRouting,
   getBootstrapRecommendedWorkflows,
@@ -13,7 +15,8 @@ import {
   resolveBootstrapSessionContext,
   resolveBootstrapSessionModel,
 } from '../src/bootstrapPayload';
-import { CLAUDE_DIRECTORY_SURFACE } from '../src/toolProfiles';
+import { CLAUDE_DIRECTORY_SURFACE, resolveProfileToolSet } from '../src/toolProfiles';
+import { isWidgetOnlyTool } from '../src/widgetToolContract';
 
 const DEPRECATED_BOOTSTRAP_GUIDANCE = [
   'workspace',
@@ -28,24 +31,25 @@ const DEPRECATED_BOOTSTRAP_GUIDANCE = [
   'get_task_with_context',
   'check_spawn_guard',
   'spawn_agent_task',
+  'orgx_plan', 'orgx_spawn', 'orgx_write', 'orgx_act', 'orgx_decide', 'manage_lifecycle',
 ];
 
 describe('bootstrap payload routing hints', () => {
   it('routes directory planning, execution, decisions, and proof through its visible operation contracts', () => {
-    const visibleTools = CLAUDE_DIRECTORY_SURFACE.filter((tool) => tool !== 'resume_agent_run');
+    const visibleTools = CLAUDE_DIRECTORY_SURFACE.filter((tool) => !isWidgetOnlyTool(tool));
     const routing = buildBootstrapToolRouting({
       requestedProfile: 'claude-directory', visibleTools,
-      widgetOnlyTools: ['resume_agent_run'],
+      widgetOnlyTools: CLAUDE_DIRECTORY_SURFACE.filter(isWidgetOnlyTool),
     });
     expect(routing.recommended_workflows).toEqual(CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS);
-    expect(routing.recommended_workflows.execute_task).toContain('orgx_delegate_work');
+    expect(routing.recommended_workflows.execute_task).toContain('orgx_start_agent_task');
     expect(routing.recommended_workflows.plan_feature).toContain('orgx_complete_plan');
     expect(routing.recommended_workflows.human_decision_review).toEqual([
       'orgx_list_pending_decisions', 'orgx_open_decision_review',
     ]);
     expect(Object.values(routing.recommended_workflows).flat()).not.toContain('resume_agent_run');
     for (const call of routing.safe_first_calls) {
-      expect(['orgx_search', 'orgx_recommend']).toContain(call.tool);
+      expect(['orgx_get_workspace_context', 'orgx_search', 'orgx_get_operator_brief']).toContain(call.tool);
     }
   });
 
@@ -58,13 +62,25 @@ describe('bootstrap payload routing hints', () => {
     for (const tool of Object.values(workflows).flat()) expect(visible.has(tool)).toBe(true);
   });
 
-  it('keeps canonical and plugin workflow guidance independent of directory aliases', () => {
+  it('shares current workflow stages across hosts while filtering every operation to the negotiated inventory', () => {
     const canonical = getBootstrapRecommendedWorkflows();
-    for (const profile of ['chatgpt', 'v2', 'claude-plugin', 'read-only']) {
+    for (const profile of ['chatgpt', 'v2', 'claude-directory', 'extended']) {
       expect(getBootstrapRecommendedWorkflows(null, profile)).toEqual(canonical);
     }
     expect(Object.values(canonical).flat()).not.toContain('orgx_delegate_work');
-    expect(Object.values(canonical).flat()).not.toContain('orgx_start_plan');
+    expect(Object.values(canonical).flat()).toContain('orgx_start_plan');
+    for (const tool of Object.values(getBootstrapRecommendedWorkflows(null, 'read-only')).flat()) {
+      expect(resolveProfileToolSet('read-only')?.has(tool), tool).toBe(true);
+    }
+    expect(getBootstrapRecommendedWorkflows(null, 'read-only').control_execution).toEqual(['orgx_get_agent_status', 'orgx_get_operation_status']);
+  });
+
+  it('preserves original router and historical directory workflows under explicit compatibility profiles', () => {
+    expect(getBootstrapRecommendedWorkflows(null, 'legacy')).toEqual(LEGACY_BOOTSTRAP_RECOMMENDED_WORKFLOWS);
+    expect(getBootstrapRecommendedWorkflows(null, 'claude-directory-legacy')).toEqual(LEGACY_CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS);
+    const plugin = getBootstrapRecommendedWorkflows(null, 'claude-plugin');
+    for (const tool of Object.values(plugin).flat()) expect(resolveProfileToolSet('claude-plugin')?.has(tool), tool).toBe(true);
+    expect(Object.values(plugin).flat()).not.toContain('orgx_spawn');
   });
 
   it('advertises only v2 tools in safe first calls', () => {
@@ -90,19 +106,20 @@ describe('bootstrap payload routing hints', () => {
 
   it('advertises the scaffold hierarchy workflow agents need for chaining', () => {
     expect(BOOTSTRAP_RECOMMENDED_WORKFLOWS.scaffold_hierarchy).toEqual([
-      'orgx_bootstrap',
-      'orgx_plan',
-      'orgx_write',
+      'orgx_get_workspace_context',
+      'orgx_start_plan',
+      'orgx_save_plan',
+      'orgx_validate_initiative_plan',
+      'orgx_create_initiative_hierarchy',
       'orgx_inspect',
-      'orgx_search',
-      'orgx_spawn',
-      'orgx_submit_receipt',
+      'orgx_validate_work_receipt',
+      'orgx_submit_work_receipt',
     ]);
   });
 
-  it('fails unknown profiles closed to canonical v2 guidance', () => {
+  it('fails unknown profiles closed to the current informational guidance', () => {
     expect(getBootstrapSafeFirstCalls('unknown-profile')).toEqual(
-      BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE.v2
+      BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE['read-only']
     );
   });
 

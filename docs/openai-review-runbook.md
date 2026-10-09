@@ -51,7 +51,8 @@ Before opening review, confirm all of the following in the portal:
 - a fresh **Scan Tools** result matches the deployed tool names,
   descriptions, schemas, security schemes, annotations, `_meta`, UI resources,
   CSP, and verified domains;
-- every one of the 28 `chatgpt` profile tools has a non-null, exact
+- all 48 `chatgpt` profile tools (41 model-visible operations and seven
+  app-only operations) have non-null, exact
   `outputSchema`, and every standard widget resource includes
   `_meta.ui.domain=https://mcp.useorgx.com` on that profile;
 - no other version of this MCP-backed plugin is already under review.
@@ -66,12 +67,13 @@ Current first-party references: [plugin submission](https://developers.openai.co
 [plugin guidelines](https://developers.openai.com/plugins/app-guidelines), and
 [ChatGPT/Codex testing](https://developers.openai.com/plugins/deploy/connect-chatgpt).
 
-Seven submitted tools are strictly read-only: `orgx_inspect`,
-`review_artifact`, `get_morning_brief`, `get_operator_chronicle`,
-`check_execution_readiness`, `orgx_command_status`, and `orgx_panel_snapshot`. Four informational tools use
-`readOnlyHint: false` because a successful mode records metered MCP allowance
-usage: mixed `orgx_search`, default `orgx_recommend`, `get_agent_status`, and
-`get_initiative_pulse`. All eleven are non-destructive and closed-world.
+Strictly read-only tools include `orgx_get_workspace_context`, `orgx_inspect`,
+`orgx_get_operator_brief`, `orgx_get_operation_status`,
+`orgx_check_execution_readiness`, the plan/decision/receipt reads, receipt and
+initiative-plan validation, and `orgx_panel_snapshot`. Four informational tools use
+`readOnlyHint: false` because a successful call records metered MCP allowance
+usage: `orgx_search`, `orgx_get_next_actions`, `orgx_get_agent_status`, and
+`orgx_get_initiative_progress`. These four are non-destructive and closed-world.
 
 `orgx_panel_snapshot` is app-only (`ui.visibility: ["app"]`) and backs the
 OrgX panel's global (sidebar) and thread entrypoints. It reads the session
@@ -82,26 +84,26 @@ the model never sees. The panel's Done tab also reads Work Ledger receipts
 (views `receipts` and `receipt`), and its "Your call" control records a
 person's call on a receipt's outcome through `orgx_widget_receipt_call`.
 
-`orgx_submit_receipt` renders the Receipt widget
-(`ui://widget/proof-receipt.html`): how far the proof got (recorded,
-evidence, verified, outcome), the attached evidence, what is missing before it
-counts as proof, and the next move. Its result carries `proof`, a bounded echo
-of the submitted input only (receipt type, status, anchor ids, artifact and
-agent type, stated outcome, model tier, and at most twelve evidence rows with
-http(s) URLs), so the widget never infers what was claimed. The widget is
-read-only; evidence and the anchored work open through the host, and only on
-the declared OrgX and GitHub origins.
+`orgx_submit_work_receipt` imports the complete portable receipt and renders
+the Receipt widget (`ui://widget/proof-receipt.html`). Its result separates
+`producer_claims`, `receipt_assessment`, and storage effects; import does not
+independently verify, accept, or complete work. `orgx_get_work_receipt` returns
+bounded evidence and identified criteria with totals, the producer's claims,
+and a separately recorded human judgment. The widget labels a producer's
+verification claim as "Agent reports verified". Human outcome review is a
+distinct protected action, and a missing token links to OrgX review. Evidence
+and anchored work open through the host on the declared OrgX and GitHub
+origins. A lighter list projection cannot establish that the full receipt
+contains no evidence.
 
-The consolidated `orgx_decide` and `approve_agent_work` routers also use
-`readOnlyHint: false`, `openWorldHint: false`, and `destructiveHint: false`.
-Their create/remember/list paths can write private state or record usage, while
-approve/reject only validate the request and return the human-session review
-URL; they never resolve a decision or resume execution from MCP. The legacy
-`approve_decision` and `reject_decision` tools remain compatibility entrypoints
-that open the human decision surface. Without a widget approval token, they
-return `direct_human_decision_action_required`; a model cannot settle a decision.
-Their display titles explicitly say they open approval or rejection review.
-Keep their action IDs and input schemas stable for already-approved clients.
+The submitted surface exposes each operation directly, including
+`orgx_capture_decision`, `orgx_list_pending_decisions`,
+`orgx_open_decision_review`, and `orgx_open_artifact_review`. Opening review
+does not settle a decision, approve an artifact, or resume execution. The submitted catalog contains no old action routers or ambiguously named
+approval entrypoints. Deploy core services and MCP, update client packages and
+instructions, then reconnect hosts to import the current tools and widgets.
+A stale connection must reconnect; no historical inventory or quiet period
+blocks the cutover. Protected human actions still require a signed capability.
 
 Widget resource metadata is profile-aware. The explicit `chatgpt` profile
 publishes the standard MCP Apps `ui.domain` for `https://mcp.useorgx.com`.
@@ -133,7 +135,7 @@ when any of these drift: the runtime `tools/list`, the bootstrap's
 
 Visibility has one rule (`src/toolVisibility.ts`): every listed tool is
 model-callable (`ui.visibility: ["model","app"]`, `openai/visibility:
-"public"`) except the four widget-only tools, which are hidden from the model
+"public"`) except the seven widget-only tools, which are hidden from the model
 and callable by widgets (`ui.visibility: ["app"]`, `openai/visibility:
 "private"`, `openai/widgetAccessible: true`):
 
@@ -142,16 +144,52 @@ and callable by widgets (`ui.visibility: ["app"]`, `openai/visibility:
 - `orgx_panel_snapshot` — the OrgX panel's read;
 - `orgx_widget_receipt_call` — records a person's call (done, partly, not
   done, blocked) on a Work Ledger receipt after they click in the panel;
+  before release, verify the compare-and-append RPC migration is applied and
+  two distinct tokens for the same receipt revision cannot both append;
+  the implemented migration is
+  `supabase/migrations/20261009130000_atomic_receipt_outcome_decisions.sql`
+  in OrgX core; real isolated PostgreSQL 17.11 and pinned post-commit-learning
+  checks pass, while production deployment has not occurred; judgment binds
+  the exact immutable receipt document as well as the latest ruling;
 - `resume_agent_run` — the agent-status widget's Resume button.
+- `orgx_widget_select_workspace` — selects the session workspace after an
+  explicit widget interaction;
+- `orgx_widget_approve_artifact` — records the person's approval against a
+  token-bound artifact revision;
+- `orgx_widget_request_artifact_changes` — records the person's change request
+  and note against a token-bound artifact revision.
 
-Every tool a widget calls is also `openai/widgetAccessible: true`. The
-widget runtime rewrites the legacy `get_pending_decisions` refresh to
-`orgx_decide action=list_pending`, which is on every profile that serves the
-decisions widget.
+Dedicated artifact reads bind version and precise update time and support
+draft/work artifacts by explicit ID. The **new signed work-artifact widget
+route only** uses the implemented atomic acceptance/state migration
+`supabase/migrations/20261009140000_atomic_widget_artifact_review.sql` in OrgX
+core. Source tests and real disposable native PostgreSQL 17.11 checks passed,
+including both opposite-click races, snapshot/authority refusal, rollback,
+and service-only grants. The migration has not been deployed. Generic/policy
+and draft review retain older multi-write semantics; draft acceptance/rework
+can occur before a paired-decision conflict. Do not describe those paths as
+covered by the new transaction.
 
-`orgx_decide` and `approve_agent_work` with `action=approve|reject` return a
-normal result, `status: "needs_human"` with `review_url`; the decision is
-never settled from MCP.
+Receipt outcomes bind the exact imported document UUID. A judgment on an older
+document does not accept a newer import with the same producer ID; legacy
+identifier-only judgments remain informational. Post-commit learning uses the
+immutable committed UUID; final focused core and scoped semantic/lint checks
+pass. The receipt SQL harness also passes import-versus-review races using
+the actual import RPC; its negative control removing document comparison
+fails as expected.
+
+Release in this order: receipt SQL migration, artifact SQL migration, OrgX
+core, MCP, authenticated health/discovery, host connector refresh, then portal
+package upload/version creation and Scan Tools. Retain actual receipts for
+each step; passing local suites and disposable SQL tests are not deployment.
+
+Every tool a widget calls is also `openai/widgetAccessible: true`. The widget
+runtime maps legacy read refreshes to explicit canonical reads, including
+`orgx_list_pending_decisions` and `orgx_get_operation_status`. It never maps a
+legacy model action into an app-only human transition. The 40 core workflows
+plus `orgx_record_plan_edit` are model-visible; seven private callbacks make
+the current 48-tool transition surface. Widget buttons require the actual
+committed status before announcing success.
 
 ChatGPT imports a connector's tool list when the connector is created or
 refreshed, and a widget call to a tool missing from that import fails inside
@@ -213,11 +251,11 @@ These prompts must match `chatgpt-app-submission.json`.
 
 | # | Prompt | Expected tool | Expected result |
 |---|--------|---------------|-----------------|
-| 1 | `Start OrgX and show my workspace context.` | `orgx_bootstrap` | Returns the connected workspace context, granted scopes, and safe next-step guidance without exposing access tokens, raw session IDs, or secrets. |
-| 2 | `Show me the pending decisions that need approval today.` | `orgx_decide` | Returns the three seeded pending decisions with title, status, urgency or priority, and enough context to approve or reject. |
+| 1 | `Start OrgX and show my workspace context.` | `orgx_get_workspace_context` | Returns authorized workspace context and work references without exposing access tokens, raw session IDs, or secrets. |
+| 2 | `Show me the pending decisions that need approval today.` | `orgx_list_pending_decisions` | Returns the three seeded pending decisions with title, status, urgency or priority, and review context for the person to make a choice. |
 | 3 | `What did we decide about Search Copilot readiness?` | `orgx_search` | Returns prior decision and memory context for Search Copilot Readiness with relevant artifact or entity references. |
-| 4 | `Give me the pulse for the Search Copilot Readiness initiative.` | `get_initiative_pulse` | Returns the seeded initiative health, blockers if present, milestone/task summary, and the initiative-pulse widget. |
-| 5 | `Show me what the OrgX agents are doing right now.` | `get_agent_status` | Returns the seeded agent roster or active and idle agent state, and renders the agent-status widget without changing workspace state. |
+| 4 | `Give me the pulse for the Search Copilot Readiness initiative.` | `orgx_get_initiative_progress` | Returns the seeded initiative health, blockers if present, milestone/task summary, and the initiative-pulse widget. |
+| 5 | `Show me what the OrgX agents are doing right now.` | `orgx_get_agent_status` | Returns the seeded agent roster or active and idle agent state, and renders the agent-status widget without changing work records. |
 
 ## Negative Test Cases
 
@@ -272,7 +310,7 @@ Allowed when needed for the user request:
 
 OrgX treats a missing or catch-all `outputSchema` on any submitted tool as a
 blocking current-release gate. Do not submit or resubmit until a fresh
-`tools/list` confirms that all 28 `chatgpt` profile tools publish exact,
+`tools/list` confirms that all 48 `chatgpt` profile tools publish exact,
 tool-specific schemas. A permissive catch-all `outputSchema` is not an
 acceptable substitute because it does not describe the object the tool actually
 returns.
@@ -296,9 +334,16 @@ In the OpenAI plugin portal release notes, summarize:
 - submitted test cases rewritten with exact expected tool names and deterministic seeded outputs,
 - enabled ChatGPT/Codex surface verification rerun against the dedicated
   review workspace,
-- all 26 submitted tools published exact `outputSchema` contracts and the
+- all 48 submitted tools published exact `outputSchema` contracts and the
   profile-aware widget domain/CSP contract passed a fresh portal scan,
 - output audit completed to remove unnecessary identifiers and secrets.
 
 Approval and publication are separate states. After approval, publish the
 approved version explicitly in the portal and retain that publication receipt.
+
+The local 1.1.0 candidate in `chatgpt-plugin/` is reconstructed from verified
+source lineage; the original published 1.0.0 manifest/ZIP has not been
+exported. Local package validation does not create a portal version or run
+Scan Tools. Record actual version, scan, review, and publication receipts
+separately. A generic provider hold such as "needs further review" requires
+the provider's review path after concrete source findings are fixed.

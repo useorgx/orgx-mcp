@@ -45,9 +45,9 @@ describe("OrgX compact widget redesign", () => {
     expect(html).not.toContain("skeleton.style.opacity = '0'");
   });
 
-  it("asks orgx_command_status for spawned runs instead of guessing", () => {
+  it("asks orgx_get_operation_status for spawned runs instead of guessing", () => {
     const html = widget("task-spawned");
-    expect(html).toContain("callTool('orgx_command_status', { kind: 'run', id: runId })");
+    expect(html).toContain("callTool('orgx_get_operation_status', { kind: 'run', id: runId })");
     expect(html).toContain("next_poll_after_ms");
     expect(html).toContain("UUID_RE.test(runId)");
   });

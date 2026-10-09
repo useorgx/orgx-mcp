@@ -12,7 +12,7 @@ const scriptSource =
     script.textContent?.includes('buildQualityAnatomy'),
   )?.textContent ?? '';
 
-function mount(query: string, callTool = vi.fn().mockResolvedValue({})) {
+function mount(query: string, callTool = vi.fn().mockImplementation((name: string) => Promise.resolve({ structuredContent: { ok: true, review_status: name === 'orgx_widget_approve_artifact' ? 'approved' : 'changes_requested' } })), protocol = 'standalone') {
   const dom = new JSDOM(widgetHtml, {
     url: `https://example.test/widgets/artifact-review.html?${query}`,
     runScripts: 'outside-only',
@@ -22,7 +22,7 @@ function mount(query: string, callTool = vi.fn().mockResolvedValue({})) {
   Object.defineProperty(dom.window, 'OrgXWidgetRuntime', {
     configurable: true,
     value: {
-      detectProtocol: () => 'standalone',
+      detectProtocol: () => protocol,
       reportSize: vi.fn(),
       callTool,
       openWidgetLink: vi.fn(),
@@ -47,7 +47,7 @@ describe('artifact review actions in the kit footer', () => {
     expect(changes.getAttribute('aria-controls')).toBe('artifact-change-composer');
   });
 
-  it('approves on a single click with the same orgx_act call, once', async () => {
+  it('approves on a single click with the explicit human review call, once', async () => {
     const { doc, callTool } = mount('state=ready');
     const footer = doc.getElementById('reviewFooter')!;
     expect(footer.getAttribute('detail')).toBe('recorded in OrgX');
@@ -58,9 +58,25 @@ describe('artifact review actions in the kit footer', () => {
     approve.click();
     await wait(20);
     expect(callTool).toHaveBeenCalledTimes(1);
-    expect(callTool).toHaveBeenCalledWith('orgx_act', { type: 'artifact', id: 'ART-DEMO', action: 'approve' });
+    expect(callTool).toHaveBeenCalledWith('orgx_widget_approve_artifact', { artifact_id: 'ART-DEMO', expected_version: 5 });
     await wait(400);
     expect(doc.body.textContent).toContain('Approval recorded');
+  });
+
+  it('offers the OrgX review link when the host result grants no human review token', () => {
+    const { doc, callTool } = mount('state=ready', vi.fn(), 'chatgpt');
+    expect(doc.querySelector('[data-action="approve"]')).toBeNull();
+    expect(doc.querySelector('[data-action="request-changes"]')).toBeNull();
+    expect(doc.querySelector('#handoffFooter')!.getAttribute('action-label')).toBe('Open in OrgX ↗');
+    expect(callTool).not.toHaveBeenCalled();
+  });
+
+  it('keeps the review open when the server only acknowledges the request', async () => {
+    const { doc } = mount('state=ready', vi.fn().mockResolvedValue({ structuredContent: { ok: true, review_status: 'pending' } }));
+    doc.querySelector<HTMLButtonElement>('[data-action="approve"]')!.click();
+    await wait(20);
+    expect(doc.getElementById('reviewFooter')!.getAttribute('state')).toBe('failed');
+    expect(doc.querySelector('.review-question')!.textContent).not.toBe('Approval recorded');
   });
 
   it('hands Approve back after a failure so one more click retries', async () => {
@@ -76,7 +92,7 @@ describe('artifact review actions in the kit footer', () => {
     expect(callTool).toHaveBeenCalledTimes(2);
   });
 
-  it('puts request changes first when approval is held, and files the same decision', async () => {
+  it('puts request changes first when approval is held, and records guidance with the review atomically', async () => {
     const { doc, callTool } = mount('state=urgent');
     const footer = doc.getElementById('reviewFooter')!;
     const changes = footer.querySelector<HTMLButtonElement>('[data-action="request-changes"]')!;
@@ -89,13 +105,10 @@ describe('artifact review actions in the kit footer', () => {
     input.value = 'Cite the source studies.';
     footer.querySelector<HTMLButtonElement>('[data-composer-submit]')!.click();
     await wait(20);
-    expect(callTool).toHaveBeenNthCalledWith(1, 'orgx_decide', expect.objectContaining({
-      action: 'create',
-      summary: 'Cite the source studies.',
-      entity_type: 'artifact',
-      entity_id: 'ART-DEMO',
-    }));
-    expect(callTool).toHaveBeenNthCalledWith(2, 'orgx_act', { type: 'artifact', id: 'ART-DEMO', action: 'request_changes' });
+    expect(callTool).toHaveBeenCalledTimes(1);
+    expect(callTool).toHaveBeenCalledWith('orgx_widget_request_artifact_changes', {
+      artifact_id: 'ART-DEMO', expected_version: 4, note: 'Cite the source studies.',
+    });
   });
 
   it('keeps the note and the controls when the change request fails', async () => {

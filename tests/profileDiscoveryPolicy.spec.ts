@@ -17,7 +17,7 @@ const INFORMATIONAL_WIDGET_BASELINE = [
 
 describe('profile auxiliary discovery policy', () => {
   it('limits the broader Anthropic directory to widgets its tools can serve', () => {
-    const policy = resolveProfileDiscoveryPolicy('claude-directory');
+    const policy = resolveProfileDiscoveryPolicy('claude-directory-legacy');
 
     expect(policy).toMatchObject({
       includeInitiativeResource: false,
@@ -38,6 +38,17 @@ describe('profile auxiliary discovery policy', () => {
     }
   });
 
+  it('serves all declared widgets for the shared operation directory without legacy prompts', () => {
+    expect(resolveProfileDiscoveryPolicy('claude-directory')).toEqual({
+      includeInitiativeResource: false, includeSkillResources: false, includePrompts: false, widgetUris: null,
+    });
+    for (const profile of ['chatgpt', 'v2', 'extended', undefined]) {
+      expect(resolveProfileDiscoveryPolicy(profile)).toEqual({
+        includeInitiativeResource: true, includeSkillResources: false, includePrompts: false, widgetUris: null,
+      });
+    }
+  });
+
   it.each(['read-only', 'unrecognized-profile'])(
     '%s preserves the six informational widgets independently of the directory',
     (profile) => {
@@ -52,7 +63,7 @@ describe('profile auxiliary discovery policy', () => {
   );
 
   it('preserves the established auxiliary surface for general profiles', () => {
-    for (const profileName of ['v2', 'full', 'claude-plugin', undefined]) {
+    for (const profileName of ['legacy', 'full', 'claude-plugin']) {
       expect(resolveProfileDiscoveryPolicy(profileName)).toEqual({
         includeInitiativeResource: true,
         includeSkillResources: true,
