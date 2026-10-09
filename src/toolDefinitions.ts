@@ -2506,6 +2506,21 @@ export function resolveLifecycleActionAlias(
 // TOOL RESULT SUMMARIZERS
 // =============================================================================
 
+function decisionReviewSummary(
+  data: Record<string, unknown>,
+  action: 'approve' | 'reject'
+): string {
+  const reviewUrl =
+    typeof data.review_url === 'string' && data.review_url.trim()
+      ? data.review_url.trim()
+      : null;
+  const verb = action === 'approve' ? 'approve it' : 'send it back with your reason';
+  const where = reviewUrl
+    ? `in the decisions widget or at ${reviewUrl}`
+    : 'in the decisions widget or on its page in OrgX';
+  return `Not settled yet. Open the decision ${where} to ${verb}; OrgX records it only when you click.`;
+}
+
 /**
  * Generate human-readable summaries for ChatGPT tool results.
  */
@@ -2523,11 +2538,14 @@ export function summarizeChatGPTToolResult(
           } pending.`;
     }
 
+    // A model can never settle a decision (the server refuses it), so these
+    // summaries must not claim an approval or rejection happened. They point
+    // the person to where they decide.
     case 'approve_decision':
-      return 'Decision approved. The assigned agent can continue, and you can track follow-through in agent status or the live view.';
+      return decisionReviewSummary(data, 'approve');
 
     case 'reject_decision':
-      return 'Decision rejected with guidance. The assigned agent will revise their approach before attempting the work again.';
+      return decisionReviewSummary(data, 'reject');
 
     case 'get_agent_status': {
       const agents = Array.isArray(data.agents) ? data.agents : [];

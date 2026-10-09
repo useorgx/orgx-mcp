@@ -387,6 +387,7 @@ import {
   summarizeStreamToolResult,
   expandConsolidatedTool,
 } from './toolDefinitions';
+import { buildToolExecuteBody } from './toolExecuteBody';
 import { VERIFIABLE_COMPLETION_ENTITY_TYPES } from './shared/entity';
 import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 import {
@@ -2553,11 +2554,12 @@ export class OrgXMcp extends McpAgent<
     // Use resolved userId (props > session auth)
     return {
       endpoint: '/api/tools/execute',
-      body: {
-        tool_id: toolId, // No chatgpt. prefix needed
+      body: buildToolExecuteBody({
+        toolId,
         args,
-        user_id: this.props?.userId ?? this.sessionAuth.userId,
-      },
+        userId: this.props?.userId ?? this.sessionAuth.userId,
+        clientName: this.sessionContext.clientName,
+      }),
     };
   }
 

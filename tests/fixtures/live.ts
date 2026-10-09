@@ -16,6 +16,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { afterEach } from 'vitest';
+
 export const REPO_ROOT = join(__dirname, '..', '..');
 export const WIDGETS_DIR = join(REPO_ROOT, 'public', 'widgets');
 export const SHARED_DIR = join(WIDGETS_DIR, 'shared');
@@ -163,7 +165,43 @@ export interface MountOptions {
  * instead of the shipped path. A fake `window.openai` puts the runtime on its
  * ChatGPT branch, the one that renders from a payload synchronously.
  */
+// ── Timers a mounted widget leaves behind ────────────────────────────────────
+//
+// Widgets schedule work (polls, debounced renders, retries) with the global
+// timers. A timer still pending when the test file ends fires after the jsdom
+// environment is torn down and throws `window is not defined`, failing an
+// otherwise green run. Track every timer created while a widget is mounted and
+// clear them after each test.
+const widgetTimers = new Set<ReturnType<typeof setTimeout>>();
+let trackingTimers = false;
+
+function trackWidgetTimers(): void {
+  if (trackingTimers) return;
+  trackingTimers = true;
+  const realSetTimeout = globalThis.setTimeout;
+  const realSetInterval = globalThis.setInterval;
+  globalThis.setTimeout = ((...args: Parameters<typeof setTimeout>) => {
+    const id = realSetTimeout(...args);
+    widgetTimers.add(id);
+    return id;
+  }) as typeof setTimeout;
+  globalThis.setInterval = ((...args: Parameters<typeof setInterval>) => {
+    const id = realSetInterval(...args);
+    widgetTimers.add(id);
+    return id;
+  }) as typeof setInterval;
+}
+
+afterEach(() => {
+  for (const id of widgetTimers) {
+    clearTimeout(id);
+    clearInterval(id);
+  }
+  widgetTimers.clear();
+});
+
 export function mountWidget(name: string, options: MountOptions = {}): void {
+  trackWidgetTimers();
   const html = readWidgetHtml(name);
   const body = html.match(/<body[^>]*>([\s\S]*)<\/body>/)?.[1] ?? '';
   document.documentElement.innerHTML = `<head></head><body>${body.replace(
