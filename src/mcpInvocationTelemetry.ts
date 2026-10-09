@@ -11,6 +11,7 @@ export type ScaffoldStageName =
   | 'agent_assignment'
   | 'billing_consume'
   | 'credential_check'
+  | 'expectations'
   | 'launch'
   | 'stream_snapshot'
   | 'fallback_dispatch'
