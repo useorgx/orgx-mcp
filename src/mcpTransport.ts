@@ -1,6 +1,5 @@
 import {
-  DEPRECATION_SUNSET_AT_ISO,
-  DEPRECATION_WINDOW_DAYS,
+  MCP_COMPATIBILITY_RETIREMENT_POLICY,
   resolveDeprecatedToolCall,
   withDeprecatedToolWarningHeaders,
   type DeprecatedToolWarning,
@@ -21,6 +20,10 @@ import {
   type McpHandshakeClientInfo,
 } from './sessionClientInfo';
 import { resolveToolProfile } from './toolProfiles';
+import { attachRequestToolProfile } from './requestToolProfile';
+import { resolveRequestSessionToolContract } from './requestSessionToolContract';
+import { resolveOperationCompatibilityCall } from './operationCompatibility';
+import { boundedMcpCompatibilityToolId, buildMcpCompatibilityMetadata } from './mcpCompatibility';
 import {
   validateMcpRequestOrigin,
   type McpOriginValidationEnv,
@@ -68,6 +71,9 @@ type McpToolCallTelemetry = {
   toolName: string;
   args: Record<string, unknown>;
   context?: unknown;
+  requestedToolName?: string;
+  normalizedToolName?: string;
+  legacyAction?: unknown;
 };
 
 type McpJourneyTimings = {
@@ -93,6 +99,9 @@ type McpResponseObservation = McpLogicalResult & {
   responseSizeSource: 'body_clone' | 'content_length' | 'unavailable';
   responseReadError: boolean;
   responseParseTruncated: boolean;
+  /** Bounded response records stay local; they are never telemetry properties. */
+  logicalResponseRecords?: unknown[];
+  logicalResultObserved?: boolean;
 };
 
 const MAX_TELEMETRY_RESPONSE_PARSE_BYTES = 2 * 1024 * 1024;
@@ -132,8 +141,8 @@ function normalizeToolName(name: string): string {
     if (pattern.test(name)) {
       const normalized = name.replace(pattern, '');
       console.info('[mcp] Normalized tool name', {
-        original: name,
-        normalized,
+        original: boundedMcpCompatibilityToolId(name, true),
+        normalized: boundedMcpCompatibilityToolId(normalized),
       });
       return normalized;
     }
@@ -146,10 +155,11 @@ function normalizeToolName(name: string): string {
  * Normalize MCP request body if it's a tools/call request.
  * This ensures tool names work regardless of namespace prefixes.
  */
-async function normalizeRequestBody(request: Request): Promise<{
+async function normalizeRequestBody(request: Request, profile: string, selectedToolIds?: readonly string[] | null, allowMappings = true): Promise<{
   request: Request;
-  warning?: DeprecatedToolWarning;
-  toolCall?: McpToolCallTelemetry;
+  warnings?: DeprecatedToolWarning[];
+  toolCalls?: McpToolCallTelemetry[];
+  isBatch?: boolean;
   initializeClientInfo?: McpHandshakeClientInfo;
 }> {
   // Only process POST requests with JSON body
@@ -159,62 +169,62 @@ async function normalizeRequestBody(request: Request): Promise<{
   if (!contentType.includes('application/json')) return { request };
 
   try {
-    const body = (await request.clone().json()) as {
-      id?: string | number;
-      method?: string;
-      params?: { name?: string; arguments?: Record<string, unknown> };
-    };
+    const body: unknown = await request.clone().json();
+    const isBatch = Array.isArray(body);
 
     // The initialize handshake is the one place MCP clients self-identify.
     // Surface clientInfo so the transport can persist it per session.
-    const initializeClientInfo = parseInitializeClientInfo(body) ?? undefined;
+    const initializeClientInfo = isBatch ? undefined : parseInitializeClientInfo(body) ?? undefined;
     if (initializeClientInfo) {
       return { request, initializeClientInfo };
     }
 
-    // Only normalize tools/call requests
-    if (body.method !== 'tools/call' || !body.params?.name) {
-      return { request };
-    }
-
-    const originalName = body.params.name;
-    const normalizedName = normalizeToolName(originalName);
-    const originalArgs =
-      body.params.arguments && typeof body.params.arguments === 'object'
-        ? body.params.arguments
-        : {};
-    const { resolvedToolId, resolvedArgs, warning } = resolveDeprecatedToolCall(
-      normalizedName,
-      originalArgs
-    );
-    const toolCall = buildMcpToolCallTelemetry(
-      body.id,
-      resolvedToolId,
-      resolvedArgs
-    );
-
-    // If nothing changed and there is no warning, return the original request.
-    if (
-      resolvedToolId === originalName &&
-      resolvedArgs === originalArgs &&
-      !warning
-    ) {
-      return { request, toolCall };
-    }
-
-    // Create new request with normalized tool name
-    const newBody = {
-      ...body,
-      params: { ...body.params, name: resolvedToolId, arguments: resolvedArgs },
-    };
+    const toolCalls: McpToolCallTelemetry[] = [];
+    const warnings: DeprecatedToolWarning[] = [];
+    let changed = false;
+    const profileVisible = resolveToolProfile(profile).tools;
+    const visible = selectedToolIds == null ? profileVisible
+      : new Set(selectedToolIds.filter((id) => !profileVisible || profileVisible.has(id)));
+    const normalizedMessages = (isBatch ? body : [body]).map((message) => {
+      const record = asRecord(message), params = asRecord(record.params);
+      if (record.method !== 'tools/call' || typeof params.name !== 'string' || !params.name) return message;
+      const originalName = params.name;
+      const normalizedName = normalizeToolName(originalName);
+      const originalArgs = asRecord(params.arguments);
+      const argsValid = params.arguments === undefined ||
+        (params.arguments !== null && typeof params.arguments === 'object' && !Array.isArray(params.arguments));
+      // Invalid argument shapes must remain invalid. Never turn them into a valid mutation.
+      const operation = allowMappings && argsValid ? resolveOperationCompatibilityCall(normalizedName, originalArgs, profile, selectedToolIds) : null;
+      const deprecated = allowMappings && argsValid ? resolveDeprecatedToolCall(normalizedName, originalArgs) : null;
+      const routeDeprecated = !!deprecated && (!visible || visible.has(deprecated.resolvedToolId));
+      const resolvedToolId = !allowMappings ? originalName : operation?.toolId ?? (routeDeprecated ? deprecated!.resolvedToolId : normalizedName);
+      const resolvedArgs = operation?.args ?? (routeDeprecated ? deprecated!.resolvedArgs : originalArgs);
+      const warning: DeprecatedToolWarning | undefined = operation ? {
+        deprecatedToolId: normalizedName, replacementToolId: operation.toolId, routed: true,
+      } : deprecated?.warning ? { ...deprecated.warning, routed: routeDeprecated && deprecated.warning.routed } : undefined;
+      if (warning) warnings.push(warning);
+      const id = typeof record.id === 'string' || typeof record.id === 'number' ? record.id : undefined;
+      const toolCall = buildMcpToolCallTelemetry(id, resolvedToolId, resolvedArgs);
+      toolCall.requestedToolName = originalName;
+      toolCall.normalizedToolName = normalizedName;
+      toolCall.legacyAction = originalArgs.action ?? originalArgs.operation;
+      toolCalls.push(toolCall);
+      if (resolvedToolId === originalName && resolvedArgs === originalArgs) return message;
+      changed = true;
+      return { ...record, params: { ...params, name: resolvedToolId,
+        ...(argsValid ? { arguments: resolvedArgs } : {}),
+      } };
+    });
+    if (!changed) return { request, warnings, toolCalls, isBatch };
+    const headers = new Headers(request.headers);
+    headers.delete('content-length');
     return {
       request: new Request(request.url, {
         method: request.method,
-        headers: request.headers,
-        body: JSON.stringify(newBody),
+        headers,
+        body: JSON.stringify(isBatch ? normalizedMessages : normalizedMessages[0]),
       }),
-      warning,
-      toolCall,
+      warnings, toolCalls, isBatch,
     };
   } catch {
     // If parsing fails, return original request
@@ -487,17 +497,17 @@ function logicalResultFromRecord(value: unknown): McpLogicalResult {
   };
 }
 
-function parseLogicalMcpResult(text: string): McpLogicalResult {
+function parseLogicalMcpResponseRecords(text: string): unknown[] {
   const candidates: unknown[] = [];
   const trimmed = text.trim();
-  if (!trimmed) return { isError: false };
+  if (!trimmed) return [];
 
   try {
     candidates.push(JSON.parse(trimmed));
   } catch {
-    for (const line of trimmed.split(/\r?\n/)) {
-      if (!line.startsWith('data:')) continue;
-      const data = line.slice(5).trim();
+    for (const event of trimmed.split(/\r?\n\r?\n/)) {
+      const data = event.split(/\r?\n/).filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).trim()).join('\n');
       if (!data || data === '[DONE]') continue;
       try {
         candidates.push(JSON.parse(data));
@@ -506,7 +516,10 @@ function parseLogicalMcpResult(text: string): McpLogicalResult {
       }
     }
   }
+  return candidates.flatMap((candidate) => Array.isArray(candidate) ? candidate : [candidate]);
+}
 
+function parseLogicalMcpResult(candidates: unknown[]): McpLogicalResult {
   for (const candidate of candidates) {
     const logical = logicalResultFromRecord(candidate);
     if (logical.isError) return logical;
@@ -537,6 +550,7 @@ async function observeMcpResponse(
       responseSizeSource: headerBytes === undefined ? 'unavailable' : 'content_length',
       responseReadError: true,
       responseParseTruncated: false,
+      logicalResultObserved: false,
     };
   }
 
@@ -548,6 +562,7 @@ async function observeMcpResponse(
       responseSizeSource: headerBytes === undefined ? 'body_clone' : 'content_length',
       responseReadError: false,
       responseParseTruncated: false,
+      logicalResultObserved: false,
     };
   }
 
@@ -607,7 +622,8 @@ async function observeMcpResponse(
     parseBuffer.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  const logical = parseLogicalMcpResult(new TextDecoder().decode(parseBuffer));
+  const logicalResponseRecords = parseLogicalMcpResponseRecords(new TextDecoder().decode(parseBuffer));
+  const logical = parseLogicalMcpResult(logicalResponseRecords);
 
   return {
     ...logical,
@@ -622,7 +638,24 @@ async function observeMcpResponse(
         : 'body_clone',
     responseReadError,
     responseParseTruncated: responseBytes > capturedBytes,
+    logicalResponseRecords,
+    logicalResultObserved: logicalResponseRecords.length > 0,
   };
+}
+
+function observationForBatchCall(observation: McpResponseObservation, toolCall: McpToolCallTelemetry, responseStatus: number): McpResponseObservation {
+  const { isError: _isError, errorCode: _errorCode, errorKind: _errorKind, ...timing } = observation;
+  const records = observation.logicalResponseRecords ?? [];
+  const matched = toolCall.jsonrpcId === undefined ? undefined : records.find((record) => {
+    const id = asRecord(record).id;
+    return typeof id === typeof toolCall.jsonrpcId && id === toolCall.jsonrpcId;
+  });
+  const globalError = records.find((record) => asRecord(record).id === null && Object.keys(asRecord(asRecord(record).error)).length > 0);
+  const logical = matched !== undefined ? logicalResultFromRecord(matched)
+    : globalError !== undefined ? logicalResultFromRecord(globalError)
+      : responseStatus === 202 || responseStatus === 204 ? { isError: false }
+      : { isError: true, errorCode: 'mcp_response_missing', errorKind: 'mcp_response_missing' };
+  return { ...timing, ...logical, logicalResultObserved: matched !== undefined || globalError !== undefined };
 }
 
 function normalizeTelemetrySourceClient(
@@ -659,11 +692,12 @@ async function captureMcpToolCallVisibility<Env>(
   response: Response,
   journey: McpJourneyTimings,
   errorCode?: string | null,
-  sessionId?: string | null
+  sessionId?: string | null,
+  observedResponse?: McpResponseObservation
 ): Promise<void> {
   if (!toolCall) return;
 
-  const observation = await observeMcpResponse(
+  const observation = observedResponse ?? await observeMcpResponse(
     response,
     journey.requestStartedAt
   );
@@ -725,6 +759,14 @@ async function captureMcpToolCallVisibility<Env>(
     'x-orgx-rate-limit-strategy'
   );
   const transportMetadata = {
+    ...buildMcpCompatibilityMetadata({
+      requestedToolId: toolCall.requestedToolName ?? toolCall.toolName,
+      normalizedToolId: toolCall.normalizedToolName ?? toolCall.toolName,
+      executedToolId: toolCall.toolName,
+      profile: journey.profile ?? 'v2', legacyAction: toolCall.legacyAction,
+      contractVersion: pickString(asRecord(ctx.props).operationContractVersion),
+      outcome: status === 'success' && !observation.logicalResultObserved ? 'attempt' : status,
+    }),
     ...metadata,
     request_uuid: crypto.randomUUID(),
     http_status: response.status,
@@ -744,8 +786,8 @@ async function captureMcpToolCallVisibility<Env>(
     response_read_error: observation.responseReadError,
     response_parse_truncated: observation.responseParseTruncated,
     mcp_logical_error: observation.isError,
+    mcp_response_observed: observation.logicalResultObserved ?? false,
     error_kind: resolvedErrorKind,
-    profile: journey.profile,
     session_present: journey.sessionPresent,
     response_measurement_point: 'worker_response_clone',
     response_size_header_bytes:
@@ -822,6 +864,21 @@ async function captureMcpToolCallVisibility<Env>(
   await Promise.allSettled(deliveries);
 }
 
+async function captureMcpToolCallsVisibility<Env>(
+  env: Env, ctx: ExecutionContextWithProps<unknown>, auth: AuthResult,
+  toolCalls: McpToolCallTelemetry[], response: Response, journey: McpJourneyTimings,
+  isBatch: boolean, errorCode?: string | null, sessionId?: string | null,
+): Promise<void> {
+  if (!toolCalls.length) return;
+  // Read one bounded clone per response, then correlate each result by the original
+  // JSON-RPC id. One failing sibling must not turn successful siblings into errors.
+  const observation = await observeMcpResponse(response, journey.requestStartedAt);
+  await Promise.allSettled(toolCalls.map((toolCall) => captureMcpToolCallVisibility(
+    env, ctx, auth, toolCall, response, journey, errorCode, sessionId,
+    isBatch ? observationForBatchCall(observation, toolCall, response.status) : observation,
+  )));
+}
+
 function captureDeprecatedToolTelemetry<Env>(
   env: Env,
   ctx: ExecutionContextWithProps<unknown>,
@@ -843,8 +900,7 @@ function captureDeprecatedToolTelemetry<Env>(
       routed: warning.routed,
       auth_scope: auth.scope,
       has_user_id: Boolean(auth.userId),
-      deprecation_sunset_at: DEPRECATION_SUNSET_AT_ISO,
-      deprecation_window_days: DEPRECATION_WINDOW_DAYS,
+      deprecation_retirement_policy: MCP_COMPATIBILITY_RETIREMENT_POLICY,
     },
   });
 }
@@ -897,11 +953,12 @@ export async function buildMcpTransportExceptionResponse(
         code: 'mcp_transport_exception',
         error_kind: errorKind,
         stage,
-        retryable: true,
+        retryable: false,
         health_check_url: healthCheckUrl.toString(),
         next_steps: [
-          'Retry the tool call once.',
-          'If it repeats, reconnect the OrgX MCP OAuth session.',
+          'Check the existing operation status or OrgX record before retrying; the write may already have committed.',
+          'Reuse its supported idempotency key after reconciliation. Do not submit a second mutation under another tool name.',
+          'Reconnect the OrgX MCP OAuth session if the transport remains unavailable.',
           'Check /healthz?check=upstream to separate upstream health from an authenticated-session failure.',
         ],
       },
@@ -914,7 +971,7 @@ export async function buildMcpTransportExceptionResponse(
       'x-orgx-mcp-error-code': 'mcp_transport_exception',
       'x-orgx-mcp-error-kind': errorKind,
       'x-orgx-mcp-error-stage': stage,
-      'x-orgx-retryable': 'true',
+      'x-orgx-retryable': 'false',
     },
   });
 }
@@ -933,10 +990,10 @@ export async function handleMcpRequest<Env, Props>(
   if (invalidOrigin) return invalidOrigin;
 
   const requestStartedAt = Date.now();
-  const connectionProfile = resolveToolProfile(
-    new URL(request.url).searchParams.get('profile') ??
-      pickString(asRecord(ctx.props).profile)
-  ).name;
+  // Apply the same query/header/persisted-profile policy as the OAuth wrapper.
+  // In particular, a raw full selector cannot undo its external-access clamp.
+  attachRequestToolProfile(request, ctx);
+  let connectionProfile = String(asRecord(ctx.props).profile);
   if (request.method === 'OPTIONS') {
     return withCors(
       new Response(null, {
@@ -945,7 +1002,7 @@ export async function handleMcpRequest<Env, Props>(
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET,POST,OPTIONS,DELETE',
           'Access-Control-Allow-Headers':
-            'Content-Type, Authorization, X-Access-Token, Mcp-Session-Id',
+            'Content-Type, Authorization, X-Access-Token, Mcp-Session-Id, X-Orgx-Tool-Profile',
         },
       }),
       request
@@ -954,7 +1011,19 @@ export async function handleMcpRequest<Env, Props>(
   const authStartedAt = Date.now();
   const auth = await authenticateRequest(request, env);
   const authMs = Math.max(0, Date.now() - authStartedAt);
-  if ('response' in auth && auth.response) return withCors(auth.response, request);
+  if ('response' in auth && auth.response) {
+    if (auth.userId) {
+      const rejected = await normalizeRequestBody(request, connectionProfile, undefined, false);
+      const rejectedCtx = { ...ctx, props: { ...asRecord(ctx.props), userId: auth.userId, operationContractVersion: 'unknown' } };
+      ctx.waitUntil?.(captureMcpToolCallsVisibility(env, rejectedCtx as ExecutionContextWithProps<unknown>, auth,
+        rejected.toolCalls ?? [], auth.response, { requestStartedAt, authMs, normalizationMs: 0, handlerMs: 0,
+          responseHeadersMs: Math.max(0, Date.now() - requestStartedAt), profile: connectionProfile,
+          sessionPresent: Boolean(request.headers.get('mcp-session-id') || new URL(request.url).searchParams.get('sessionId')) },
+        rejected.isBatch ?? false, 'authentication_required',
+        request.headers.get('mcp-session-id') || new URL(request.url).searchParams.get('sessionId')));
+    }
+    return withCors(auth.response, request);
+  }
   const existingProps = asRecord(ctx.props);
   const orgxUserId = resolveAuthenticatedOrgxUserId(auth, existingProps);
   const nextProps: Record<string, unknown> = {
@@ -966,27 +1035,52 @@ export async function handleMcpRequest<Env, Props>(
   };
   if (orgxUserId) nextProps.orgxUserId = orgxUserId;
   else delete nextProps.orgxUserId;
+  // Reject stale sessions before dispatch; fresh sessions import the current catalog.
+  try {
+    const binding = await resolveRequestSessionToolContract(request, env as { MCP_OBJECT?: unknown }, nextProps);
+    if (binding) {
+      connectionProfile = binding.profile;
+      nextProps.profile = binding.profile;
+      nextProps.operationContractVersion = binding.contract_version;
+    }
+  } catch (error) {
+    const identityConflict = error instanceof Error && error.name === 'McpSessionIdentityConflictError';
+    const response = Response.json({
+      jsonrpc: '2.0', id: null,
+      error: { code: -32001, message: identityConflict
+        ? 'This MCP session belongs to another authenticated identity. Reconnect without a session ID.'
+        : 'Unable to use this MCP session contract. Reconnect without a session ID.' },
+    }, { status: identityConflict ? 403 : 409 });
+    const rejected = await normalizeRequestBody(request, connectionProfile, undefined, false);
+    const rejectedCtx = { ...ctx, props: { ...nextProps, operationContractVersion: 'unknown' } };
+    ctx.waitUntil?.(captureMcpToolCallsVisibility(env, rejectedCtx as ExecutionContextWithProps<unknown>, auth,
+      rejected.toolCalls ?? [], response, { requestStartedAt, authMs, normalizationMs: 0, handlerMs: 0,
+        responseHeadersMs: Math.max(0, Date.now() - requestStartedAt), profile: connectionProfile,
+        sessionPresent: true }, rejected.isBatch ?? false, identityConflict ? 'permission_denied' : 'invalid_request',
+      request.headers.get('mcp-session-id') || new URL(request.url).searchParams.get('sessionId')));
+    return withCors(response, request);
+  }
   (ctx as ExecutionContextWithProps<Props>).props = nextProps as unknown as Props;
 
   // Normalize tool names in the request body (strips server prefixes like "Orgx:")
   const normalizationStartedAt = Date.now();
-  const { request: normalizedRequest, warning, toolCall, initializeClientInfo } =
-    await normalizeRequestBody(request);
+  const { request: normalizedRequest, warnings = [], toolCalls = [], isBatch = false, initializeClientInfo } =
+    await normalizeRequestBody(request, connectionProfile);
   const normalizationMs = Math.max(0, Date.now() - normalizationStartedAt);
-  captureDeprecatedToolTelemetry(env, ctx as ExecutionContextWithProps<unknown>, auth, warning);
+  for (const warning of warnings) captureDeprecatedToolTelemetry(env, ctx as ExecutionContextWithProps<unknown>, auth, warning);
 
-  const requestSessionId = request.headers.get('mcp-session-id')?.trim() || null;
+  const requestSessionId = request.headers.get('mcp-session-id')?.trim() || new URL(request.url).searchParams.get('sessionId')?.trim() || null;
   const startedAt = Date.now();
   let response: Response;
   try {
     response = await handler.fetch(normalizedRequest, env, ctx);
   } catch (error) {
     const handlerMs = Math.max(0, Date.now() - startedAt);
-    ctx.waitUntil?.(captureMcpToolCallVisibility(
+    ctx.waitUntil?.(captureMcpToolCallsVisibility(
       env,
       ctx as ExecutionContextWithProps<unknown>,
       auth,
-      toolCall,
+      toolCalls,
       new Response(null, { status: 500 }),
       {
         requestStartedAt,
@@ -997,6 +1091,7 @@ export async function handleMcpRequest<Env, Props>(
         profile: connectionProfile,
         sessionPresent: Boolean(requestSessionId),
       },
+      isBatch,
       classifyMcpToolError(error),
       requestSessionId
     ));
@@ -1017,11 +1112,11 @@ export async function handleMcpRequest<Env, Props>(
     }
   }
 
-  ctx.waitUntil?.(captureMcpToolCallVisibility(
+  ctx.waitUntil?.(captureMcpToolCallsVisibility(
     env,
     ctx as ExecutionContextWithProps<unknown>,
     auth,
-    toolCall,
+    toolCalls,
     response,
     {
       requestStartedAt,
@@ -1032,11 +1127,12 @@ export async function handleMcpRequest<Env, Props>(
       profile: connectionProfile,
       sessionPresent: Boolean(requestSessionId),
     },
+    isBatch,
     undefined,
     requestSessionId
   ));
   return withCors(
-    withDeprecatedToolWarningHeaders(response, warning),
+    withDeprecatedToolWarningHeaders(response, warnings),
     request
   );
 }
@@ -1135,7 +1231,7 @@ export async function handleMcpWebSocket<Env, Props>(
     id:
       typeof sessionHeader === 'string' && sessionHeader.trim().length > 0
         ? sessionHeader.trim()
-        : null,
+        : new URL(request.url).searchParams.get('sessionId')?.trim() || null,
   };
   const socketState = { closed: false };
 
@@ -1153,6 +1249,7 @@ export async function handleMcpWebSocket<Env, Props>(
         env,
         ctxWithProps,
         handler,
+        auth,
         session,
         server,
         socketState
@@ -1207,7 +1304,7 @@ function withCors(response: Response, request?: Request) {
   headers.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
   headers.set(
     'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Access-Token, Mcp-Session-Id'
+    'Content-Type, Authorization, X-Access-Token, Mcp-Session-Id, X-Orgx-Tool-Profile'
   );
   return new Response(response.body, {
     status: response.status,
@@ -1229,7 +1326,7 @@ export function withCorsAndHeaders(
   headers.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE');
   headers.set(
     'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Access-Token, Mcp-Session-Id'
+    'Content-Type, Authorization, X-Access-Token, Mcp-Session-Id, X-Orgx-Tool-Profile'
   );
 
   // Add extra headers (rate limit info)
@@ -1256,13 +1353,13 @@ async function forwardMcpMessage<Env, Props>(
   env: Env,
   ctx: ExecutionContextWithProps<Props>,
   handler: AgentHandler<Env, Props>,
+  auth: AuthResult,
   session: { id: string | null },
   ws: WebSocket,
   socketState: { closed: boolean }
 ) {
-  let parsedBody: { method?: string; params?: { name?: string } };
   try {
-    parsedBody = JSON.parse(body);
+    JSON.parse(body);
   } catch {
     sendWebSocketPayload(
       ws,
@@ -1275,38 +1372,35 @@ async function forwardMcpMessage<Env, Props>(
     return;
   }
 
-  // Normalize tool names for tools/call requests (strip server prefixes like "Orgx:")
-  let normalizedBody = body;
-  if (parsedBody.method === 'tools/call' && parsedBody.params?.name) {
-    const originalName = parsedBody.params.name;
-    const normalizedName = normalizeToolName(originalName);
-    if (normalizedName !== originalName) {
-      parsedBody.params.name = normalizedName;
-      normalizedBody = JSON.stringify(parsedBody);
-    }
-  }
-
   const headers = new Headers({
     Accept: 'application/json, text/event-stream',
     'Content-Type': 'application/json',
   });
-  const authorization = originalRequest.headers.get('authorization');
-  if (authorization) {
-    headers.set('authorization', authorization);
+  for (const key of ['authorization', 'x-access-token', 'x-orgx-tool-profile',
+    'mcp-protocol-version', 'origin', 'user-agent']) {
+    const value = originalRequest.headers.get(key);
+    if (value) headers.set(key, value);
   }
   if (session.id) {
     headers.set('mcp-session-id', session.id);
   }
 
-  const target = new URL('/mcp', originalRequest.url);
-  const response = await handler.fetch(
+  const target = new URL(originalRequest.url);
+  target.pathname = '/mcp';
+  // Reuse the authenticated HTTP path for every frame. Original tool names,
+  // batch IDs, profile selection and auth identity remain visible to telemetry.
+  // The successful WebSocket handshake authenticated this identity; this is
+  // not a retry or an alternate authorization route.
+  const response = await handleMcpRequest(
     new Request(target.toString(), {
       method: 'POST',
       headers,
-      body: normalizedBody,
+      body,
     }),
     env,
-    ctx
+    ctx,
+    handler,
+    async () => auth,
   );
 
   if (response.status >= 400) {
@@ -1330,6 +1424,14 @@ async function forwardMcpMessage<Env, Props>(
   }
 
   if (!response.body) {
+    return;
+  }
+
+  if (response.headers.get('content-type')?.includes('application/json')) {
+    const text = await response.text();
+    let data: unknown = text;
+    try { data = JSON.parse(text); } catch { /* preserve the transport response */ }
+    sendWebSocketPayload(ws, socketState, JSON.stringify({ event: 'message', data }));
     return;
   }
 

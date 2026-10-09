@@ -22,9 +22,9 @@ function footer(): HTMLElement {
 }
 
 describe('scaffolded initiative launch', () => {
-  it('launches with orgx_act and follows the command through orgx_command_status', async () => {
+  it('launches with orgx_launch_initiative and follows the command through orgx_get_operation_status', async () => {
     const callTool = vi.fn((name: string) => {
-      if (name === 'orgx_act') return Promise.resolve({ structuredContent: { ok: true, command_id: COMMAND_ID } });
+      if (name === 'orgx_launch_initiative') return Promise.resolve({ structuredContent: { ok: true, command_id: COMMAND_ID } });
       return Promise.resolve({ structuredContent: { kind: 'command', id: COMMAND_ID, state: 'succeeded', outcome: '2 workstreams running', next_poll_after_ms: null } });
     });
     mountWidget('scaffolded-initiative', { payload: draftScaffold, callTool });
@@ -36,8 +36,8 @@ describe('scaffolded initiative launch', () => {
     footer().dispatchEvent(new CustomEvent('ox-primary'));
 
     await vi.waitFor(() => {
-      expect(callTool).toHaveBeenCalledWith('orgx_act', { type: 'initiative', id: 'INI-7', action: 'launch' });
-      expect(callTool).toHaveBeenCalledWith('orgx_command_status', { kind: 'command', id: COMMAND_ID });
+      expect(callTool).toHaveBeenCalledWith('orgx_launch_initiative', { initiative_id: 'INI-7' });
+      expect(callTool).toHaveBeenCalledWith('orgx_get_operation_status', { kind: 'command', id: COMMAND_ID });
     });
     await vi.waitFor(() => {
       expect(footer().getAttribute('state')).toBe('done');
@@ -56,7 +56,17 @@ describe('scaffolded initiative launch', () => {
 
     footer().dispatchEvent(new CustomEvent('ox-primary'));
     await vi.waitFor(() => expect(callTool).toHaveBeenCalledTimes(2));
-    expect(callTool).toHaveBeenLastCalledWith('orgx_act', { type: 'initiative', id: 'INI-7', action: 'launch' });
+    expect(callTool).toHaveBeenLastCalledWith('orgx_launch_initiative', { initiative_id: 'INI-7' });
+  });
+
+  it('renders authoritative aggregate creation counts without inventing hierarchy details or readiness', async () => {
+    const callTool = vi.fn();
+    mountWidget('scaffolded-initiative', { payload: { data: { initiativeId: 'INI-7', initiative: draftScaffold.initiative, created: { workstreams: 2, milestones: 4, tasks: 8, dependency_edges: 3, agents_assigned: 0 } }, meta: { apiVersion: '1' } }, callTool });
+    await vi.waitFor(() => expect(footer()?.getAttribute('heading')).toBe('Hierarchy created'));
+    expect(document.body.textContent).toContain('2 workstreams · 4 milestones · 8 tasks created');
+    expect(document.body.textContent).not.toContain('No workstreams yet');
+    expect(footer().getAttribute('primary-label')).toBeNull();
+    expect(callTool).not.toHaveBeenCalled();
   });
 
   it('keeps the Live View link and workstream disclosure', async () => {

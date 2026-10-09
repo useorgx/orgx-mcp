@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /*
- * The proof-receipt widget (canvas Q5): the orgx_submit_receipt result as
+ * The proof-receipt widget (canvas Q5): the orgx_submit_work_receipt result as
  * the proof, the gap and the next move. Read-only; its only actions open
  * evidence and the anchored work through the host.
  */
@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const TASK_ID = '7f3c2a10-5b1e-4c3d-9a8f-2e6b4d1c0a99';
 
 const payload = (overrides: Record<string, unknown> = {}, proof: Record<string, unknown> = {}) => ({
-  _v2_tool: 'orgx_submit_receipt',
+  _v2_tool: 'orgx_submit_work_receipt',
   path: 'v1',
   ok: true,
   receipt_id: '3f9c1d2e-8a7b-4c6d-9e0f-1a2b3c4d5e6f',
@@ -18,6 +18,7 @@ const payload = (overrides: Record<string, unknown> = {}, proof: Record<string, 
   imported_at: '2026-10-02T14:00:00Z',
   summary: 'Merged PR 2291.',
   verification_status: 'passed',
+  receipt_assessment: { evidence_status: 'linked', verification_status: 'passed', acceptance_status: 'pending', outcome_status: 'unobserved' },
   proof: {
     receipt_type: 'proof',
     status: 'completed',
@@ -59,7 +60,7 @@ describe('proof receipt widget', () => {
   it('reads a verified, promotable receipt as proof and opens only allowed evidence', async () => {
     await mount(payload());
     expect(text('.pk-q')).toBe('Verified, with 3 pieces of evidence.');
-    expect(rail()).toEqual(['ok', 'ok', 'ok', 'ok']);
+    expect(rail()).toEqual(['ok', 'ok', 'ok', '', '']);
     expect(document.querySelector('.rc')!.getAttribute('data-edge')).toBe('teal');
     const rows = Array.from(document.querySelectorAll('.sec ox-receipt-row'));
     expect(rows.map((row) => row.getAttribute('href'))).toEqual([
@@ -72,6 +73,46 @@ describe('proof receipt widget', () => {
     expect(rows[2]!.getAttribute('value')).toBe('812 ms');
     expect(text('.next')).toContain('Checkout completes in under a second.');
     expect(document.body.textContent).not.toContain('Next:');
+  });
+
+  it('keeps a producer verification claim separate from verification and human acceptance', async () => {
+    await mount(payload({ receipt_assessment: undefined }));
+    expect(text('.pk-q')).toBe('Recorded. The agent reports passing verification.');
+    expect(rail()).toEqual(['ok', 'ok', 'warn', '', '']);
+    expect(document.querySelector('.rc')!.getAttribute('data-edge')).toBe('amber');
+    expect(document.body.textContent).toContain('Intended outcome:');
+    expect(document.body.textContent).toContain('before verification or acceptance is confirmed');
+  });
+
+  it.each([
+    ['succeeded', 'completed', 'Done'],
+    ['partially_succeeded', 'completed', 'Partly done'],
+    ['failed', 'failed', 'Not done'],
+    ['blocked', 'failed', 'Blocked'],
+    ['cancelled', 'cancelled', 'Cancelled'],
+  ])('preserves the original producer outcome %s without claiming verified completion', async (outcome, status, label) => {
+    await mount(payload({
+      producer_claims: { outcome_status: outcome, verification_status: 'verified', acceptance_status: 'accepted' },
+      verification_status: undefined,
+      receipt_assessment: { verification_status: 'producer_reported', acceptance_status: 'awaiting_human_review', outcome_status: null },
+    }, { status }));
+    expect(text('.pk-q')).toBe(`Recorded. The agent reports ${label.toLowerCase()}.`);
+    expect(document.body.textContent).toContain(`Agent-reported outcome: ${label}`);
+    expect(rail().slice(2)).toEqual(['', '', '']);
+    expect(document.querySelector('.rc')?.getAttribute('data-edge')).not.toBe('teal');
+  });
+
+  it('shows human acceptance only when the assessment records it', async () => {
+    await mount(payload({ receipt_assessment: { verification_status: 'passed', acceptance_status: 'accepted', outcome_status: 'observed' } }));
+    expect(rail()).toEqual(['ok', 'ok', 'ok', 'ok', 'ok']);
+    expect(document.body.textContent).toContain('Observed outcome:');
+  });
+
+  it('keeps an independent failed check prominent even when the producer reports success', async () => {
+    await mount(payload({ producer_claims: { outcome_status: 'succeeded' }, receipt_assessment: { verification_status: 'failed', acceptance_status: 'awaiting_human_review', outcome_status: null } }));
+    expect(text('.pk-q')).toBe('Proof recorded. Verification failed.');
+    expect(document.body.textContent).toContain('Agent-reported outcome: Done');
+    expect(rail()[2]).toBe('fail');
   });
 
   it('names the gap and the next move instead of the missing field ids', async () => {
@@ -91,7 +132,7 @@ describe('proof receipt widget', () => {
       )
     );
     expect(text('.pk-q')).toBe('Verified, with 3 gaps before it counts as proof.');
-    expect(rail()).toEqual(['ok', 'ok', 'ok', '']);
+    expect(rail()).toEqual(['ok', 'ok', 'ok', '', '']);
     const gaps = Array.from(document.querySelectorAll('.sec'))[1]!.querySelectorAll('ox-receipt-row');
     expect(Array.from(gaps).map((row) => row.getAttribute('label'))).toEqual([
       'No business outcome is stated',
@@ -105,7 +146,7 @@ describe('proof receipt widget', () => {
   });
 
   it('says a failed verification and a failed run plainly', async () => {
-    await mount(payload({ verification_status: 'failed', loop_validation: { rung: null, applies: false, promotable: false, missing: [], warnings: [], next_required_action: 'Submit a passed verification receipt before promotion.' } }));
+    await mount(payload({ receipt_assessment: { verification_status: 'failed' }, verification_status: 'failed', loop_validation: { rung: null, applies: false, promotable: false, missing: [], warnings: [], next_required_action: 'Submit a passed verification receipt before promotion.' } }));
     expect(text('.pk-q')).toBe('Proof recorded. Verification failed.');
     expect(rail()[2]).toBe('fail');
     expect(document.querySelector('ox-receipt-row[status="fail"]')!.getAttribute('label')).toBe('Verification failed');

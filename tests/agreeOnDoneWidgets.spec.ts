@@ -60,7 +60,7 @@ async function openWidget(path: string, host: { toolOutput?: unknown; meta?: unk
       setWidgetHeight() {},
       async callTool(tool: string, args: Record<string, unknown>) {
         w.calls.push({ tool, args });
-        if (tool === 'orgx_act' && h.launchError) throw new Error(h.launchError);
+        if (tool === 'orgx_launch_initiative' && h.launchError) throw new Error(h.launchError);
         return { structuredContent: { ok: true } };
       },
     };

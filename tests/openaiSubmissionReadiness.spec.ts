@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { OPENAI_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas';
-import { CHATGPT_PUBLIC_SURFACE } from '../src/toolProfiles';
+import { CHATGPT_PUBLIC_SURFACE, LEGACY_V2_PUBLIC_SURFACE } from '../src/toolProfiles';
+import { getPublicOperationContract } from '../src/publicOperationContracts';
+import { isWidgetOnlyTool } from '../src/widgetToolContract';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -83,36 +85,25 @@ type ToolHints = {
   destructiveHint: boolean;
 };
 
-const expectedChatGptHints = {
-  orgx_bootstrap: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  orgx_widget_decide: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  orgx_command_status: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
-  orgx_panel_snapshot: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
-  orgx_widget_receipt_call: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+const expectedCriticalHints = {
+  orgx_get_workspace_context: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   orgx_search: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  orgx_inspect: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
-  orgx_recommend: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  orgx_write: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
-  orgx_attach: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  orgx_act: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
-  manage_lifecycle: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
-  orgx_plan: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  orgx_spawn: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
-  orgx_decide: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  orgx_submit_receipt: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  approve_decision: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
-  reject_decision: { readOnlyHint: false, openWorldHint: false, destructiveHint: true },
-  get_agent_status: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  get_initiative_pulse: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  scaffold_initiative: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
-  handoff_task: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
-  approve_agent_work: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-  review_artifact: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
-  get_morning_brief: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
-  get_operator_chronicle: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
-  check_execution_readiness: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
-  resume_agent_run: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
-} satisfies Record<(typeof CHATGPT_PUBLIC_SURFACE)[number], ToolHints>;
+  orgx_get_next_actions: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  orgx_get_agent_status: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  orgx_get_initiative_progress: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  orgx_read_plan: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_save_plan: { readOnlyHint: false, openWorldHint: false, destructiveHint: true },
+  orgx_create_initiative_hierarchy: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  orgx_start_agent_task: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  orgx_handoff_task: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  orgx_launch_initiative: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+  orgx_open_decision_review: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_attach_artifact: { readOnlyHint: false, openWorldHint: true, destructiveHint: false },
+  orgx_submit_work_receipt: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
+  orgx_validate_work_receipt: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_get_work_receipt: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+  orgx_widget_approve_artifact: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+} satisfies Record<string, ToolHints>;
 
 const serverToolsByName = new Map(
   serverJson.tools.map((tool) => [tool.name, tool])
@@ -155,39 +146,37 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     }
   });
 
-  it('keeps the reviewed 28-tool risk matrix explicit and fail-closed', () => {
-    expect(Object.keys(expectedChatGptHints).sort()).toEqual(
-      [...CHATGPT_PUBLIC_SURFACE].sort()
-    );
-
-    for (const [toolName, expectedHints] of Object.entries(
-      expectedChatGptHints
-    )) {
-      expect(submission.tools[toolName]?.annotations, toolName).toEqual(
-        expectedHints
-      );
-      expect(serverToolsByName.get(toolName)?.annotations, toolName).toEqual(
-        expectedHints
-      );
+  it('keeps operation effects and human authority explicit in the review inventory', () => {
+    expect(CHATGPT_PUBLIC_SURFACE).toHaveLength(48);
+    expect(CHATGPT_PUBLIC_SURFACE.filter((id) => isWidgetOnlyTool(id))).toHaveLength(7);
+    for (const toolName of CHATGPT_PUBLIC_SURFACE) {
+      const contract = getPublicOperationContract(toolName);
+      expect(contract, toolName).toBeDefined();
+      expect(submission.tools[toolName]?.annotations, toolName).toEqual(contract?.annotations);
+      expect(serverToolsByName.get(toolName)?.annotations, toolName).toEqual(contract?.annotations);
     }
+    for (const [toolName, expectedHints] of Object.entries(expectedCriticalHints)) {
+      expect(submission.tools[toolName]?.annotations, toolName).toMatchObject(expectedHints);
+    }
+    expect(submission.tools.orgx_submit_work_receipt?.justifications.read_only_justification).toContain('producer claims');
+    expect(submission.tools.orgx_widget_approve_artifact?.justifications.read_only_justification).toContain('hidden widget metadata');
   });
 
   it('documents the exact read-only and metered informational hint boundary', () => {
     expect(openaiRunbook).toContain(
-      'Seven submitted tools are strictly read-only'
+      'Strictly read-only tools'
     );
     expect(openaiRunbook).toContain(
-      'Four informational tools use\n' +
-        '`readOnlyHint: false` because a successful mode records metered MCP allowance'
+      'metered MCP allowance'
     );
     expect(openaiRunbook).toContain(
       'this is not an endpoint-wide stateless guarantee'
     );
     for (const toolName of [
       'orgx_search',
-      'orgx_recommend',
-      'get_agent_status',
-      'get_initiative_pulse',
+      'orgx_get_next_actions',
+      'orgx_get_agent_status',
+      'orgx_get_initiative_progress',
     ]) {
       expect(
         submission.tools[toolName]?.justifications.read_only_justification,
@@ -208,7 +197,7 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     }
     expect(openaiRunbook).toContain('blocking current-release gate');
     expect(openaiRunbook).toContain(
-      'all 28 `chatgpt` profile tools publish exact,\n' +
+      'all 48 `chatgpt` profile tools publish exact,\n' +
         'tool-specific schemas'
     );
     expect(openaiRunbook).toMatch(/exact,\s+tool-specific `outputSchema`/i);
@@ -275,6 +264,8 @@ describe('OpenAI ChatGPT app submission readiness', () => {
       'delegate_agent_task',
       'spawn_agent_task',
       'consolidate_pr',
+      'orgx_write', 'orgx_act', 'orgx_plan', 'orgx_spawn', 'orgx_decide',
+      'manage_lifecycle', 'approve_decision', 'reject_decision', 'approve_agent_work', 'scaffold_initiative',
     ];
 
     for (const toolName of excludedTools) {

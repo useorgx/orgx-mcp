@@ -104,7 +104,7 @@ describe('panel lightweight receipt after a decision', () => {
     const m = await open();
     m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => {
       if (name === 'orgx_widget_decide') return { structuredContent: { action: 'approved' } };
-      if (name === 'orgx_command_status') return { structuredContent: { kind: 'decision', id: D1, state: 'succeeded', outcome: 'approved', next_poll_after_ms: null } };
+      if (name === 'orgx_get_operation_status') return { structuredContent: { kind: 'decision', id: D1, state: 'succeeded', outcome: 'approved', next_poll_after_ms: null } };
       // The re-read after the ruling: D1 has left the queue.
       const base = snapshot();
       return { structuredContent: snapshot({

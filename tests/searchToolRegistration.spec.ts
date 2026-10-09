@@ -16,7 +16,18 @@ describe('search result registration', () => {
     expect(result._meta['orgx/searchPayload']).toEqual({ results: [] });
     expect(result._meta['orgx/widgetDiagnostics']).toEqual({ grant: 'signed' });
     server.registerTool('orgx_inspect', {}, async () => ({ structuredContent: { entity: {} } }));
-    expect(await wrapped!()).toEqual({ structuredContent: { entity: {} } });
+    const inspected = await wrapped!();
+    expect(inspected.structuredContent).toEqual({ entity: {} });
+    expect(inspected._meta).toEqual({
+      'orgx/toolSurface': {
+        profile: 'v2', contract_version: 'orgx-mcp-operations/1',
+        tools: ['orgx_inspect', 'orgx_search'], widget_tools: {},
+      },
+    });
+    // Host capability discovery belongs in hidden widget metadata, while
+    // search-only payloads and diagnostics never appear on inspection.
+    expect(inspected._meta).not.toHaveProperty('orgx/searchPayload');
+    expect(inspected._meta).not.toHaveProperty('orgx/widgetDiagnostics');
     expect(context).toHaveBeenCalledTimes(1);
   });
   it('does not break healthy results when diagnostics are unavailable', async () => {

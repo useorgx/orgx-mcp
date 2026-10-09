@@ -301,7 +301,7 @@
 
     /* ------------------------------------------------------------ resume -- */
     // Agents surfaced as "stalled" carry the run_id the TTL cron auto-closed.
-    // Resume calls resume_agent_run, then reads orgx_command_status({kind:'run'})
+    // Resume calls resume_agent_run, then reads orgx_get_operation_status({kind:'run'})
     // until the run settles, so the footer reports what the run actually did.
     var resumeStates = {};
     var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -314,7 +314,7 @@
     }
 
     function readRunStatus(runId) {
-      return window.OrgXWidgetRuntime.callTool('orgx_command_status', { kind: 'run', id: runId }).then(function (raw) {
+      return window.OrgXWidgetRuntime.callTool('orgx_get_operation_status', { kind: 'run', id: runId }).then(function (raw) {
         var runtime = window.OrgXWidgetRuntime;
         return runtime.extractStructuredWidgetData ? runtime.extractStructuredWidgetData(raw, true) : raw;
       });

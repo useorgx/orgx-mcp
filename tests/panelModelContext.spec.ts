@@ -271,7 +271,7 @@ describe('the panel updates model context only from the Share click', () => {
     const { dom, app, calls, flush } = await mountPanel({}, { updateModelContext: {} });
     calls.callServerTool.mockImplementation(async (params: { name: string; arguments: Record<string, unknown> }) => {
       if (params.name === 'orgx_widget_decide') return { structuredContent: { decision_id: D1, action: 'approved' } };
-      if (params.name === 'orgx_command_status') {
+      if (params.name === 'orgx_get_operation_status') {
         return { structuredContent: { kind: 'decision', id: D1, state: 'succeeded', outcome: 'approved', next_poll_after_ms: null } };
       }
       return { structuredContent: snapshot({ generated_at: '2026-10-02T12:09:00.000Z', queue: [], focus: null, attention: { pending: 0, oldest_at: null, blocking: false } }) };
@@ -283,14 +283,14 @@ describe('the panel updates model context only from the Share click', () => {
     for (let i = 0; i < 6; i += 1) await flush();
     expect(calls.callServerTool.mock.calls.map((call) => (call[0] as { name: string }).name).slice(0, 2)).toEqual([
       'orgx_widget_decide',
-      'orgx_command_status',
+      'orgx_get_operation_status',
     ]);
     expect(calls.callServerTool.mock.calls[0]![0]).toEqual({
       name: 'orgx_widget_decide',
       arguments: { decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'decision' },
     });
     expect(calls.callServerTool.mock.calls[1]![0]).toEqual({
-      name: 'orgx_command_status',
+      name: 'orgx_get_operation_status',
       arguments: { kind: 'decision', id: D1 },
     });
     await new Promise((r) => dom.window.setTimeout(r, 1000));
@@ -306,7 +306,7 @@ describe('the panel updates model context only from the Share click', () => {
     let statusCalls = 0;
     calls.callServerTool.mockImplementation(async (params: { name: string; arguments: Record<string, unknown> }) => {
       if (params.name === 'orgx_widget_decide') return { structuredContent: { decision_id: params.arguments.decision_id, action: 'rejected' } };
-      if (params.name === 'orgx_command_status') {
+      if (params.name === 'orgx_get_operation_status') {
         statusCalls += 1;
         if (statusCalls === 1) return { structuredContent: { kind: 'decision', id: D2, state: 'running', next_poll_after_ms: 10 } };
         throw new Error('status unavailable');
@@ -352,7 +352,7 @@ describe('panel buttons come from the server', () => {
   };
   const decideResult = async (params: { name: string; arguments: Record<string, unknown> }) => {
     if (params.name === 'orgx_widget_decide') return { structuredContent: { decision_id: params.arguments.decision_id, action: 'approved' } };
-    if (params.name === 'orgx_command_status') {
+    if (params.name === 'orgx_get_operation_status') {
       return { structuredContent: { kind: 'decision', id: params.arguments.id, state: 'succeeded', next_poll_after_ms: null } };
     }
     return { structuredContent: snapshot() };
@@ -473,7 +473,7 @@ describe('panel: the per-item contract and every refusal', () => {
         outcomes.set(params.arguments.decision_id, params.arguments.action === 'reject' ? 'declined' : 'approved');
         return decide ? decide(params.arguments) : { structuredContent: { decision_id: params.arguments.decision_id, action: 'approved' } };
       }
-      if (params.name === 'orgx_command_status') {
+      if (params.name === 'orgx_get_operation_status') {
         return { structuredContent: { kind: 'decision', id: params.arguments.id, state: 'succeeded', outcome: outcomes.get(params.arguments.id), next_poll_after_ms: null } };
       }
       return new Promise(() => undefined);
@@ -589,7 +589,7 @@ describe('panel: the per-item contract and every refusal', () => {
       { decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'action' },
       { decision_id: D2, action: 'approve', approval_token: 'tok-2', kind: 'approval' },
     ]);
-    expect(p.calls.callServerTool.mock.calls.some((call) => (call[0] as Call).name === 'orgx_command_status')).toBe(false);
+    expect(p.calls.callServerTool.mock.calls.some((call) => (call[0] as Call).name === 'orgx_get_operation_status')).toBe(false);
     expect(p.footer()!.getAttribute('detail')).toBe('the action can run');
     expect(p.doc.querySelector(`[data-row="${D2}"] ox-state-chip`)!.getAttribute('label')).toBe('Approved');
   });

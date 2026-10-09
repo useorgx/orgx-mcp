@@ -7,8 +7,12 @@ import { describe, expect, it } from 'vitest';
 import { getKnownToolContract } from '../src/contractTools';
 import { CLAUDE_DIRECTORY_TOOL_ADAPTERS, getClaudeDirectoryToolContract } from '../src/claudeDirectoryTools';
 import { CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS } from '../src/claudeDirectoryToolMetadata';
+import { getPublicOperationContract } from '../src/publicOperationContracts';
+import { isWidgetOnlyTool } from '../src/widgetToolContract';
 import {
   CLAUDE_DIRECTORY_SURFACE,
+  LEGACY_CLAUDE_DIRECTORY_SURFACE,
+  LEGACY_V2_PUBLIC_SURFACE,
   resolveProfileToolSet,
 } from '../src/toolProfiles';
 import {
@@ -60,14 +64,31 @@ const anthropicSubmissionForm = readFileSync(
 );
 
 describe('Anthropic directory readiness', () => {
-  it('covers every submitted tool with a narrow description of its own function', () => {
-    expect(Object.keys(CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS).sort()).toEqual([...CLAUDE_DIRECTORY_SURFACE].sort());
+  it('retains the prior directory descriptions for the explicit legacy profile', () => {
+    expect(Object.keys(CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS).sort()).toEqual([...LEGACY_CLAUDE_DIRECTORY_SURFACE].sort());
     for (const [name, description] of Object.entries(CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS)) {
       expect(description.length, name).toBeGreaterThan(0);
       expect(description, name).not.toMatch(/NEXT:|DO NOT USE|USE WHEN:|https?:\/\//i);
-      for (const otherTool of CLAUDE_DIRECTORY_SURFACE) {
+      for (const otherTool of LEGACY_CLAUDE_DIRECTORY_SURFACE) {
         if (otherTool !== name) expect(description, name).not.toContain(otherTool);
       }
+    }
+  });
+
+  it('publishes current operation contracts with one purpose and no public dispatch selectors', () => {
+    for (const name of CLAUDE_DIRECTORY_SURFACE) {
+      const contract = getPublicOperationContract(name)!;
+      expect(contract, name).toBeDefined();
+      expect(contract.description.length, name).toBeGreaterThan(40);
+      if (!isWidgetOnlyTool(name)) {
+        expect(contract.inputSchema, name).not.toHaveProperty('operation');
+        expect(contract.inputSchema, name).not.toHaveProperty('action');
+        expect(contract.inputSchema, name).not.toHaveProperty('mode');
+      }
+      expect(contract.securitySchemes, name).not.toHaveLength(0);
+      const published = serverJson.tools?.find((tool) => tool.name === name);
+      expect(published?.title, name).toBe(contract.title);
+      expect(published?.annotations, name).toEqual(contract.annotations);
     }
   });
   it('includes reviewer-facing docs and README sections', () => {
@@ -122,57 +143,11 @@ describe('Anthropic directory readiness', () => {
       { type: 'sse', url: 'https://mcp.useorgx.com/sse' },
     ]);
     const toolNames = serverJson.tools?.map((tool) => tool.name).filter(Boolean);
-    expect(toolNames).toEqual([
-      'orgx_bootstrap',
-      'orgx_tail',
-      'orgx_search',
-      'orgx_inspect',
-      'orgx_controller_status',
-      'orgx_recommend',
-      'orgx_write',
-      'orgx_attach',
-      'orgx_act',
-      'manage_lifecycle',
-      'orgx_plan',
-      'orgx_spawn',
-      'orgx_decide',
-      'orgx_expect',
-      'orgx_submit_receipt',
-      'orgx_emit_activity',
-      'orgx_request_attention',
-      'orgx_poll_attention',
-      'orgx_ack_attention',
-      'orgx_request_question',
-      'orgx_poll_question',
-      'orgx_emit_execution_graph',
-      'approve_decision',
-      'reject_decision',
-      'orgx_widget_decide',
-      'orgx_command_status',
-      'orgx_panel_snapshot',
-      'orgx_widget_receipt_call',
-      'get_agent_status',
-      'get_initiative_pulse',
-      'scaffold_initiative',
-      'spawn_agent_task',
-      'handoff_task',
-      'recommend_next_action',
-      'query_org_memory',
-      'recall_memory',
-      'approve_agent_work',
-      'delegate_agent_task',
-      'track_project_progress',
-      'review_artifact',
-      'get_morning_brief',
-      'get_operator_chronicle',
-      'check_execution_readiness',
-      'consolidate_pr',
-      'request_independent_artifact_review',
-      'resume_agent_run',
-    ]);
-    expect(serverJson.tools?.find((tool) => tool.name === 'orgx_bootstrap')?.description).toContain(
-      'v2 routing guidance'
-    );
+    expect(toolNames).toEqual(CLAUDE_DIRECTORY_SURFACE);
+    expect(serverJson.tools?.find((tool) => tool.name === 'orgx_get_workspace_context')?.description).toContain('typed references');
+    for (const legacyId of LEGACY_V2_PUBLIC_SURFACE) {
+      expect(resolveProfileToolSet('legacy')?.has(legacyId), legacyId).toBe(true);
+    }
   });
 
   it('publishes reviewer-facing tool titles and annotations in server.json', () => {
@@ -182,7 +157,7 @@ describe('Anthropic directory readiness', () => {
       expect(tool.title, `${tool.name} is missing a title`).toEqual(
         expect.any(String)
       );
-      expect(tool.annotations, `${tool.name} is missing annotations`).toEqual({
+      expect(tool.annotations, `${tool.name} is missing annotations`).toMatchObject({
         readOnlyHint: expect.any(Boolean),
         destructiveHint: expect.any(Boolean),
         openWorldHint: expect.any(Boolean),
@@ -194,23 +169,36 @@ describe('Anthropic directory readiness', () => {
     const endpoint = 'https://mcp.useorgx.com/mcp?profile=claude-directory';
     const selectedTools = resolveProfileToolSet('claude-directory');
     expect([...(selectedTools ?? [])]).toEqual([...CLAUDE_DIRECTORY_SURFACE]);
-    expect(selectedTools?.size).toBe(29);
-    expect(selectedTools?.has('orgx_bootstrap')).toBe(true);
+    expect(selectedTools?.size).toBe(48);
+    expect(selectedTools?.has('orgx_get_workspace_context')).toBe(true);
     expect(anthropicDirectoryDoc).toContain(endpoint);
     expect(anthropicSubmissionForm).toContain(endpoint);
     expect(anthropicDirectoryDoc).toContain('Usage accounting is still a state change');
     expect(anthropicDirectoryDoc).toContain('endpoint is not\nstateless');
-    expect(anthropicSubmissionForm).toContain('29 captured tools');
+    expect(anthropicSubmissionForm).toContain('48 captured tools');
     expect(anthropicSubmissionForm).not.toContain('[ fill before submitting:');
     for (const toolName of selectedTools ?? []) {
-      const contract = getClaudeDirectoryToolContract(toolName) ?? getKnownToolContract(toolName);
+      const contract = getPublicOperationContract(toolName);
       expect(contract, toolName).toBeDefined();
       expect(contract?.securitySchemes, toolName).toBeDefined();
-      expect(contract?.annotations, toolName).toEqual({
+      expect(contract?.annotations, toolName).toMatchObject({
         readOnlyHint: expect.any(Boolean), destructiveHint: expect.any(Boolean), openWorldHint: expect.any(Boolean),
       });
       expect(anthropicDirectoryDoc, toolName).toContain('`' + toolName + '`');
     }
+  });
+
+  it('keeps every former directory workflow available with its required widget dependencies', () => {
+    const legacyTools = resolveProfileToolSet('claude-directory-legacy');
+    for (const toolName of LEGACY_CLAUDE_DIRECTORY_SURFACE) {
+      expect(legacyTools?.has(toolName), toolName).toBe(true);
+      const contract = getClaudeDirectoryToolContract(toolName) ?? getKnownToolContract(toolName);
+      expect(contract, toolName).toBeDefined();
+      expect(contract?.securitySchemes, toolName).toBeDefined();
+    }
+    expect(legacyTools?.has('orgx_widget_decide')).toBe(true);
+    expect(legacyTools?.has('orgx_widget_approve_artifact')).toBe(true);
+    expect(legacyTools?.has('orgx_widget_request_artifact_changes')).toBe(true);
   });
 
   it('separates reads from writes and prevents arbitrary router actions', () => {

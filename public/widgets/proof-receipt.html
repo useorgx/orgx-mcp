@@ -13,7 +13,7 @@
   <script src="shared/widget-runtime.js"></script>
   <style>
     /*
-     * Receipt — the orgx_submit_receipt result as canvas Q5 "the proof, the
+     * Receipt — the orgx_submit_work_receipt result as canvas Q5 "the proof, the
      * gap, the next move": a ladder that says how far the claim got
      * (recorded, evidence, verified, outcome), the headline verdict, the
      * evidence that was attached, what is missing before it counts as
@@ -224,6 +224,7 @@
     var asArray = function (value) { return Array.isArray(value) ? value : []; };
     var record = function (value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; };
     var plural = function (n, one, many) { return n + ' ' + (n === 1 ? one : many); };
+    var REPORTED_OUTCOMES = { succeeded: 'Done', partially_succeeded: 'Partly done', failed: 'Not done', blocked: 'Blocked', cancelled: 'Cancelled' };
 
     var linkable = function (url) {
       try {
@@ -319,7 +320,19 @@
       var anchor = record(proof.anchor);
       var lv = record(payload.loop_validation);
       var status = str(proof.status) || 'completed';
-      var verification = str(payload.verification_status).toLowerCase();
+      var assessment = record(payload.receipt_assessment);
+      var claims = record(payload.producer_claims || payload.producer_claim);
+      var reportedOutcome = str(claims.outcome_status).toLowerCase();
+      var reportedVerification = str(payload.verification_status || claims.verification_status).toLowerCase();
+      var assessedVerification = str(assessment.verification_status).toLowerCase();
+      var verification = assessedVerification === 'producer_reported' ? '' : assessedVerification;
+      var hasAssessment = Boolean(verification);
+      var verified = ['passed', 'verified'].indexOf(verification) !== -1;
+      var acceptance = str(assessment.acceptance_status).toLowerCase();
+      var accepted = acceptance === 'accepted';
+      var humanReviewed = acceptance === 'human_reviewed';
+      var humanOutcome = str(assessment.outcome_status);
+      var observed = ['observed', 'achieved'].indexOf(str(assessment.outcome_status).toLowerCase()) !== -1;
       var evidence = asArray(proof.evidence);
       var total = typeof proof.evidence_total === 'number' ? proof.evidence_total : evidence.length;
       var linked = evidence.filter(function (item) { return item && str(item.url); }).length + (str(anchor.artifact_id) ? 1 : 0);
@@ -331,7 +344,9 @@
       if (verification === 'blocked') gaps.unshift({ status: 'unverified', label: 'Verification is blocked' });
 
       var view;
-      if (status === 'failed' || status === 'cancelled') {
+      if (REPORTED_OUTCOMES[reportedOutcome] && !hasAssessment && !humanReviewed && !accepted) {
+        view = { edge: reportedOutcome === 'failed' ? 'red' : 'amber', tone: reportedOutcome === 'failed' ? 'red' : 'amber', headline: 'Recorded. The agent reports ' + REPORTED_OUTCOMES[reportedOutcome].toLowerCase() + '.' };
+      } else if (status === 'failed' || status === 'cancelled') {
         view = {
           edge: status === 'failed' ? 'red' : 'mute',
           tone: status === 'failed' ? 'red' : '',
@@ -341,12 +356,14 @@
         view = { edge: 'mute', tone: '', headline: 'Recorded while the work is still in progress. Not proof yet.' };
       } else if (verification === 'failed') {
         view = { edge: 'red', tone: 'red', headline: 'Proof recorded. Verification failed.' };
-      } else if (verification === 'passed' && lv.promotable === true && !gaps.length) {
+      } else if (verified && lv.promotable === true && !gaps.length) {
         view = { edge: 'teal', tone: 'teal', headline: 'Verified, with ' + plural(proofItems, 'piece', 'pieces') + ' of evidence.' };
-      } else if (verification === 'passed') {
+      } else if (verified) {
         view = { edge: 'amber', tone: 'amber', headline: 'Verified, with ' + plural(gaps.length, 'gap', 'gaps') + ' before it counts as proof.' };
       } else if (verification === 'blocked') {
         view = { edge: 'amber', tone: 'amber', headline: 'Recorded. Verification is blocked.' };
+      } else if (!hasAssessment && reportedVerification === 'passed') {
+        view = { edge: 'amber', tone: 'amber', headline: 'Recorded. The agent reports passing verification.' };
       } else {
         view = { edge: 'amber', tone: 'amber', headline: 'Recorded, not verified yet.' };
       }
@@ -354,8 +371,9 @@
       view.rail = [
         ['Recorded', 'ok'],
         ['Evidence', linked ? 'ok' : proofItems ? 'warn' : ''],
-        ['Verified', verification === 'passed' ? 'ok' : verification === 'failed' ? 'fail' : verification === 'blocked' ? 'warn' : ''],
-        ['Outcome', str(proof.business_outcome) ? 'ok' : '']
+        [hasAssessment ? 'Verified' : 'Reported verification', verified ? 'ok' : verification === 'failed' ? 'fail' : verification === 'blocked' ? 'warn' : !hasAssessment && reportedVerification === 'passed' ? 'warn' : ''],
+        [humanReviewed ? 'Human review' : 'Accepted', accepted || humanReviewed ? 'ok' : acceptance === 'rejected' ? 'fail' : ''],
+        ['Outcome observed', observed ? 'ok' : '']
       ];
       view.proof = proof;
       view.anchor = anchor;
@@ -364,6 +382,11 @@
       view.gaps = gaps;
       view.next = str(lv.next_required_action);
       view.verification = verification;
+      view.reportedVerification = reportedVerification;
+      view.reportedOutcome = reportedOutcome;
+      view.accepted = accepted;
+      view.observed = observed;
+      view.humanOutcome = humanOutcome;
       return view;
     };
 
@@ -374,7 +397,8 @@
     var nextMove = function (view, lv) {
       var status = str(view.proof.status) || 'completed';
       if (status !== 'completed') return '';
-      if (!view.gaps.length && view.verification === 'passed') return '';
+      if (!view.gaps.length && ['passed', 'verified'].indexOf(view.verification) !== -1) return '';
+      if (!view.verification && view.reportedVerification === 'passed') return 'OrgX reviews the evidence before verification or acceptance is confirmed.';
       var missing = asArray(lv.missing);
       if (missing.length) {
         return 'The agent submits a receipt with ' + joinAnd(missing.map(function (field) { return NEED_COPY[field] || gapCopy(field).toLowerCase(); })) + '.';
@@ -469,10 +493,14 @@
           ? '<div class="sec"><p class="lbl">Before it counts as proof</p><div class="rows" role="list">' +
             view.gaps.map(function (gap) { return row({ status: gap.status, label: gap.label }); }).join('') + '</div></div>'
           : '') +
-        (str(proof.business_outcome) ? '<p class="next"><b>Outcome:</b> ' + escapeHtml(str(proof.business_outcome)) + '</p>' : '') +
+        (str(proof.business_outcome) ? '<p class="next"><b>' + (view.observed ? 'Observed outcome' : 'Intended outcome') + ':</b> ' + escapeHtml(str(proof.business_outcome)) + '</p>' : '') +
+        (REPORTED_OUTCOMES[view.reportedOutcome]
+          ? '<p class="next"><b>Agent-reported outcome:</b> ' + escapeHtml(REPORTED_OUTCOMES[view.reportedOutcome]) + '</p>' : '') +
+        (view.humanOutcome && ['succeeded', 'partially_succeeded', 'failed', 'blocked'].indexOf(view.humanOutcome) !== -1
+          ? '<p class="next"><b>Human outcome:</b> ' + escapeHtml({ succeeded: 'Done', partially_succeeded: 'Partly done', failed: 'Not done', blocked: 'Blocked' }[view.humanOutcome]) + '</p>' : '') +
         (next ? '<p class="next"><b>Next:</b> ' + escapeHtml(next) + '</p>' : '') +
         '</div>' +
-        // A check only when the receipt counts as proof; otherwise a neutral clock.
+        // Recorded proof, verification, human acceptance and observed outcomes remain distinct.
         '<ox-footer variant="reads" state="' + (view.edge === 'teal' ? 'fresh' : 'stale') + '" heading="' +
         escapeHtml(at ? 'Recorded ' + window.OrgXTime.relative(at, { inline: true }) : 'Recorded') + '" detail="' +
         escapeHtml([
@@ -515,7 +543,7 @@
     var LV_OK = { rung: null, applies: false, promotable: true, missing: [], warnings: [], next_required_action: null };
     var base = function (overrides) {
       var payload = {
-        _v2_tool: 'orgx_submit_receipt',
+        _v2_tool: 'orgx_submit_work_receipt',
         path: 'v1',
         ok: true,
         receipt_id: '3f9c1d2e-8a7b-4c6d-9e0f-1a2b3c4d5e6f',

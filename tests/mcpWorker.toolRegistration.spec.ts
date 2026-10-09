@@ -13,6 +13,10 @@ import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
 import { resolveProfileToolSet } from '../src/toolProfiles';
 import { withConsistentToolVisibility } from '../src/toolVisibility';
+import { WORKFLOW_TOOL_ADAPTERS, EXTENDED_WORKFLOW_TOOL_ADAPTERS } from '../src/workflowTools';
+import { RECEIPT_OPERATION_TOOLS } from '../src/receiptOperationTools';
+import { WIDGET_OPERATION_TOOLS } from '../src/widgetOperations';
+import { getPublicOperationContract } from '../src/publicOperationContracts';
 
 type ToolDef = { id: string; _meta?: Record<string, unknown> };
 
@@ -99,6 +103,7 @@ describe('MCP Worker tool registration integrity', () => {
     const allDefs = [
       ...(CHATGPT_TOOL_DEFINITIONS as unknown as ToolDef[]),
       ...(CONTRACT_TOOL_DEFINITIONS as unknown as ToolDef[]),
+      ...WORKFLOW_TOOL_ADAPTERS,
     ];
     const templateToolsInV2 = allDefs.filter(
       (d) =>
@@ -107,7 +112,7 @@ describe('MCP Worker tool registration integrity', () => {
     );
     // Sanity: the known decision/plan/agent widgets are present in v2.
     expect(templateToolsInV2.map((d) => d.id)).toEqual(
-      expect.arrayContaining(['orgx_decide', 'orgx_plan'])
+      expect.arrayContaining(['orgx_open_decision_review', 'orgx_start_plan', 'orgx_save_plan', 'orgx_create_initiative_hierarchy'])
     );
 
     // One visibility rule (src/toolVisibility.ts), applied to every
@@ -146,6 +151,22 @@ describe('MCP Worker tool registration integrity', () => {
     ];
     const dupes = findDuplicates(allDefinitionIds);
     expect(dupes).toEqual([]);
+  });
+
+  it('registers unique operation IDs while keeping canonical callbacks available privately', () => {
+    const operations = [...WORKFLOW_TOOL_ADAPTERS, ...EXTENDED_WORKFLOW_TOOL_ADAPTERS, ...RECEIPT_OPERATION_TOOLS, ...WIDGET_OPERATION_TOOLS];
+    expect(findDuplicates(operations.map((tool) => tool.id))).toEqual([]);
+    for (const tool of operations) {
+      expect(getPublicOperationContract(tool.id), tool.id).toBeDefined();
+      expect(tool.id).toMatch(/^[a-zA-Z0-9_-]{1,64}$/);
+    }
+    const source = readWorkerSource();
+    expect(source).toContain('registerPublicOperations(');
+    expect(source).toContain('capturePrivateOperations(this.server');
+    expect(source).toContain('privateRegistration.finish();');
+    const submitted = resolveProfileToolSet('chatgpt')!;
+    for (const router of ['orgx_write', 'orgx_act', 'orgx_plan', 'orgx_spawn', 'orgx_decide', 'manage_lifecycle']) expect(submitted.has(router), router).toBe(false);
+    expect(resolveProfileToolSet('legacy')?.has('orgx_write')).toBe(true);
   });
 
   it('all tools shared between CHATGPT_TOOL_DEFINITIONS and inline registrations are in INLINE_HANDLED_TOOLS skip-set', () => {

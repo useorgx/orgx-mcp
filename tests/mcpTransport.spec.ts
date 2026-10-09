@@ -7,15 +7,13 @@ import {
   withCorsAndHeaders,
 } from '../src/mcpTransport';
 import {
-  DEPRECATION_SUNSET_AT_ISO,
-  DEPRECATION_SUNSET_HEADER,
-  DEPRECATION_WINDOW_DAYS,
+  MCP_COMPATIBILITY_RETIREMENT_POLICY,
 } from '../src/deprecatedTools';
 
 const env = {} as unknown as Record<string, unknown>;
 
-function createCtx() {
-  return { waitUntil: vi.fn() } as any;
+function createCtx(props: Record<string, unknown> = {}) {
+  return { waitUntil: vi.fn(), props } as any;
 }
 
 function createTrackedCtx() {
@@ -158,6 +156,7 @@ describe('mcpTransport', () => {
       scope: 'mcp:all',
       email: undefined,
       profile: 'v2',
+      toolProfileExplicit: false,
     });
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
     }
@@ -267,7 +266,7 @@ describe('mcpTransport', () => {
       }),
     };
 
-    const request = new Request('http://localhost/mcp', {
+    const request = new Request('http://localhost/mcp?profile=legacy', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -313,7 +312,7 @@ describe('mcpTransport', () => {
       }),
     };
 
-    const request = new Request('http://localhost/mcp', {
+    const request = new Request('http://localhost/mcp?profile=legacy', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -358,7 +357,7 @@ describe('mcpTransport', () => {
       }),
     };
 
-    const request = new Request('http://localhost/mcp', {
+    const request = new Request('http://localhost/mcp?profile=legacy', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -404,7 +403,7 @@ describe('mcpTransport', () => {
       }),
     };
 
-    const request = new Request('http://localhost/mcp', {
+    const request = new Request('http://localhost/mcp?profile=legacy', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -450,7 +449,7 @@ describe('mcpTransport', () => {
       }),
     };
 
-    const request = new Request('http://localhost/mcp', {
+    const request = new Request('http://localhost/mcp?profile=full', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -469,7 +468,7 @@ describe('mcpTransport', () => {
     const response = await handleMcpRequest(
       request,
       env,
-      createCtx(),
+      createCtx({ authSource: 'run_token' }),
       handler,
       vi.fn(async () => ({}))
     );
@@ -488,24 +487,22 @@ describe('mcpTransport', () => {
       'account_upgrade'
     );
     expect(response.headers.get('x-orgx-deprecation-routed')).toBe('true');
-    expect(response.headers.get('x-orgx-deprecation-sunset-at')).toBe(
-      DEPRECATION_SUNSET_AT_ISO
-    );
-    expect(response.headers.get('x-orgx-deprecation-window-days')).toBe(
-      String(DEPRECATION_WINDOW_DAYS)
-    );
-    expect(response.headers.get('Sunset')).toBe(DEPRECATION_SUNSET_HEADER);
+    expect(response.headers.get('x-orgx-deprecation-retirement-policy')).toBe(MCP_COMPATIBILITY_RETIREMENT_POLICY);
+    expect(response.headers.get('x-orgx-deprecation-min-quiet-days')).toBeNull();
+    expect(response.headers.get('x-orgx-deprecation-sunset-at')).toBeNull();
+    expect(response.headers.get('Sunset')).toBeNull();
   });
 
   it('captures telemetry for deprecated tool usage when PostHog is configured', async () => {
     const tracked = createTrackedCtx();
     const { ctx, waitUntil } = tracked;
+    ctx.props = { authSource: 'run_token' };
     const telemetryFetch = vi.fn(async () => new Response(null, { status: 200 }));
     const originalFetch = globalThis.fetch;
     vi.stubGlobal('fetch', telemetryFetch);
 
     try {
-      const request = new Request('http://localhost/mcp', {
+      const request = new Request('http://localhost/mcp?profile=full', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -562,8 +559,7 @@ describe('mcpTransport', () => {
         routed: true,
         auth_scope: 'mcp:all',
         has_user_id: true,
-        deprecation_sunset_at: DEPRECATION_SUNSET_AT_ISO,
-        deprecation_window_days: DEPRECATION_WINDOW_DAYS,
+        deprecation_retirement_policy: MCP_COMPATIBILITY_RETIREMENT_POLICY,
         $lib: 'orgx-mcp',
       });
       expect(invocationPayload?.batch[0]?.properties).toMatchObject({
@@ -987,7 +983,7 @@ describe('mcpTransport', () => {
       }),
     };
 
-    const request = new Request('http://localhost/mcp', {
+    const request = new Request('http://localhost/mcp?profile=legacy', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -1289,6 +1285,7 @@ describe('mcpTransport', () => {
     expect(response.headers.get('x-orgx-mcp-error-stage')).toBe(
       'oauth_provider'
     );
+    expect(response.headers.get('x-orgx-retryable')).toBe('false');
     expect(body).toMatchObject({
       jsonrpc: '2.0',
       id: 'bootstrap-1',
@@ -1298,11 +1295,13 @@ describe('mcpTransport', () => {
           code: 'mcp_transport_exception',
           error_kind: 'exception_typeerror',
           stage: 'oauth_provider',
-          retryable: true,
+          retryable: false,
           health_check_url: 'https://mcp.useorgx.com/healthz?check=upstream',
         },
       },
     });
     expect(JSON.stringify(body)).not.toContain('provider crashed');
+    expect(body.error.data.next_steps[0]).toContain('may already have committed');
+    expect(body.error.data.next_steps.join(' ')).not.toContain('Retry the tool call once');
   });
 });

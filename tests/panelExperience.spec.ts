@@ -184,7 +184,7 @@ describe('panel experience lifetime and recovery', () => {
       : { structuredContent: { kind: 'decision', id: D1, state: 'held', next_poll_after_ms: 400 } });
     approve(m);
     await vi.waitFor(() => expect(footer(m)?.getAttribute('state')).toBe('stale'));
-    expect(m.calls.callServerTool.mock.calls.filter(([p]) => p.name === 'orgx_command_status')).toHaveLength(13);
+    expect(m.calls.callServerTool.mock.calls.filter(([p]) => p.name === 'orgx_get_operation_status')).toHaveLength(13);
   });
   it('auth resume accepts an earlier timestamp and drops authority from the prior result', async () => {
     const m = await open();

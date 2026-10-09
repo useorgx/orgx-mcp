@@ -365,6 +365,9 @@
         if (source.structuredContent && typeof source.structuredContent === 'object') {
           source = source.structuredContent;
         }
+        if (source.data && typeof source.data === 'object' && (source.data.session_id || source.data.id || source.data.current_plan)) {
+          source = source.data;
+        }
         if (source.plan_session && typeof source.plan_session === 'object') {
           source = source.plan_session;
         } else if (source.selected_session && typeof source.selected_session === 'object') {
@@ -798,10 +801,10 @@
 
       // When recording the edit is itself a queued command, follow it rather
       // than calling it recorded the moment the request returns.
-      function followCommand(commandId) {
+      function followCommand(commandId, operationId) {
         return new Promise(function poll(resolve, reject) {
           function check() {
-            Promise.resolve(window.OrgXWidgetRuntime.callTool('orgx_command_status', { kind: 'command', id: commandId }))
+            Promise.resolve(window.OrgXWidgetRuntime.callTool('orgx_get_operation_status', operationId ? { operation_id: operationId } : { kind: 'command', id: commandId }))
               .then(function settle(result) {
                 var status = readResult(result) || {};
                 if (status.state === 'failed' || status.state === 'cancelled') {
@@ -849,8 +852,7 @@
         try {
           if (state.plan.demoSendFails) throw new Error('guidance_not_recorded');
           if (!state.plan.demo) {
-            var result = await window.OrgXWidgetRuntime.callTool('orgx_plan', {
-              action: 'record_edit',
+            var result = await window.OrgXWidgetRuntime.callTool('orgx_record_plan_edit', {
               session_id: state.plan.id,
               edit_summary: summary,
             });
@@ -863,7 +865,8 @@
             }
             var out = readResult(result);
             var commandId = out && typeof out === 'object' ? (out.command_id || out.commandId) : null;
-            if (typeof commandId === 'string' && UUID_RE.test(commandId)) await followCommand(commandId);
+            var operationId = out && typeof out.operation_id === 'string' ? out.operation_id : null;
+            if (operationId || (typeof commandId === 'string' && UUID_RE.test(commandId))) await followCommand(commandId, operationId);
           }
           state.plan.edits.unshift({
             id: 'local-' + Date.now(),

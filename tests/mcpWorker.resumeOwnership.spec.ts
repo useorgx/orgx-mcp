@@ -9,6 +9,11 @@ import { createEmptyMcpSessionReentryState } from '../src/welcomeBackContext';
 const apiMocks = vi.hoisted(() => ({ callOrgxApiJson: vi.fn() }));
 vi.mock('agents/mcp', () => ({
   McpAgent: class {
+    async getInitializeRequest() { return (this as any).ctx.storage.get('initializeRequest'); }
+    async updateProps(props: unknown) {
+      await (this as any).ctx.storage.put('props', props ?? {});
+      (this as any).props = props;
+    }
     static serve() { return { fetch: vi.fn(async () => new Response(null, { status: 501 })) }; }
     static serveSSE() { return { fetch: vi.fn(async () => new Response(null, { status: 501 })) }; }
   },

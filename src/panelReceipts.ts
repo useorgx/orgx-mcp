@@ -2,8 +2,8 @@
  * The OrgX panel's receipts: the work agents did, as the Work Ledger records
  * it (Agent Work Receipts), with each acceptance criterion's verdict.
  *
- * Read through the ledger API the model already uses (orgx_search
- * scope=work_ledger): GET /api/v1/work-ledger/receipts?q= for a range or a
+ * Read through the ledger API behind orgx_list_work_receipts and
+ * orgx_get_work_receipt: GET /api/v1/work-ledger/receipts?q= for a range or a
  * filter (pr:3236), and /receipts/{id} for one receipt in full. This module
  * only shapes those payloads for the panel; it never invents a verdict. A
  * criterion the ledger has no evidence for stays "unknown", and the ledger's
@@ -256,8 +256,10 @@ export function buildPanelReceiptDetail(payload: unknown, id: string, reason: st
 /** A failed ledger read in the panel's words: the status and the API's message, never a stack. */
 export function ledgerFailure(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error ?? '');
-  const code = (error as { status?: unknown } | null)?.status;
-  const status = typeof code === 'number' ? String(code) : /\b(4\d\d|5\d\d)\b/.exec(message)?.[1];
+  const failure = error as { statusCode?: unknown; status?: unknown } | null;
+  const code = [failure?.statusCode, failure?.status].find((value) =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 400 && value <= 599);
+  const status = code !== undefined ? String(code) : /\b(4\d\d|5\d\d)\b/.exec(message)?.[1];
   if (status === '401' || status === '403') return 'The Work Ledger needs you signed in to this workspace.';
   if (status === '404') return 'The Work Ledger has nothing for this yet.';
   if (/abort|timeout|timed out/i.test(message)) return 'The Work Ledger took too long to answer.';

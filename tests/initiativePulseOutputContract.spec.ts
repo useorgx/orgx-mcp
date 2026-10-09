@@ -21,20 +21,20 @@ function pulse(blockers: unknown[]) {
 }
 
 describe('initiative pulse blocker wire contract', () => {
-  const schema = getOpenAiOutputSchema('get_initiative_pulse')!;
+  const schema = getOpenAiOutputSchema('orgx_get_initiative_progress')!;
   it('delivers API blocker text and linked resources through the MCP client', async () => {
     const blockers = ['Mac client is offline.', { id: 'decision-1', title: 'Objective review pending', status: 'pending' }];
     const payload = pulse(blockers);
     expect(schema.parse(payload).blockers).toEqual(blockers);
     const server = new McpServer({ name: 'pulse-contract', version: '1.0.0' });
-    server.registerTool('get_initiative_pulse', { outputSchema: schema.shape }, async () => ({
+    server.registerTool('orgx_get_initiative_progress', { outputSchema: schema.shape }, async () => ({
       content: [{ type: 'text' as const, text: payload.message }], structuredContent: payload,
     }));
     const client = new Client({ name: 'pulse-reader', version: '1.0.0' });
     const [reader, writer] = InMemoryTransport.createLinkedPair();
     try {
       await server.connect(writer); await client.connect(reader);
-      const result = await client.callTool({ name: 'get_initiative_pulse', arguments: {} });
+      const result = await client.callTool({ name: 'orgx_get_initiative_progress', arguments: {} });
       expect(result.isError).not.toBe(true);
       expect(result.structuredContent).toMatchObject({ status: 'blocked', blockers, pending_decisions: 1 });
     } finally { await client.close(); await server.close(); }

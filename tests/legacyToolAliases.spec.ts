@@ -12,7 +12,7 @@ import {
 } from '../src/contractTools';
 import {
   DEPRECATED_TOOL_IDS,
-  DEPRECATION_SUNSET_AT_ISO,
+  MCP_COMPATIBILITY_RETIREMENT_POLICY,
   LEGACY_TOOL_ALIASES,
   resolveDeprecatedToolCall,
   resolveLegacyToolAlias,
@@ -29,9 +29,11 @@ import { createEmptyMcpSessionReentryState } from '../src/welcomeBackContext';
  * Legacy tool names that a v2-core tool fully covers run as thin aliases of
  * that canonical tool (src/deprecatedTools.ts LEGACY_TOOL_ALIASES). These
  * tests pin two things:
- *   1. Every listed surface is unchanged: tools/list per profile is hashed
- *      tool by tool, so any change to a name, schema, annotation, _meta or
- *      description shows up as a snapshot diff.
+ *   1. Every listed surface matches its reviewed baseline: tools/list per
+ *      profile is hashed tool by tool, so changes to schemas, annotations,
+ *      metadata or descriptions require an explicit golden-file review.
+ *      The operation-cutover review and permitted legacy differences are in
+ *      docs/mcp-operation-review-2026-10-09.md.
  *   2. Each alias resolves to its canonical implementation (one upstream
  *      call, made by the canonical code path) and carries the deprecation
  *      warning metadata the transport-level deprecated routes already emit.
@@ -47,6 +49,11 @@ const apiMocks = vi.hoisted(() => ({
 
 vi.mock('agents/mcp', () => ({
   McpAgent: class McpAgent {
+    async getInitializeRequest() { return (this as any).ctx.storage.get('initializeRequest'); }
+    async updateProps(props: unknown) {
+      await (this as any).ctx.storage.put('props', props ?? {});
+      (this as any).props = props;
+    }
     static serve() {
       return { fetch: vi.fn(async () => new Response(null, { status: 501 })) };
     }
@@ -111,6 +118,7 @@ async function createHarness(options: HarnessOptions) {
   const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
   const userId = options.userId === undefined ? USER_ID : options.userId;
   worker.props = {
+    ...(options.profile === 'full' ? { authSource: 'run_token' } : {}),
     ...(userId ? { userId, orgxUserId: ORGX_USER_ID } : {}),
     email: 'alias-user@example.com',
     scope: options.scope ?? ALL_SCOPES,
@@ -186,10 +194,8 @@ afterEach(() => {
 const ALIAS_DESCRIPTION_SUFFIX = / Alias of ([a-z_]+) \([^)]*\)\.$/;
 
 /**
- * The one intended change to a listed descriptor is an "Alias of <canonical>"
- * sentence appended to an alias's description. Strip it (after checking it
- * names the right canonical tool) so the snapshot proves everything else,
- * including the rest of that description, is byte-identical to before.
+ * Strip the alias note after independently checking its canonical target.
+ * Everything else remains part of the reviewed descriptor snapshot.
  */
 function withoutAliasNote(tool: { name: string; description?: string }) {
   const alias = resolveLegacyToolAlias(tool.name);
@@ -331,7 +337,7 @@ describe('legacy tool alias contract', () => {
       }),
     };
     const response = await handleMcpRequest(
-      new Request('http://localhost/mcp', {
+      new Request('http://localhost/mcp?profile=full', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -343,7 +349,7 @@ describe('legacy tool alias contract', () => {
         }),
       }),
       {},
-      { waitUntil: vi.fn() } as any,
+      { waitUntil: vi.fn(), props: { authSource: 'run_token' } } as any,
       handler,
       vi.fn(async () => ({}))
     );
@@ -358,9 +364,8 @@ describe('legacy tool alias contract', () => {
     expect(response.headers.get('x-orgx-replacement-tool')).toBe('orgx_plan');
     expect(response.headers.get('x-orgx-replacement-action')).toBe('start');
     expect(response.headers.get('x-orgx-deprecation-routed')).toBe('true');
-    expect(response.headers.get('x-orgx-deprecation-sunset-at')).toBe(
-      DEPRECATION_SUNSET_AT_ISO
-    );
+    expect(response.headers.get('x-orgx-deprecation-retirement-policy')).toBe(MCP_COMPATIBILITY_RETIREMENT_POLICY);
+    expect(response.headers.get('x-orgx-deprecation-sunset-at')).toBeNull();
     expect(response.headers.get('Warning')).toContain(
       'start_plan_session is deprecated; use orgx_plan (action=start).'
     );
@@ -562,7 +567,7 @@ describe('legacy tool aliases run the canonical implementation', () => {
 
   it('checks the legacy auth requirement, with the legacy message, before running the canonical tool', async () => {
     const harness = await createHarness({
-      profile: 'full',
+      profile: 'legacy',
       scope: 'initiatives:read',
     });
     try {

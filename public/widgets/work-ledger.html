@@ -19,7 +19,7 @@
   <script src="shared/live-panel.js"></script>
   <style>
     /*
-     * Work Ledger — the get_operator_chronicle result drawn as a receipt card
+     * Work Ledger — the orgx_get_operator_brief result drawn as a receipt card
      * (canvas K1 "receipt at volume", K4 "every way the card can arrive"):
      * one card that carries its window and time, because it stays in the chat
      * after the ledger moves on; the headline; what was produced; which
@@ -1161,7 +1161,7 @@
       refreshing = true;
       render(lastPayload);
       Promise.resolve()
-        .then(function () { return callTool('get_operator_chronicle', { period: period }); })
+        .then(function () { return callTool('orgx_get_operator_brief', { period: period }); })
         .then(function (result) {
           var next = window.OrgXWidgetRuntime.extractStructuredWidgetData(result, true);
           if (!next || !next.chronicle) throw new Error('No ledger in the response.');

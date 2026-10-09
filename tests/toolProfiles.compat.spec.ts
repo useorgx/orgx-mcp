@@ -9,11 +9,18 @@ import { V2_PUBLIC_TOOL_IDS } from '../src/bootstrapPayload';
 import { PRIMARY_AUTHENTICATED_TOOLS } from '../src/publicMcpDiscovery';
 import { getKnownToolContract } from '../src/contractTools';
 import { getClaudeDirectoryToolContract } from '../src/claudeDirectoryTools';
+import { getPublicOperationContract } from '../src/publicOperationContracts';
+import { WORKFLOW_TOOL_IDS } from '../src/workflowTools';
+import { RECEIPT_OPERATION_TOOLS } from '../src/receiptOperationTools';
+import { WIDGET_ONLY_TOOL_IDS } from '../src/widgetToolContract';
 import {
   CHATGPT_PUBLIC_SURFACE,
   CLAUDE_DIRECTORY_SURFACE,
   CLAUDE_PLUGIN_SURFACE,
   GROUPED_V2_PUBLIC_SURFACE,
+  INFORMATIONAL_SURFACE,
+  LEGACY_CLAUDE_DIRECTORY_SURFACE,
+  LEGACY_V2_PUBLIC_SURFACE,
   resolveProfileToolSet,
   resolveToolProfile,
 } from '../src/toolProfiles';
@@ -65,9 +72,9 @@ describe('toolProfiles backward compatibility', () => {
     const chatgptTools = resolveProfileToolSet('chatgpt');
 
     expect([...(chatgptTools ?? [])]).toEqual([...CHATGPT_PUBLIC_SURFACE]);
-    expect(chatgptTools!.size).toBe(28);
-    expect(chatgptTools!.has('orgx_bootstrap')).toBe(true);
-    expect(chatgptTools!.has('get_initiative_pulse')).toBe(true);
+    expect(chatgptTools!.size).toBe(48);
+    expect(chatgptTools!.has('orgx_get_workspace_context')).toBe(true);
+    expect(chatgptTools!.has('orgx_get_initiative_progress')).toBe(true);
     expect(chatgptTools!.has('consolidate_pr')).toBe(false);
     expect(chatgptTools!.has('delegate_agent_task')).toBe(false);
     expect(chatgptTools!.has('spawn_agent_task')).toBe(false);
@@ -80,42 +87,41 @@ describe('toolProfiles backward compatibility', () => {
     expect(chatgptTools!.has('track_project_progress')).toBe(false);
   });
 
-  it('exposes broader Claude workflows through operation-specific contracts', () => {
+  it('shares the same atomic operations and private widgets between reviewed hosts', () => {
     const directoryTools = resolveProfileToolSet('claude-directory');
     expect([...(directoryTools ?? [])]).toEqual([...CLAUDE_DIRECTORY_SURFACE]);
-    expect(directoryTools?.size).toBe(29);
-
+    expect(CLAUDE_DIRECTORY_SURFACE).toEqual(CHATGPT_PUBLIC_SURFACE);
+    expect(directoryTools?.size).toBe(48);
     for (const toolName of directoryTools ?? []) {
-      const tool = getClaudeDirectoryToolContract(toolName) ?? getKnownToolContract(toolName);
-      expect(tool, `${toolName} must have an authorization contract`).toBeDefined();
-      expect(toolName.length, `${toolName} exceeds Anthropic's name limit`).toBeLessThanOrEqual(64);
-      expect(tool?.title?.trim(), `${toolName} is missing a title`).toBeTruthy();
-      expect(tool?.annotations).toMatchObject({
-        readOnlyHint: expect.any(Boolean),
-        destructiveHint: expect.any(Boolean),
-        openWorldHint: expect.any(Boolean),
-      });
-      expect(tool?.securitySchemes?.length, `${toolName} is missing authorization`).toBeGreaterThan(0);
+      const tool = getPublicOperationContract(toolName);
+      expect(tool, `${toolName} needs an authorization contract`).toBeDefined();
+      expect(toolName.length).toBeLessThanOrEqual(64);
+      expect(tool?.title?.trim()).toBeTruthy();
+      expect(tool?.annotations).toMatchObject({ readOnlyHint: expect.any(Boolean), destructiveHint: expect.any(Boolean), openWorldHint: expect.any(Boolean) });
+      expect(tool?.securitySchemes?.length).toBeGreaterThan(0);
     }
+    for (const toolName of [...WORKFLOW_TOOL_IDS, ...RECEIPT_OPERATION_TOOLS.map((tool) => tool.id), ...WIDGET_ONLY_TOOL_IDS]) expect(directoryTools?.has(toolName), toolName).toBe(true);
+    for (const router of ['orgx_write', 'orgx_act', 'orgx_plan', 'orgx_spawn', 'orgx_decide', 'manage_lifecycle', 'approve_agent_work', 'scaffold_initiative']) expect(directoryTools?.has(router), router).toBe(false);
+  });
 
-    for (const workflowTool of [
-      'orgx_bootstrap', 'orgx_create_entity', 'orgx_update_entity',
-      'orgx_start_plan', 'orgx_read_plan', 'orgx_improve_plan',
-      'orgx_record_plan_edit', 'orgx_complete_plan', 'orgx_check_delegation',
-      'orgx_delegate_work', 'orgx_list_pending_decisions', 'orgx_record_decision',
-      'orgx_open_decision_review', 'orgx_attach', 'orgx_submit_receipt',
-      'orgx_complete_with_proof', 'orgx_change_entity_state', 'manage_lifecycle',
-    ]) {
-      expect(directoryTools?.has(workflowTool), workflowTool).toBe(true);
+  it('retains legacy directory workflows under an explicit migration profile', () => {
+    const legacy = resolveProfileToolSet('claude-directory-legacy');
+    expect(LEGACY_CLAUDE_DIRECTORY_SURFACE).toHaveLength(29);
+    for (const toolName of LEGACY_CLAUDE_DIRECTORY_SURFACE) {
+      expect(legacy?.has(toolName), toolName).toBe(true);
+      expect(getClaudeDirectoryToolContract(toolName) ?? getPublicOperationContract(toolName), toolName).toBeDefined();
     }
-    // Read and write branches of these routers have distinct directory tools.
-    for (const router of ['orgx_write', 'orgx_act', 'orgx_plan', 'orgx_spawn', 'orgx_decide']) {
-      expect(directoryTools?.has(router), router).toBe(false);
-    }
+    for (const workflowTool of ['orgx_bootstrap', 'orgx_create_entity', 'orgx_update_entity', 'orgx_start_plan', 'orgx_read_plan', 'orgx_improve_plan', 'orgx_record_plan_edit', 'orgx_complete_plan', 'orgx_check_delegation', 'orgx_delegate_work', 'orgx_list_pending_decisions', 'orgx_record_decision', 'orgx_open_decision_review', 'orgx_attach', 'orgx_submit_receipt', 'orgx_complete_with_proof', 'orgx_change_entity_state', 'manage_lifecycle']) expect(legacy?.has(workflowTool), workflowTool).toBe(true);
     expect(getClaudeDirectoryToolContract('orgx_read_plan')?.annotations.readOnlyHint).toBe(true);
     expect(getClaudeDirectoryToolContract('orgx_start_plan')?.annotations.readOnlyHint).toBe(false);
     expect(getClaudeDirectoryToolContract('orgx_check_delegation')?.annotations.readOnlyHint).toBe(true);
     expect(getClaudeDirectoryToolContract('orgx_delegate_work')?.annotations.readOnlyHint).toBe(false);
+  });
+
+  it('preserves every original public operation in the explicit legacy profile', () => {
+    const legacy = resolveProfileToolSet('legacy');
+    for (const toolName of LEGACY_V2_PUBLIC_SURFACE) expect(legacy?.has(toolName), toolName).toBe(true);
+    for (const router of ['orgx_write', 'orgx_act', 'orgx_plan', 'orgx_spawn', 'orgx_decide', 'manage_lifecycle']) expect(legacy?.has(router), router).toBe(true);
   });
 
   it('resolveProfileToolSet defaults omitted profiles to the compact v2 surface', () => {
@@ -123,21 +129,19 @@ describe('toolProfiles backward compatibility', () => {
     const undefinedTools = resolveProfileToolSet(undefined);
 
     expect(defaultTools).toBeInstanceOf(Set);
-    expect(defaultTools!.has('orgx_bootstrap')).toBe(true);
-    expect(defaultTools!.has('orgx_controller_status')).toBe(true);
-    expect(defaultTools!.has('orgx_write')).toBe(true);
-    expect(defaultTools!.has('orgx_request_question')).toBe(true);
-    expect(defaultTools!.has('orgx_poll_question')).toBe(true);
-    expect(defaultTools!.has('orgx_request_attention')).toBe(true);
-    expect(defaultTools!.has('orgx_poll_attention')).toBe(true);
-    expect(defaultTools!.has('orgx_ack_attention')).toBe(true);
+    expect(defaultTools!.has('orgx_get_workspace_context')).toBe(true);
+    expect(defaultTools!.has('orgx_create_task')).toBe(true);
+    expect(defaultTools!.has('orgx_save_plan')).toBe(true);
+    expect(defaultTools!.has('orgx_submit_work_receipt')).toBe(true);
+    expect(defaultTools!.has('orgx_get_receipt_review_queue')).toBe(true);
+    for (const router of ['orgx_write', 'orgx_act', 'orgx_plan', 'orgx_spawn', 'orgx_decide']) expect(defaultTools!.has(router), router).toBe(false);
     expect(undefinedTools).toEqual(defaultTools);
   });
 
   it('fails unknown profiles closed to the read-only fallback surface', () => {
     const fallbackTools = resolveProfileToolSet('typo-admin');
     expect(fallbackTools).toEqual(resolveProfileToolSet('read-only'));
-    expect([...(fallbackTools ?? [])]).toEqual([...INFORMATIONAL_BASELINE]);
+    expect([...(fallbackTools ?? [])]).toEqual([...INFORMATIONAL_SURFACE]);
     expect(fallbackTools?.size).toBe(7);
     expect(resolveToolProfile('typo-admin')).toMatchObject({
       name: 'read-only',

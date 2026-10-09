@@ -1,0 +1,138 @@
+{
+  "chronicle": {
+    "workspaceId": "11111111-1111-4111-8111-111111111111",
+    "workspaceName": "Inspector Local Workspace",
+    "generatedAt": "2026-10-09T18:00:00.000Z",
+    "period": "day",
+    "windowStart": "2026-10-09T18:00:00.000Z",
+    "windowEnd": "2026-10-09T18:00:00.000Z",
+    "attentionState": "needs_you",
+    "headline": "Inspector local fixture chronicle",
+    "summary": "One receipt and one deliverable await human review.",
+    "metrics": {
+      "decisionsResolved": 0,
+      "pendingDecisions": 1,
+      "blockedWork": 0,
+      "artifactsProduced": 1,
+      "prReceipts": 0,
+      "activeInitiatives": 1,
+      "goalsTracked": 0,
+      "completedRuns": 0,
+      "failedRuns": 0,
+      "receiptsProduced": 1,
+      "valueCreatedUsd": 0,
+      "avgQualityScore": null
+    },
+    "topPriorities": [
+      {
+        "id": "77777777-7777-4777-8777-777777777777",
+        "title": "Review fixture delivery",
+        "summary": "Review receipt provenance before accepting the work.",
+        "type": "decision",
+        "status": "pending",
+        "urgency": "high",
+        "initiative_id": "22222222-2222-4222-8222-222222222222",
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "created_at": "2026-10-09T18:00:00.000Z",
+        "updated_at": "2026-10-09T18:00:00.000Z"
+      }
+    ],
+    "rollups": [
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "title": "Inspector Fixture Delivery",
+        "name": "Inspector Fixture Delivery",
+        "short_id": "INI-FIXTURE",
+        "type": "initiative",
+        "summary": "Local contract exercise; no production work.",
+        "status": "active",
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "created_at": "2026-10-09T18:00:00.000Z",
+        "updated_at": "2026-10-09T18:00:00.000Z"
+      }
+    ],
+    "reportingNarrative": {
+      "headline": "Review fixture delivery",
+      "whatChanged": [
+        "Fixture receipt recorded."
+      ],
+      "proof": [
+        "Fixture report attached."
+      ],
+      "risks": [
+        "Producer confidence is 45%."
+      ],
+      "briefMarkdown": "# Fixture operator brief\n\nOne receipt awaits human review.",
+      "nextAction": "Review the fixture receipt."
+    },
+    "decisionChronology": [
+      {
+        "id": "77777777-7777-4777-8777-777777777777",
+        "title": "Review fixture delivery",
+        "summary": "Review receipt provenance before accepting the work.",
+        "type": "decision",
+        "status": "pending",
+        "urgency": "high",
+        "initiative_id": "22222222-2222-4222-8222-222222222222",
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "created_at": "2026-10-09T18:00:00.000Z",
+        "updated_at": "2026-10-09T18:00:00.000Z"
+      }
+    ],
+    "artifactLedger": [
+      {
+        "id": "66666666-6666-4666-8666-666666666666",
+        "name": "Fixture receipt provenance report",
+        "title": "Fixture receipt provenance report",
+        "type": "artifact",
+        "artifact_type": "document",
+        "status": "in_review",
+        "version": 2,
+        "artifact_url": "https://127.0.0.1:8790/fixture-proof",
+        "preview_markdown": "# Fixture report\n\nReceipt confidence is producer reported.",
+        "initiative_id": "22222222-2222-4222-8222-222222222222",
+        "task_id": "33333333-3333-4333-8333-333333333333",
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "created_at": "2026-10-09T18:00:00.000Z",
+        "updated_at": "2026-10-09T18:00:00.000Z"
+      }
+    ],
+    "continuity": {
+      "headline": "Local fixture continuity",
+      "summary": "The actual Worker reads this fixture snapshot.",
+      "metrics": {
+        "linkedClients": 1,
+        "observedClients": 1,
+        "verifiedClients": 0,
+        "silentLinkedClients": 0,
+        "crossClientSessions": 0,
+        "records": 1
+      },
+      "clients": [],
+      "events": []
+    },
+    "prVelocity": {
+      "receipts": [],
+      "source": "orgx_pr_receipts",
+      "coverage": "missing"
+    },
+    "initiatives": [
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "title": "Inspector Fixture Delivery",
+        "name": "Inspector Fixture Delivery",
+        "short_id": "INI-FIXTURE",
+        "type": "initiative",
+        "summary": "Local contract exercise; no production work.",
+        "status": "active",
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "created_at": "2026-10-09T18:00:00.000Z",
+        "updated_at": "2026-10-09T18:00:00.000Z"
+      }
+    ],
+    "goals": [],
+    "dataGaps": [
+      "Fixture has no real production PR receipts."
+    ]
+  }
+}

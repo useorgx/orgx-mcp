@@ -33,3 +33,7 @@ artifacts/widget-gallery/
 # Local browser and design QA evidence. Keep captures out of release source.
 artifacts/qa/
 widget-gallery-before-*.png
+
+# Reproducible ChatGPT upload candidates; source lives in chatgpt-plugin/.
+artifacts/orgx-chatgpt-plugin-*.zip
+artifacts/orgx-chatgpt-plugin-*.zip.sha256

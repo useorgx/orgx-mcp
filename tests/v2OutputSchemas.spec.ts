@@ -8,7 +8,7 @@ import { buildFailureDetails } from '../src/agentErgonomics';
 import { toolError } from '../src/authHelpers';
 import { directHumanDecisionActionRequired } from '../src/directHumanDecisionAction';
 import { getToolOutputSchema } from '../src/openaiOutputSchemas';
-import { V2_PUBLIC_SURFACE } from '../src/toolProfiles';
+import { V2_PUBLIC_SURFACE, resolveProfileToolSet } from '../src/toolProfiles';
 import { installToolResultGuidanceWrapper } from '../src/toolResultRegistration';
 import {
   CONTEXT_TAIL_MATERIAL_EVENT_TYPES,
@@ -26,16 +26,17 @@ const UUID_2 = '22222222-2222-4222-8222-222222222222';
 
 /**
  * A server that returns whatever the current test hands it, for every tool on
- * the published v2 surface, with the production schema-registration wrapper
+ * the selected public/native surface, with the production schema-registration wrapper
  * installed. callTool then exercises both validators the SDK applies: the
  * server's Zod check on success and the client's JSON Schema check on every
  * result that carries structuredContent — errors included.
  */
-async function connectSurface() {
+async function connectSurface(profile: 'v2' | 'legacy' = 'v2') {
   let next: CallToolResult = { content: [] };
   const server = new McpServer({ name: 'orgx-v2-output', version: '1.0.0' });
-  installToolResultGuidanceWrapper(server, null);
-  for (const name of V2_PUBLIC_SURFACE) {
+  const toolsForProfile = resolveProfileToolSet(profile)!;
+  installToolResultGuidanceWrapper(server, toolsForProfile, undefined, undefined, false, profile);
+  for (const name of toolsForProfile) {
     server.registerTool(
       name,
       { description: `${name} probe`, inputSchema: {} },
@@ -321,7 +322,7 @@ describe('v2 output schemas', () => {
   });
 
   it('keeps the review URL a human needs on the decision tools', async () => {
-    surface = await connectSurface();
+    surface = await connectSurface('legacy');
     const approve = directHumanDecisionActionRequired(UUID, 'approve');
     for (const name of ['approve_decision', 'reject_decision', 'approve_agent_work']) {
       const received = (await surface.call(
@@ -334,8 +335,8 @@ describe('v2 output schemas', () => {
     }
   });
 
-  it('accepts representative success payloads for the newly covered tools', async () => {
-    surface = await connectSurface();
+  it('accepts representative native success payloads through the explicit runtime profile', async () => {
+    surface = await connectSurface('legacy');
     for (const [name, payloads] of Object.entries(REPRESENTATIVE)) {
       for (const payload of payloads) {
         // Not compared for equality: the production wrapper rewrites guidance
@@ -351,7 +352,7 @@ describe('v2 output schemas', () => {
   it('accepts fields the upstream API adds later', async () => {
     // These payloads are owned by the OrgX API, which evolves on its own
     // schedule. A new field must not turn a working call into a failure.
-    surface = await connectSurface();
+    surface = await connectSurface('legacy');
     for (const [name, payloads] of Object.entries(REPRESENTATIVE)) {
       if (name === 'orgx_controller_status') continue; // exact, validated envelope
       const payload = {
@@ -374,7 +375,7 @@ describe('v2 output schemas', () => {
     // Open is not the same as unchecked: the fields a schema names are typed.
     // The SDK reports a server-side output validation failure as an error
     // result naming the field, rather than throwing.
-    surface = await connectSurface();
+    surface = await connectSurface('legacy');
     const cases: Array<[string, Record<string, unknown>, string]> = [
       [
         'orgx_emit_activity',

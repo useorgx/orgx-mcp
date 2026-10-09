@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import serverManifest from '../server.json';
-import { getKnownToolContract } from '../src/contractTools';
+import { getPublicOperationContract, getPublicOperationContracts } from '../src/publicOperationContracts';
 import { getClaudeDirectoryToolContract } from '../src/claudeDirectoryTools';
 import {
   ORGX_TOOL_PROFILE_HEADER,
@@ -49,10 +49,10 @@ function createInMemoryMcpHandler() {
 
       const profile = String(ctx.props?.profile ?? '');
       const selected = resolveProfileToolSet(profile);
-      const names = selected ? [...selected] : serverManifest.tools.map((tool) => tool.name);
+      const names = selected ? [...selected] : getPublicOperationContracts().map((tool) => tool.id);
       const tools = names.map((name) => {
-        const directory = profile === 'claude-directory' ? getClaudeDirectoryToolContract(name) : undefined;
-        const contract = directory ?? getKnownToolContract(name);
+        const directory = profile === 'claude-directory-legacy' ? getClaudeDirectoryToolContract(name) : undefined;
+        const contract = directory ?? getPublicOperationContract(name);
         return contract ? { name, annotations: contract.annotations } : toolsByName.get(name);
       }).filter(Boolean);
 
@@ -74,8 +74,10 @@ describe('request tool-profile propagation', () => {
       'const profileAwareSseHandler = withRequestToolProfile(rateLimitedSseHandler);'
     );
     expect(workerSource).toMatch(
-      /apiHandlers:\s*\{[\s\S]*?'\/mcp': profileAwareHttpHandler,[\s\S]*?'\/sse': profileAwareSseHandler/
+      /apiHandlers:\s*\{[\s\S]*?'\/mcp': observedHttpHandler,[\s\S]*?'\/sse': observedSseHandler/
     );
+    expect(workerSource).toContain('const observedHttpHandler = observeVerifiedMcpTransport(profileAwareHttpHandler);');
+    expect(workerSource).toContain('const observedSseHandler = observeVerifiedMcpTransport(profileAwareSseHandler);');
     expect(workerSource).toMatch(
       /export function getHttpHandler\(\) \{\s*return profileAwareHttpHandler;/
     );
@@ -191,11 +193,11 @@ describe('request tool-profile propagation', () => {
     expect(body.result.tools.map((tool) => tool.name)).toEqual([
       ...CLAUDE_DIRECTORY_SURFACE,
     ]);
-    expect(body.result.tools).toHaveLength(29);
-    expect(body.result.tools.map((tool) => tool.name)).toContain('orgx_bootstrap');
+    expect(body.result.tools).toHaveLength(48);
+    expect(body.result.tools.map((tool) => tool.name)).toContain('orgx_get_workspace_context');
     expect(body.result.tools.map((tool) => tool.name)).not.toContain('orgx_write');
     for (const tool of body.result.tools) {
-      const contract = getClaudeDirectoryToolContract(tool.name) ?? getKnownToolContract(tool.name);
+      const contract = getPublicOperationContract(tool.name);
       expect(tool.annotations, tool.name).toEqual(contract?.annotations);
     }
   });
@@ -272,7 +274,9 @@ describe('request tool-profile propagation', () => {
 
     expect(ctx.props?.profile).toBe('full');
     expect(body.result.tools.map((tool) => tool.name)).toEqual(
-      serverManifest.tools.map((tool) => tool.name)
+      getPublicOperationContracts().map((tool) => tool.id)
     );
+    expect(body.result.tools.map((tool) => tool.name)).toContain('orgx_write');
+    expect(body.result.tools.map((tool) => tool.name)).toContain('orgx_create_task');
   });
 });

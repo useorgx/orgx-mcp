@@ -571,6 +571,20 @@ function mountBrief(payload: Record<string, unknown>) {
 }
 
 describe('B8 · morning brief: one degraded notice, inside the card', () => {
+  it('shows the actual current operator chronicle pending count instead of claiming nothing needs a decision', async () => {
+    // Captured structuredContent from orgx_get_operator_brief through local
+    // Wrangler and the isolated Inspector upstream; no widget-shaped rewrite.
+    const current = JSON.parse(readFileSync(join(process.cwd(), 'tests/fixtures/current-operator-brief.json'), 'utf8'));
+    mountBrief(current);
+    await vi.waitFor(() => expect(document.querySelector('.app-action-card-title')).not.toBeNull());
+    expect(document.body.textContent).toContain('1 decision needs you');
+    expect(document.body.textContent).toContain(current.chronicle.summary);
+    expect(document.body.textContent).toContain(current.chronicle.topPriorities[0].title);
+    expect(visibleText()).not.toContain('Nothing waits on you');
+    expect(visibleText()).not.toContain('Nothing needs your decision');
+    expect(visibleText()).not.toContain('NaN');
+  });
+
   it('names the missing source inside the card and adds no banner above it', async () => {
     mountBrief({
       generated_at: new Date().toISOString(),

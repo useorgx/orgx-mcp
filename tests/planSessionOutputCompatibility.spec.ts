@@ -2,14 +2,14 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { describe, expect, it } from 'vitest';
-import { getOpenAiOutputSchema } from '../src/openaiOutputSchemas';
+import { getToolOutputSchema } from '../src/openaiOutputSchemas';
 import { buildPlanSessionInspectionResult, buildPlanSessionStructuredResult } from '../src/planSessionContract';
 
 const ID = '11111111-1111-4111-8111-111111111111';
 async function callWithAdvertisedSchema(tool: string, payload: Record<string, unknown>) {
   const server = new McpServer({ name: 'plan-output-compatibility', version: '1.0.0' });
   server.registerTool(tool, {
-    inputSchema: {}, outputSchema: getOpenAiOutputSchema(tool)!.shape,
+    inputSchema: {}, outputSchema: getToolOutputSchema(tool)!.shape,
   }, async () => ({
     content: [{ type: 'text' as const, text: 'Persisted plan receipt' }],
     structuredContent: payload,
@@ -22,7 +22,7 @@ async function callWithAdvertisedSchema(tool: string, payload: Record<string, un
   finally { await Promise.allSettled([client.close(), server.close()]); }
 }
 
-describe('persisted planning output compatibility', () => {
+describe('native persisted planning output compatibility', () => {
   it('delivers a completed attachment receipt despite the newer API requested count', async () => {
     const payload = buildPlanSessionStructuredResult('complete_plan', {
       session_id: ID, status: 'completed',

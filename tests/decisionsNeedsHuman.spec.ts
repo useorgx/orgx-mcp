@@ -46,6 +46,6 @@ describe('decisions widget: needs_human result', () => {
     const card = await renderPayload({ status: 'needs_human', review_url: 'javascript:alert(1)' });
     const link = card.querySelector('a[data-needs-human-link]') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toMatch(/^https:\/\//);
-    expect(card.querySelector('.dq-calm-copy')?.textContent).toContain('Only a person can approve');
+    expect(card.querySelector('.dq-calm-copy')?.textContent).toContain('Review this decision in OrgX and record your choice there.');
   });
 });

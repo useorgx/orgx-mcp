@@ -1532,8 +1532,9 @@
 
     var normalizeDecisionQueue = (payload) => {
       if (!payload || typeof payload !== 'object') return null;
+      if (payload.data && typeof payload.data === 'object' && (payload.data.decision || payload.data.decisions)) payload = Object.assign({}, payload.data, { live: payload.live || payload.data.live });
       if (payload.__normalized) return payload;
-      const rawDecisions = Array.isArray(payload.decisions) ? payload.decisions : [];
+      const rawDecisions = Array.isArray(payload.decisions) ? payload.decisions : payload.decision && typeof payload.decision === 'object' ? [payload.decision] : [];
       const seen = new Set();
       const decisions = [];
       rawDecisions.forEach((item, index) => {
@@ -1846,7 +1847,7 @@
       });
     };
 
-    // After OrgX records the decision, read its status until it settles (orgx_command_status).
+    // After OrgX records the decision, read its status until it settles (orgx_get_operation_status).
     // next_poll_after_ms paces the reads; null means the state is final.
     var confirmDecisionSettled = async (id, onProgress) => {
       if (!UUID_RE.test(id)) return { state: 'unconfirmed' };
@@ -1857,7 +1858,7 @@
         if (wait) await sleep(wait);
         let status = null;
         try {
-          const raw = await callTool('orgx_command_status', { kind: 'decision', id });
+          const raw = await callTool('orgx_get_operation_status', { kind: 'decision', id });
           status = runtime && runtime.extractStructuredWidgetData ? runtime.extractStructuredWidgetData(raw, true) : raw;
         } catch (_) {
           return { state: 'unconfirmed' };
@@ -1996,7 +1997,7 @@
       stale.forEach((id) => setPhase(id, { ...actionStates[id], refreshing: true }));
       let result = null;
       try {
-        result = runtime && runtime.callToolResult ? await runtime.callToolResult('get_pending_decisions', {}) : null;
+        result = runtime && runtime.callToolResult ? await runtime.callToolResult('orgx_list_pending_decisions', {}) : null;
       } catch (_) {
         result = null;
       }
@@ -2499,18 +2500,19 @@
     // orgx_decide / approve_agent_work approve|reject from a model: nothing was settled and
     // a person decides in OrgX. Never render this as an empty (“All caught up”) queue.
     var needsHumanReview = (payload) => {
-      if (!payload || payload.status !== 'needs_human') return null;
+      if (payload && payload.data && typeof payload.data === 'object' && payload.data.requires_human_review) payload = payload.data;
+      if (!payload || (payload.status !== 'needs_human' && !(payload.requires_human_review === true && !payload.decision && !(Array.isArray(payload.decisions) && payload.decisions.length)))) return null;
       const url = typeof payload.review_url === 'string' && /^https:\/\//.test(payload.review_url.trim())
         ? payload.review_url.trim()
         : buildDecisionsUrl();
-      const action = payload.requested_action === 'reject' ? 'reject' : 'approve';
+      const action = payload.requested_action === 'reject' ? 'reject' : payload.requested_action === 'approve' ? 'approve' : 'review';
       const said = typeof payload.message === 'string'
         ? payload.message.replace(/:?\s*open https?:\/\/\S+ to decide\./i, '.').trim()
         : '';
       return {
         url,
         action,
-        message: said || `Only a person can ${action} this decision. Nothing was approved or rejected from this chat.`,
+        message: said || (action === 'review' ? 'Review this decision in OrgX and record your choice there.' : `Only a person can ${action} this decision. Nothing was approved or rejected from this chat.`),
       };
     };
 
