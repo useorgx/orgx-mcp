@@ -281,12 +281,12 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
     { name: 'run tool-grant narrowing', previous: { scope: 'mcp:run', authSource: 'run_token' }, incoming: { scope: 'mcp:run', authSource: 'run_token', scopes: ['orgx_search'] } },
     { name: 'run identity replacement', previous: { scope: 'mcp:run', authSource: 'run_token', runId: 'first-run' }, incoming: { scope: 'mcp:run', authSource: 'run_token', runId: 'second-run' } },
     { name: 'run-to-OAuth grant replacement', previous: { scope: 'mcp:run', authSource: 'run_token' }, incoming: { scope: 'initiatives:read' } },
-  ])('rejects $name before dispatch into a warm DO with cached props', async ({ previous, incoming }) => {
+  ].flatMap((scenario) => [{ ...scenario, nativeSse: false }, { ...scenario, nativeSse: true }]))('rejects $name before dispatch into a warm DO with cached props (native SSE: $nativeSse)', async ({ previous, incoming, nativeSse }) => {
     const harness = await createHarness({ scope: previous.scope, profile: 'chatgpt', authSource: previous.authSource });
     const cachedProps = { ...harness.worker.props, ...previous };
     harness.worker.props = cachedProps;
     const persisted = new Map<string, unknown>([
-      ['props', cachedProps], ['initializeRequest', { method: 'initialize' }],
+      ['props', cachedProps], ...(!nativeSse ? [['initializeRequest', { method: 'initialize' }] as [string, unknown]] : []),
       [SESSION_TOOL_CONTRACT_KEY, { profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' }],
     ]);
     harness.worker.ctx.storage.get = vi.fn(async (key: string) => persisted.get(key));
@@ -296,8 +296,8 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
     const handler = { fetch: vi.fn(async () => Response.json({ committed: true })) };
     apiMocks.callOrgxApiJson.mockClear();
     try {
-      const response = await handleMcpRequest(new Request('http://localhost/mcp', {
-        method: 'POST', headers: { 'content-type': 'application/json', 'mcp-session-id': 'warm-session' },
+      const response = await handleMcpRequest(new Request(nativeSse ? 'http://localhost/sse/message?sessionId=warm-session' : 'http://localhost/mcp', {
+        method: 'POST', headers: { 'content-type': 'application/json', ...(!nativeSse ? { 'mcp-session-id': 'warm-session' } : {}) },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'orgx_create_task', arguments: { title: 'Must not create task' } } }),
       }), { MCP_OBJECT: {} }, { props: { userId: USER_ID, profile: 'chatgpt', ...incoming }, waitUntil: vi.fn() } as any,
       handler, async () => ({ userId: USER_ID, scope: incoming.scope }));

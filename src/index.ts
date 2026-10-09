@@ -685,7 +685,7 @@ export class OrgXMcp extends McpAgent<
       this.ctx.storage.get<OrgXMcpProps>('props'),
     ]);
     if (previous?.userId) assertMcpSessionIdentity(previous.userId, props?.userId);
-    if (initialized && previous?.userId) assertMcpSessionGrant(previous, props ?? {});
+    if ((initialized || stored) && previous?.userId) assertMcpSessionGrant(previous, props ?? {});
     const binding = selectSessionToolContract({
       stored, initialized: Boolean(initialized),
       requestedProfile: props?.profile, internalRun: props?.authSource === 'run_token',
@@ -702,7 +702,9 @@ export class OrgXMcp extends McpAgent<
       this.getInitializeRequest(), this.ctx.storage.get<OrgXMcpProps>('props'),
       this.ctx.storage.get<SessionToolContract>(SESSION_TOOL_CONTRACT_KEY),
     ]);
-    if (!initialized) return null;
+    // Native SSE never persists the SDK initializeRequest. Its existing actor
+    // props still bind the session before any message can reach its warm registry.
+    if (!initialized && !previous?.userId) return null;
     if (!previous?.userId) throw new McpSessionProfileConflictError();
     assertMcpSessionIdentity(previous.userId, authenticatedGrant.userId);
     assertMcpSessionGrant(previous, authenticatedGrant);
@@ -1601,7 +1603,7 @@ export class OrgXMcp extends McpAgent<
       this.getInitializeRequest(), this.ctx.storage.get<OrgXMcpProps>('props'),
     ]);
     if (previousProps?.userId) assertMcpSessionIdentity(previousProps.userId, this.props?.userId);
-    if (initializeRequest && previousProps?.userId) assertMcpSessionGrant(previousProps, this.props ?? {});
+    if ((initializeRequest || storedContract) && previousProps?.userId) assertMcpSessionGrant(previousProps, this.props ?? {});
     const contract = selectSessionToolContract({
       stored: storedContract, initialized: Boolean(initializeRequest),
       requestedProfile: this.props?.profile,

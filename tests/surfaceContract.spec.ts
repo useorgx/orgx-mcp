@@ -137,7 +137,8 @@ async function connectProfile(
   profile: string,
   clientName = 'surface-contract',
   grantedScopes?: readonly string[],
-  staleSession?: { previousProfile: string }
+  staleSession?: { previousProfile: string },
+  freshSse = false,
 ) {
   const { OrgXMcp } = await import('../src/index');
   const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
@@ -188,6 +189,7 @@ async function connectProfile(
   }));
   worker.fetchEntityCollection = vi.fn(async () => []);
 
+  if (freshSse) await worker.updateProps(worker.props);
   await worker._doInit();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: clientName, version: '1.0.0' });
@@ -944,6 +946,17 @@ describe('core proof and artifact operations through MCP output contracts', () =
 
 
 describe('current session wire contracts', () => {
+  it('initializes a fresh SSE session with a bound grant and no persisted initializeRequest', async () => {
+    const { client, worker } = await connectProfile('chatgpt', 'fresh-sse', undefined, undefined, true);
+    try {
+      expect(await worker.ctx.storage.get('initializeRequest')).toBeUndefined();
+      expect(await worker.getSessionToolContract(worker.props))
+        .toEqual({ profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' });
+      expect((await client.listTools()).tools.map((tool) => tool.name).sort())
+        .toEqual([...CHATGPT_PUBLIC_SURFACE].sort());
+    } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
   it('rejects a pre-operation ChatGPT session so the host refreshes discovery', async () => {
     await expect(connectProfile('chatgpt', 'cached-chatgpt', undefined, { previousProfile: 'chatgpt' }))
       .rejects.toThrow('Reconnect without a session ID');
@@ -968,6 +981,15 @@ describe('current session wire contracts', () => {
         .rejects.toThrow('another authenticated identity');
       await expect(worker.getSessionToolContract({ ...worker.props, userId: 'other-actor' }))
         .rejects.toThrow('another authenticated identity');
+      // Native SSE keeps actor props without persisting initializeRequest.
+      // Its session must remain bound despite that missing SDK marker.
+      await worker.ctx.storage.put('initializeRequest', undefined);
+      expect(await worker.getSessionToolContract(worker.props))
+        .toEqual({ profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' });
+      await expect(worker.getSessionToolContract({ ...worker.props, userId: 'other-actor' }))
+        .rejects.toThrow('another authenticated identity');
+      await expect(worker.getSessionToolContract({ ...worker.props, scope: 'initiatives:read' }))
+        .rejects.toThrow('different authenticated grant');
       expect((await client.listTools()).tools.map((tool) => tool.name).sort())
         .toEqual([...CHATGPT_PUBLIC_SURFACE].sort());
     } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
