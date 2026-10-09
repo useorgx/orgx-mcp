@@ -48,6 +48,25 @@ The simulation draws a 120px title bar and a 96px composer over the gallery
 panel and reports the same insets to it (`?safe=120,0,96,0`). The exact
 values ChatGPT reports on a given phone come from the app at runtime.
 
+## Borrowed from the other apps, and the real mark
+
+Canva, Runway and Figma in ChatGPT's phone app set the bar: a headline that
+wears the brand, a horizontal rail of concrete ways in, a quiet centred
+brand mark while loading. Three changes follow them.
+
+| | What |
+| --- | --- |
+| Cold start | The skeleton rows are gone. The real OrgX mark settles in the middle of the open view, one thin light sweeps around it, and four lights in the agent domains' tints orbit it while the workspace is read. The caption underneath still escalates (slow, stalled, offline). When the first snapshot lands the stage falls away and the content rises in its place (a view transition; a cut under reduced motion). |
+| Ways in | The calm and first-use states carry a rail of four jobs under the prompt, scroll-snapped edge to edge on a phone. A tap opens Start with the words already in the box, who takes it chosen, and the exact sentence shown. Start's own Try row becomes the same rail on a phone. The Start question and the first-use headline wear a light gradient from the text colour into teal and lime. |
+| The mark | Every `<ox-avatar>` that stands for OrgX itself (system, automation, no owner), including the decision rows and the Decisions widget, drew an approximation of the mark as SVG paths from the UI kit. `agent-identity.js` now swaps in the real ribbon mark (the same inlined WebP the panel header uses) once the avatar renders, across every widget. The kit itself is vendored and untouched. |
+
+![loading stage](evidence/panel-mobile-2026-10-09/after-loading-stage-dark.png)
+![calm rail](evidence/panel-mobile-2026-10-09/after-calm-rail-dark.png)
+![start rail](evidence/panel-mobile-2026-10-09/after-start-rail-dark.png)
+
+The real mark adds 4.7 KB to every widget that inlines `agent-identity.js`;
+the payload budgets were regenerated with `pnpm widget:payload --update`.
+
 ## Host resolution
 
 MCP Apps hosts identify themselves in the `ui/initialize` response
@@ -75,6 +94,8 @@ Every capture: no horizontal overflow, no page errors, both themes.
 
 ## Verification
 
+- `tests/panelPolish.spec.ts` (new): the boot stage and its hand-off to content,
+  the real mark on every OrgX avatar, and the calm rail opening Start.
 - `tests/panelHost.spec.ts` (new): host naming from `userAgent` and from
   `hostInfo` (with the re-render when it arrives), the unknown-host fallback,
   platform/touch/safe-area attributes, the full-screen toggle (shown on a phone

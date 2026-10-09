@@ -159,6 +159,12 @@
     html: html,
     sentence: sentence,
     roster: roster,
+    /** Up to four starters: the open initiative first, then one job per domain. */
+    starters: function starters(initiative) {
+      var out = MIXED.map(function m(x) { return { agent: x[0], text: STARTERS[x[0]][x[1]] }; });
+      if (initiative) out.unshift({ agent: '', text: 'Plan the next steps for ' + initiative });
+      return out.slice(0, 4);
+    },
     /** The preview line alone, so typing updates it without rebuilding the composer. */
     previewHtml: function preview(opts) { opts = opts || {}; return previewHtml(verbOf(opts, agentByKey(opts.agent)), opts); },
   };

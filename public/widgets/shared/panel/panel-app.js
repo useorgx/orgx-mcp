@@ -1198,14 +1198,10 @@
       var frame = ui.mode === 'global'
         ? '<header class="top">' + mark + '<div class="top-id"><span class="sk sk-ws"></span></div><span class="sk sk-tab"></span><span class="sk sk-tab"></span><span class="sk sk-tab"></span></header>'
         : '';
-      var rows = '';
-      for (var i = 0; i < 4; i += 1) rows += '<div class="sk-row" style="--i:' + i + '"><span class="sk sk-av"></span><span class="sk-lines"><span class="sk sk-line" style="width:' + (86 - i * 11) + '%"></span><span class="sk sk-line sk-short"></span></span></div>';
-      var shape = '<div class="pn-skel" aria-hidden="true"><div class="sk-att"><span class="sk sk-dot"></span><span class="sk sk-line" style="width:38%"></span></div>' +
-        '<div class="sk-split"><div class="sk-list">' + rows + '</div>' +
-        '<div class="sk-detail"><span class="sk sk-line sk-meta"></span><span class="sk sk-title"></span><span class="sk sk-title sk-t2"></span>' +
-        '<span class="sk sk-line" style="width:92%"></span><span class="sk sk-line" style="width:84%"></span><span class="sk sk-block"></span>' +
-        '<span class="sk-acts"><span class="sk sk-btn sk-ghost"></span><span class="sk sk-btn"></span></span></div></div>' +
-        bootCaptionHtml() + '</div>';
+      // The stage: the mark in the middle of the open view with the team's
+      // lights in orbit (panel-brand.js), and under it what the wait means.
+      var shape = '<div class="pn-skel" aria-hidden="true">' +
+        (Brand ? Brand.bootHtml(bootCaptionHtml()) : '<div class="pn-boot">' + bootCaptionHtml() + '</div>') + '</div>';
       return frame + shape + '<p class="sr-only">Loading your decisions.</p>';
     }
 
@@ -1340,18 +1336,25 @@
         ? '<button type="button" class="cm-prompt" data-action="start-open"><span class="cm-pp">What should get done next?</span><span class="cm-go" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span></button>'
         : '';
       var see = items.length ? '<button type="button" class="text-btn" data-action="tab" data-tab="work">See what’s running</button>' : '';
+      // Ways in, the way the other apps do it: a rail of concrete jobs under
+      // the prompt. Each one opens Start with the words already in the box.
+      var rail = Start && ui.mode === 'global'
+        ? '<div class="cm-rail" role="list" aria-label="Try">' + Start.starters(launchContext(s).initiative).map(function chip(x) {
+          return '<button type="button" class="st-idea" role="listitem" data-action="start-fill" data-id="' + esc(x.agent) + '" data-text="' + esc(x.text) + '">' + esc(x.text) + '</button>';
+        }).join('') + '</div>'
+        : '';
       if (firstUse) {
         // A new workspace: nothing to be clear of yet. Invite the first job.
         return '<section class="pn-calm is-first" aria-labelledby="cm-h">' +
           (Brand ? '<span class="cm-mark is-brand" aria-hidden="true">' + Brand.mark(26) + '</span>' : '') +
           '<h2 class="cm-h" id="cm-h">Start your first piece of work.</h2>' +
           '<p class="cm-sub">Say what should get done. OrgX plans it, runs it with your agents and brings decisions back here.</p>' +
-          (prompt || '<button type="button" class="pn-btn st-cta" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>') + '</section>';
+          (prompt || '<button type="button" class="pn-btn st-cta" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>') + rail + '</section>';
       }
       return '<section class="pn-calm" aria-labelledby="cm-h">' + glyph +
         '<h2 class="cm-h" id="cm-h">You’re clear.</h2>' +
         '<p class="cm-sub">Nothing needs your decision. ' + esc(moving) + (see ? ' ' + see : '') + '</p>' +
-        prompt + '</section>' + proofHtml(s, true);
+        prompt + rail + '</section>' + proofHtml(s, true);
     }
 
     /** The receipt behind the open decision, once read; starts the read the first time. */
@@ -1433,7 +1436,15 @@
       return s.state === 'ok' ? 'teal' : 'none';
     }
 
+    var bootLeaving = false;
     function render() {
+      // The first content after the cold start arrives as one move: the stage
+      // falls away and the view rises in its place (reduced motion: a cut).
+      if (!bootLeaving && ui.snapshot && root.querySelector('.pn-boot')) {
+        bootLeaving = true;
+        transition('boot', function firstPaint() { try { render(); } finally { bootLeaving = false; } });
+        return;
+      }
       var focusKey = document.activeElement && document.activeElement.getAttribute
         ? document.activeElement.getAttribute('data-action') + '|' + (document.activeElement.getAttribute('data-id') || '') +
           '|' + (document.activeElement.getAttribute('data-option') || '')
@@ -2370,6 +2381,8 @@
           if (ui.startAgent) ui.startVerb = 'delegate';
           else if (/^Plan the next steps/.test(ui.startText)) ui.startVerb = 'plan';
           ui.startStatus = null;
+          // From another view (the calm rail): open Start with the words in the box.
+          if (ui.tab !== 'start') { setTab('start', true, function placeCaret() { var t = root.querySelector('#st-text'); if (t) { t.focus(); try { t.setSelectionRange(t.value.length, t.value.length); } catch (_) { /* not a text input */ } } }); break; }
           render();
           var ta = root.querySelector('#st-text');
           if (ta) { ta.focus(); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (_) { /* not a text input */ } }
