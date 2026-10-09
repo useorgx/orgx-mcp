@@ -33,7 +33,7 @@ The tables define the final product contract; current limitations are stated aft
 | `orgx_start_plan` | Title; optional initial content | Create a durable planning draft. |
 | `orgx_read_plan` | Plan ID, or an explicitly documented latest-active default | Read the draft and revision. |
 | `orgx_save_plan` | Plan ID, content, expected version | Save content with a concurrency check and report the supplied edit summary's recording status. |
-| `orgx_complete_plan` | Plan ID, final content | Finalize planning and optionally attach typed targets; does not dispatch. |
+| `orgx_complete_plan` | Plan ID, final content, expected version | Finalize planning and optionally attach typed targets; does not dispatch. |
 | `orgx_validate_initiative_plan` | Typed hierarchy | Validate structure, references, objectives, dependencies, and acceptance requirements; return a digest and findings. |
 | `orgx_create_initiative_hierarchy` | Typed hierarchy/digest, or stored proposal/digest | Commit the reviewed structure through OrgX; does not launch agents. |
 | `orgx_create_initiative` | Title; objectives when policy requires | Create an initiative without a hierarchy. |
@@ -531,7 +531,7 @@ Measured input schema sizes differ between flattened submission artifacts and ac
 
 ## Plugin package source and portal review
 
-The portal plugin ID is `plugin_asdk_app_6a1083cac4788191a47b657dc58c4315`. The October 5 provider audit records published package **1.0.0**; its next minor package version is **1.1.0**. The local MCP server/package is **1.1.5**, with a remote registry release **1.1.6** that fixes registry description length. The separate local Codex package is **0.1.22**. These are different version streams. The MCP `scripts/release.sh minor` would bump its own server version and commit/tag; it does not create portal package 1.1.0.
+The portal plugin ID is `plugin_asdk_app_6a1083cac4788191a47b657dc58c4315`. The October 5 provider audit records published package **1.0.0**; its next minor package version is **1.1.0**. The integrated MCP source package is **1.1.7**. The earlier remote registry release **1.1.6** fixed registry description length. The separate local Codex package is **0.1.22**. These are different version streams. The MCP `scripts/release.sh minor` would bump its own server version and commit/tag; it does not create portal package 1.1.0.
 
 The package search found [an OrgX source bundle in `hopeatina/openai-plugins`, branch `codex/add-orgx-plugin`](https://github.com/hopeatina/openai-plugins/tree/c868b33ff252f016a048fcacd12bc9e9eeb73aa9/plugins/orgx), absent from that repository's default branch. It contains `.codex-plugin/plugin.json`, `.mcp.json`, assets, verification script, and the three matching skill names. Its manifest is **Codex 0.1.2**, not the published ChatGPT 1.0.0 manifest. Preserve that provenance instead of calling it the latest portal ZIP.
 
