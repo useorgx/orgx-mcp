@@ -11,6 +11,9 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = ROOT.parent
+MANIFEST_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
+MCP_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
+MCP_URL = "https://mcp.useorgx.com/mcp"
 SKILLS = ("orgx-deviation-reporting", "orgx-initiative-ops", "orgx-runtime-reporting")
 CORE_TOOLS = frozenset("""
 orgx_get_workspace_context orgx_search orgx_inspect orgx_get_operator_brief
@@ -46,7 +49,7 @@ def read_json(path: Path) -> dict:
 
 
 def package_files() -> list[Path]:
-    fixed = [ROOT / "plugin.json", ROOT / ".mcp.json", ROOT / "README.md",
+    fixed = [ROOT / "plugin.json", ROOT / "mcp.json", ROOT / "README.md",
              ROOT / "assets/icon.png", ROOT / "assets/logo.png"]
     return sorted(fixed + [ROOT / "skills" / name / "SKILL.md" for name in SKILLS],
                   key=lambda path: path.relative_to(ROOT).as_posix())
@@ -66,48 +69,77 @@ def https_url(value: object) -> bool:
     if not isinstance(value, str):
         return False
     url = urlparse(value)
-    return url.scheme == "https" and bool(url.netloc) and not url.username and not url.password
+    return url.scheme == "https" and bool(url.hostname) and not url.username and not url.password
+
+
+def text_field(value: object, label: str, maximum: int, *, single_line: bool = False) -> None:
+    require(isinstance(value, str) and bool(value.strip()) and len(value) <= maximum,
+            f"{label} must contain 1 to {maximum} characters")
+    require(not any(ord(char) < 32 and char != "\n" for char in value), f"Unsupported control character in {label}")
+    require(not single_line or "\n" not in value, f"{label} must be a single line")
+
+
+def contrast_with_white(color: str) -> float:
+    rgb = [int(color[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+    linear = [part / 12.92 if part <= 0.04045 else ((part + 0.055) / 1.055) ** 2.4 for part in rgb]
+    luminance = sum(part * weight for part, weight in zip(linear, (0.2126, 0.7152, 0.0722)))
+    return 1.05 / (luminance + 0.05)
 
 
 def verify() -> dict:
     manifest = read_json(ROOT / "plugin.json")
-    allowed = {"name", "version", "description", "author", "homepage", "repository",
-               "license", "keywords", "skills", "mcpServers", "interface"}
+    # Portable Agent Plugins manifests discover skills/ and mcp.json themselves.
+    # Codex-only root interface/skills/mcpServers fields are not part of this format.
+    allowed = {"$schema", "name", "version", "description", "author", "homepage", "repository",
+               "license", "keywords", "extensions"}
     require(set(manifest) == allowed, "Missing or unsupported candidate manifest fields")
+    require(manifest["$schema"] == MANIFEST_SCHEMA, "Portable plugin schema is required")
     require(manifest["name"] == "orgx", "Candidate package identity changed")
     require(manifest["version"] == "1.1.0", "Candidate minor version must be 1.1.0")
     require(re.fullmatch(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*", manifest["name"]) is not None, "Invalid plugin name")
     require(re.fullmatch(r"\d+\.\d+\.\d+", manifest["version"]) is not None, "Invalid semantic version")
-    for field in ("description", "license"):
-        require(isinstance(manifest[field], str) and bool(manifest[field].strip()), f"Missing {field}")
+    text_field(manifest["description"], "description", 4000)
+    text_field(manifest["license"], "license", 120)
     require(set(manifest["author"]) == {"name", "url"}, "Unexpected author fields")
     require(manifest["author"]["name"] == "OrgX Team" and https_url(manifest["author"]["url"]), "Invalid author")
+    text_field(manifest["author"]["name"], "author.name", 120)
+    require(len(manifest["author"]["url"]) <= 2048, "Author URL exceeds 2048 characters")
     require(https_url(manifest["homepage"]) and https_url(manifest["repository"]), "Invalid listing URL")
+    require(len(manifest["homepage"]) <= 2048, "Homepage exceeds 2048 characters")
     require(isinstance(manifest["keywords"], list) and all(isinstance(item, str) and item for item in manifest["keywords"]), "Invalid keywords")
-    require(manifest["skills"] == "./skills/", "Unexpected skill component")
-    package_path(manifest["skills"], directory=True)
-    require(manifest["mcpServers"] == "./.mcp.json", "Unexpected MCP component")
-    config = read_json(package_path(manifest["mcpServers"]))
-    require(config == {"mcpServers": {"orgx": {"type": "http", "url": "https://mcp.useorgx.com/mcp?profile=chatgpt"}}}, "MCP configuration must use the reviewed remote profile without credentials")
-    interface = manifest["interface"]
+    package_path("./skills/", directory=True)
+    require(not (ROOT / ".mcp.json").exists() and not (ROOT / ".codex-plugin").exists(),
+            "Portable package must not contain shadow Codex components")
+    config = read_json(package_path("./mcp.json"))
+    require(config == {"$schema": MCP_SCHEMA, "mcpServers": {"orgx": {"type": "streamable-http", "url": MCP_URL}}},
+            "Portable MCP configuration must preserve the published remote endpoint without credentials")
+    extensions = manifest["extensions"]
+    require(isinstance(extensions, dict) and set(extensions) == {"com.openai"}, "Expected the OpenAI extension namespace")
+    openai = extensions["com.openai"]
+    require(isinstance(openai, dict) and set(openai) == {"interface"}, "Unexpected OpenAI extension fields")
+    interface = openai["interface"]
     required_interface = {"displayName", "shortDescription", "longDescription", "developerName", "category",
-                          "capabilities", "websiteURL", "privacyPolicyURL", "termsOfServiceURL", "defaultPrompt",
+                          "capabilities", "websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL", "defaultPrompt",
                           "brandColor", "composerIcon", "logo"}
     require(isinstance(interface, dict) and set(interface) == required_interface, "Missing or unsupported interface fields")
-    for field in ("displayName", "shortDescription", "longDescription", "developerName", "category"):
-        require(isinstance(interface[field], str) and bool(interface[field].strip()), f"Missing interface {field}")
+    for field, maximum in {"displayName": 30, "shortDescription": 30, "longDescription": 4000,
+                           "developerName": 80, "category": 120}.items():
+        text_field(interface[field], f"interface.{field}", maximum, single_line=field != "longDescription")
     require(interface["capabilities"] == ["Interactive", "Read", "Write"], "Unexpected capabilities")
-    for field in ("websiteURL", "privacyPolicyURL", "termsOfServiceURL"):
-        require(https_url(interface[field]), f"Invalid {field}")
+    for field in ("websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL"):
+        require(https_url(interface[field]) and len(interface[field]) <= 1024, f"Invalid {field}")
     prompts = interface["defaultPrompt"]
     require(isinstance(prompts, list) and 1 <= len(prompts) <= 3, "Expected one to three default prompts")
     require(all(isinstance(prompt, str) and 1 <= len(prompt) <= 128 for prompt in prompts), "Default prompt exceeds 128 characters")
+    require(len(set(prompts)) == len(prompts), "Default prompts must be unique")
     require(re.fullmatch(r"#[0-9A-Fa-f]{6}", interface["brandColor"]) is not None, "Invalid brand color")
+    require(contrast_with_white(interface["brandColor"]) >= 2, "Brand color needs at least 2:1 contrast against white")
     for field in ("composerIcon", "logo"):
         data = package_path(interface[field]).read_bytes()
         require(data[:8] == b"\x89PNG\r\n\x1a\n" and data[12:16] == b"IHDR", "Artwork must be PNG")
         width, height = struct.unpack(">II", data[16:24])
-        require(width > 0 and height > 0, "Empty PNG dimensions")
+        require(width == height and 48 <= width <= 4096, "Artwork must be square, 48 to 4096 pixels")
+        require(len(data) <= 5 * 1024 * 1024, "Artwork exceeds 5 MiB")
         blob = hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()
         require(blob == "ed6d538f471158b4aadb76754a3a75c59caa34a0", "Artwork differs from verified source lineage")
     require(len(CORE_TOOLS) == 40, "Core inventory drift")

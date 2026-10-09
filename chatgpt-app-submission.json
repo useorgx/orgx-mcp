@@ -149,9 +149,9 @@
         "idempotentHint": false
       },
       "justifications": {
-        "read_only_justification": "Save the full markdown draft and its revision in OrgX. Optionally record an edit summary and require the expected revision. Does not complete planning or dispatch work. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "read_only_justification": "Save the full markdown draft in OrgX only if the required expected revision is current. Optionally record an edit summary. Does not complete planning or dispatch work. This operation creates records or changes existing planning, work, evidence, or execution state.",
         "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
-        "destructive_justification": "Save the full markdown draft and its revision in OrgX. Optionally record an edit summary and require the expected revision. Does not complete planning or dispatch work. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+        "destructive_justification": "Save the full markdown draft in OrgX only if the required expected revision is current. Optionally record an edit summary. Does not complete planning or dispatch work. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
       }
     },
     "orgx_complete_plan": {

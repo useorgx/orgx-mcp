@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { assertMcpSessionIdentity, selectSessionToolContract } from '../src/sessionToolContract';
+import { assertMcpSessionIdentity, assertMcpSessionGrant, selectSessionToolContract } from '../src/sessionToolContract';
 import { resolveRequestSessionToolContract } from '../src/requestSessionToolContract';
 import { buildWidgetToolSurface } from '../src/widgetToolSurface';
 import { resolveToolProfile } from '../src/toolProfiles';
@@ -42,7 +42,7 @@ describe('MCP session contract binding', () => {
       { MCP_OBJECT: {} }, { userId: 'owner', profile: 'chatgpt', toolProfileExplicit: true }, resolver,
     );
     expect(resolver).toHaveBeenCalledWith({}, 'streamable-http:session');
-    expect(stub.getSessionToolContract).toHaveBeenCalledWith('owner');
+    expect(stub.getSessionToolContract).toHaveBeenCalledWith({ userId: 'owner', scope: undefined, authSource: undefined, runId: undefined, scopes: undefined, workspace_id: undefined });
     expect(binding).toEqual(stored);
     const surface = buildWidgetToolSurface(binding!.profile, new Set(['orgx_list_work_receipts']), resolveToolProfile(binding!.profile).tools!);
     expect(surface.contract_version).toBe('orgx-mcp-operations/1');
@@ -62,6 +62,18 @@ describe('MCP session contract binding', () => {
       { MCP_OBJECT: {} }, { userId: 'owner' }, resolver,
     )).toBeNull();
     expect(resolver).toHaveBeenCalledWith({}, 'sse:s');
+  });
+  it('accepts equivalent refreshed OAuth grants while rejecting changes in permissions', () => {
+    expect(() => assertMcpSessionGrant({ scope: 'agents:read initiatives:read' }, { scope: 'initiatives:read agents:read agents:read', authSource: 'oauth' })).not.toThrow();
+    expect(() => assertMcpSessionGrant({ scope: 'initiatives:write' }, { scope: 'initiatives:read' })).toThrow('different authenticated grant');
+    expect(() => assertMcpSessionGrant({ scope: '' }, {})).toThrow('different authenticated grant');
+  });
+  it('binds signed-run identity, workspace, and exact tool grants without binding credentials', () => {
+    const grant = { authSource: 'run_token', scope: 'mcp:run', runId: 'run-1', workspace_id: 'workspace-1', scopes: ['orgx_search', 'orgx_capture_decision'] };
+    expect(() => assertMcpSessionGrant(grant, { ...grant, scopes: [...grant.scopes].reverse() })).not.toThrow();
+    for (const changed of [{ authSource: 'oauth' }, { runId: 'run-2' }, { workspace_id: 'workspace-2' }, { scopes: ['orgx_search'] }, { scopes: undefined }, { scopes: [] }]) {
+      expect(() => assertMcpSessionGrant(grant, { ...grant, ...changed })).toThrow('different authenticated grant');
+    }
   });
 });
 

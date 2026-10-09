@@ -1,10 +1,10 @@
 import {
   McpSessionProfileConflictError, selectSessionToolContract,
-  type SessionToolContract,
+  type SessionToolContract, type SessionAuthenticatedGrant,
 } from './sessionToolContract';
 
 export type SessionContractStub = {
-  getSessionToolContract(userId: string): Promise<SessionToolContract | null>;
+  getSessionToolContract(grant: SessionAuthenticatedGrant): Promise<SessionToolContract | null>;
 };
 type StubResolver = (namespace: unknown, name: string) => Promise<SessionContractStub>;
 
@@ -12,7 +12,7 @@ type StubResolver = (namespace: unknown, name: string) => Promise<SessionContrac
 export async function resolveRequestSessionToolContract(
   request: Request,
   env: { MCP_OBJECT?: unknown },
-  props: { userId?: string; profile?: string; toolProfileExplicit?: boolean; authSource?: string },
+  props: SessionAuthenticatedGrant & { profile?: string; toolProfileExplicit?: boolean },
   resolveStub: StubResolver = async (namespace, name) => {
     const { getAgentByName } = await import('agents');
     return await getAgentByName(namespace as never, name) as unknown as SessionContractStub;
@@ -26,7 +26,8 @@ export async function resolveRequestSessionToolContract(
   const kind = url.pathname.startsWith('/sse/message') || (url.pathname === '/sse' && request.method === 'GET')
     ? 'sse' : 'streamable-http';
   const stub = await resolveStub(env.MCP_OBJECT, `${kind}:${sessionId}`);
-  const stored = await stub.getSessionToolContract(props.userId);
+  const { userId, scope, authSource, runId, scopes, workspace_id } = props;
+  const stored = await stub.getSessionToolContract({ userId, scope, authSource, runId, scopes, workspace_id });
   if (!stored) return null; // The SDK returns its normal session-not-found response.
   const binding = selectSessionToolContract({ stored, initialized: true, internalRun: props.authSource === 'run_token' });
   if (props.toolProfileExplicit && props.profile !== binding.profile) {

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-09T15:46:10.574Z",
-  "sourceHash": "58005ede7fbf7438",
+  "generatedAt": "2026-10-09T15:57:00.525Z",
+  "sourceHash": "203836605d394c1e",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -17148,7 +17148,7 @@
     {
       "id": "orgx_save_plan",
       "title": "Save OrgX Plan",
-      "description": "Save the full markdown draft and its revision in OrgX. Optionally record an edit summary and require the expected revision. Does not complete planning or dispatch work.",
+      "description": "Save the full markdown draft in OrgX only if the required expected revision is current. Optionally record an edit summary. Does not complete planning or dispatch work.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",

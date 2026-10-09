@@ -362,6 +362,7 @@
 
       // ─── data resolution ─────────────────────────────────────────
       let activeReviewContract = null;
+      let renderGeneration = 0;
 
       function resolveArtifact() {
         const toolOutput = (window.openai && window.openai.toolOutput) || null;
@@ -1657,8 +1658,8 @@
       function confirmedReviewArtifact(artifact, result, expectedStatus) {
         const out = asRecord(result);
         const updated = asRecord(out.artifact);
-        const status = firstString([updated.status, out.review_status, out.status]);
-        if (out.ok === false || out.applied === false || status !== expectedStatus) {
+        const status = firstString([updated.status]);
+        if (out.ok !== true || out.applied === false || updated.id !== artifact.id || status !== expectedStatus) {
           throw new Error('review_not_confirmed');
         }
         return Object.assign({}, artifact, updated, { status: status });
@@ -1671,6 +1672,7 @@
       }
 
       async function approveArtifact(artifact) {
+        const generation = renderGeneration;
         const button = document.querySelector('[data-action="approve"]');
         const feedback = document.querySelector('[data-review-feedback]');
         const evidence = resolveEvidence(artifact, activeReviewContract);
@@ -1693,13 +1695,17 @@
         }
         try {
           const result = await callTool('orgx_widget_approve_artifact', artifactReviewArgs(artifact));
+          if (generation !== renderGeneration) return;
           const settled = await settleCommand(result);
+          if (generation !== renderGeneration) return;
           const updated = confirmedReviewArtifact(artifact, settled, 'approved');
           resolveStage(function () {
+            if (generation !== renderGeneration) return;
             activeReviewContract = null;
             render(updated);
           });
         } catch (err) {
+          if (generation !== renderGeneration) return;
           console.warn('[artifact-review] approve failed', err);
           if (button) {
             button.disabled = false;
@@ -1715,6 +1721,7 @@
       }
 
       async function submitChangeRequest(artifact, notes) {
+        const generation = renderGeneration;
         const button = document.querySelector('[data-composer-submit]');
         const input = document.querySelector('[data-composer-input]');
         const feedback = document.querySelector('[data-review-feedback]');
@@ -1732,13 +1739,17 @@
         }
         try {
           const result = await callTool('orgx_widget_request_artifact_changes', artifactReviewArgs(artifact, notes));
+          if (generation !== renderGeneration) return;
           const settled = await settleCommand(result);
+          if (generation !== renderGeneration) return;
           const updated = confirmedReviewArtifact(artifact, settled, 'changes_requested');
           resolveStage(function () {
+            if (generation !== renderGeneration) return;
             activeReviewContract = null;
             render(updated);
           });
         } catch (err) {
+          if (generation !== renderGeneration) return;
           console.warn('[artifact-review] change request failed', err);
           if (button) {
             button.disabled = false;
@@ -1773,6 +1784,7 @@
       }
 
       function render(artifact) {
+        renderGeneration += 1;
         artifact = normalizeArtifact(artifact);
         const stage = document.querySelector('[data-stage]');
         stage.classList.remove('is-resolving');

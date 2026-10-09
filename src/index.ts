@@ -84,7 +84,7 @@ import {
 } from './completeWithProof';
 import { resolveToolProfile, resolveProfileToolSet } from './toolProfiles';
 import { buildMcpCompatibilityMetadata } from './mcpCompatibility';
-import { SESSION_TOOL_CONTRACT_KEY, McpSessionProfileConflictError, selectSessionToolContract, assertMcpSessionIdentity, type SessionToolContract } from './sessionToolContract';
+import { SESSION_TOOL_CONTRACT_KEY, McpSessionProfileConflictError, selectSessionToolContract, assertMcpSessionIdentity, assertMcpSessionGrant, type SessionToolContract, type SessionAuthenticatedGrant } from './sessionToolContract';
 import {
   handleOpenAiAppsChallenge,
   type OpenAiAppsChallengeEnv,
@@ -685,6 +685,7 @@ export class OrgXMcp extends McpAgent<
       this.ctx.storage.get<OrgXMcpProps>('props'),
     ]);
     if (previous?.userId) assertMcpSessionIdentity(previous.userId, props?.userId);
+    if (initialized && previous?.userId) assertMcpSessionGrant(previous, props ?? {});
     const binding = selectSessionToolContract({
       stored, initialized: Boolean(initialized),
       requestedProfile: props?.profile, internalRun: props?.authSource === 'run_token',
@@ -696,14 +697,15 @@ export class OrgXMcp extends McpAgent<
     await super.updateProps({ ...props, profile: binding.profile, operationContractVersion: binding.contract_version });
   }
   /** Trusted transport lookup; clients cannot choose another session's identity or profile. */
-  async getSessionToolContract(authenticatedUserId: string): Promise<SessionToolContract | null> {
+  async getSessionToolContract(authenticatedGrant: SessionAuthenticatedGrant): Promise<SessionToolContract | null> {
     const [initialized, previous, stored] = await Promise.all([
       this.getInitializeRequest(), this.ctx.storage.get<OrgXMcpProps>('props'),
       this.ctx.storage.get<SessionToolContract>(SESSION_TOOL_CONTRACT_KEY),
     ]);
     if (!initialized) return null;
     if (!previous?.userId) throw new McpSessionProfileConflictError();
-    assertMcpSessionIdentity(previous.userId, authenticatedUserId);
+    assertMcpSessionIdentity(previous.userId, authenticatedGrant.userId);
+    assertMcpSessionGrant(previous, authenticatedGrant);
     return selectSessionToolContract({
       stored, initialized: true,
       internalRun: previous.authSource === 'run_token',
@@ -1599,6 +1601,7 @@ export class OrgXMcp extends McpAgent<
       this.getInitializeRequest(), this.ctx.storage.get<OrgXMcpProps>('props'),
     ]);
     if (previousProps?.userId) assertMcpSessionIdentity(previousProps.userId, this.props?.userId);
+    if (initializeRequest && previousProps?.userId) assertMcpSessionGrant(previousProps, this.props ?? {});
     const contract = selectSessionToolContract({
       stored: storedContract, initialized: Boolean(initializeRequest),
       requestedProfile: this.props?.profile,

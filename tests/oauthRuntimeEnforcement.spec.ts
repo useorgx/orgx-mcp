@@ -6,6 +6,9 @@ import { AUTHORIZATION_PRESETS } from '../src/authorizationPolicy';
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
 import { OrgXApiError } from '../src/orgxApi';
 import { attachRequestToolProfile } from '../src/requestToolProfile';
+import { handleMcpRequest } from '../src/mcpTransport';
+import * as sessionContractLookup from '../src/requestSessionToolContract';
+import { SESSION_TOOL_CONTRACT_KEY } from '../src/sessionToolContract';
 import { createEmptySessionToolStats } from '../src/sessionSummary';
 import { INFORMATIONAL_SURFACE } from '../src/toolProfiles';
 import { createEmptyMcpSessionReentryState } from '../src/welcomeBackContext';
@@ -273,6 +276,62 @@ afterEach(() => {
 });
 
 describe('OAuth scope enforcement through the live MCP registry', () => {
+  it.each([
+    { name: 'OAuth permission narrowing', previous: { scope: 'initiatives:read initiatives:write' }, incoming: { scope: 'initiatives:read' } },
+    { name: 'run tool-grant narrowing', previous: { scope: 'mcp:run', authSource: 'run_token' }, incoming: { scope: 'mcp:run', authSource: 'run_token', scopes: ['orgx_search'] } },
+    { name: 'run identity replacement', previous: { scope: 'mcp:run', authSource: 'run_token', runId: 'first-run' }, incoming: { scope: 'mcp:run', authSource: 'run_token', runId: 'second-run' } },
+    { name: 'run-to-OAuth grant replacement', previous: { scope: 'mcp:run', authSource: 'run_token' }, incoming: { scope: 'initiatives:read' } },
+  ])('rejects $name before dispatch into a warm DO with cached props', async ({ previous, incoming }) => {
+    const harness = await createHarness({ scope: previous.scope, profile: 'chatgpt', authSource: previous.authSource });
+    const cachedProps = { ...harness.worker.props, ...previous };
+    harness.worker.props = cachedProps;
+    const persisted = new Map<string, unknown>([
+      ['props', cachedProps], ['initializeRequest', { method: 'initialize' }],
+      [SESSION_TOOL_CONTRACT_KEY, { profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' }],
+    ]);
+    harness.worker.ctx.storage.get = vi.fn(async (key: string) => persisted.get(key));
+    const lookup = sessionContractLookup.resolveRequestSessionToolContract;
+    vi.spyOn(sessionContractLookup, 'resolveRequestSessionToolContract').mockImplementation((request, env, props) =>
+      lookup(request, env, props, async () => harness.worker));
+    const handler = { fetch: vi.fn(async () => Response.json({ committed: true })) };
+    apiMocks.callOrgxApiJson.mockClear();
+    try {
+      const response = await handleMcpRequest(new Request('http://localhost/mcp', {
+        method: 'POST', headers: { 'content-type': 'application/json', 'mcp-session-id': 'warm-session' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'orgx_create_task', arguments: { title: 'Must not create task' } } }),
+      }), { MCP_OBJECT: {} }, { props: { userId: USER_ID, profile: 'chatgpt', ...incoming }, waitUntil: vi.fn() } as any,
+      handler, async () => ({ userId: USER_ID, scope: incoming.scope }));
+      expect(response.status).toBe(409);
+      expect(handler.fetch).not.toHaveBeenCalled();
+      expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+      expect(harness.worker.props).toBe(cachedProps);
+    } finally { await closeHarness(harness); }
+  });
+
+  it('rejects removed generic write and approval names without reaching OrgX', async () => {
+    const harness = await createHarness({ scope: AUTHORIZATION_PRESETS.operate.scopes.join(' '), profile: 'chatgpt' });
+    try {
+      for (const name of ['orgx_write', 'orgx_act', 'manage_lifecycle', 'orgx_plan', 'orgx_spawn', 'orgx_decide', 'approve_decision', 'reject_decision', 'approve_agent_work']) {
+        apiMocks.callOrgxApiJson.mockClear();
+        const result = await harness.client.callTool({ name, arguments: { action: 'approve', operation: 'create', type: 'task', title: 'Must not mutate', id: INITIATIVE_ID } });
+        expect(result.isError, name).toBe(true);
+        expect(apiMocks.callOrgxApiJson, name).not.toHaveBeenCalled();
+      }
+    } finally { await closeHarness(harness); }
+  });
+
+  it('checks the current OAuth grant at invocation before a previously registered write executes', async () => {
+    const harness = await createHarness({ scope: AUTHORIZATION_PRESETS.operate.scopes.join(' '), profile: 'chatgpt' });
+    try {
+      harness.worker.props = { ...harness.worker.props, scope: AUTHORIZATION_PRESETS.read.scopes.join(' ') };
+      apiMocks.callOrgxApiJson.mockClear();
+      const result = await harness.client.callTool({ name: 'orgx_capture_decision', arguments: { decision: 'Must not create decision' } });
+      expect(result.isError).toBe(true);
+      expect(errorCode(result)).toBe('insufficient_scope');
+      expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+    } finally { await closeHarness(harness); }
+  });
+
   it('reads exact controller status through the explicit legacy registry and forwards workspace plus actor identity', async () => {
     const controllerEnvelope = buildControllerStatusEnvelope();
     const expectedPath =

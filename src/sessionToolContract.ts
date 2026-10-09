@@ -4,6 +4,42 @@ import { READ_ONLY_FALLBACK_PROFILE, resolveToolProfile } from './toolProfiles';
 export const SESSION_TOOL_CONTRACT_KEY = 'orgx:session-tool-contract';
 export type SessionToolContract = { profile: string; contract_version: string };
 
+export interface SessionAuthenticatedGrant {
+  userId?: string;
+  scope?: string;
+  authSource?: string;
+  runId?: string;
+  scopes?: readonly string[];
+  workspace_id?: string;
+}
+
+function canonicalGrant(grant: SessionAuthenticatedGrant): string {
+  const run = grant.authSource === 'run_token';
+  const scopes = typeof grant.scope === 'string'
+    ? [...new Set(grant.scope.split(/\s+/).filter(Boolean))].sort() : null;
+  return JSON.stringify({
+    source: run ? 'run_token' : 'oauth',
+    scopes,
+    ...(run ? {
+      run_id: grant.runId ?? null,
+      workspace_id: grant.workspace_id ?? null,
+      tool_scopes: Array.isArray(grant.scopes) ? [...new Set(grant.scopes)].sort() : null,
+    } : {}),
+  });
+}
+
+/** Warm SDK instances retain their original props and registry; a new grant needs a new session. */
+export function assertMcpSessionGrant(previous: SessionAuthenticatedGrant, incoming: SessionAuthenticatedGrant): void {
+  if (canonicalGrant(previous) !== canonicalGrant(incoming)) throw new McpSessionGrantConflictError();
+}
+
+export class McpSessionGrantConflictError extends Error {
+  constructor() {
+    super('This MCP session uses a different authenticated grant. Reconnect without a session ID to refresh OrgX permissions.');
+    this.name = 'McpSessionGrantConflictError';
+  }
+}
+
 /** Bind current discovery once. Pre-operation sessions reconnect after the coordinated cutover. */
 export function selectSessionToolContract(input: {
   stored?: SessionToolContract | null;

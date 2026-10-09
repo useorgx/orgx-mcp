@@ -351,7 +351,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       backendRequest: (args) => ({ method: 'GET', path: query('/api/v1/workflows/read-plan', args) }),
     }),
   operation('orgx_save_plan', 'orgx_plan', 'Save OrgX Plan',
-    'Save the full markdown draft and its revision in OrgX. Optionally record an edit summary and require the expected revision. Does not complete planning or dispatch work.',
+    'Save the full markdown draft in OrgX only if the required expected revision is current. Optionally record an edit summary. Does not complete planning or dispatch work.',
     { session_id: planSessionId, plan_content: planMarkdown, title: createTitle.optional(), edit_summary: z.string().trim().min(1).max(4000).optional(), expected_version: planVersion, workspace_id: workspaceId }, {
       annotations: { ...modifiesRecords, idempotentHint: false }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
       backendRequest: (args) => {

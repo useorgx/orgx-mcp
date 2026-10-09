@@ -1,4 +1,5 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "orgx",
   "version": "1.1.0",
   "description": "Shared work context, explicit workflows, human review, and portable work receipts for AI agents.",
@@ -9,26 +10,39 @@
   "homepage": "https://useorgx.com/integrations/mcp",
   "repository": "https://github.com/useorgx/orgx-mcp",
   "license": "MIT",
-  "keywords": ["orgx", "mcp", "initiatives", "decisions", "work-receipts"],
-  "skills": "./skills/",
-  "mcpServers": "./.mcp.json",
-  "interface": {
-    "displayName": "OrgX",
-    "shortDescription": "Keep work context, plans, evidence, and human decisions together.",
-    "longDescription": "Connect an OrgX workspace to understand current work, create and save plans, organize initiatives, dispatch authorized agent work, and review decisions and evidence. Import portable Agent Work Receipts without confusing producer claims with independent verification, human acceptance, or completed work.",
-    "developerName": "OrgX Team",
-    "category": "Productivity",
-    "capabilities": ["Interactive", "Read", "Write"],
-    "websiteURL": "https://useorgx.com",
-    "privacyPolicyURL": "https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md",
-    "termsOfServiceURL": "https://useorgx.com/terms",
-    "defaultPrompt": [
-      "Show my OrgX workspace and what needs attention.",
-      "Turn this goal into an initiative plan, then show the launch gates.",
-      "Review this work receipt and distinguish reported results from verified evidence."
-    ],
-    "brandColor": "#14B8A6",
-    "composerIcon": "./assets/icon.png",
-    "logo": "./assets/logo.png"
+  "keywords": [
+    "orgx",
+    "mcp",
+    "initiatives",
+    "decisions",
+    "work-receipts"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "OrgX",
+        "shortDescription": "Shared work, plans, receipts",
+        "longDescription": "Connect an OrgX workspace to understand current work, create and save plans, organize initiatives, dispatch authorized agent work, and review decisions and evidence. Import portable Agent Work Receipts without confusing producer claims with independent verification, human acceptance, or completed work.",
+        "developerName": "OrgX Team",
+        "category": "Productivity",
+        "capabilities": [
+          "Interactive",
+          "Read",
+          "Write"
+        ],
+        "websiteURL": "https://useorgx.com",
+        "privacyPolicyURL": "https://github.com/useorgx/orgx-mcp/blob/main/docs/privacy-policy.md",
+        "termsOfServiceURL": "https://useorgx.com/terms",
+        "defaultPrompt": [
+          "Show my OrgX workspace and what needs attention.",
+          "Turn this goal into an initiative plan, then show the launch gates.",
+          "Review this work receipt and distinguish reported results from verified evidence."
+        ],
+        "brandColor": "#14B8A6",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/logo.png",
+        "supportURL": "https://github.com/useorgx/orgx-mcp/issues"
+      }
+    }
   }
 }

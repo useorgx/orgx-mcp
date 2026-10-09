@@ -954,15 +954,19 @@ describe('current session wire contracts', () => {
     try {
       await worker.updateProps(worker.props);
       await worker.ctx.storage.put('initializeRequest', { jsonrpc: '2.0', method: 'initialize', id: 1 });
-      expect(await worker.getSessionToolContract('surface-contract-user'))
+      expect(await worker.getSessionToolContract(worker.props))
         .toEqual({ profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' });
+      expect(await worker.getSessionToolContract({ ...worker.props, scope: worker.props.scope.split(' ').reverse().join(' '), email: 'refreshed@example.test' }))
+        .toEqual({ profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' });
+      await expect(worker.getSessionToolContract({ ...worker.props, scope: 'initiatives:read' }))
+        .rejects.toThrow('different authenticated grant');
       await worker.updateProps({ ...worker.props, profile: 'v2', toolProfileExplicit: false });
       expect(worker.props.profile).toBe('chatgpt');
       await expect(worker.updateProps({ ...worker.props, profile: 'extended', toolProfileExplicit: true }))
         .rejects.toThrow('Reconnect');
       await expect(worker.updateProps({ ...worker.props, userId: 'other-actor' }))
         .rejects.toThrow('another authenticated identity');
-      await expect(worker.getSessionToolContract('other-actor'))
+      await expect(worker.getSessionToolContract({ ...worker.props, userId: 'other-actor' }))
         .rejects.toThrow('another authenticated identity');
       expect((await client.listTools()).tools.map((tool) => tool.name).sort())
         .toEqual([...CHATGPT_PUBLIC_SURFACE].sort());
