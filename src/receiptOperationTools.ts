@@ -26,6 +26,20 @@ const humanJudgmentSchema = z.object({
   reviewed_receipt_id: z.string().nullable().optional(),
   reviewed_receipt_revision: z.string().nullable().optional(),
 }).nullable();
+const criterionLensSchema = z.object({ status: z.string().max(120).nullable(), note: z.string().max(1000).nullable() });
+const detailCriterionSchema = z.object({
+  id: z.string(), text: z.string(), status: z.string(), evidence_ids: z.array(z.string()),
+  basis: z.literal('producer_reported'), confidence: z.number().min(0).max(1).nullable(),
+  kind: z.string().max(120).nullable(), required: z.boolean().nullable(),
+  source: z.string().max(120).nullable(), source_ref: z.string().max(512).nullable(), source_label: z.string().max(512).nullable(),
+  review_state: z.string().max(120).nullable(),
+  lenses: z.object({ judged: criterionLensSchema, measured: criterionLensSchema, observed: criterionLensSchema, outcome: criterionLensSchema }).nullable(),
+});
+const reportedBarSchema = z.object({
+  basis: z.literal('producer_reported'), set_id: z.string().max(512).nullable(), version: z.number().int().positive().safe().nullable(),
+  agreed_at: z.string().max(256).nullable(), agreed_by: z.string().max(512).nullable(),
+  contract_hash: z.string().max(512).nullable(), declared_at: z.string().max(256).nullable(),
+}).nullable();
 const effectsSchema = z.object({
   receipt_stored: z.boolean(), work_status_changed: z.literal(false),
   authoritative_verification_changed: z.literal(false), human_acceptance_changed: z.literal(false),
@@ -62,9 +76,10 @@ export const RECEIPT_OPERATION_OUTPUT_SCHEMAS = {
     ok: z.literal(true), receipt_id: z.string(), external_receipt_id: z.string(), schema_version: z.string().nullable(),
     receipt_review_revision: z.string().nullable().optional(),
     summary: z.string(), producer_claims: claimsSchema, receipt_assessment: RECEIPT_ASSESSMENT_SCHEMA,
+    objective: z.string().max(2000).nullable(), outcome_summary: z.string().max(2000).nullable(), reported_bar: reportedBarSchema,
     human_judgment: humanJudgmentSchema,
     evidence: z.array(z.object({ id: z.string(), kind: z.string(), summary: z.string(), uri: z.string().nullable() })),
-    evidence_total: z.number(), criteria: z.array(z.object({ id: z.string(), text: z.string(), status: z.string(), evidence_ids: z.array(z.string()) })),
+    evidence_total: z.number(), criteria: z.array(detailCriterionSchema),
     criteria_total: z.number(), review_extension: receiptReviewProjectionSchema,
     proof: proofSchema,
     workstream: z.object({ id: z.string(), title: z.string(), status: z.string().nullable(), repo: z.string().nullable() }).nullable(),
@@ -131,6 +146,23 @@ export interface ReceiptOperationContext {
 const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const str = (value: unknown): string | null => typeof value === 'string' ? value : null;
 const array = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
+const boundedString = (value: unknown, max: number): string | null => str(value)?.slice(0, max) ?? null;
+const confidence = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
+const positiveInteger = (value: unknown): number | null => typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null;
+const indexedCriteria = (value: unknown): Map<unknown, Record<string, unknown>> => new Map(array(value).map((item) => { const c = record(item); return [c.id, c]; }));
+/** Agreement fields in a producer document are context, never authenticated human agreement. */
+function reportedBar(receipt: Record<string, unknown>, intent: Record<string, unknown>) {
+  const candidates = [
+    record(record(receipt.extensions)['org.orgx.expectations/v1']), record(record(intent.metadata).expectations),
+    record(intent.expectations), record(intent.expectation_set), record(intent.agreement), intent,
+  ];
+  const bar = candidates.find((c) => ['set_id', 'version', 'agreed_at', 'agreed_by', 'contract_hash', 'declared_at'].some((key) => key === 'version' ? positiveInteger(c[key]) !== null : str(c[key]) !== null));
+  return bar ? {
+    basis: 'producer_reported' as const, set_id: boundedString(bar.set_id, 512), version: positiveInteger(bar.version),
+    agreed_at: boundedString(bar.agreed_at, 256), agreed_by: boundedString(bar.agreed_by, 512),
+    contract_hash: boundedString(bar.contract_hash, 512), declared_at: boundedString(bar.declared_at, 256),
+  } : null;
+}
 export function receiptProducerClaims(receipt: Record<string, unknown>) {
   const outcome = record(receipt.outcome);
   return { outcome_status: str(outcome.status), verification_status: str(record(receipt.verification).status), acceptance_status: str(record(outcome.acceptance).status) };
@@ -144,6 +176,8 @@ export function projectWorkReceiptDetail(raw: Record<string, unknown>): Record<s
   const trailCriteria = array(record(record(receipt.extensions)['org.orgx.trail/v1']).criteria);
   const criteria = coreCriteria.length ? coreCriteria : trailCriteria.length ? trailCriteria : array(intent.acceptance_criteria).map((text, index) => ({ id: `criterion-${index + 1}`, text }));
   const results = new Map(array(record(receipt.outcome).criteria_results).map((value) => { const r = record(value); return [r.criterion_id, r]; }));
+  const expectations = indexedCriteria(record(record(receipt.extensions)['org.orgx.expectations/v1']).criteria);
+  const detailCriteria = indexedCriteria(data.criteria);
   const review = record(record(receipt.extensions)['org.orgx.review/v1']);
   const evidence = array(receipt.evidence);
   const workstream = record(data.workstream);
@@ -151,11 +185,27 @@ export function projectWorkReceiptDetail(raw: Record<string, unknown>): Record<s
     ok: true, receipt_id: str(data.receipt_id ?? record(data.row).id) ?? '', external_receipt_id: str(receipt.receipt_id) ?? '',
     receipt_review_revision: str(data.receipt_review_revision),
     schema_version: str(receipt.schema_version), summary: str(record(receipt.intent).summary) ?? '', proof: buildPortableReceiptProof(receipt),
+    objective: boundedString(intent.objective, 2000), outcome_summary: boundedString(record(receipt.outcome).summary, 2000),
+    reported_bar: reportedBar(receipt, intent),
     producer_claims: receiptProducerClaims(receipt), receipt_assessment: data.receipt_assessment ?? { evidence_status: evidence.length ? 'recorded' : 'none', verification_status: 'producer_reported', acceptance_status: 'awaiting_human_review', outcome_status: null },
     human_judgment: data.human_judgment ?? null,
     evidence: evidence.slice(0, 12).map((value) => { const e = record(value); return { id: str(e.id) ?? '', kind: str(e.kind) ?? '', summary: (str(e.summary) ?? '').slice(0, 2000), uri: str(record(e.ref).uri) }; }),
     evidence_total: evidence.length,
-    criteria: criteria.slice(0, 40).map((value) => { const c = record(value); const r = results.get(c.id); return { id: str(c.id) ?? '', text: (str(c.text) ?? '').slice(0, 2000), status: str(r?.status ?? c.status) ?? 'unknown', evidence_ids: array(r?.evidence_ids ?? c.evidence_ids).filter((v): v is string => typeof v === 'string').slice(0, 20) }; }),
+    criteria: criteria.slice(0, 40).map((value) => {
+      const c = record(value), r = results.get(c.id), detail = detailCriteria.get(c.id) ?? {}, expectation = expectations.get(c.id) ?? {};
+      const source = { ...c, ...expectation }, learnedFrom = record(source.learned_from), lenses = record(detail.lenses);
+      const lens = (key: string) => { const l = record(lenses[key]); return { status: boundedString(l.s ?? l.status, 120), note: boundedString(l.note, 1000) }; };
+      return {
+        id: str(c.id) ?? '', text: (str(c.text) ?? '').slice(0, 2000), status: str(r?.status ?? c.status) ?? 'unknown',
+        evidence_ids: array(r?.evidence_ids ?? c.evidence_ids).filter((v): v is string => typeof v === 'string').slice(0, 20),
+        basis: 'producer_reported', confidence: confidence(r?.confidence ?? c.confidence ?? detail.confidence),
+        kind: boundedString(c.kind ?? detail.kind, 120), required: typeof c.required === 'boolean' ? c.required : typeof detail.required === 'boolean' ? detail.required : null,
+        source: boundedString(source.source ?? source.source_kind, 120), source_ref: boundedString(source.source_ref, 512),
+        source_label: boundedString(source.source_label ?? learnedFrom.label ?? learnedFrom.title, 512),
+        review_state: boundedString(detail.state, 120),
+        lenses: Object.keys(lenses).length ? { judged: lens('judged'), measured: lens('measured'), observed: lens('observed'), outcome: lens('outcome') } : null,
+      };
+    }),
     criteria_total: criteria.length,
     review_extension: projectReceiptReviewExtension(review),
     workstream: str(workstream.id) ? { id: str(workstream.id)!, title: str(workstream.title) ?? '', status: str(workstream.status), repo: str(workstream.repo) } : null,

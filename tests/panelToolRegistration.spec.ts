@@ -95,15 +95,16 @@ describe('orgx_panel_snapshot registration', () => {
     expect(captureRegistration(new Set([PANEL_TOOL_ID]))).toHaveLength(1);
   });
 
-  it('is on the ChatGPT and v2 surfaces only, with a contract, an exact output schema and a manifest entry', () => {
+  it('is app-only on the shared ChatGPT, v2 and directory surfaces, with an exact output schema and manifest entry', () => {
     expect(CHATGPT_PUBLIC_SURFACE).toContain(PANEL_TOOL_ID);
     expect(resolveProfileToolSet('v2')?.has(PANEL_TOOL_ID)).toBe(true);
-    expect(CLAUDE_DIRECTORY_SURFACE).not.toContain(PANEL_TOOL_ID as never);
+    expect(CLAUDE_DIRECTORY_SURFACE).toContain(PANEL_TOOL_ID);
     expect(CLAUDE_PLUGIN_SURFACE).not.toContain(PANEL_TOOL_ID as never);
     expect(getKnownToolContract(PANEL_TOOL_ID)?.securitySchemes).toEqual(
       PANEL_SNAPSHOT_TOOL_CONTRACT.securitySchemes
     );
     expect(getOpenAiOutputSchema(PANEL_TOOL_ID)).toBeDefined();
+    expect(PANEL_TOOL_META.ui).toMatchObject({ visibility: ['app'] });
     const manifest = serverManifest.tools.find((tool) => tool.name === PANEL_TOOL_ID);
     expect(manifest?.annotations).toEqual(PANEL_SNAPSHOT_TOOL_CONTRACT.annotations);
     expect(manifest?.description).toBe(PANEL_SNAPSHOT_TOOL_CONTRACT.description);

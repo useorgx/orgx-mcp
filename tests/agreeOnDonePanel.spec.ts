@@ -270,8 +270,8 @@ describe('Done: a receipt with sources', () => {
         outcome: { criteria_results: [{ criterion_id: 'c1', status: 'met' }] },
       },
     }, 'rcpt-1');
-    m.calls.callServerTool.mockImplementation(async ({ arguments: args }: { arguments: Record<string, unknown> }) =>
-      args.view === 'receipt'
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) =>
+      name === 'orgx_get_work_receipt'
         ? { structuredContent: snapshot({ receipt: detail }) }
         : { structuredContent: snapshot({ receipts: buildPanelReceipts({ data: { total: 1, results: [row] } }, 'since:x') }) });
     click(m, '[data-tab="done"]');

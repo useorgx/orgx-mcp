@@ -63,7 +63,11 @@
       artifacts: (Array.isArray(data.evidence) ? data.evidence : []).map(function evidence(e) { return { kind: e.kind || 'evidence', name: e.summary || e.id || 'Evidence', url: e.uri || null }; }),
       criteria_total: Math.max(criteria.length, Number(data.criteria_total) || 0),
       evidence_total: Math.max(Array.isArray(data.evidence) ? data.evidence.length : 0, Number(data.evidence_total) || 0),
-      uncertain: Array.isArray(data.uncertain) ? data.uncertain : [], objective: null, outcome_summary: null,
+      uncertain: Array.isArray(data.uncertain) ? data.uncertain : [],
+      objective: typeof data.objective === 'string' ? data.objective : null,
+      outcome_summary: typeof data.outcome_summary === 'string' ? data.outcome_summary : null,
+      producer_reported: Boolean(data.producer_claims),
+      reported_bar: data.reported_bar && data.reported_bar.basis === 'producer_reported' ? data.reported_bar : null,
     };
   }
 
@@ -144,6 +148,12 @@
 
   /** Where a check came from, as a chip; a learned one names the call behind it when the ledger does. */
   function sourceChip(x) {
+    if (x.basis === 'producer_reported' && x.source) {
+      var reported = { rule: 'workspace rule', artifact_type: 'kind of work', learned: 'learned', suggested: 'suggested', drafted: 'drafted' };
+      var source = reported[x.source] || String(x.source).replace(/_/g, ' ');
+      return '<span class="xp-src" data-src="' + esc(x.source) + '" title="The agent reports this source. OrgX has not confirmed its provenance.">Agent reports: ' +
+        esc(source + (x.source_label ? ' · ' + x.source_label : '')) + '</span>';
+    }
     var X = global.OrgXExpectations;
     if (!X || !x.source) return '';
     var label = x.source === 'learned' && x.source_label ? 'from ' + x.source_label : '';
@@ -156,6 +166,16 @@
     if (!bar || !bar.agreed_at) return '';
     var when = X && X.shortDate ? X.shortDate(bar.agreed_at) : '';
     return '<p class="rc-bar">Judged against the bar you agreed on' + (when ? ' ' + esc(when) : '') + '.</p>';
+  }
+
+  function reportedBarLine(detail) {
+    var bar = detail && detail.reported_bar;
+    if (!bar || bar.basis !== 'producer_reported') return '';
+    if (!bar.agreed_at && !bar.agreed_by) return '<p class="rc-bar rc-reported-bar">The agent reports which expectations this receipt used. This report does not confirm a human agreement.</p>';
+    var X = global.OrgXExpectations;
+    var when = bar.agreed_at && X && X.shortDate ? X.shortDate(bar.agreed_at) : '';
+    return '<p class="rc-bar rc-reported-bar">Agent reports an expectation agreement' + (when ? ' on ' + esc(when) : '') +
+      '. OrgX has not confirmed this human agreement.</p>';
   }
 
   /**
@@ -177,7 +197,9 @@
       body = '<p class="rc-quiet">' + esc(detail.reason || 'This receipt could not be read right now.') + '</p>';
     } else {
       var crit = detail.criteria || [];
-      body += '<section class="rc-sec" aria-label="What done meant"><h4 class="rc-h">What done meant</h4>' + barLine(detail) +
+      if (detail.objective) body += '<section class="rc-sec"><h4 class="rc-h">Intended outcome</h4><p class="rc-p">' + esc(detail.objective) + '</p></section>';
+      body += '<section class="rc-sec" aria-label="What done meant"><h4 class="rc-h">What done meant</h4>' + barLine(detail) + reportedBarLine(detail) +
+        (detail.producer_reported ? '<p class="rc-quiet">The agent reports these check results and sources.</p>' : '') +
         (crit.length
           ? '<ul class="rc-crits" role="list">' + crit.map(function c(x) {
             var guess = typeof x.confidence === 'number' && x.confidence < 0.6;
@@ -186,7 +208,7 @@
           }).join('') + '</ul>'
           : '<p class="rc-quiet">No criteria were written down for this work, so nothing can be checked against them.</p>') +
         (detail.criteria_total > crit.length ? '<p class="rc-quiet">Showing ' + crit.length + ' of ' + esc(detail.criteria_total) + ' checks. Open the Work Ledger for the complete receipt.</p>' : '') + '</section>';
-      if (detail.outcome_summary) body += '<section class="rc-sec"><h4 class="rc-h">What happened</h4><p class="rc-p">' + esc(detail.outcome_summary) + '</p></section>';
+      if (detail.outcome_summary) body += '<section class="rc-sec"><h4 class="rc-h">' + (detail.producer_reported ? 'Agent-reported outcome' : 'What happened') + '</h4><p class="rc-p">' + esc(detail.outcome_summary) + '</p></section>';
       var arts = detail.artifacts || [];
       if (arts.length) {
         body += '<section class="rc-sec"><h4 class="rc-h">Evidence</h4><ul class="rc-arts" role="list">' + arts.slice(0, 8).map(function a(x) {

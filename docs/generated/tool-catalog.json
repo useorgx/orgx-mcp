@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-08T23:12:11.648Z",
-  "sourceHash": "c4aedc013e168a26",
+  "generatedAt": "2026-10-09T15:46:10.574Z",
+  "sourceHash": "58005ede7fbf7438",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -13371,72 +13371,80 @@
     {
       "id": "orgx_complete_plan",
       "title": "Complete OrgX Plan",
-      "description": "Save final markdown, complete the planning session, and optionally attach it to typed work targets. Does not start execution.",
+      "description": "Save final markdown and complete the planning session only if its expected revision is current. Optionally attach the completed plan to typed work targets; attachment failures are reported separately after completion. Does not start execution. After an uncertain response, read the plan before repeating the completion.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
         "properties": {
           "session_id": {
             "type": "string",
-            "minLength": 1,
+            "pattern": "^(?:orgx:\\/\\/plan_session\\/)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
             "description": "Plan session UUID or orgx://plan_session/<uuid> URI."
           },
           "plan_content": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 200000
+          },
+          "expected_version": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 2147483646,
+            "description": "Authoritative plan_ref.version from the most recent read. Required to prevent overwriting another edit."
           },
           "attach_to": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "entity_type": {
-                    "type": "string",
-                    "enum": [
-                      "initiative",
-                      "workstream",
-                      "milestone",
-                      "task"
-                    ]
-                  },
-                  "entity_id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "section": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  },
-                  "relevance": {
-                    "type": "string"
-                  }
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entity_type": {
+                  "type": "string",
+                  "enum": [
+                    "initiative",
+                    "workstream",
+                    "milestone",
+                    "task"
+                  ]
                 },
-                "required": [
-                  "entity_type",
-                  "entity_id"
-                ],
-                "additionalProperties": false
+                "entity_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "section": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "relevance": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4000
+                }
               },
-              {
-                "type": "array",
-                "items": {
-                  "$ref": "#/properties/attach_to/anyOf/0"
-                },
-                "minItems": 1
-              }
-            ],
-            "description": "Optional target or targets to link the completed plan to when action=complete. A single { entity_type, entity_id } object is accepted and normalized to the API array contract."
+              "required": [
+                "entity_type",
+                "entity_id"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 100
           },
-          "idempotency_key": {
+          "workspace_id": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "format": "uuid",
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
           }
         },
         "required": [
           "session_id",
-          "plan_content"
+          "plan_content",
+          "expected_version"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -13455,7 +13463,8 @@
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,
-        "openWorldHint": false
+        "openWorldHint": false,
+        "idempotentHint": false
       },
       "readOnly": false,
       "source": "workflow_operation",
@@ -13581,25 +13590,31 @@
             "properties": {
               "name": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               },
               "description": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               "artifact_type": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 120
               },
               "artifact_url": {
                 "type": "string",
-                "format": "uri"
+                "format": "uri",
+                "maxLength": 2000
               },
               "external_url": {
                 "type": "string",
-                "format": "uri"
+                "format": "uri",
+                "maxLength": 2000
               },
               "preview_markdown": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 25000
               }
             },
             "required": [
@@ -13610,9 +13625,11 @@
           "verification": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
             },
-            "description": "Optional list of verification evidence URLs/IDs for completion flows."
+            "maxItems": 30
           },
           "quality_score": {
             "type": "number",
@@ -13622,7 +13639,7 @@
           },
           "note": {
             "type": "string",
-            "description": "Strongly recommended for destructive or blocking actions (block, flag_risk, decline, supersede, cancel, delete). Free-text rationale shown in audit history and downstream agent context."
+            "maxLength": 4000
           },
           "idempotency_key": {
             "type": "string",
@@ -16020,7 +16037,7 @@
     {
       "id": "orgx_inspect",
       "title": "Inspect OrgX Work",
-      "description": "Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_search for related records or orgx_recommend for a read-only next-step assessment. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.",
+      "description": "Read the current state and linked context of one OrgX work record, decision, artifact, or plan session before acting. Returns its owners, decisions, acceptance checks, and proof where available. Related records are available through orgx_search and priorities through orgx_get_next_actions. Does not mutate the record.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -16620,7 +16637,7 @@
         "properties": {
           "session_id": {
             "type": "string",
-            "minLength": 1,
+            "pattern": "^(?:orgx:\\/\\/plan_session\\/)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
             "description": "Plan session UUID or orgx://plan_session/<uuid> URI."
           },
           "workspace_id": {
@@ -17138,11 +17155,13 @@
         "properties": {
           "session_id": {
             "type": "string",
-            "minLength": 1
+            "pattern": "^(?:orgx:\\/\\/plan_session\\/)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "description": "Plan session UUID or orgx://plan_session/<uuid> URI."
           },
           "plan_content": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 200000
           },
           "title": {
             "type": "string",
@@ -17152,11 +17171,13 @@
           },
           "edit_summary": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 4000
           },
           "expected_version": {
             "type": "integer",
             "exclusiveMinimum": 0,
+            "maximum": 2147483646,
             "description": "Authoritative plan_ref.version from the most recent read. Required to prevent overwriting another edit."
           },
           "workspace_id": {
@@ -17202,7 +17223,7 @@
     {
       "id": "orgx_search",
       "title": "Search OrgX",
-      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, memory, and the work ledger (receipts, work sessions, outreach touches). scope=work_ledger searches Agent Work Receipts as a work graph: what was asked, whether each acceptance criterion was met, how work joins across sessions and people, which initiative it serves, and what is still uncertain. A query without type runs a mixed relevance search and records metered MCP allowance usage; typed searches provide exhaustive cursor/offset pagination without changing business records. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
+      "description": "Search authorized OrgX work, decisions, artifacts, memory, and plan sessions using typed filters and optional text. Mixed relevance searches record metered MCP allowance usage without changing work records. Follow next_call for pagination. Full context is available through orgx_inspect, priorities through orgx_get_next_actions, and receipt ledger searches through orgx_list_work_receipts.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -17251,11 +17272,11 @@
           },
           "initiative_id": {
             "type": "string",
-            "description": "Optional initiative UUID scope"
+            "description": "Initiative UUID used as the parent or scope for this operation."
           },
           "workspace_id": {
             "type": "string",
-            "description": "Optional workspace UUID scope"
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
           },
           "limit": {
             "type": "integer",
@@ -17282,32 +17303,7 @@
           },
           "session_id": {
             "type": "string",
-            "description": "Optional bootstrap/session identifier"
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "entities",
-              "work_ledger"
-            ],
-            "description": "work_ledger searches Agent Work Receipts (one per piece of agent work) instead of entities. query takes free text plus exact filters: outcome:, verification:, accepted:, type:, area:, repo:, actor:, ws:, entity:, pr:, file:, since:, until:, conf:<0.6, unmet:tests|any, status: (workstream). Results say which terms matched."
-          },
-          "receipt_id": {
-            "type": "string",
-            "description": "With scope=work_ledger: one receipt in full, with its workstream, plan mapping, links and what is uncertain"
-          },
-          "workstream_id": {
-            "type": "string",
-            "description": "With scope=work_ledger: one workstream (work joined across people and sessions) with every member"
-          },
-          "view": {
-            "type": "string",
-            "enum": [
-              "search",
-              "workstreams",
-              "review"
-            ],
-            "description": "With scope=work_ledger: search receipts (default), list workstreams, or the review queue of calls a person should make"
+            "description": "Optional OrgX conversation-session context."
           }
         },
         "additionalProperties": false,
@@ -17405,25 +17401,31 @@
             "properties": {
               "name": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               },
               "description": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               "artifact_type": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 120
               },
               "artifact_url": {
                 "type": "string",
-                "format": "uri"
+                "format": "uri",
+                "maxLength": 2000
               },
               "external_url": {
                 "type": "string",
-                "format": "uri"
+                "format": "uri",
+                "maxLength": 2000
               },
               "preview_markdown": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 25000
               }
             },
             "required": [
@@ -17688,7 +17690,8 @@
             "description": "Display title for the new work record."
           },
           "initial_plan": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200000
           },
           "workspace_id": {
             "type": "string",

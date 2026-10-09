@@ -62,10 +62,10 @@ describe('agent status output after durable enrichment', () => {
     const payload = statusPayload([
       task('active-task', 'in_progress'), task('finished-task', 'completed'),
     ]);
-    const schema = getOpenAiOutputSchema('get_agent_status')!;
+    const schema = getOpenAiOutputSchema('orgx_get_agent_status')!;
     expect(schema.safeParse(payload).success).toBe(true);
     const server = new McpServer({ name: 'agent-status-contract', version: '1.0.0' });
-    server.registerTool('get_agent_status', { outputSchema: schema.shape }, async () => ({
+    server.registerTool('orgx_get_agent_status', { outputSchema: schema.shape }, async () => ({
       content: [{ type: 'text' as const, text: 'Current agent status.' }],
       structuredContent: payload,
     }));
@@ -74,7 +74,7 @@ describe('agent status output after durable enrichment', () => {
     try {
       await server.connect(serverTransport);
       await client.connect(clientTransport);
-      const result = await client.callTool({ name: 'get_agent_status', arguments: {} });
+      const result = await client.callTool({ name: 'orgx_get_agent_status', arguments: {} });
       expect(result.isError).not.toBe(true);
       expect(result.structuredContent).toMatchObject({
         agents: [{
@@ -100,7 +100,7 @@ describe('agent status output after durable enrichment', () => {
   });
 
   it('does not turn missing task identity or malformed field types into valid data', () => {
-    const schema = getOpenAiOutputSchema('get_agent_status')!;
+    const schema = getOpenAiOutputSchema('orgx_get_agent_status')!;
     const missingId = { ...task('unused', 'in_progress'), id: undefined };
     expect(schema.safeParse(statusPayload([missingId])).success).toBe(false);
     expect(schema.safeParse(statusPayload([{

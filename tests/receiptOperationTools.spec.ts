@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { buildAgentWorkReceiptImportRequest } from '../src/agentWorkReceiptV1';
 import { executeReceiptOperation, projectWorkReceiptDetail, RECEIPT_OPERATION_OUTPUT_SCHEMAS, RECEIPT_OPERATION_TOOLS } from '../src/receiptOperationTools';
+import { buildPortableReceiptProof } from '../src/portableReceiptProof';
 
 const workspaceId = '7af01a51-49b1-47d8-98b9-91a198debca8';
 function receipt() {
@@ -87,6 +88,20 @@ describe('explicit receipt operations', () => {
     expect(parsed.human_judgment?.reviewed_receipt_id).toBe('ledger-id');
   });
 
+  it('keeps a v0.2 workstream anchor without treating another system as OrgX', () => {
+    const proof = buildPortableReceiptProof({
+      lineage: { workstream_ref: { system: 'orgx', type: 'workstream', id: 'actual-workstream' },
+        references: [{ ref: { system: 'unrelated-orgx-adapter', type: 'task', id: 'other-system-task' } }] },
+      artifacts: [{ kind: 'document', ref: { system: 'not-orgx', type: 'artifact', id: 'other-system-artifact' } }],
+    });
+    expect(proof.anchor).toEqual({ entity_type: 'workstream', entity_id: 'actual-workstream', artifact_id: null });
+    const precise = buildPortableReceiptProof({ lineage: {
+      workstream_ref: { system: 'orgx', type: 'workstream', id: 'parent' },
+      references: [{ ref: { system: 'orgx', type: 'task', id: 'actual-task' } }],
+    } });
+    expect(precise.anchor.entity_id).toBe('actual-task');
+  });
+
   it('exposes five closed operations and no model judgment resolver', () => {
     expect(RECEIPT_OPERATION_TOOLS).toHaveLength(5);
     for (const tool of RECEIPT_OPERATION_TOOLS) {
@@ -110,7 +125,46 @@ describe('explicit receipt operations', () => {
 
   it('includes v0.1 unnumbered acceptance criteria as unknown rather than inventing results', () => {
     const result = projectWorkReceiptDetail({ receipt: { schema_version: 'agent-work-receipt/v0.1', receipt_id: 'old', intent: { summary: 'Login', acceptance_criteria: ['Login succeeds'] } } });
-    expect(result.criteria).toEqual([{ id: 'criterion-1', text: 'Login succeeds', status: 'unknown', evidence_ids: [] }]);
+    expect(result.criteria).toEqual([{ id: 'criterion-1', text: 'Login succeeds', status: 'unknown', evidence_ids: [],
+      basis: 'producer_reported', confidence: null, kind: null, required: null, source: null, source_ref: null,
+      source_label: null, review_state: null, lenses: null }]);
     expect(result.criteria_total).toBe(1);
+  });
+
+  it('retains producer confidence and source context without turning reported agreement into human acceptance', () => {
+    const document = receipt();
+    const result = RECEIPT_OPERATION_OUTPUT_SCHEMAS.orgx_get_work_receipt.parse(projectWorkReceiptDetail({ data: {
+      receipt: { ...document,
+        intent: { ...document.intent, objective: 'Users can sign in reliably', criteria: [{ ...document.intent.criteria[0], kind: 'behavior', required: true }] },
+        outcome: { ...document.outcome, summary: 'The login check ran', criteria_results: [{ criterion_id: 'c1', status: 'met', confidence: 0.45, evidence_ids: ['evidence-1'] }] },
+        extensions: { ...document.extensions, 'org.orgx.expectations/v1': { set_id: 'set-1', version: 2, agreed_at: '2026-10-08T12:00:00Z', agreed_by: 'claimed-human', contract_hash: 'hash-1', declared_at: '2026-10-08T11:00:00Z', criteria: [{ id: 'c1', source: 'learned', source_ref: 'promotion:1', source_label: 'Earlier login failure' }] } },
+      },
+      criteria: [{ id: 'c1', state: 'partial', lenses: { judged: { s: 'pass' }, measured: { s: 'fail', note: 'A test failed' }, observed: { s: 'none' }, outcome: { s: 'partial' } } }],
+    } }));
+    expect(result.objective).toBe('Users can sign in reliably');
+    expect(result.outcome_summary).toBe('The login check ran');
+    expect(result.criteria[0]).toMatchObject({ basis: 'producer_reported', confidence: 0.45, source: 'learned', source_ref: 'promotion:1', source_label: 'Earlier login failure', kind: 'behavior', required: true, status: 'met', review_state: 'partial', lenses: { measured: { status: 'fail', note: 'A test failed' } } });
+    expect(result.reported_bar).toEqual({ basis: 'producer_reported', set_id: 'set-1', version: 2, agreed_at: '2026-10-08T12:00:00Z', agreed_by: 'claimed-human', contract_hash: 'hash-1', declared_at: '2026-10-08T11:00:00Z' });
+    expect(result).not.toHaveProperty('bar');
+    expect(result.human_judgment).toBeNull();
+    expect(result.receipt_assessment).toMatchObject({ acceptance_status: 'awaiting_human_review', outcome_status: null });
+  });
+
+  it('bounds producer metadata and rejects invalid confidence rather than presenting it as certain', () => {
+    for (const invalidConfidence of [-0.1, 1.1, Infinity, NaN, '0.8']) {
+      const document = receipt();
+      const result = RECEIPT_OPERATION_OUTPUT_SCHEMAS.orgx_get_work_receipt.parse(projectWorkReceiptDetail({ receipt: {
+        ...document, intent: { ...document.intent, objective: 'o'.repeat(2500), criteria: [{ id: 'c1', text: 'Login', source: 's'.repeat(200), source_label: 'l'.repeat(800) }] },
+        outcome: { ...document.outcome, summary: 'r'.repeat(2500), criteria_results: [{ criterion_id: 'c1', status: 'met', confidence: invalidConfidence }] },
+        extensions: { 'org.orgx.expectations/v1': { version: -1, agreed_at: 'a'.repeat(300) } },
+      } }));
+      expect(result.criteria[0].confidence).toBeNull();
+      expect(result.criteria[0].source).toHaveLength(120);
+      expect(result.criteria[0].source_label).toHaveLength(512);
+      expect(result.objective).toHaveLength(2000);
+      expect(result.outcome_summary).toHaveLength(2000);
+      expect(result.reported_bar?.version).toBeNull();
+      expect(result.reported_bar?.agreed_at).toHaveLength(256);
+    }
   });
 });

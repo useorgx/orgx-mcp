@@ -48,7 +48,7 @@ function panelRows(): HTMLElement[] {
   return Array.from(document.querySelectorAll('#liveFlow .oxlp-row')) as HTMLElement[];
 }
 
-const GRANT = testGrant();
+const GRANT = { ...testGrant(), refreshTool: 'orgx_get_agent_status' };
 
 beforeEach(() => {
   FakeEventSource.reset();
@@ -63,7 +63,7 @@ describe('grant construction', () => {
       feedId: 'init-1',
       serverUrl: 'https://mcp.useorgx.com/',
       secret: 'test-secret',
-      refreshTool: 'get_agent_status',
+      refreshTool: 'orgx_get_agent_status',
     });
     expect(grant).not.toBeNull();
     expect(grant!.streamUrl).toMatch(

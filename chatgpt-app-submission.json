@@ -39,7 +39,7 @@
         "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_search for related records or orgx_recommend for a read-only next-step assessment. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only. This operation reads or validates data without changing durable business state.",
+        "read_only_justification": "Read the current state and linked context of one OrgX work record, decision, artifact, or plan session before acting. Returns its owners, decisions, acceptance checks, and proof where available. Related records are available through orgx_search and priorities through orgx_get_next_actions. Does not mutate the record. This operation reads or validates data without changing durable business state.",
         "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
         "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
@@ -158,12 +158,13 @@
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,
-        "openWorldHint": false
+        "openWorldHint": false,
+        "idempotentHint": false
       },
       "justifications": {
-        "read_only_justification": "Save final markdown, complete the planning session, and optionally attach it to typed work targets. Does not start execution. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "read_only_justification": "Save final markdown and complete the planning session only if its expected revision is current. Optionally attach the completed plan to typed work targets; attachment failures are reported separately after completion. Does not start execution. After an uncertain response, read the plan before repeating the completion. This operation creates records or changes existing planning, work, evidence, or execution state.",
         "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
-        "destructive_justification": "Save final markdown, complete the planning session, and optionally attach it to typed work targets. Does not start execution. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+        "destructive_justification": "Save final markdown and complete the planning session only if its expected revision is current. Optionally attach the completed plan to typed work targets; attachment failures are reported separately after completion. Does not start execution. After an uncertain response, read the plan before repeating the completion. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
       }
     },
     "orgx_validate_initiative_plan": {

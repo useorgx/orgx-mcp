@@ -1,19 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve as resolvePath } from 'node:path';
-
-import {
-  CHATGPT_TOOL_DEFINITIONS,
-  CLIENT_INTEGRATION_TOOL_DEFINITIONS,
-  PLAN_SESSION_TOOLS,
-  STREAM_TOOL_DEFINITIONS,
-} from '../src/toolDefinitions';
-import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
+import { getPublicOperationContracts } from '../src/publicOperationContracts';
 import { CLAUDE_DIRECTORY_TOOL_ADAPTERS } from '../src/claudeDirectoryTools';
-import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
-import { PANEL_SNAPSHOT_TOOL_CONTRACT, RECEIPT_CALL_TOOL_CONTRACT } from '../src/panelSurface';
 import {
   TOOL_PROFILES,
   WIDGET_AFFORDANCE_SURFACE,
@@ -35,69 +23,11 @@ import {
  *      even when the tool set hasn't changed.
  */
 
-interface ToolDef {
-  id: string;
-  description?: string;
-}
-
-const ALL_DEFINITIONS: ReadonlyArray<ReadonlyArray<unknown>> = [
-  CHATGPT_TOOL_DEFINITIONS,
-  PLAN_SESSION_TOOLS,
-  STREAM_TOOL_DEFINITIONS,
-  CLIENT_INTEGRATION_TOOL_DEFINITIONS,
-  CONTRACT_TOOL_DEFINITIONS,
-  CLAUDE_DIRECTORY_TOOL_ADAPTERS,
-  FLYWHEEL_TOOL_DEFINITIONS,
-];
-
-/**
- * Many tools (entity_action, list_entities, scaffold_initiative, etc.) are
- * registered inline in src/index.ts via `this.server.registerTool(...)`
- * rather than through a definition array. For snapshot purposes we extract
- * their IDs by parsing the source — descriptions are kept inline in those
- * registrations and the per-tool description hash here would be brittle to
- * unrelated edits to surrounding code, so we only lock the ID set for them.
- */
-function collectInlineRegisteredToolIds(): Set<string> {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const indexPath = resolvePath(here, '..', 'src', 'index.ts');
-  const src = readFileSync(indexPath, 'utf8');
-  const ids = new Set<string>();
-  // Match: this.server.registerTool(\s*'<id>',  -- the canonical inline form.
-  const re = /this\.server\.registerTool\(\s*['"]([a-zA-Z0-9_-]+)['"]/g;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(src))) {
-    ids.add(match[1]!);
-  }
-  // Also catch: registerAppTool(\n  this.server,\n  '<id>', for ChatGPT App tools.
-  const appRe = /registerAppTool\(\s*this\.server,\s*['"]([a-zA-Z0-9_-]+)['"]/g;
-  while ((match = appRe.exec(src))) {
-    ids.add(match[1]!);
-  }
-  return ids;
-}
-
 function collectAllTools(): Map<string, string> {
-  // Map of tool id -> description (last definition wins for any duplicates).
-  // Inline-registered tools have an empty description — they're locked by
-  // their ID being present in the snapshot, not by description hash.
-  const map = new Map<string, string>();
-  for (const source of ALL_DEFINITIONS) {
-    for (const tool of source) {
-      const t = tool as ToolDef;
-      if (typeof t.id === 'string') {
-        map.set(t.id, typeof t.description === 'string' ? t.description : '');
-      }
-    }
-  }
-  for (const id of collectInlineRegisteredToolIds()) {
-    if (!map.has(id)) map.set(id, '');
-  }
-  // Registered from src/panelSurface.ts (one call in index.ts); its
-  // description is locked like any definition-backed tool.
-  map.set(PANEL_SNAPSHOT_TOOL_CONTRACT.id, PANEL_SNAPSHOT_TOOL_CONTRACT.description);
-  map.set(RECEIPT_CALL_TOOL_CONTRACT.id, RECEIPT_CALL_TOOL_CONTRACT.description);
-  return map;
+  // Old directory-only adapters have their own registration source; current
+  // operation contracts take precedence for shared IDs.
+  return new Map([...CLAUDE_DIRECTORY_TOOL_ADAPTERS, ...getPublicOperationContracts()]
+    .map((tool) => [tool.id, tool.description ?? '']));
 }
 
 function hashDescription(s: string): string {
@@ -160,24 +90,21 @@ describe('tool discovery snapshot', () => {
     expect(resolveProfileToolSet(null)).toEqual(expected);
   });
 
-  it('keeps bootstrap on stateful profiles and off the read-only surfaces', () => {
-    // The fail-closed fallback excludes bootstrap. Claude directory now
-    // binds explicit workflow context while suppressing optional persistence.
-    const REQUIRED = ['orgx_bootstrap'];
-    const READ_ONLY_PROFILES = new Set(['read-only']);
-    const profileNames = Object.keys(TOOL_PROFILES).filter((n) => n !== 'full');
-    for (const profileName of profileNames) {
-      const allowed = resolveProfileToolSet(profileName);
-      if (!allowed) continue;
-      for (const required of REQUIRED) {
-        if (READ_ONLY_PROFILES.has(profileName)) {
-          expect(allowed.has(required)).toBe(false);
-          continue;
-        }
-        expect(
-          allowed.has(required),
-          `profile "${profileName}" must include ${required}`
-        ).toBe(true);
+  it('uses explicit context and workspace selection in current workflow profiles', () => {
+    const currentProfiles = new Set(['v2', 'chatgpt', 'claude-directory', 'extended']);
+    const narrowReadProfiles = new Set(['read-only', 'claude-code-legacy']);
+    for (const [profile, definition] of Object.entries(TOOL_PROFILES)) {
+      if (definition.tools === null) continue;
+      const allowed = resolveProfileToolSet(profile)!;
+      if (currentProfiles.has(profile)) {
+        expect(allowed.has('orgx_get_workspace_context'), profile).toBe(true);
+        expect(allowed.has('orgx_widget_select_workspace'), profile).toBe(true);
+        expect(allowed.has('orgx_bootstrap'), profile).toBe(false);
+      } else if (narrowReadProfiles.has(profile)) {
+        expect(allowed.has('orgx_bootstrap'), profile).toBe(false);
+        expect(allowed.has('orgx_widget_select_workspace'), profile).toBe(false);
+      } else {
+        expect(allowed.has('orgx_bootstrap'), profile).toBe(true);
       }
     }
   });

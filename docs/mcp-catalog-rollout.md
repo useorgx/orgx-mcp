@@ -6,7 +6,7 @@ Operation catalog, Worker, plugin, widget, and portable receipt versions stay in
 
 1. Verify the before/after inventory and meaningful changed client contracts. Keep API/Gateway receipts and independent local MCP servers separate.
 2. Apply receipt/work-artifact SQL migrations, deploy core routes, then deploy MCP and its resources. Missing new core capabilities refuse writes safely.
-3. Update plugin instructions/configuration/parsers and Wizard managed projections. Validate immutable source before atomically replacing a managed install.
+3. Update plugin instructions/configuration/parsers and Wizard immutable source pins. Validate the current operation-aligned source before atomically replacing a managed install.
 4. Reconnect ChatGPT/Claude/editor hosts to import current tools and widgets. Initialized pre-operation sessions without the current binding return a reconnect error before dispatch.
 5. Smoke-test authenticated discovery, workspace changes, enabled transports, and actual signed human review. Upload/scan the provider candidate when the publishing environment is available.
 

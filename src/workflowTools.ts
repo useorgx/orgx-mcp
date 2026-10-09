@@ -52,9 +52,9 @@ const planVersion = z.number().int().positive().max(2_147_483_646)
 const planAttachment = z.object({
   entity_type: workType,
   entity_id: z.string().uuid(),
-  section: z.string().max(2000).optional(),
-  label: z.string().max(2000).optional(),
-  relevance: z.string().max(2000).optional(),
+  section: z.string().trim().min(1).max(500).optional(),
+  label: z.string().trim().min(1).max(500).optional(),
+  relevance: z.string().trim().min(1).max(4000).optional(),
 }).strict();
 
 function canonical(id: string) {

@@ -15,7 +15,7 @@ import {
 import { OrgXApiError } from '../src/orgxApi';
 import { buildScaffoldInitiativeBatch } from '../src/scaffoldInitiative';
 import { buildCompactScaffoldResult, buildScaffoldDraftResult } from '../src/scaffoldResponse';
-import { OPENAI_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas';
+import { getToolOutputSchema } from '../src/openaiOutputSchemas';
 
 const DECISION_ID = '5b1c9e2a-4f3d-4a8b-9e61-2c7d0a9f4b13';
 
@@ -127,7 +127,7 @@ describe('suggested_checks on scaffold', () => {
       ['workstream', 'ws-1', 'suggested', 'engineering-agent'],
       ['task', 'task-1-1-1', 'suggested', 'engineering-agent'],
     ]);
-    expect(OPENAI_OUTPUT_SCHEMAS.scaffold_initiative.safeParse(draft).success).toBe(true);
+    expect(getToolOutputSchema('scaffold_initiative')!.safeParse(draft).success).toBe(true);
     expect(expectationSummaryText(draft.expectations!)).toContain('These are suggestions');
   });
 
@@ -177,7 +177,7 @@ describe('the scaffold result carries the bar', () => {
     });
     expect(payload.expectations?.checks).toHaveLength(5);
     expect(payload.result_contract.stable_keys).toContain('expectations');
-    expect(OPENAI_OUTPUT_SCHEMAS.scaffold_initiative.safeParse(payload).success).toBe(true);
+    expect(getToolOutputSchema('scaffold_initiative')!.safeParse(payload).success).toBe(true);
   });
 
   it('says each state in the text hosts read', () => {

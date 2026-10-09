@@ -90,13 +90,13 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/workspace-map.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Bootstrapping OrgX contract...",
-        "openai/toolInvocation/invoked": "OrgX contract ready",
+        "openai/outputTemplate": "ui://widget/workspace-map.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Read OrgX Workspace Context...",
+        "openai/toolInvocation/invoked": "Read OrgX Workspace Context finished",
         "openai/readOnlyHint": true,
         "openai/visibility": "public",
         "ui": {
-          "resourceUri": "ui://widget/workspace-map.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/workspace-map.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -116,7 +116,7 @@
     {
       "name": "orgx_search",
       "title": "Search OrgX",
-      "description": "Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Finds OrgX entities, decisions, artifacts, memory, and the work ledger (receipts, work sessions, outreach touches). scope=work_ledger searches Agent Work Receipts as a work graph: what was asked, whether each acceptance criterion was met, how work joins across sessions and people, which initiative it serves, and what is still uncertain. A query without type runs a mixed relevance search and records metered MCP allowance usage; typed searches provide exhaustive cursor/offset pagination without changing business records. Also known as: Search OrgX, find initiative ID, list work, browse OrgX. USE WHEN: browsing work, searching memory, finding IDs, or listing related records. NEXT: use structuredContent.next_call exactly when pagination.has_more=true, orgx_inspect for one selected result, or orgx_recommend when the user asks what to do next. DO NOT USE WHEN: you already know the exact entity and need full context; use orgx_inspect.",
+      "description": "Search authorized OrgX work, decisions, artifacts, memory, and plan sessions using typed filters and optional text. Mixed relevance searches record metered MCP allowance usage without changing work records. Follow next_call for pagination. Full context is available through orgx_inspect, priorities through orgx_get_next_actions, and receipt ledger searches through orgx_list_work_receipts.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -164,11 +164,11 @@
           },
           "initiative_id": {
             "type": "string",
-            "description": "Optional initiative UUID scope"
+            "description": "Initiative UUID used as the parent or scope for this operation."
           },
           "workspace_id": {
             "type": "string",
-            "description": "Optional workspace UUID scope"
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
           },
           "limit": {
             "type": "integer",
@@ -195,32 +195,7 @@
           },
           "session_id": {
             "type": "string",
-            "description": "Optional bootstrap/session identifier"
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "entities",
-              "work_ledger"
-            ],
-            "description": "work_ledger searches Agent Work Receipts (one per piece of agent work) instead of entities. query takes free text plus exact filters: outcome:, verification:, accepted:, type:, area:, repo:, actor:, ws:, entity:, pr:, file:, since:, until:, conf:<0.6, unmet:tests|any, status: (workstream). Results say which terms matched."
-          },
-          "receipt_id": {
-            "type": "string",
-            "description": "With scope=work_ledger: one receipt in full, with its workstream, plan mapping, links and what is uncertain"
-          },
-          "workstream_id": {
-            "type": "string",
-            "description": "With scope=work_ledger: one workstream (work joined across people and sessions) with every member"
-          },
-          "view": {
-            "type": "string",
-            "enum": [
-              "search",
-              "workstreams",
-              "review"
-            ],
-            "description": "With scope=work_ledger: search receipts (default), list workstreams, or the review queue of calls a person should make"
+            "description": "Optional OrgX conversation-session context."
           }
         },
         "additionalProperties": false,
@@ -258,12 +233,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/search-results.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Searching OrgX...",
-        "openai/toolInvocation/invoked": "OrgX search complete",
+        "openai/outputTemplate": "ui://widget/search-results.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Search OrgX...",
+        "openai/toolInvocation/invoked": "Search OrgX finished",
         "openai/readOnlyHint": false,
         "ui": {
-          "resourceUri": "ui://widget/search-results.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/search-results.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -302,7 +277,7 @@
     {
       "name": "orgx_inspect",
       "title": "Inspect OrgX Work",
-      "description": "Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_search for related records or orgx_recommend for a read-only next-step assessment. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.",
+      "description": "Read the current state and linked context of one OrgX work record, decision, artifact, or plan session before acting. Returns its owners, decisions, acceptance checks, and proof where available. Related records are available through orgx_search and priorities through orgx_get_next_actions. Does not mutate the record.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -391,12 +366,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/entity-card.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Inspecting OrgX entity...",
-        "openai/toolInvocation/invoked": "OrgX entity inspected",
+        "openai/outputTemplate": "ui://widget/entity-card.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Inspect OrgX Work...",
+        "openai/toolInvocation/invoked": "Inspect OrgX Work finished",
         "openai/readOnlyHint": true,
         "ui": {
-          "resourceUri": "ui://widget/entity-card.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/entity-card.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -470,12 +445,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/work-ledger.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Loading operator chronicle...",
-        "openai/toolInvocation/invoked": "Operator chronicle ready",
+        "openai/outputTemplate": "ui://widget/work-ledger.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Read OrgX Operator Brief...",
+        "openai/toolInvocation/invoked": "Read OrgX Operator Brief finished",
         "openai/readOnlyHint": true,
         "ui": {
-          "resourceUri": "ui://widget/work-ledger.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/work-ledger.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -551,12 +526,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/morning-brief.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Building OrgX recommendation...",
-        "openai/toolInvocation/invoked": "OrgX recommendation ready",
+        "openai/outputTemplate": "ui://widget/morning-brief.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Get OrgX Next Actions...",
+        "openai/toolInvocation/invoked": "Get OrgX Next Actions finished",
         "openai/readOnlyHint": false,
         "ui": {
-          "resourceUri": "ui://widget/morning-brief.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/morning-brief.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -616,12 +591,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/agent-status.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Checking agent status...",
-        "openai/toolInvocation/invoked": "Here's what your agents are doing",
+        "openai/outputTemplate": "ui://widget/agent-status.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Read OrgX Agent Status...",
+        "openai/toolInvocation/invoked": "Read OrgX Agent Status finished",
         "openai/readOnlyHint": false,
         "ui": {
-          "resourceUri": "ui://widget/agent-status.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/agent-status.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -672,12 +647,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/initiative-pulse.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Getting initiative health...",
-        "openai/toolInvocation/invoked": "Here's the initiative status",
+        "openai/outputTemplate": "ui://widget/initiative-pulse.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Read OrgX Initiative Progress...",
+        "openai/toolInvocation/invoked": "Read OrgX Initiative Progress finished",
         "openai/readOnlyHint": false,
         "ui": {
-          "resourceUri": "ui://widget/initiative-pulse.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/initiative-pulse.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -756,8 +731,8 @@
       "_meta": {
         "openai/readOnlyHint": true,
         "openai/widgetAccessible": true,
-        "openai/toolInvocation/invoking": "Checking status...",
-        "openai/toolInvocation/invoked": "Status checked",
+        "openai/toolInvocation/invoking": "Read OrgX Operation Status...",
+        "openai/toolInvocation/invoked": "Read OrgX Operation Status finished",
         "mcp/securitySchemes": [
           {
             "type": "oauth2",
@@ -823,8 +798,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Checking execution readiness...",
-        "openai/toolInvocation/invoked": "Execution readiness checked",
+        "openai/toolInvocation/invoking": "Check OrgX Execution Readiness...",
+        "openai/toolInvocation/invoked": "Check OrgX Execution Readiness finished",
         "openai/readOnlyHint": true,
         "mcp/securitySchemes": [
           {
@@ -857,7 +832,8 @@
             "description": "Display title for the new work record."
           },
           "initial_plan": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200000
           },
           "workspace_id": {
             "type": "string",
@@ -892,11 +868,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Updating OrgX plan...",
-        "openai/toolInvocation/invoked": "OrgX plan updated",
+        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Start OrgX Plan...",
+        "openai/toolInvocation/invoked": "Start OrgX Plan finished",
         "ui": {
-          "resourceUri": "ui://widget/plan-session-live.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/plan-session-live.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -923,7 +899,7 @@
         "properties": {
           "session_id": {
             "type": "string",
-            "minLength": 1,
+            "pattern": "^(?:orgx:\\/\\/plan_session\\/)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
             "description": "Plan session UUID or orgx://plan_session/<uuid> URI."
           },
           "workspace_id": {
@@ -949,11 +925,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Updating OrgX plan...",
-        "openai/toolInvocation/invoked": "OrgX plan updated",
+        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Read OrgX Plan...",
+        "openai/toolInvocation/invoked": "Read OrgX Plan finished",
         "ui": {
-          "resourceUri": "ui://widget/plan-session-live.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/plan-session-live.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -980,11 +956,13 @@
         "properties": {
           "session_id": {
             "type": "string",
-            "minLength": 1
+            "pattern": "^(?:orgx:\\/\\/plan_session\\/)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "description": "Plan session UUID or orgx://plan_session/<uuid> URI."
           },
           "plan_content": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 200000
           },
           "title": {
             "type": "string",
@@ -994,11 +972,13 @@
           },
           "edit_summary": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 4000
           },
           "expected_version": {
             "type": "integer",
             "exclusiveMinimum": 0,
+            "maximum": 2147483646,
             "description": "Authoritative plan_ref.version from the most recent read. Required to prevent overwriting another edit."
           },
           "workspace_id": {
@@ -1030,11 +1010,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Updating OrgX plan...",
-        "openai/toolInvocation/invoked": "OrgX plan updated",
+        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Save OrgX Plan...",
+        "openai/toolInvocation/invoked": "Save OrgX Plan finished",
         "ui": {
-          "resourceUri": "ui://widget/plan-session-live.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/plan-session-live.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -1055,100 +1035,79 @@
     {
       "name": "orgx_complete_plan",
       "title": "Complete OrgX Plan",
-      "description": "Save final markdown, complete the planning session, and optionally attach it to typed work targets. Does not start execution.",
+      "description": "Save final markdown and complete the planning session only if its expected revision is current. Optionally attach the completed plan to typed work targets; attachment failures are reported separately after completion. Does not start execution. After an uncertain response, read the plan before repeating the completion.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "session_id": {
             "type": "string",
-            "minLength": 1,
+            "pattern": "^(?:orgx:\\/\\/plan_session\\/)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
             "description": "Plan session UUID or orgx://plan_session/<uuid> URI."
           },
           "plan_content": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 200000
+          },
+          "expected_version": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 2147483646,
+            "description": "Authoritative plan_ref.version from the most recent read. Required to prevent overwriting another edit."
           },
           "attach_to": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "entity_type": {
-                    "type": "string",
-                    "enum": [
-                      "initiative",
-                      "workstream",
-                      "milestone",
-                      "task"
-                    ]
-                  },
-                  "entity_id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "section": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  },
-                  "relevance": {
-                    "type": "string"
-                  }
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entity_type": {
+                  "type": "string",
+                  "enum": [
+                    "initiative",
+                    "workstream",
+                    "milestone",
+                    "task"
+                  ]
                 },
-                "required": [
-                  "entity_type",
-                  "entity_id"
-                ],
-                "additionalProperties": false
+                "entity_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "section": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "relevance": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4000
+                }
               },
-              {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "entity_type": {
-                      "type": "string",
-                      "enum": [
-                        "initiative",
-                        "workstream",
-                        "milestone",
-                        "task"
-                      ]
-                    },
-                    "entity_id": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "section": {
-                      "type": "string"
-                    },
-                    "label": {
-                      "type": "string"
-                    },
-                    "relevance": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "entity_type",
-                    "entity_id"
-                  ],
-                  "additionalProperties": false
-                },
-                "minItems": 1
-              }
-            ],
-            "description": "Optional target or targets to link the completed plan to when action=complete. A single { entity_type, entity_id } object is accepted and normalized to the API array contract."
+              "required": [
+                "entity_type",
+                "entity_id"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 100
           },
-          "idempotency_key": {
+          "workspace_id": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "format": "uuid",
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
           }
         },
         "required": [
           "session_id",
-          "plan_content"
+          "plan_content",
+          "expected_version"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -1156,7 +1115,8 @@
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,
-        "openWorldHint": false
+        "openWorldHint": false,
+        "idempotentHint": false
       },
       "securitySchemes": [
         {
@@ -1167,11 +1127,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Updating OrgX plan...",
-        "openai/toolInvocation/invoked": "OrgX plan updated",
+        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Complete OrgX Plan...",
+        "openai/toolInvocation/invoked": "Complete OrgX Plan finished",
         "ui": {
-          "resourceUri": "ui://widget/plan-session-live.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/plan-session-live.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -1481,11 +1441,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/scaffolded-initiative.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Scaffolding initiative hierarchy...",
-        "openai/toolInvocation/invoked": "Initiative scaffolded",
+        "openai/outputTemplate": "ui://widget/scaffolded-initiative.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Validate OrgX Initiative Plan...",
+        "openai/toolInvocation/invoked": "Validate OrgX Initiative Plan finished",
         "ui": {
-          "resourceUri": "ui://widget/scaffolded-initiative.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/scaffolded-initiative.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -1805,11 +1765,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/scaffolded-initiative.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Scaffolding initiative hierarchy...",
-        "openai/toolInvocation/invoked": "Initiative scaffolded",
+        "openai/outputTemplate": "ui://widget/scaffolded-initiative.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Create OrgX Initiative Hierarchy...",
+        "openai/toolInvocation/invoked": "Create OrgX Initiative Hierarchy finished",
         "ui": {
-          "resourceUri": "ui://widget/scaffolded-initiative.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/scaffolded-initiative.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -1917,8 +1877,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Writing OrgX entity...",
-        "openai/toolInvocation/invoked": "OrgX entity written",
+        "openai/toolInvocation/invoking": "Create OrgX Initiative...",
+        "openai/toolInvocation/invoked": "Create OrgX Initiative finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -2033,8 +1993,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Writing OrgX entity...",
-        "openai/toolInvocation/invoked": "OrgX entity written",
+        "openai/toolInvocation/invoking": "Create OrgX Workstream...",
+        "openai/toolInvocation/invoked": "Create OrgX Workstream finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -2157,8 +2117,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Writing OrgX entity...",
-        "openai/toolInvocation/invoked": "OrgX entity written",
+        "openai/toolInvocation/invoking": "Create OrgX Milestone...",
+        "openai/toolInvocation/invoked": "Create OrgX Milestone finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -2285,8 +2245,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Writing OrgX entity...",
-        "openai/toolInvocation/invoked": "OrgX entity written",
+        "openai/toolInvocation/invoking": "Create OrgX Task...",
+        "openai/toolInvocation/invoked": "Create OrgX Task finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -2421,8 +2381,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Writing OrgX entity...",
-        "openai/toolInvocation/invoked": "OrgX entity written",
+        "openai/toolInvocation/invoking": "Update OrgX Work Content...",
+        "openai/toolInvocation/invoked": "Update OrgX Work Content finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -2571,11 +2531,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Preparing OrgX agent work...",
-        "openai/toolInvocation/invoked": "OrgX agent work ready",
+        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Estimate OrgX Agent Task...",
+        "openai/toolInvocation/invoked": "Estimate OrgX Agent Task finished",
         "ui": {
-          "resourceUri": "ui://widget/task-spawned.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/task-spawned.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -2781,11 +2741,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Preparing OrgX agent work...",
-        "openai/toolInvocation/invoked": "OrgX agent work ready",
+        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Start OrgX Agent Task...",
+        "openai/toolInvocation/invoked": "Start OrgX Agent Task finished",
         "ui": {
-          "resourceUri": "ui://widget/task-spawned.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/task-spawned.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -2994,11 +2954,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Preparing OrgX agent work...",
-        "openai/toolInvocation/invoked": "OrgX agent work ready",
+        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Hand Off OrgX Task...",
+        "openai/toolInvocation/invoked": "Hand Off OrgX Task finished",
         "ui": {
-          "resourceUri": "ui://widget/task-spawned.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/task-spawned.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -3063,8 +3023,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Running OrgX action...",
-        "openai/toolInvocation/invoked": "OrgX action complete",
+        "openai/toolInvocation/invoking": "Launch OrgX Initiative...",
+        "openai/toolInvocation/invoked": "Launch OrgX Initiative finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -3131,8 +3091,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Applying lifecycle action...",
-        "openai/toolInvocation/invoked": "Lifecycle action applied",
+        "openai/toolInvocation/invoking": "Pause OrgX Work...",
+        "openai/toolInvocation/invoked": "Pause OrgX Work finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -3198,8 +3158,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Applying lifecycle action...",
-        "openai/toolInvocation/invoked": "Lifecycle action applied",
+        "openai/toolInvocation/invoking": "Resume OrgX Work...",
+        "openai/toolInvocation/invoked": "Resume OrgX Work finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -3265,8 +3225,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Applying lifecycle action...",
-        "openai/toolInvocation/invoked": "Lifecycle action applied",
+        "openai/toolInvocation/invoking": "Retry OrgX Work...",
+        "openai/toolInvocation/invoked": "Retry OrgX Work finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -3332,8 +3292,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Applying lifecycle action...",
-        "openai/toolInvocation/invoked": "Lifecycle action applied",
+        "openai/toolInvocation/invoking": "Cancel OrgX Work...",
+        "openai/toolInvocation/invoked": "Cancel OrgX Work finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -3413,11 +3373,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Updating OrgX decision...",
-        "openai/toolInvocation/invoked": "OrgX decision updated",
+        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Capture OrgX Decision...",
+        "openai/toolInvocation/invoked": "Capture OrgX Decision finished",
         "ui": {
-          "resourceUri": "ui://widget/decisions.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/decisions.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -3472,11 +3432,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Updating OrgX decision...",
-        "openai/toolInvocation/invoked": "OrgX decision updated",
+        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "List Pending OrgX Decisions...",
+        "openai/toolInvocation/invoked": "List Pending OrgX Decisions finished",
         "ui": {
-          "resourceUri": "ui://widget/decisions.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/decisions.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -3532,11 +3492,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Updating OrgX decision...",
-        "openai/toolInvocation/invoked": "OrgX decision updated",
+        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Open OrgX Decision Review...",
+        "openai/toolInvocation/invoked": "Open OrgX Decision Review finished",
         "ui": {
-          "resourceUri": "ui://widget/decisions.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/decisions.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -3689,8 +3649,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Attaching OrgX artifact...",
-        "openai/toolInvocation/invoked": "OrgX artifact attached",
+        "openai/toolInvocation/invoking": "Attach OrgX Artifact...",
+        "openai/toolInvocation/invoked": "Attach OrgX Artifact finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -3746,15 +3706,17 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/artifact-review.skybridge.html?v=168a7619f1ef",
+        "openai/outputTemplate": "ui://widget/artifact-review.skybridge.html?v=71df1518d7f8",
         "ui": {
-          "resourceUri": "ui://widget/artifact-review.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/artifact-review.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
           ]
         },
         "openai/readOnlyHint": true,
+        "openai/toolInvocation/invoking": "Open OrgX Artifact Review...",
+        "openai/toolInvocation/invoked": "Open OrgX Artifact Review finished",
         "mcp/securitySchemes": [
           {
             "type": "oauth2",
@@ -3799,8 +3761,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Queueing independent artifact review...",
-        "openai/toolInvocation/invoked": "Independent review queued",
+        "openai/toolInvocation/invoking": "Request Independent OrgX Artifact Review...",
+        "openai/toolInvocation/invoked": "Request Independent OrgX Artifact Review finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -3844,25 +3806,31 @@
             "properties": {
               "name": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 500
               },
               "description": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               },
               "artifact_type": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "maxLength": 120
               },
               "artifact_url": {
                 "type": "string",
-                "format": "uri"
+                "format": "uri",
+                "maxLength": 2000
               },
               "external_url": {
                 "type": "string",
-                "format": "uri"
+                "format": "uri",
+                "maxLength": 2000
               },
               "preview_markdown": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 25000
               }
             },
             "required": [
@@ -3873,9 +3841,11 @@
           "verification": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
             },
-            "description": "Optional list of verification evidence URLs/IDs for completion flows."
+            "maxItems": 30
           },
           "quality_score": {
             "type": "number",
@@ -3885,7 +3855,7 @@
           },
           "note": {
             "type": "string",
-            "description": "Strongly recommended for destructive or blocking actions (block, flag_risk, decline, supersede, cancel, delete). Free-text rationale shown in audit history and downstream agent context."
+            "maxLength": 4000
           },
           "idempotency_key": {
             "type": "string",
@@ -3923,8 +3893,8 @@
         }
       ],
       "_meta": {
-        "openai/toolInvocation/invoking": "Running OrgX action...",
-        "openai/toolInvocation/invoked": "OrgX action complete",
+        "openai/toolInvocation/invoking": "Complete OrgX Work With Proof...",
+        "openai/toolInvocation/invoked": "Complete OrgX Work With Proof finished",
         "openai/readOnlyHint": false,
         "mcp/securitySchemes": [
           {
@@ -7965,9 +7935,9 @@
             ]
           }
         ],
-        "openai/outputTemplate": "ui://widget/proof-receipt.skybridge.html?v=168a7619f1ef",
+        "openai/outputTemplate": "ui://widget/proof-receipt.skybridge.html?v=71df1518d7f8",
         "ui": {
-          "resourceUri": "ui://widget/proof-receipt.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/proof-receipt.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -12037,9 +12007,9 @@
             ]
           }
         ],
-        "openai/outputTemplate": "ui://widget/proof-receipt.skybridge.html?v=168a7619f1ef",
+        "openai/outputTemplate": "ui://widget/proof-receipt.skybridge.html?v=71df1518d7f8",
         "ui": {
-          "resourceUri": "ui://widget/proof-receipt.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/proof-receipt.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -12216,11 +12186,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=168a7619f1ef",
-        "openai/toolInvocation/invoking": "Updating OrgX plan...",
-        "openai/toolInvocation/invoked": "OrgX plan updated",
+        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=71df1518d7f8",
+        "openai/toolInvocation/invoking": "Record OrgX Plan Edit Summary...",
+        "openai/toolInvocation/invoked": "Record OrgX Plan Edit Summary finished",
         "ui": {
-          "resourceUri": "ui://widget/plan-session-live.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/plan-session-live.html?v=71df1518d7f8",
           "visibility": [
             "model",
             "app"
@@ -12414,7 +12384,7 @@
       ],
       "_meta": {
         "ui": {
-          "resourceUri": "ui://widget/orgx-panel.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/orgx-panel.html?v=71df1518d7f8",
           "visibility": [
             "app"
           ]
@@ -12498,7 +12468,7 @@
       ],
       "_meta": {
         "ui": {
-          "resourceUri": "ui://widget/orgx-panel.html?v=168a7619f1ef",
+          "resourceUri": "ui://widget/orgx-panel.html?v=71df1518d7f8",
           "visibility": [
             "app"
           ]

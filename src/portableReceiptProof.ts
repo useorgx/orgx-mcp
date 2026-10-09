@@ -8,13 +8,17 @@ function url(v: unknown): string | null {
   try { const parsed = new URL(v); return ['https:', 'http:'].includes(parsed.protocol) ? parsed.toString() : null; } catch { return null; }
 }
 const kinds: Record<string, ReceiptProofEvidenceKind> = { pr: 'pr', pull_request: 'pr', deploy: 'deploy', deployment: 'deploy', test_run: 'test_run', metric: 'metric', link: 'link' };
+const isOrgxReference = (ref: Record<string, unknown>) => typeof ref.system === 'string' && ref.system.toLowerCase() === 'orgx';
 
 /** A producer proof echo for the existing card, never an OrgX verification verdict. */
 export function buildPortableReceiptProof(receipt: Record<string, unknown>): ReceiptProof {
   const intent = rec(receipt.intent), outcome = rec(receipt.outcome), actor = rec(receipt.actor);
-  const refs = arr(rec(receipt.lineage).references).map((value) => rec(rec(value).ref)).filter((ref) => /orgx/i.test(String(ref.system)));
-  const work = refs.find((ref) => ['initiative', 'workstream', 'milestone', 'task'].includes(String(ref.type)));
-  const artifact = arr(receipt.artifacts).map(rec).find((a) => /orgx/i.test(String(rec(a.ref).system)) && rec(a.ref).type === 'artifact');
+  const lineage = rec(receipt.lineage);
+  const refs = arr(lineage.references).map((value) => rec(rec(value).ref)).filter(isOrgxReference);
+  const workstream = rec(lineage.workstream_ref);
+  const work = refs.find((ref) => ['initiative', 'workstream', 'milestone', 'task'].includes(String(ref.type)))
+    ?? (isOrgxReference(workstream) && workstream.type === 'workstream' ? workstream : undefined);
+  const artifact = arr(receipt.artifacts).map(rec).find((a) => isOrgxReference(rec(a.ref)) && rec(a.ref).type === 'artifact');
   const evidence = arr(receipt.evidence);
   const status: ReceiptProof['status'] = outcome.status === 'cancelled' ? 'cancelled' : ['failed', 'blocked'].includes(String(outcome.status)) ? 'failed' : ['succeeded', 'partially_succeeded'].includes(String(outcome.status)) ? 'completed' : 'in_progress';
   return {

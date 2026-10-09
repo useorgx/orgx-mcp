@@ -236,7 +236,7 @@ const TOOL_EXAMPLES: Record<string, ToolExample> = {
     'Returns the draft and authoritative revision; no plan changes are made.'),
   orgx_save_plan: example('Save the revised draft after reading its current revision.', { session_id: EXAMPLE_IDS.plan, plan_content: '# Onboarding launch\nPrepare checklist and review.', expected_version: 1, edit_summary: 'Add the review step.' },
     'Saves when the expected revision matches; stale revisions return a conflict.'),
-  orgx_complete_plan: example('Complete the planning draft without launching work.', { session_id: EXAMPLE_IDS.plan, plan_content: '# Final launch plan\nPrepare and review the checklist.' },
+  orgx_complete_plan: example('Complete the planning draft without launching work.', { session_id: EXAMPLE_IDS.plan, expected_version: 1, plan_content: '# Final launch plan\nPrepare and review the checklist.' },
     'Completes the planning session; executable work remains separate.'),
   orgx_validate_initiative_plan: example('Validate this hierarchy before creation.', { plan: EXAMPLE_PLAN },
     'Returns structural findings and a digest without creating work.'),

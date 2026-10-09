@@ -156,3 +156,30 @@ This is a coordinated cutover. Deploy the core services, deploy MCP, update affe
 | `orgx_submit_receipt` | Portable receipt lifecycle: `orgx_submit_work_receipt`, `orgx_validate_work_receipt`, `orgx_get_work_receipt`, `orgx_list_work_receipts`, and `orgx_get_receipt_review_queue`. Runtime reporting receipts remain a separate execution contract. |
 
 Specialist operations are exposed through the explicit `extended` profile. Active runtime profiles can retain their native reporting commands; this does not expose the old routers to ChatGPT or directory models. Removing old ChatGPT descriptors does not remove internal service handlers or rename independent OpenClaw local tools.
+
+## Additional tools in the extended profile
+
+The extended profile adds these 20 model-callable tools to the default 48 descriptors. `orgx_record_plan_edit` already belongs to the default profile. Each has a fixed operation schema; none uses a generic action selector.
+
+| Tool | Purpose |
+| --- | --- |
+| `orgx_create_and_launch_initiative_hierarchy` | Create and Launch OrgX Initiative Hierarchy |
+| `orgx_request_plan_critique` | Request OrgX Plan Critique |
+| `orgx_check_agent_delegation` | Check OrgX Agent Delegation |
+| `orgx_classify_agent_task` | Classify OrgX Agent Task |
+| `orgx_create_and_start_agent_task` | Create and Start OrgX Agent Task |
+| `orgx_create_decision` | Create Named OrgX Decision |
+| `orgx_open_decision_approval_review` | Open OrgX Decision Approval Review |
+| `orgx_open_decision_rejection_review` | Open OrgX Decision Rejection Review |
+| `orgx_start_work` | Start OrgX Work |
+| `orgx_complete_entity` | Complete OrgX Entity |
+| `orgx_archive_work` | Archive OrgX Work |
+| `orgx_block_work` | Block OrgX Work |
+| `orgx_unblock_work` | Unblock OrgX Work |
+| `orgx_reopen_work` | Reopen OrgX Work |
+| `orgx_flag_risk_work` | Flag OrgX Milestone Risk |
+| `orgx_activate_work` | Activate OrgX Playbook |
+| `orgx_reassign_streams_work` | Reassign OrgX Initiative Workstreams |
+| `orgx_ship_batch_work` | Ship OrgX Milestone Task Batch |
+| `orgx_delete_work` | Permanently Delete OrgX Work |
+| `orgx_validate_studio_content` | Validate OrgX Studio Content |

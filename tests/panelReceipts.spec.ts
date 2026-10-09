@@ -9,6 +9,7 @@ import {
 } from '../src/panelReceipts';
 import { handlePanelSnapshot, handleReceiptCall, type PanelSurfaceHost } from '../src/panelSurface';
 import { WIDGET_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas/widgets';
+import { projectWorkReceiptDetail, RECEIPT_OPERATION_OUTPUT_SCHEMAS } from '../src/receiptOperationTools';
 import { mountPanel, snapshot } from './fixtures/panel';
 
 const WS = '11111111-1111-4111-8111-111111111111';
@@ -226,6 +227,59 @@ describe('Done › Work: the work, what done meant, and your call', () => {
     expect(doc(m).querySelector('.rc-verdict')!.textContent).not.toContain('Accepted');
     expect(doc(m).querySelector('[data-action="receipt-call"]')).toBeNull();
     expect(doc(m).querySelector('.rc-call')!.textContent).toContain('Review this receipt in the Work Ledger');
+  });
+
+  it.each([
+    { label: 'a claimed agreement', agreement: { agreed_at: '2026-10-08T12:00:00Z', agreed_by: 'a claimed reviewer' } },
+    { label: 'an expectation declaration', agreement: { declared_at: '2026-10-08T12:00:00Z' } },
+  ])('renders the real named projection with reported sources, uncertainty, intent and $label', async ({ agreement }) => {
+    const m = await openWith(snapshot());
+    const projected = RECEIPT_OPERATION_OUTPUT_SCHEMAS.orgx_get_work_receipt.parse(projectWorkReceiptDetail({
+      receipt_id: 'ledger-current',
+      receipt: {
+        schema_version: 'agent-work-receipt/v0.2', receipt_id: 'rcpt-abc',
+        intent: { summary: ROW.summary, objective: 'Stop flaky checkout failures', criteria: [
+          { id: 'c1', text: 'The checkout suite passes', source: 'learned', source_label: 'a previous producer-reported call' },
+        ] },
+        outcome: { status: 'partially_succeeded', summary: 'The agent observed intermittent failures', criteria_results: [
+          { criterion_id: 'c1', status: 'met', confidence: 0.45, evidence_ids: ['e1'] },
+        ] },
+        verification: { status: 'verified' }, evidence: [{ id: 'e1', kind: 'test_run', summary: 'A reported test attempt' }],
+        extensions: { 'org.orgx.expectations/v1': {
+          set_id: 'producer-expectation-set', ...agreement,
+          criteria: [{ id: 'c1', source: 'learned', source_label: 'a previous producer-reported call' }],
+        } },
+      },
+    }));
+    const row = { ...projected, criteria: { met: 1, unmet: 0, unknown: 0 } };
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => name === 'orgx_get_work_receipt'
+      ? { structuredContent: projected }
+      : { structuredContent: { ok: true, total: 1, results: [row] } });
+    click(m, '[data-tab="done"]');
+    await m.flush(); await m.flush();
+    click(m, '[data-action="work-receipt"][data-id="rcpt-abc"]');
+    await m.flush(); await m.flush();
+    const card = doc(m).querySelector('.rc-card')!;
+    expect(card.querySelector('.rc-cs')?.textContent).toBe('Met · a guess');
+    expect(card.querySelector('.xp-src')?.textContent).toContain('Agent reports: learned');
+    expect(card.querySelector('.xp-src')?.textContent).toContain('a previous producer-reported call');
+    expect(card.querySelector('.xp-src')?.getAttribute('title')).toContain('has not confirmed its provenance');
+    expect(card.textContent).toContain('Stop flaky checkout failures');
+    expect(card.textContent).toContain('Agent-reported outcome');
+    expect(card.textContent).toContain('The agent observed intermittent failures');
+    const reportedBar = card.querySelector('.rc-reported-bar')?.textContent;
+    if (agreement.agreed_at) {
+      expect(reportedBar).toContain('Agent reports an expectation agreement');
+      expect(reportedBar).toContain('OrgX has not confirmed this human agreement');
+    } else {
+      expect(reportedBar).toContain('The agent reports which expectations this receipt used');
+      expect(reportedBar).toContain('does not confirm a human agreement');
+      expect(reportedBar).not.toContain('Agent reports an expectation agreement');
+    }
+    expect(card.textContent).not.toContain('Judged against the bar you agreed');
+    expect(card.querySelector('.rc-verdict')?.textContent).toContain('Agent reports partly done');
+    expect(card.querySelector('.rc-verdict')?.textContent).not.toContain('Accepted');
+    expect(card.querySelector('[data-action="receipt-call"]')).toBeNull();
   });
 
   it('uses fresh detail counts and shows when its bounded projection omits checks or evidence', async () => {
