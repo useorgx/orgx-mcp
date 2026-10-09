@@ -7975,7 +7975,7 @@ export class OrgXMcp extends McpAgent<
     this.registerClaudeDirectoryTools(allowedTools);
 
     // OrgX panel (ChatGPT sidebar + thread entrypoints): src/panelSurface.ts.
-    registerPanelSurface(this.server, allowedTools, this.panelSurfaceHost(), (shape) => this.withClientContext(shape));
+    registerPanelSurface(this.server, allowedTools, this.panelSurfaceHost(), (shape) => this.withClientContext(shape), this.props?.profile !== 'legacy' && this.props?.profile !== 'full' && !this.usesLegacyDirectoryContracts());
 
     // Note: previously registered legacy unprefixed aliases (bootstrap,
     // inspect, search, attach, act, write, submit_receipt, emit_activity)

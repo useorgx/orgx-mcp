@@ -9,14 +9,15 @@ Verified the real Worker entry point with Wrangler 4.59.1, official MCP Inspecto
 | Strict Inspector ChatGPT discovery | 48 descriptors: 41 model-visible operations and seven app-only operations |
 | Strict Inspector extended discovery | 68 descriptors, including the 20 additional explicit operations |
 | Inspector tool invocations | Successful invocation of every default and extended operation: 68 distinct tools |
-| Intended refusal cases | 42 passed: missing/invalid/stale review capabilities, stale plan revisions, invalid inputs and retired descriptor names |
+| Intended refusal cases | 44 passed: missing/invalid/stale review capabilities, stale plan revisions, invalid inputs and retired descriptor names |
 | Proof completion outcomes | Completed, blocked and failed-after-attachment responses retain their declared evidence and state |
-| Combined invocation corpus | 112 cases passed, including the two additional partial proof outcomes |
+| Combined invocation corpus | 114 cases passed, including the two additional partial proof outcomes |
 | Inspector resource discovery and reads | All 28 current resources passed, covering 14 widget families in MCP Apps and Skybridge formats |
 | Native SSE | Actual GET connection, advertised message POST, discovery and workspace-context invocation passed |
 | Browser rendering | 96 checks passed across all 16 HTML assets, desktop/mobile and standalone/ChatGPT/MCP Apps hosts |
+| Signed live widget feed | Actual Worker EventSource reached Live with a fresh valid local panel grant |
 | Actual Worker browser integration | 43 checks passed, including all 28 producer renders, receipt/artifact/decision callbacks, workspace selection and official SDK global/thread share/clear |
-| Full source verification | 3,015 tests passed across 264 files, with two existing skips; TypeScript passed |
+| Full source verification | 3,022 tests passed across 264 files, with two existing skips; TypeScript passed |
 | ChatGPT 1.1.0 candidate | Eight-file manifest/package validation and all 12 Python regression checks passed |
 
 Every upstream-refusal case requires the expected backend path and HTTP status. Input and retired-name cases require no backend call; the retired names are absent from discovery and Inspector refuses them. Rate-limit, configuration and transport failures are rejected as evidence. Strict discovery produced no error-level validation findings; legal nullable type unions still produce Inspector portability advisories.
@@ -30,9 +31,10 @@ Resource checks require the exact URI and MIME, executable HTML, source title, h
 - Receipt lists distinguish numeric aggregate totals from actual receipt arrays.
 - Ledger failures recognize `OrgXApiError.statusCode`, so permission failures receive the declared workspace sign-in explanation and private diagnostics stay private.
 - The retained morning-brief resource reads the current operator chronicle instead of falsely reporting an empty decision queue.
+- Current panel snapshots accept only work, workspaces and history. Receipt projections and removed fields are rejected before upstream reads; receipt callbacks direct reads to the dedicated receipt tools. Explicit legacy and internal full profiles retain their registered contracts.
 - Studio validation accepts the template and structured content required by core's video validator. Its schema, title and read-only/idempotent annotations describe that operation.
 
-An independent comparison of actual SDK descriptors reviewed all 162 changed descriptors across 13 profiles against `c261d900`: 154 change only optional `mode`/`period` fields in output guidance; six workspace selectors adopt the compact projection; two full/extended studio descriptors contain the studio correction. Security, inventories and unrelated inputs remain unchanged. The reviewed descriptor snapshots were regenerated.
+An independent comparison of actual SDK descriptors reviewed all 162 changed descriptors across 13 profiles against `c261d900`: 154 change only optional `mode`/`period` fields in output guidance; six workspace selectors adopt the compact projection; two full/extended studio descriptors contain the studio correction. Security, inventories and unrelated inputs remain unchanged. A follow-up comparison against `9ef405e9` isolates seven changed hashes across the two current panel tools in four operation profiles; outputs, grants, visibility and inventories are unchanged, and retained profile hashes match the baseline. The reviewed descriptor snapshots were regenerated.
 
 ## Local setup and reproduction
 

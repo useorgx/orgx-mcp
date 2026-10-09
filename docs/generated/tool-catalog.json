@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-09T21:06:07.435Z",
-  "sourceHash": "cf7267410911e265",
+  "generatedAt": "2026-10-09T21:24:13.090Z",
+  "sourceHash": "81effe2e3f5a790c",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -1880,7 +1880,7 @@
     {
       "id": "orgx_panel_snapshot",
       "title": "OrgX panel",
-      "description": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only.",
+      "description": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only. Work receipts are read with orgx_list_work_receipts and orgx_get_work_receipt.",
       "category": "Decisions",
       "inputSchema": {
         "type": "object",
@@ -1908,8 +1908,12 @@
           },
           "view": {
             "type": "string",
-            "maxLength": 32,
-            "description": "Optional extra view. \"work\" adds what agents are running and what waits on you; \"workspaces\" adds the workspaces the panel can switch to; \"history\" adds decisions settled in the range; \"receipts\" adds the Work Ledger receipts for the range (or for `query`); \"receipt\" adds one receipt in full with each criterion's verdict."
+            "enum": [
+              "work",
+              "workspaces",
+              "history"
+            ],
+            "description": "Optional panel view: running work, authorized workspace membership, or settled decisions."
           },
           "range": {
             "type": "string",
@@ -1918,17 +1922,7 @@
               "7d",
               "30d"
             ],
-            "description": "For views \"history\" and \"receipts\": today, 7d or 30d. Defaults to 7d."
-          },
-          "query": {
-            "type": "string",
-            "maxLength": 200,
-            "description": "For view \"receipts\": a Work Ledger filter instead of the range, e.g. \"pr:3236\" for the work behind a merge."
-          },
-          "receipt_id": {
-            "type": "string",
-            "maxLength": 200,
-            "description": "For view \"receipt\": the receipt to read in full."
+            "description": "For decision history: today, 7d or 30d. Defaults to 7d."
           }
         },
         "additionalProperties": false,
@@ -1963,7 +1957,7 @@
     {
       "id": "orgx_widget_receipt_call",
       "title": "Your call on a work receipt",
-      "description": "App-only: records a person's call on a Work Ledger receipt from the OrgX panel: done, partly done, not done or blocked. The ledger keeps the latest call per receipt; it overrides the agent's own guess and teaches OrgX what done means. USE WHEN: the person presses a call on a receipt in the OrgX panel. DO NOT USE: from a model; models read receipts with orgx_search scope=work_ledger.",
+      "description": "App-only: records a person's call on a Work Ledger receipt from the OrgX panel: done, partly done, not done or blocked. The ledger keeps the latest call per receipt; it overrides the agent's own guess and teaches OrgX what done means. USE WHEN: the person presses a call on a receipt in the OrgX panel. DO NOT USE: from a model; models read receipts with orgx_get_work_receipt or orgx_list_work_receipts.",
       "category": "Decisions",
       "inputSchema": {
         "type": "object",

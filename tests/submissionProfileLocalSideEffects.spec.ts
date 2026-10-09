@@ -93,7 +93,7 @@ const RECEIPT_DOCUMENT = buildAgentWorkReceiptImportRequest({
   evidence: { links: ['https://example.com/test'] }, verification_status: 'passed',
 }, { workspaceId: WORKSPACE_ID, receiptId: 'informational-receipt', issuedAt: '2026-10-08T12:00:00.000Z' }).body.receipt;
 
-type SubmissionProfile = 'chatgpt' | 'claude-directory' | 'legacy' | 'claude-directory-legacy';
+type SubmissionProfile = 'chatgpt' | 'v2' | 'extended' | 'claude-directory' | 'legacy' | 'claude-directory-legacy' | 'full';
 
 type WriteSpies = {
   storagePut: ReturnType<typeof vi.fn>;
@@ -331,6 +331,7 @@ async function createSubmissionProfileHarness(
 
   worker.props = {
     profile,
+    ...(profile === 'full' ? { authSource: 'run_token' } : {}),
     userId: 'directory-reviewer',
     orgxUserId: '33333333-3333-4333-8333-333333333333',
     scope: AUTHORIZATION_PRESETS.operate.scopes.join(' '),
@@ -573,6 +574,75 @@ async function expectNoWorkerLocalSideEffects(params: {
 }
 
 describe('submission profile worker-local side-effect suppression', () => {
+  it.each(['v2', 'extended', 'chatgpt', 'claude-directory'] as const)('rejects retired receipt snapshot views in current %s before reading upstream', async (profile) => {
+    const { client, server, worker, spies } = await createSubmissionProfileHarness(profile);
+    try {
+      const tools = await client.listTools();
+      const snapshot = tools.tools.find((tool) => tool.name === 'orgx_panel_snapshot')!;
+      expect(snapshot.inputSchema.additionalProperties).toBe(false);
+      expect(snapshot.inputSchema.properties).not.toHaveProperty('receipt_id');
+      expect(snapshot.inputSchema.properties).not.toHaveProperty('query');
+      const callback = tools.tools.find((tool) => tool.name === 'orgx_widget_receipt_call')!;
+      // The directory profile intentionally removes the long workflow guidance.
+      if (profile !== 'claude-directory') {
+        expect(callback.description).toContain('orgx_get_work_receipt or orgx_list_work_receipts');
+      }
+      expect(callback.description).not.toContain('scope=work_ledger');
+      apiMocks.callOrgxApiJson.mockClear(); apiMocks.callOrgxApiRaw.mockClear();
+      apiMocks.fetchContextPack.mockClear(); apiMocks.fetchContextPreparation.mockClear();
+      worker.fetchEntityCollection.mockClear();
+      for (const args of [{ view: 'receipt', receipt_id: 'portable-fixture' }, { view: 'receipts' }, { view: 'everything' }, { receipt_id: 'portable-fixture' }, { query: 'pr:1' }]) {
+        const result = await client.callTool({ name: 'orgx_panel_snapshot', arguments: args });
+        expect(result.isError).toBe(true);
+      }
+      expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+      expect(apiMocks.callOrgxApiRaw).not.toHaveBeenCalled();
+      expect(apiMocks.fetchContextPack).not.toHaveBeenCalled();
+      expect(apiMocks.fetchContextPreparation).not.toHaveBeenCalled();
+      expect(worker.fetchEntityCollection).not.toHaveBeenCalled();
+      for (const view of [undefined, 'work', 'workspaces', 'history']) {
+        const result = await client.callTool({ name: 'orgx_panel_snapshot', arguments: view ? { view } : {} });
+        expect(result.isError).not.toBe(true);
+        expect(result.structuredContent).toMatchObject({ schema: 'orgx.panel.v1' });
+      }
+    } finally {
+      await Promise.allSettled([client.close(), server.close()]);
+      spies.consoleInfo.mockRestore(); spies.consoleWarn.mockRestore(); spies.consoleError.mockRestore();
+    }
+  });
+
+  it.each(['legacy', 'full'] as const)('retains native receipt selectors in the explicit %s registration', async (profile) => {
+    const { client, server, spies } = await createSubmissionProfileHarness(profile);
+    try {
+      let page = await client.listTools();
+      const tools = [...page.tools];
+      while (page.nextCursor) {
+        page = await client.listTools({ cursor: page.nextCursor });
+        tools.push(...page.tools);
+      }
+      const snapshot = tools.find((tool) => tool.name === 'orgx_panel_snapshot')!;
+      expect(snapshot.inputSchema.properties).toHaveProperty('receipt_id');
+      expect(snapshot.inputSchema.properties).toHaveProperty('query');
+      const result = await client.callTool({ name: 'orgx_panel_snapshot', arguments: { view: 'receipt', receipt_id: 'portable-fixture' } });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({ schema: 'orgx.panel.v1' });
+    } finally {
+      await Promise.allSettled([client.close(), server.close()]);
+      spies.consoleInfo.mockRestore(); spies.consoleWarn.mockRestore(); spies.consoleError.mockRestore();
+    }
+  });
+
+  it('does not add the panel to the explicit legacy directory surface', async () => {
+    const { client, server, spies } = await createSubmissionProfileHarness('claude-directory-legacy');
+    try {
+      const tools = await client.listTools();
+      expect(tools.tools.some((tool) => tool.name === 'orgx_panel_snapshot')).toBe(false);
+    } finally {
+      await Promise.allSettled([client.close(), server.close()]);
+      spies.consoleInfo.mockRestore(); spies.consoleWarn.mockRestore(); spies.consoleError.mockRestore();
+    }
+  });
+
   // Drives informational tools through the full worker surface; see the note in
   // tests/widgetSharedComponentInlining.spec.ts on why the budget is explicit.
   it('covers every shared informational operation, including metered compatibility reads', () => {

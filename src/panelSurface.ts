@@ -184,6 +184,25 @@ export const PANEL_TOOL_META = {
   'mcp/securitySchemes': SECURITY_SCHEMES.entityReadRequiresAuth,
 } as const;
 
+/** Current Apps use named receipt reads; the older native receipt projection
+ * remains internal to explicitly legacy contracts. */
+export const CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT = {
+  ...PANEL_SNAPSHOT_TOOL_CONTRACT,
+  description: PANEL_SNAPSHOT_TOOL_CONTRACT.description + ' Work receipts are read with orgx_list_work_receipts and orgx_get_work_receipt.',
+  inputSchema: {
+    focus: PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema.focus,
+    view: z.enum(['work', 'workspaces', 'history']).optional().describe('Optional panel view: running work, authorized workspace membership, or settled decisions.'),
+    range: PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema.range.describe('For decision history: today, 7d or 30d. Defaults to 7d.'),
+  },
+  _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
+} as const;
+
+export const CURRENT_RECEIPT_CALL_TOOL_CONTRACT = {
+  ...RECEIPT_CALL_TOOL_CONTRACT,
+  description: RECEIPT_CALL_TOOL_CONTRACT.description.replace('orgx_search scope=work_ledger', 'orgx_get_work_receipt or orgx_list_work_receipts'),
+  _meta: RECEIPT_CALL_TOOL_META as unknown as Record<string, unknown>,
+} as const;
+
 // ---------------------------------------------------------------------------
 // Snapshot types
 // ---------------------------------------------------------------------------
@@ -1494,29 +1513,34 @@ export function registerPanelSurface(
   server: McpServer,
   allowedTools: ReadonlySet<string> | null,
   host: PanelSurfaceHost,
-  withClientContext: <T extends Record<string, unknown>>(shape: T) => T = (shape) => shape
+  withClientContext: <T extends Record<string, unknown>>(shape: T) => T = (shape) => shape,
+  currentOperations = false
 ): void {
   if (allowedTools && !allowedTools.has(PANEL_TOOL_ID)) return;
+  const contract = currentOperations ? CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT : PANEL_SNAPSHOT_TOOL_CONTRACT;
+  const shape = withClientContext({ ...contract.inputSchema });
   registerAppTool(
     server,
     PANEL_TOOL_ID,
     {
       title: PANEL_SNAPSHOT_TOOL_CONTRACT.title,
-      description: PANEL_SNAPSHOT_TOOL_CONTRACT.description,
-      inputSchema: withClientContext({ ...PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema }),
+      description: contract.description,
+      inputSchema: currentOperations ? z.object(shape).strict() : shape,
       annotations: { ...PANEL_SNAPSHOT_TOOL_CONTRACT.annotations },
       _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
     } as Parameters<typeof registerAppTool>[2],
     async (args: Record<string, unknown>) => handlePanelSnapshot(host, args)
   );
   if (allowedTools && !allowedTools.has(RECEIPT_CALL_TOOL_ID)) return;
+  const receiptContract = currentOperations ? CURRENT_RECEIPT_CALL_TOOL_CONTRACT : RECEIPT_CALL_TOOL_CONTRACT;
+  const receiptShape = withClientContext({ ...receiptContract.inputSchema });
   registerAppTool(
     server,
     RECEIPT_CALL_TOOL_ID,
     {
       title: RECEIPT_CALL_TOOL_CONTRACT.title,
-      description: RECEIPT_CALL_TOOL_CONTRACT.description,
-      inputSchema: withClientContext({ ...RECEIPT_CALL_TOOL_CONTRACT.inputSchema }),
+      description: receiptContract.description,
+      inputSchema: currentOperations ? z.object(receiptShape).strict() : receiptShape,
       annotations: { ...RECEIPT_CALL_TOOL_CONTRACT.annotations },
       _meta: RECEIPT_CALL_TOOL_META as unknown as Record<string, unknown>,
     } as Parameters<typeof registerAppTool>[2],
