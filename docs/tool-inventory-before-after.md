@@ -146,7 +146,8 @@ This is a coordinated cutover. Deploy the core services, deploy MCP, update affe
 
 | Before | After |
 | --- | --- |
-| `approve_decision`, `reject_decision`, `approve_agent_work` | Models open a decision review with `orgx_open_decision_review`; a signed human widget click records the ruling. Models do not grant themselves human approval. |
+| `approve_decision`, `reject_decision` | Models open a decision review with `orgx_open_decision_review`; a signed human widget click records the ruling. |
+| `approve_agent_work`, `review_artifact` | Models open an artifact review with `orgx_open_artifact_review`; signed human clicks use `orgx_widget_approve_artifact` or `orgx_widget_request_artifact_changes`. |
 | `manage_lifecycle`, `orgx_act` | `orgx_launch_initiative`, `orgx_pause_work`, `orgx_resume_work`, `orgx_retry_work`, `orgx_cancel_work`, and `orgx_complete_work_with_proof`; each has its own schema. |
 | `orgx_write` | `orgx_create_initiative`, `orgx_create_workstream`, `orgx_create_milestone`, `orgx_create_task`, and `orgx_update_work`. |
 | `orgx_plan` | `orgx_start_plan`, `orgx_read_plan`, `orgx_save_plan`, `orgx_complete_plan`, and `orgx_record_plan_edit`. |
