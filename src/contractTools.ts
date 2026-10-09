@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { taskPredictionInputShape } from './taskPredictionContract';
 
 import {
   FOUNDER_TEAM_ARTIFACT_TYPE_SUMMARY,
@@ -466,26 +467,33 @@ export const CONTRACT_TOOL_DEFINITIONS = [
   },
   {
     id: 'orgx_expect',
-    title: 'Register OrgX Metric Expectation',
+    title: 'Register OrgX Expectation',
     description:
-      'Pre-registers one delayed, workspace-level outcome against an exact observer before its measurement window starts. The current bounded contract supports only orgx.run_receipt_coverage.v1: the share of non-benchmark terminal OrgX Business sessions whose schema-valid automatic Agent Work Receipt is stored within the configured deadline. It records a falsifiable threshold and sample-size gate; it does not infer causality, run arbitrary SQL, or match natural-language outcomes. Defaults reproduce the first production gate: at least 95% within 60 seconds over at least 20 runs. USE WHEN: work promises this delayed reliability result and the future window has not started. NEXT: let the scheduled observer resolve it after the window; inspect compiled context after resolution. DO NOT USE WHEN: reporting execution completion — use orgx_submit_receipt; or for an unsupported business metric.',
+      'Register an OrgX prediction before acting. mode=task_prediction records the expected outcome, confidence, and met/unmet predictions for criteria in the task\'s current agreed expectation set; it requires the exact set ID/version and an idempotency_key. Checked receipt evidence resolves those predictions. mode=metric_coverage (default) registers the exact orgx.run_receipt_coverage.v1 observer before its window starts, with defaults of at least 95% within 60 seconds over at least 20 runs. USE WHEN: stating a task prediction before work starts or registering the supported delayed reliability result. NEXT: inspect the task and its agreed criteria; submit receipt evidence when work finishes. DO NOT USE WHEN: reporting completion — use orgx_submit_receipt; or registering an unsupported metric.',
     inputSchema: {
-      metric: z.literal('orgx.run_receipt_coverage.v1').describe('REQUIRED exact observer registry ID. No other metric is currently admitted.'),
+      mode: z.enum(['metric_coverage', 'task_prediction']).optional().describe('metric_coverage (default) registers the supported delayed observer; task_prediction records expected task results before acting.'),
+      metric: z.literal('orgx.run_receipt_coverage.v1').optional().describe('Required for metric_coverage: exact observer registry ID.'),
       workspace_id: z.string().optional().describe('Workspace UUID. Defaults to the MCP session workspace. The subject and metric scope are derived from this exact workspace.'),
-      window_starts_at: z.string().describe('REQUIRED future ISO-8601 datetime with timezone offset. Registration is rejected after this window begins.'),
-      window_ends_at: z.string().describe('REQUIRED ISO-8601 datetime with timezone offset, after window_starts_at and no more than 31 days later.'),
+      window_starts_at: z.string().optional().describe('Required for metric_coverage: future ISO-8601 datetime with timezone offset. Registration is rejected after this window begins.'),
+      window_ends_at: z.string().optional().describe('Required for metric_coverage: ISO-8601 datetime with timezone offset, after window_starts_at and no more than 31 days later.'),
       threshold: z.number().min(0).max(1).optional().describe('Required receipt coverage ratio. Defaults to 0.95. The predicate is fixed to greater-than-or-equal.'),
       minimum_sample_size: z.number().int().min(1).max(100000).optional().describe('Minimum terminal-run denominator required for a conclusive result. Defaults to 20.'),
       receipt_deadline_seconds: z.number().int().min(1).max(3600).optional().describe('Maximum seconds from terminal session end to durable automatic receipt. Defaults to 60.'),
       evaluation_interval_seconds: z.number().int().min(60).max(86400).optional().describe('Retry cadence when the observer is unavailable. Defaults to 300 seconds.'),
-      idempotency_key: z.string().max(200).optional().describe('Client-supplied retry key sent as Idempotency-Key. Generated when omitted; reuse the same key to replay safely.'),
+      task_id: taskPredictionInputShape.task_id.optional().describe('Required for task_prediction: task UUID. The task must be ready to start.'),
+      expectation_set_id: taskPredictionInputShape.expectation_set_id.optional().describe('Required for task_prediction: UUID of the current agreed expectation set that applies to this task.'),
+      expectation_set_version: taskPredictionInputShape.expectation_set_version.optional().describe('Required for task_prediction: exact persisted version of that agreed expectation set.'),
+      expected_outcome: taskPredictionInputShape.expected_outcome.optional().describe('Required for task_prediction: expected task outcome, stated before acting.'),
+      confidence: taskPredictionInputShape.confidence.optional().describe('Required for task_prediction: confidence in the expected outcome, from 0 to 1.'),
+      criteria_predictions: taskPredictionInputShape.criteria_predictions.optional().describe('Required for task_prediction: 1 to 50 unique criterion IDs from that set, each with predicted met/unmet and confidence from 0 to 1.'),
+      idempotency_key: z.string().max(200).optional().describe('Required for task_prediction. Sent as Idempotency-Key; reuse the same key when retrying. Generated when omitted for metric_coverage.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier returned by orgx_bootstrap.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     _meta: {
-      'openai/toolInvocation/invoking': 'Registering metric expectation...',
-      'openai/toolInvocation/invoked': 'Metric expectation registered',
+      'openai/toolInvocation/invoking': 'Registering OrgX expectation...',
+      'openai/toolInvocation/invoked': 'OrgX expectation registered',
     },
   },
   {

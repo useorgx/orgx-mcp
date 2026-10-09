@@ -188,8 +188,8 @@
     },
     {
       "name": "orgx_expect",
-      "title": "Register OrgX Metric Expectation",
-      "description": "Pre-register a falsifiable delayed outcome before its measurement window starts. The current bounded observer measures automatic Agent Work Receipt coverage; it does not infer causality or accept arbitrary matching rules.",
+      "title": "Register OrgX Expectation",
+      "description": "Register task outcome and criterion predictions before acting, bound to the current agreed expectation set and its exact version. The default metric observer measures automatic Agent Work Receipt coverage before its measurement window starts.",
       "annotations": {
         "readOnlyHint": false,
         "openWorldHint": false,

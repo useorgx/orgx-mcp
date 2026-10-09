@@ -8,6 +8,17 @@ import { buildBootstrapToolRouting } from '../src/bootstrapPayload';
 import { CLAUDE_DIRECTORY_SURFACE } from '../src/toolProfiles';
 
 describe('tool result guidance', () => {
+  it('validates ledger next_calls and filters task prediction guidance against the negotiated profile', () => {
+    const result = { structuredContent: { next_calls: [
+      { tool: 'orgx_search', args: { scope: 'work_ledger', receipt_id: 'receipt-1' } },
+      { tool: 'orgx_inspect', args: { type: 'task', id: 'task-1' } },
+      { tool: 'orgx_search', args: { scope: 'work_ledger', view: 'unsupported' } },
+    ] } };
+    expect(sanitizeToolResultGuidance(result, new Set(['orgx_search'])).structuredContent.next_calls)
+      .toEqual([{ tool: 'orgx_search', args: { scope: 'work_ledger', receipt_id: 'receipt-1' } }]);
+    expect(sanitizeToolResultGuidance(result, new Set(['orgx_expect'])).structuredContent.next_calls).toEqual([]);
+  });
+
   it('preserves only validated directory operation calls when explicitly enabled', () => {
     const visible = new Set(['orgx_read_plan', 'orgx_update_entity', 'orgx_check_delegation']);
     const result = sanitizeToolResultGuidance({ structuredContent: {

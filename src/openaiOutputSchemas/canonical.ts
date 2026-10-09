@@ -21,6 +21,7 @@ import {
   toolCallSchema,
 } from './shared';
 import { chronicleSchema } from './presentation';
+import { searchResourceSchema, workLedgerOutputShape, workLedgerQuerySchema } from './workLedger';
 
 const receiptProofSchema = z
   .object({
@@ -134,11 +135,12 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       _v2_tool: z.literal('orgx_search'),
       type: z.string(),
       search_mode: z.enum(['mixed_relevance', 'typed_collection']),
-      query: nullableString,
+      query: z.union([nullableString, workLedgerQuerySchema]),
       count: z.number(),
-      results: z.array(resourceSchema),
+      results: z.array(searchResourceSchema),
       pagination: paginationSchema,
       next_call: toolCallSchema.nullable(),
+      ...workLedgerOutputShape,
     })
     .strict(),
 

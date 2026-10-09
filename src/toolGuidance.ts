@@ -15,6 +15,7 @@ const guidanceTools = (directoryProfile: boolean) => directoryProfile
   ? DIRECTORY_GUIDANCE_TOOLS
   : CANONICAL_GUIDANCE_TOOLS;
 const CALL_LIST_KEYS = new Set([
+  'next_calls',
   'safe_first_calls',
   'suggested_next_calls',
   'preferred_next_calls',

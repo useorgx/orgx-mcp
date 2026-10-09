@@ -150,6 +150,7 @@ import {
   CONTEXT_TAIL_UNAVAILABLE_CHANGE_CLASSES,
 } from './workCommandContract';
 import { buildMetricExpectationRequest } from './metricExpectationContract';
+import { buildTaskPredictionRequest } from './taskPredictionContract';
 import { buildExecutionGraphEmission } from './agenticScaleProof';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
@@ -6617,7 +6618,8 @@ export class OrgXMcp extends McpAgent<
               }
             );
           }
-          const built = buildMetricExpectationRequest(args, {
+          const taskPrediction = args.mode === 'task_prediction';
+          const built = (taskPrediction ? buildTaskPredictionRequest : buildMetricExpectationRequest)(args, {
             workspaceId: expectationWorkspaceId,
           });
           if (!built.ok) {
@@ -6646,9 +6648,10 @@ export class OrgXMcp extends McpAgent<
             }
           );
           const result = (await response.json()) as Record<string, unknown>;
+          const resultDocument = taskPrediction ? result.prediction : result.expectation;
           const expectation =
-            result.expectation && typeof result.expectation === 'object'
-              ? (result.expectation as Record<string, unknown>)
+            resultDocument && typeof resultDocument === 'object'
+              ? (resultDocument as Record<string, unknown>)
               : null;
           const replayed = result.replayed === true;
           const expectationId =
@@ -6657,16 +6660,17 @@ export class OrgXMcp extends McpAgent<
             ...result,
             _v2_tool: 'orgx_expect',
             idempotency_key: built.idempotencyKey,
+            ...(taskPrediction && 'task_id' in built.body
+              ? { next_calls: [{ tool: 'orgx_inspect', args: { type: 'task', id: built.body.task_id } }] }
+              : {}),
           };
           return {
             content: [
               {
                 type: 'text',
                 text: `${
-                  replayed
-                    ? 'Metric expectation replayed'
-                    : 'Metric expectation registered'
-                }${expectationId ? ` · ${expectationId}` : ''} · observation pending`,
+                  taskPrediction ? 'Task prediction' : 'Metric expectation'
+                } ${replayed ? 'replayed' : 'registered'}${expectationId ? ` · ${expectationId}` : ''} · observation pending`,
               },
             ],
             structuredContent: payload,
