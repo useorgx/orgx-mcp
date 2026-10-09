@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO = ROOT.parent
 MANIFEST_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 MCP_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
+PLUGIN_NAME = "app-6a1083cac4788191a47b657dc58c4315"
 MCP_URL = "https://mcp.useorgx.com/mcp"
 SKILLS = ("orgx-deviation-reporting", "orgx-initiative-ops", "orgx-runtime-reporting")
 CORE_TOOLS = frozenset("""
@@ -94,14 +95,14 @@ def verify() -> dict:
                "license", "keywords", "extensions"}
     require(set(manifest) == allowed, "Missing or unsupported candidate manifest fields")
     require(manifest["$schema"] == MANIFEST_SCHEMA, "Portable plugin schema is required")
-    require(manifest["name"] == "orgx", "Candidate package identity changed")
+    require(manifest["name"] == PLUGIN_NAME, "Candidate package identity changed")
     require(manifest["version"] == "1.1.0", "Candidate minor version must be 1.1.0")
     require(re.fullmatch(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*", manifest["name"]) is not None, "Invalid plugin name")
     require(re.fullmatch(r"\d+\.\d+\.\d+", manifest["version"]) is not None, "Invalid semantic version")
     text_field(manifest["description"], "description", 4000)
     text_field(manifest["license"], "license", 120)
     require(set(manifest["author"]) == {"name", "url"}, "Unexpected author fields")
-    require(manifest["author"]["name"] == "OrgX Team" and https_url(manifest["author"]["url"]), "Invalid author")
+    require(manifest["author"]["name"] == "Knodible" and https_url(manifest["author"]["url"]), "Invalid author")
     text_field(manifest["author"]["name"], "author.name", 120)
     require(len(manifest["author"]["url"]) <= 2048, "Author URL exceeds 2048 characters")
     require(https_url(manifest["homepage"]) and https_url(manifest["repository"]), "Invalid listing URL")
@@ -116,7 +117,9 @@ def verify() -> dict:
     extensions = manifest["extensions"]
     require(isinstance(extensions, dict) and set(extensions) == {"com.openai"}, "Expected the OpenAI extension namespace")
     openai = extensions["com.openai"]
-    require(isinstance(openai, dict) and set(openai) == {"interface"}, "Unexpected OpenAI extension fields")
+    require(isinstance(openai, dict) and set(openai) == {"interface", "onboardingSkill"}, "Unexpected OpenAI extension fields")
+    require(openai["onboardingSkill"] == "./skills/orgx-initiative-ops/SKILL.md", "Onboarding must use the included initiative skill")
+    package_path(openai["onboardingSkill"])
     interface = openai["interface"]
     required_interface = {"displayName", "shortDescription", "longDescription", "developerName", "category",
                           "capabilities", "websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL", "defaultPrompt",

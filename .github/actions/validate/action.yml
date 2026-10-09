@@ -29,6 +29,15 @@ runs:
         jq -e '.name and .version and .remotes' server.json >/dev/null
         echo "server.json is valid"
 
+    - name: Validate portable ChatGPT package
+      shell: bash
+      working-directory: chatgpt-plugin
+      run: |
+        set -euo pipefail
+        python3 scripts/verify_package.py
+        python3 -m unittest discover -s scripts -p 'test_*.py'
+        python3 scripts/build_package.py --verify-reproducible
+
     - name: Install dependencies
       shell: bash
       run: pnpm install --frozen-lockfile

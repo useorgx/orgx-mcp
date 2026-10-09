@@ -57,6 +57,16 @@ class PackageContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Portable plugin schema"):
             verify_package.verify()
 
+    def test_update_preserves_the_exported_publisher_package_identity(self) -> None:
+        self.change_manifest(lambda manifest: manifest.__setitem__("name", "orgx"))
+        with self.assertRaisesRegex(ValueError, "package identity changed"):
+            verify_package.verify()
+
+    def test_onboarding_cannot_point_outside_the_included_skill(self) -> None:
+        self.change_manifest(lambda manifest: manifest["extensions"]["com.openai"].__setitem__("onboardingSkill", "./skills/other/SKILL.md"))
+        with self.assertRaisesRegex(ValueError, "Onboarding must use the included"):
+            verify_package.verify()
+
     def test_codex_component_declarations_cannot_shadow_portable_discovery(self) -> None:
         self.change_manifest(lambda manifest: manifest.__setitem__("mcpServers", "./.mcp.json"))
         with self.assertRaisesRegex(ValueError, "manifest fields"):
