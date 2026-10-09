@@ -2484,7 +2484,12 @@ export class OrgXMcp extends McpAgent<
         toolId,
         args,
         userId: this.props?.userId ?? this.sessionAuth.userId,
-        clientName: this.sessionContext.clientName,
+        // The same attribution ladder reporting uses: agent _context, the live
+        // initialize handshake, then the connection's own client (the ChatGPT
+        // directory app never stores a handshake name on the session).
+        clientName:
+          this.resolveSourceClient(args._context) ??
+          this.resolveClientNameLabel(args._context),
       }),
     };
   }

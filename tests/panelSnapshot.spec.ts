@@ -735,6 +735,33 @@ describe('orgx_widget_decide refusals on the worker', () => {
     });
     const call = apiMocks.callOrgxApiJson.mock.calls.find((entry) => JSON.parse(String(entry[2]?.body ?? '{}')).tool_id === 'widget_decide');
     expect(JSON.parse(String(call![2]!.body)).args).toMatchObject({ decision_id: D2, kind: 'decision', action: 'approve', approval_token: 'tok' });
+    // The ruling is attributed to the client that hosted the widget, from the
+    // initialize handshake, even when the session stored no client name.
+    expect(JSON.parse(String(call![2]!.body)).source_client).toBe('panel-test');
+  }, 20000);
+
+  it('attributes a widget ruling to the connection client when the session lost the handshake name', async () => {
+    const { worker, client } = await createWorker();
+    // A widget click can reach a session whose initialize handshake is not live
+    // and whose stored context never kept a client name; the connection still
+    // knows which client it is.
+    worker.readHandshakeClientInfo = () => null;
+    worker.sessionContext = { ...worker.sessionContext, clientName: undefined };
+    worker.props = { ...worker.props, sourceClient: 'chatgpt' };
+    const execute = apiMocks.callOrgxApiJson.getMockImplementation()!;
+    apiMocks.callOrgxApiJson.mockImplementation(async (env: unknown, path: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      if (path === '/api/tools/execute' && body.tool_id === 'widget_decide') {
+        return Response.json({ ok: true, data: { action: 'approved' } });
+      }
+      return execute(env, path, init);
+    });
+    await client.callTool({
+      name: 'orgx_widget_decide',
+      arguments: { decision_id: D2, kind: 'decision', action: 'approve', approval_token: 'tok' },
+    });
+    const call = apiMocks.callOrgxApiJson.mock.calls.find((entry) => JSON.parse(String(entry[2]?.body ?? '{}')).tool_id === 'widget_decide');
+    expect(JSON.parse(String(call![2]!.body)).source_client).toBe('chatgpt');
   }, 20000);
 
   it('reads the code from the message when the app drops data on failure', async () => {
