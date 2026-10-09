@@ -25,6 +25,29 @@ Nothing here changes a tool, a schema, or a server route. The panel's payload
 budget grew by one module (`scripts/widget-payload-budgets.json`:
 703,488 → 720,896 bytes).
 
+## ChatGPT's phone app: the host's bars cover the panel
+
+Real captures from the ChatGPT iOS app (below) showed what the synthetic host
+could not: in the full-screen app view, ChatGPT's own title bar sits over the
+panel's header and tabs, and its composer sits over the bottom, hiding the
+queue and even the tour's Skip / Back / Next buttons. The Apps SDK reports
+how much it covers in `window.openai.safeArea.insets`, with changes on the
+`openai:set_globals` event, and says what device it is on in
+`window.openai.userAgent`. The host module now reads both, so the panel pads
+its top and bottom by those insets, the tour places its card and scrolls its
+target inside the open area, and the tabs stay reachable. The tour also said
+"Seven short steps", showed eight dots and counted "of 6"; it is now six
+numbered steps everywhere.
+
+| Real ChatGPT iOS (before) | Simulated, before | Simulated, after |
+| --- | --- | --- |
+| ![real](evidence/panel-mobile-2026-10-09/chatgpt-phone-real-needs-you.png) | ![before](evidence/panel-mobile-2026-10-09/chatgpt-phone-before-needs-you.png) | ![after](evidence/panel-mobile-2026-10-09/chatgpt-phone-after-needs-you.png) |
+| ![real tour](evidence/panel-mobile-2026-10-09/chatgpt-phone-real-tour-step4.png) | ![before tour](evidence/panel-mobile-2026-10-09/chatgpt-phone-before-tour.png) | ![after tour](evidence/panel-mobile-2026-10-09/chatgpt-phone-after-tour.png) |
+
+The simulation draws a 120px title bar and a 96px composer over the gallery
+panel and reports the same insets to it (`?safe=120,0,96,0`). The exact
+values ChatGPT reports on a given phone come from the app at runtime.
+
 ## Host resolution
 
 MCP Apps hosts identify themselves in the `ui/initialize` response
@@ -66,9 +89,10 @@ Every capture: no horizontal overflow, no page errors, both themes.
 
 ## Not done here
 
-- Native ChatGPT and Claude mobile were not exercised; the captures use a
-  synthetic host. Real `hostInfo.name` values should be confirmed on each host
-  and added to the test fixtures.
+- Claude mobile was not exercised; its captures use a synthetic host. Real
+  `hostInfo.name` values should be confirmed on each host and added to the
+  test fixtures. ChatGPT iOS was seen before this change only; the after
+  state there is the simulation above.
 - The consent page (`public/consent.html`) already has 860px and 520px
   breakpoints and was not changed.
 - The older Decisions and Artifact Review widgets still say "ChatGPT" in a few

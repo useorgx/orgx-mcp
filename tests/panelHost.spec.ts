@@ -133,6 +133,62 @@ describe('what the device gets', () => {
   });
 });
 
+describe('inside ChatGPT on a phone', () => {
+  function chatgpt(win: Window, insets = { top: 120, right: 0, bottom: 96, left: 0 }) {
+    (win as unknown as Record<string, unknown>).openai = {
+      userAgent: { device: { type: 'mobile' }, capabilities: { hover: false, touch: true } },
+      displayMode: 'fullscreen',
+      safeArea: { insets },
+    };
+  }
+
+  it('keeps the panel out from under the title bar and the composer, from window.openai', async () => {
+    const m = await mountPanel({}, {}, (win) => chatgpt(win));
+    mounted.push(m);
+    const win = m.dom.window as unknown as Window & { OrgXPanelHost: { apply(c: unknown): void; snapshot(): { platform: string; displayMode: string } } };
+    win.OrgXPanelHost.apply(null);
+    expect(html(m).getAttribute('data-host')).toBe('chatgpt');
+    expect(html(m).getAttribute('data-platform')).toBe('mobile');
+    expect(html(m).getAttribute('data-display-mode')).toBe('fullscreen');
+    expect(html(m).style.getPropertyValue('--pn-safe-top')).toBe('120px');
+    expect(html(m).style.getPropertyValue('--pn-safe-bottom')).toBe('96px');
+    // Full screen that ChatGPT owns: no toggle of ours, it has its own way back.
+    expect(doc(m).querySelector('.pn-display')).toBeNull();
+  });
+
+  it('follows the insets when ChatGPT changes them', async () => {
+    const m = await mountPanel({}, {}, (win) => chatgpt(win));
+    mounted.push(m);
+    const win = m.dom.window as unknown as Window & { openai: { safeArea: { insets: Record<string, number> } } };
+    win.OrgXPanelHost.apply(null);
+    win.openai.safeArea = { insets: { top: 0, right: 0, bottom: 40, left: 0 } };
+    win.dispatchEvent(new win.CustomEvent('openai:set_globals', { detail: { globals: { safeArea: win.openai.safeArea } } }));
+    await m.flush();
+    expect(html(m).style.getPropertyValue('--pn-safe-top')).toBe('0px');
+    expect(html(m).style.getPropertyValue('--pn-safe-bottom')).toBe('40px');
+  });
+
+  it('places the tour card inside the open area, never under the host bars', async () => {
+    const m = await open({ platform: 'mobile', safeAreaInsets: { top: 120, right: 0, bottom: 96, left: 0 } }, snapshot(), (win) => {
+      Object.defineProperty(win, 'innerWidth', { configurable: true, value: 390 });
+      Object.defineProperty(win, 'innerHeight', { configurable: true, value: 844 });
+    });
+    click(m, '[data-action="tour"]');
+    await wait(m, 80);
+    const card = doc(m).querySelector('.pn-coach') as HTMLElement;
+    expect(card).not.toBeNull();
+    // The welcome card has no target: it sits just below the host's title bar.
+    expect(card.style.top).toBe('128px');
+    expect(card.style.bottom).toBe('');
+    expect(doc(m).querySelector('.pn-coach-tip')!.textContent).toContain('Six short steps');
+    expect(doc(m).querySelectorAll('.pn-pips i').length).toBe(6);
+    (doc(m).querySelector('[data-tour="next"]') as HTMLButtonElement).click();
+    await wait(m, 80);
+    expect(doc(m).querySelector('.pn-coach-e')!.textContent).toBe('Step 1 of 6');
+    expect(doc(m).querySelectorAll('.pn-pips i.on').length).toBe(1);
+  });
+});
+
 describe('not connected yet', () => {
   it('shows the connect steps for the host, and a button that reads again', async () => {
     const m = await mountPanel({ userAgent: 'Claude/2.1' }, {});

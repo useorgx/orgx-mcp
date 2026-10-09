@@ -542,6 +542,8 @@
     function displayButtonHtml() {
       if (!Host || ui.mode !== 'global') return '';
       var full = Host.displayMode() === 'fullscreen';
+      // Full screen the host owns (ChatGPT's phone app has its own way back) gets no button of ours.
+      if (full && Host.modes().indexOf('inline') === -1) return '';
       if (!full && !(Host.canFullscreen() && (Host.isMobile() || Host.touch()))) return '';
       var icon = full
         ? '<svg class="pn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>'

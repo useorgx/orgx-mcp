@@ -20,6 +20,12 @@
  * pointer and a phone-sized viewport). Safe-area insets and the display mode
  * come from the host context when it carries them.
  *
+ * ChatGPT's Apps SDK says the same things through window.openai: userAgent
+ * ({ device: { type }, capabilities: { hover, touch } }), displayMode, and
+ * safeArea.insets, which is how much of the view its own title bar and
+ * composer cover in the full-screen phone app. Changes arrive on the
+ * openai:set_globals event. Both sources feed the same state.
+ *
  *   OrgXPanelHost.name()        -> 'ChatGPT' | 'Claude' | 'Cursor' | … | null
  *   OrgXPanelHost.kind()        -> 'chatgpt' | 'claude' | 'cursor' | 'vscode' | 'unknown'
  *   OrgXPanelHost.chat()        -> the host's name, or 'the chat'
@@ -136,9 +142,27 @@
     try { return Boolean(global.matchMedia && global.matchMedia('(hover: none) and (pointer: coarse)').matches); } catch (_) { return false; }
   }
 
+  /** What ChatGPT's Apps SDK publishes on window.openai, in the host-context shape. */
+  function fromOpenAI() {
+    var o = global.openai;
+    if (!o || typeof o !== 'object') return null;
+    var out = {};
+    var ua = o.userAgent && typeof o.userAgent === 'object' ? o.userAgent : null;
+    var type = ua && ua.device && typeof ua.device.type === 'string' ? ua.device.type : '';
+    if (type === 'mobile' || type === 'tablet') out.platform = 'mobile';
+    else if (type === 'desktop') out.platform = 'desktop';
+    if (ua && ua.capabilities && typeof ua.capabilities === 'object') out.deviceCapabilities = ua.capabilities;
+    if (o.displayMode === 'inline' || o.displayMode === 'fullscreen' || o.displayMode === 'pip') out.displayMode = o.displayMode;
+    var insets = o.safeArea && o.safeArea.insets && typeof o.safeArea.insets === 'object' ? o.safeArea.insets : null;
+    if (insets) out.safeAreaInsets = insets;
+    return out;
+  }
+
   /** Read one host context (initial or changed). Unknown fields are ignored. */
   function apply(context) {
     if (context && typeof context === 'object') state.context = Object.assign({}, state.context || {}, context);
+    var fromChatGPT = fromOpenAI();
+    if (fromChatGPT) state.context = Object.assign({}, state.context || {}, fromChatGPT);
     var c = state.context || {};
     var caps = c.deviceCapabilities && typeof c.deviceCapabilities === 'object' ? c.deviceCapabilities : {};
     if (typeof caps.touch === 'boolean') state.touch = caps.touch;
@@ -148,6 +172,10 @@
     // The local preview can pretend the host offers modes: ?modes=inline,fullscreen&display=inline
     if (preview && params.get('modes')) state.modes = params.get('modes').split(',');
     if (preview && params.get('display')) state.displayMode = params.get('display');
+    if (preview && params.get('safe')) {
+      var sp = params.get('safe').split(',').map(function px(v) { return Math.max(0, Number(v) || 0); });
+      state.safe = { top: sp[0] || 0, right: sp[1] || 0, bottom: sp[2] || 0, left: sp[3] || 0 };
+    }
     var s = c.safeAreaInsets;
     if (s && typeof s === 'object') {
       state.safe = {
@@ -208,6 +236,15 @@
     try { return Boolean(nav.vibrate(pattern)); } catch (_) { return false; }
   }
 
+  // ChatGPT publishes changes (a new display mode, new insets) as globals.
+  if (global.addEventListener) {
+    global.addEventListener('openai:set_globals', function onGlobals(event) {
+      var g = event && event.detail && event.detail.globals;
+      if (!g || (g.safeArea === undefined && g.displayMode === undefined && g.userAgent === undefined)) return;
+      apply(null);
+    }, { passive: true });
+  }
+
   // First paint from what is known before any host context arrives.
   apply(null);
 
@@ -218,6 +255,7 @@
     touch: inferTouch,
     displayMode: function displayMode() { return state.displayMode; },
     canFullscreen: canFullscreen,
+    modes: function modes() { return state.modes.slice(); },
     safeArea: function safeArea() { return state.safe; },
     apply: apply,
     onChange: function onChange(fn) { if (typeof fn === 'function') listeners.push(fn); },

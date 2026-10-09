@@ -1185,12 +1185,23 @@
    data-display-mode on <html>, and the host's safe-area insets as
    --pn-safe-*. Layout follows them; copy follows them in the modules. */
 :root { --pn-safe-top: 0px; --pn-safe-right: 0px; --pn-safe-bottom: 0px; --pn-safe-left: 0px; }
+/* The host's own chrome (ChatGPT's title bar and composer in the full-screen
+   phone app) covers the edges it reports; the panel keeps out from under it,
+   so the tabs stay reachable and the last row is never behind the composer. */
+.panel {
+  --pn-inset-left: var(--pn-safe-left); --pn-inset-right: var(--pn-safe-right);
+  padding-top: var(--pn-safe-top);
+  padding-left: calc(var(--pn-gutter) + var(--pn-inset-left));
+  padding-right: calc(var(--pn-gutter) + var(--pn-inset-right));
+  padding-bottom: calc(12px + var(--pn-safe-bottom));
+}
 html[data-platform="mobile"] .panel {
-  padding-left: calc(var(--pn-gutter) + max(var(--pn-safe-left), env(safe-area-inset-left, 0px)));
-  padding-right: calc(var(--pn-gutter) + max(var(--pn-safe-right), env(safe-area-inset-right, 0px)));
+  --pn-inset-left: max(var(--pn-safe-left), env(safe-area-inset-left, 0px));
+  --pn-inset-right: max(var(--pn-safe-right), env(safe-area-inset-right, 0px));
   padding-bottom: calc(12px + max(var(--pn-safe-bottom), env(safe-area-inset-bottom, 0px)));
 }
-html[data-platform="mobile"] .top { margin-left: calc(-1 * var(--pn-gutter) - max(var(--pn-safe-left), env(safe-area-inset-left, 0px))); margin-right: calc(-1 * var(--pn-gutter) - max(var(--pn-safe-right), env(safe-area-inset-right, 0px))); padding-left: calc(var(--pn-gutter) + max(var(--pn-safe-left), env(safe-area-inset-left, 0px))); padding-right: calc(var(--pn-gutter) + max(var(--pn-safe-right), env(safe-area-inset-right, 0px))); }
+.panel .top { margin-left: calc(-1 * var(--pn-gutter) - var(--pn-inset-left)); margin-right: calc(-1 * var(--pn-gutter) - var(--pn-inset-right)); padding-left: calc(var(--pn-gutter) + var(--pn-inset-left)); padding-right: calc(var(--pn-gutter) + var(--pn-inset-right)); }
+/* The tour's dim layer covers the whole view; its card never goes under the host's bars (panel-tour.js). */
 /* Full screen on a tablet: one readable measure, centred. */
 html[data-display-mode="fullscreen"] .panel { max-width: 820px; margin-inline: auto; }
 .pn-display { display: inline-grid; place-items: center; min-width: 44px; padding: 0; }
