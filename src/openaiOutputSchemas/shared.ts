@@ -33,6 +33,17 @@ export const nullableString = z.string().nullable();
 export const nullableNumber = z.number().nullable();
 export const nullableBoolean = z.boolean().nullable();
 
+/** API-owned write metadata is distinct from the closed business envelope.
+ * Known artifact fields retain their scalar types; additive transport metadata
+ * remains JSON-only. Mirrors POST /api/v1/artifacts and canonical write routes. */
+export const apiWriteMetaSchema = z.object({
+  apiVersion: z.string().optional(),
+  artifactTypeFallback: z.boolean().optional(),
+  effectiveArtifactType: z.string().optional(),
+  duplicate: z.boolean().optional(),
+}).catchall(jsonValueSchema);
+export const apiWriteEnvelopeShape = { meta: apiWriteMetaSchema.optional() };
+
 // Worker-owned transport fields must be declared alongside API-owned data.
 // Keep this shape aligned with StreamGrant in live/streamGrant.ts.
 export const streamGrantSchema = z.object({

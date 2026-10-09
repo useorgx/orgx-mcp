@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   approvalListProofSchema,
+  apiWriteEnvelopeShape,
   artifactSchema,
   budgetPreflightSchema,
   capabilityGapSchema,
@@ -255,6 +256,7 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
 
   orgx_write: z
     .object({
+      ...apiWriteEnvelopeShape,
       _v2_tool: z.literal('orgx_write'),
       operation: z.enum(['create', 'update']),
       ok: z.boolean().optional(),
@@ -279,6 +281,7 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
 
   orgx_attach: z
     .object({
+      ...apiWriteEnvelopeShape,
       _v2_tool: z.literal('orgx_attach'),
       _action: z.literal('attach'),
       ok: z.boolean().optional(),
@@ -296,6 +299,7 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
 
   orgx_act: z
     .object({
+      ...apiWriteEnvelopeShape,
       _v2_tool: z.enum(['orgx_act', 'orgx_write', 'orgx_attach']).optional(),
       _action: z.string().optional(),
       operation: z.enum(['create', 'update']).optional(),
@@ -349,6 +353,7 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       proof_attached: z.boolean().optional(),
       attach_result: z
         .object({
+          ...apiWriteEnvelopeShape,
           ok: z.boolean().optional(),
           success: z.boolean().optional(),
           data: resourceSchema.optional(),

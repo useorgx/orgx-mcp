@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { AUTHORIZATION_PRESETS } from '../src/authorizationPolicy';
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
 import { createEmptyMcpSessionReentryState } from '../src/welcomeBackContext';
+import { getToolOutputSchema } from '../src/openaiOutputSchemas';
 
 const api = vi.hoisted(() => ({ callOrgxApiJson: vi.fn() }));
 vi.mock('agents/mcp', () => ({ McpAgent: class {
@@ -80,5 +81,24 @@ describe('artifact keys cross the MCP-to-HTTP boundary', () => {
     expect(JSON.parse(String(post[2].body)).metadata.idempotency_key).toBe(KEY);
     // Adding the header must not opt these previously single-attempt writes into fallback replay.
     expect(post[3]).toMatchObject({ userId: 'user_artifact_fixture', orgxUserId: ID, allowFallback: false });
+  });
+  it.each([false, true])('returns canonical artifact API metadata through the actual SDK handler with duplicate=%s', async (duplicate) => {
+    // Source-shaped API fixture: app POST /api/v1/artifacts emits data+meta.
+    // The production connector discarded the body after its validation error;
+    // durable artifact readback established that the write had already occurred.
+    const meta = { apiVersion: '1', artifactTypeFallback: false, effectiveArtifactType: 'eng.diff_pack', duplicate };
+    api.callOrgxApiJson.mockImplementation(async (_env: unknown, path: string, init?: RequestInit) => {
+      if (path === '/api/client/artifacts' && init?.method === 'POST') return Response.json({ data: { id: ID, artifact_type: 'eng.diff_pack', status: 'in_review' }, meta }, { status: duplicate ? 200 : 201 });
+      if (path.startsWith('/api/entities?')) return Response.json({ data: [] });
+      if (path === '/api/internal/mcp/tool-invocations') return Response.json({ ok: true });
+      throw new Error(`Unexpected fixture path: ${path}`);
+    });
+    const result = await client.callTool({ name: 'orgx_attach', arguments: { type: 'task', id: ID, name: 'Fixture proof', artifact_type: 'eng.diff_pack', artifact_url: 'https://example.test/fixture', idempotency_key: KEY } });
+    expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+    expect(result.structuredContent).toMatchObject({ _v2_tool: 'orgx_attach', _action: 'attach', data: { id: ID }, meta });
+    expect(posts()).toHaveLength(1); // Output compatibility never retries the completed write.
+    const schema = getToolOutputSchema('orgx_attach')!;
+    expect(schema.safeParse({ ...result.structuredContent, unexpected_business_field: true }).success).toBe(false);
+    expect(schema.safeParse({ ...result.structuredContent, meta: { ...meta, duplicate: 'yes' } }).success).toBe(false);
   });
 });
