@@ -5,7 +5,7 @@ Use the [complete before-and-after tool inventory](tool-inventory-before-after.m
 | Repository | PR | Result |
 | --- | --- | --- |
 | OrgX core | [#3432](https://github.com/hopeatina/orgx/pull/3432) | Workspace-scoped workflow services, plan CAS completion, portable receipt admission/reads, atomic artifact review, and signed receipt judgments bound to database-owned document revisions. |
-| OrgX MCP and ChatGPT plugin | Pending PR creation | Default 48 descriptors, explicit operation adapters, current widgets, observed transport outcomes, and reproducible ChatGPT 1.1.0 package. |
+| OrgX MCP and ChatGPT plugin | [#493](https://github.com/useorgx/orgx-mcp/pull/493) | Default 48 descriptors, explicit operation adapters, current widgets, observed transport outcomes, and reproducible ChatGPT 1.1.0 package. |
 | Claude Code | [#47](https://github.com/useorgx/orgx-claude-code-plugin/pull/47) | Current seven-tool read-only profile and exact required initiative inputs. |
 | Cursor | [#30](https://github.com/useorgx/cursor-plugin/pull/30) | Current v2 operations, rules, commands, skills and portable receipt instructions. |
 | Grok | [#3](https://github.com/useorgx/orgx-grokbot-plugin/pull/3) | Both MCP configs and actual workflow/result instructions advance together. |
