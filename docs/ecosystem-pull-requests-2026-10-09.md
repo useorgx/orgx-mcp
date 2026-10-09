@@ -20,9 +20,9 @@ Python SDK, Gateway SDK, and local shell have no hosted MCP tool coupling and ne
 
 ## Deployment order
 
-1. Apply the two reviewed SQL migrations and deploy OrgX core services from #3432.
+1. Merge #3432 and verify its normal Database Migration workflow applies `20261020110000` and `20261020120000`. Verify the normal VPS deployment activates that exact merged core SHA before merging the MCP cutover.
 2. Deploy the current MCP operation catalog and its generated widget resources.
 3. Update client packages/instructions and Wizard together. Wizard pins the reviewed Claude, Cursor and Codex source commits, which are already pushed. Reconnect hosts to import the new catalog and widgets.
 4. Run authenticated host workflows and submit the reproducible ChatGPT 1.1.0 package through the publisher portal. Portal scanning and publication are separate from source verification.
 
-Each PR records its own validation scope. Independent published-diff reviews fixed incorrect client response paths, missing initiative identifiers, local-to-hosted credential carryover, and conflicting profile headers. Core/MCP review also fixed stale plan completion, receipt revision races, result-schema mismatches, and lost receipt review context. The PRs do not merge, migrate production databases, deploy services, publish packages, or prove installed host versions.
+Each PR records its own validation scope. Independent published-diff reviews fixed incorrect client response paths, missing initiative identifiers, local-to-hosted credential carryover, and conflicting profile headers. Core/MCP review also fixed stale plan completion, receipt revision races, result-schema mismatches, and lost receipt review context. The [local Inspector/widget gate](mcp-inspector-local-verification-2026-10-09.md) verifies the current tools and widgets before merge. Automatic deployments, installed host versions and publisher-portal publication are tracked separately from source verification.

@@ -612,6 +612,22 @@
     function normalizeBrief(payload) {
       if (!payload || typeof payload !== 'object') return null;
 
+      // The current operator tool returns { chronicle }; retained morning
+      // brief resources read the same reported facts without inventing counts.
+      const chronicle = asObject(payload.chronicle);
+      if (Object.keys(chronicle).length) {
+        const metrics = asObject(chronicle.metrics);
+        payload = Object.assign({}, payload, {
+          generated_at: payload.generated_at ?? chronicle.generatedAt,
+          summary: payload.summary ?? chronicle.summary,
+          pending_decisions: payload.pending_decisions ?? metrics.pendingDecisions,
+          blocked_items: payload.blocked_items ?? metrics.blockedWork,
+          top_priorities: payload.top_priorities ?? chronicle.topPriorities,
+          artifacts_produced: payload.artifacts_produced ?? chronicle.artifactLedger,
+          brief_markdown: payload.brief_markdown ?? asObject(chronicle.reportingNarrative).briefMarkdown,
+        });
+      }
+
       const isPartial = payload.degraded === true || asArray(payload.degraded).length > 0 || asArray(payload.degraded_sources).length > 0;
       // pending_decisions_scope (optional): where the pending count was counted.
       const scope = asObject(payload.pending_decisions_scope);
@@ -727,10 +743,10 @@
         attentionSignals.push({
           tone: 'attention',
           icon: 'blocked',
-          title: `${pluralize(blockedWork, 'blocked workstream')}`,
+          title: `${pluralize(blockedWork, 'blocked work item')}`,
           description:
-            'Execution is blocked in the latest workspace pulse and should be cleared today.',
-          meta: 'Workspace pulse',
+            'Execution is blocked in the latest workspace report and should be cleared today.',
+          meta: 'Workspace report',
         });
       }
       if (exceptions.length > 0) {

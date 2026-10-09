@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-09T15:57:00.525Z",
-  "sourceHash": "203836605d394c1e",
+  "generatedAt": "2026-10-09T21:06:07.435Z",
+  "sourceHash": "cf7267410911e265",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -18335,8 +18335,8 @@
     },
     {
       "id": "orgx_validate_studio_content",
-      "title": "Validate OrgX Studio Content",
-      "description": "Validate one studio content specification through OrgX. May store validation results; does not render, publish, or approve the content.",
+      "title": "Validate OrgX Studio Video Specification",
+      "description": "Check the required template and structured content of one studio video specification before rendering. Returns the OrgX validation result.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -18348,13 +18348,56 @@
           "spec": {
             "type": "object",
             "properties": {
+              "template": {
+                "type": "string",
+                "minLength": 1
+              },
               "version": {
                 "type": "string"
               },
               "title": {
                 "type": "string"
               },
-              "content": {},
+              "content": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/properties/spec/properties/content/additionalProperties"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": {
+                        "$ref": "#/properties/spec/properties/content/additionalProperties"
+                      }
+                    }
+                  ]
+                }
+              },
+              "aspectRatio": {
+                "type": "string",
+                "enum": [
+                  "9:16",
+                  "16:9",
+                  "1:1",
+                  "4:5"
+                ]
+              },
               "metadata": {
                 "type": "object",
                 "properties": {
@@ -18375,6 +18418,10 @@
                 "additionalProperties": false
               }
             },
+            "required": [
+              "template",
+              "content"
+            ],
             "additionalProperties": false
           },
           "note": {
@@ -18400,11 +18447,12 @@
         }
       ],
       "annotations": {
-        "readOnlyHint": false,
+        "readOnlyHint": true,
         "destructiveHint": false,
-        "openWorldHint": false
+        "openWorldHint": false,
+        "idempotentHint": true
       },
-      "readOnly": false,
+      "readOnly": true,
       "source": "workflow_operation",
       "profiles": [
         "extended"

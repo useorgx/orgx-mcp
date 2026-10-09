@@ -73,6 +73,7 @@ const COMPACT_NESTED_OUTPUT_TOOLS = new Set<ChatGptPublicTool>([
   'get_operator_chronicle',
   'check_execution_readiness',
   'orgx_bootstrap',
+  'orgx_widget_select_workspace',
   'orgx_inspect',
   'orgx_search',
   'orgx_recommend',

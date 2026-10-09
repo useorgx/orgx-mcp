@@ -47,10 +47,12 @@
     });
   }
   function normalizeList(data, query) {
-    if (data && data.receipts) return data.receipts;
+    if (data && data.ok !== false && Array.isArray(data.results)) {
+      return { status: 'ok', query: query || '', total: Number(data.total) || data.results.length, items: data.results.map(normalizeRow), reason: null };
+    }
+    if (data && data.receipts && Array.isArray(data.receipts.items)) return data.receipts;
     if (data && data.status && Array.isArray(data.items)) return data;
-    if (!data || data.ok === false || !Array.isArray(data.results)) return { status: 'unavailable', query: query || '', total: 0, items: [], reason: null };
-    return { status: 'ok', query: query || '', total: Number(data.total) || data.results.length, items: data.results.map(normalizeRow), reason: null };
+    return { status: 'unavailable', query: query || '', total: 0, items: [], reason: null };
   }
   function normalizeDetail(data, id, fallbackRow) {
     if (data && data.receipt && data.receipt.status) return data.receipt;

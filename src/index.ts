@@ -15493,7 +15493,7 @@ const oauthProvider = new OAuthProvider({
  * MCP endpoint with a per-run, user-scoped bearer that the OAuth provider would
  * reject (it isn't an OAuth access token). Verify it here, inject the resolved
  * identity as `props`, and delegate straight to the MCP handler — bypassing the
- * OAuth provider. Only our own `oxrun1.` tokens are intercepted, so OAuth
+ * OAuth provider. Only our own `oxrun1.`/`oxrun2.` tokens are intercepted, so OAuth
  * bearers are untouched.
  */
 async function tryRunTokenAuth(
@@ -15502,7 +15502,7 @@ async function tryRunTokenAuth(
   ctx: ExecutionContext
 ): Promise<Response | null> {
   const url = new URL(request.url);
-  if (url.pathname !== '/mcp' && url.pathname !== '/sse') return null;
+  if (!['/mcp', '/sse', '/sse/message'].includes(url.pathname)) return null;
 
   const header = request.headers.get('authorization');
   if (!header || !header.toLowerCase().startsWith('bearer ')) return null;
@@ -15532,7 +15532,7 @@ async function tryRunTokenAuth(
   };
 
   const handler =
-    url.pathname === '/sse' ? observedSseHandler : observedHttpHandler;
+    url.pathname === '/mcp' ? observedHttpHandler : observedSseHandler;
   const response = await handler.fetch(request, env, ctx);
   return withSecurityHeaders(response);
 }
@@ -15600,6 +15600,7 @@ const worker = {
     const isMcpTransportRoute =
       requestUrl.pathname === '/mcp' ||
       requestUrl.pathname === '/sse' ||
+      requestUrl.pathname === '/sse/message' ||
       /^\/v1\/[^/]+\/servers\/[^/]+\/?$/.test(requestUrl.pathname) ||
       (requestUrl.pathname === '/' &&
         (request.method === 'POST' ||

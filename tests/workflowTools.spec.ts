@@ -24,6 +24,17 @@ function parse(id: string, args: Record<string, unknown>) {
 }
 
 describe('fixed workflow operation contracts', () => {
+  it('admits the video specification required by core studio validation and keeps it on the validate action', () => {
+    const tool = adapter('orgx_validate_studio_content');
+    const spec = { template: 'custom', content: { title: 'Release walkthrough', scenes: [] }, aspectRatio: '16:9' };
+    const input = parse(tool.id, { id: UUID, spec });
+    expect(tool.toCanonicalArgs(input)).toEqual({ id: UUID, spec, type: 'studio_content', action: 'validate' });
+    expect(tool.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false, idempotentHint: true });
+    expect(() => parse(tool.id, { id: UUID, spec: { content: {} } })).toThrow();
+    expect(() => parse(tool.id, { id: UUID, spec: { template: 'custom', content: 'not structured content' } })).toThrow();
+    expect(() => parse(tool.id, { id: UUID, spec, action: 'render' })).toThrow();
+  });
+
   it('enumerates every default operation except the separately owned receipt tool', () => {
     expect(WORKFLOW_TOOL_ADAPTERS).toHaveLength(35);
     const tools = [...WORKFLOW_TOOL_ADAPTERS, ...EXTENDED_WORKFLOW_TOOL_ADAPTERS];

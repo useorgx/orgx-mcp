@@ -147,7 +147,7 @@ and callable by widgets (`ui.visibility: ["app"]`, `openai/visibility:
   before release, verify the compare-and-append RPC migration is applied and
   two distinct tokens for the same receipt revision cannot both append;
   the implemented migration is
-  `supabase/migrations/20261017140000_atomic_receipt_outcome_decisions.sql`
+  `supabase/migrations/20261020110000_atomic_receipt_outcome_decisions.sql`
   in OrgX core; real isolated PostgreSQL 17.11 and pinned post-commit-learning
   checks pass, while production deployment has not occurred; judgment binds
   the exact immutable receipt document as well as the latest ruling;
@@ -162,7 +162,7 @@ and callable by widgets (`ui.visibility: ["app"]`, `openai/visibility:
 Dedicated artifact reads bind version and precise update time and support
 draft/work artifacts by explicit ID. The **new signed work-artifact widget
 route only** uses the implemented atomic acceptance/state migration
-`supabase/migrations/20261017150000_atomic_widget_artifact_review.sql` in OrgX
+`supabase/migrations/20261020120000_atomic_widget_artifact_review.sql` in OrgX
 core. Source tests and real disposable native PostgreSQL 17.11 checks passed,
 including both opposite-click races, snapshot/authority refusal, rollback,
 and service-only grants. The migration has not been deployed. Generic/policy

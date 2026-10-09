@@ -31,6 +31,7 @@ import submission from '../chatgpt-app-submission.json';
 import { AUTHORIZATION_PRESETS } from '../src/authorizationPolicy';
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
 import { OPENAI_OUTPUT_SCHEMAS, getToolOutputSchema } from '../src/openaiOutputSchemas';
+import { CANONICAL_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas/canonical';
 import { getPublicOperationContract } from '../src/publicOperationContracts';
 import { checkAuthRequirements } from '../src/authHelpers';
 import { buildAgentWorkReceiptImportRequest } from '../src/agentWorkReceiptV1';
@@ -302,10 +303,13 @@ describe('one public contract per profile', () => {
       const { client } = await connectProfile(profile);
       const listed = (await client.listTools()).tools as ListedTool[];
       const names = listed.map((tool) => tool.name).sort();
-      if (!names.includes('orgx_bootstrap')) return;
+      const bootstrapTool = names.includes('orgx_bootstrap')
+        ? 'orgx_bootstrap'
+        : names.includes('orgx_widget_select_workspace') ? 'orgx_widget_select_workspace' : null;
+      if (!bootstrapTool) return;
 
       const result = await client.callTool({
-        name: 'orgx_bootstrap',
+        name: bootstrapTool,
         arguments: { workspace_id: WORKSPACE_ID },
       });
       expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
@@ -314,9 +318,14 @@ describe('one public contract per profile', () => {
         widget_only_tools: string[];
         visible_tools_count: number;
         listed_tools_count: number;
-        safe_first_calls: Array<{ tool: string }>;
+        safe_first_calls: Array<{ tool: string; args: Record<string, unknown> }>;
         recommended_workflows: Record<string, string[]>;
       };
+      // Exercise the real handler through SDK JSON Schema validation, then
+      // ensure the runtime schema retains every routing hint it produced.
+      const validated = CANONICAL_OUTPUT_SCHEMAS.orgx_bootstrap.parse(payload);
+      expect(validated.safe_first_calls).toEqual(payload.safe_first_calls);
+      expect(validated.recommended_workflows).toEqual(payload.recommended_workflows);
 
       const modelVisible = listed
         .filter((tool) => isModelVisibleToolMeta(tool._meta))
@@ -336,11 +345,20 @@ describe('one public contract per profile', () => {
       }
       if (profile === 'claude-directory') {
         expect(payload.recommended_workflows.plan_feature).toContain('orgx_start_plan');
-        expect(payload.recommended_workflows.execute_task).toContain('orgx_delegate_work');
+        expect(payload.recommended_workflows.execute_task).toContain('orgx_start_agent_task');
         expect(payload.recommended_workflows.human_decision_review).toEqual([
           'orgx_list_pending_decisions', 'orgx_open_decision_review',
         ]);
-        expect(payload.recommended_workflows.review_and_prove_work).toContain('orgx_complete_with_proof');
+        expect(payload.recommended_workflows.review_and_prove_work).toContain('orgx_complete_work_with_proof');
+      }
+      if (profile === 'chatgpt') {
+        expect(payload.safe_first_calls).toContainEqual({
+          tool: 'orgx_get_operator_brief', args: { period: '30d' },
+        });
+        expect(payload.recommended_workflows.preserve_work_receipt).toContain('orgx_submit_work_receipt');
+        const schema = getToolOutputSchema(bootstrapTool)!;
+        expect(schema.safeParse({ ...payload, safe_first_calls: 'malformed' }).success).toBe(false);
+        expect(schema.safeParse({ ...payload, undeclared_top_level: true }).success).toBe(false);
       }
     },
     30000

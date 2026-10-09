@@ -544,10 +544,10 @@ export const EXTENDED_WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   exactWorkAction('reassign_streams', ['initiative'], 'Reassign OrgX Initiative Workstreams', 'Recompute or apply supported workstream agent assignments within an initiative through OrgX policy.'),
   exactWorkAction('ship_batch', ['milestone'], 'Ship OrgX Milestone Task Batch', 'Complete eligible milestone tasks using a shared typed proof artifact and OrgX proof-chain checks.', { artifact: proofArtifactSchema, verification: z.array(z.string()).optional(), quality_score: z.number().min(0).max(5).optional() }),
   exactWorkAction('delete', ['workspace', 'initiative', 'workstream', 'milestone', 'task', 'objective', 'playbook'], 'Permanently Delete OrgX Work', 'Permanently delete an authorized work record. Intended for an explicit administrative profile; dependent-record rules remain enforced by OrgX.', { note: z.string().min(1) }),
-  operation('orgx_validate_studio_content', 'orgx_act', 'Validate OrgX Studio Content',
-    'Validate one studio content specification through OrgX. May store validation results; does not render, publish, or approve the content.',
-    { id, spec: z.object({ version: z.string().optional(), title: z.string().optional(), content: z.unknown(), metadata: contentMetadataSchema.optional() }).strict(), note: z.string().optional() }, {
-      fixedArgs: { type: 'studio_content', action: 'validate' }, annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+  operation('orgx_validate_studio_content', 'orgx_act', 'Validate OrgX Studio Video Specification',
+    'Check the required template and structured content of one studio video specification before rendering. Returns the OrgX validation result.',
+    { id, spec: z.object({ template: z.string().min(1), version: z.string().optional(), title: z.string().optional(), content: z.record(jsonValueSchema), aspectRatio: z.enum(['9:16', '16:9', '1:1', '4:5']).optional(), metadata: contentMetadataSchema.optional() }).strict(), note: z.string().optional() }, {
+      fixedArgs: { type: 'studio_content', action: 'validate' }, annotations: { ...readOnly, idempotentHint: true }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
 ];
 

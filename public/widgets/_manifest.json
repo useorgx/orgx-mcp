@@ -266,8 +266,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 63043,
-      "hash": "3932978c934e",
+      "bytes": 63968,
+      "hash": "ca0660199705",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",

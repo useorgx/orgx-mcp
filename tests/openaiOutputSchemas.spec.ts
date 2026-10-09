@@ -10,6 +10,7 @@ import {
   OPENAI_OUTPUT_SCHEMAS,
 } from '../src/openaiOutputSchemas';
 import { CHATGPT_PUBLIC_SURFACE } from '../src/toolProfiles';
+import { toolCallSchema } from '../src/openaiOutputSchemas/shared';
 import { installToolResultGuidanceWrapper } from '../src/toolResultRegistration';
 import {
   buildScaffoldOutputVariants,
@@ -86,6 +87,11 @@ function findUnportableSchemaPositions(
 }
 
 describe('OpenAI public tool output schemas', () => {
+  it.each(['args', 'arguments'])('retains the operator brief period in %s routing hints', (argumentKey) => {
+    const call = { tool: 'orgx_get_operator_brief', [argumentKey]: { period: '30d' } };
+    expect(toolCallSchema.parse(call)).toEqual(call);
+  });
+
   it('retains a verified alias output contract when its target leaves the public operation catalog', async () => {
     expect(getOpenAiOutputSchema('get_initiative_pulse')).toBeUndefined();
     expect(getToolOutputSchema('track_project_progress')).toBe(getToolOutputSchema('get_initiative_pulse'));
@@ -222,6 +228,7 @@ describe('OpenAI public tool output schemas', () => {
         orgx_search: 'results',
         orgx_get_next_actions: 'recommendations',
         orgx_list_pending_decisions: 'decisions',
+        orgx_widget_select_workspace: 'safe_first_calls',
       } as const;
       for (const [toolName, propertyName] of Object.entries(
         compactNestedProperties
@@ -230,6 +237,7 @@ describe('OpenAI public tool output schemas', () => {
         const output = tool?.outputSchema as
           | { properties?: Record<string, unknown> }
           | undefined;
+        expect(output?.properties?.[propertyName], toolName).toBeDefined();
         expect(output?.properties?.[propertyName], toolName).not.toEqual({});
         expect(
           findUnportableSchemaPositions(tool?.outputSchema),

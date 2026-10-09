@@ -10,6 +10,7 @@ import {
 import { handlePanelSnapshot, handleReceiptCall, type PanelSurfaceHost } from '../src/panelSurface';
 import { WIDGET_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas/widgets';
 import { projectWorkReceiptDetail, RECEIPT_OPERATION_OUTPUT_SCHEMAS } from '../src/receiptOperationTools';
+import { OrgXApiError } from '../src/orgxApi';
 import { mountPanel, snapshot } from './fixtures/panel';
 
 const WS = '11111111-1111-4111-8111-111111111111';
@@ -59,6 +60,16 @@ const FULL = {
 };
 
 describe('Work Ledger receipts, shaped for the panel', () => {
+  it.each([
+    [403, 'The Work Ledger needs you signed in to this workspace.'],
+    [404, 'The Work Ledger has nothing for this yet.'],
+    [502, 'The Work Ledger answered 502.'],
+  ] as const)('preserves the actual API failure status %i without exposing internal details', (status, expected) => {
+    const error = new OrgXApiError('The receipt request was rejected.', 'Private upstream request, token and stack', status);
+    expect(ledgerFailure(error)).toBe(expected);
+    expect(ledgerFailure(error)).not.toContain(error.internalDetails);
+  });
+
   it('reads a range as a since: filter on its first day', () => {
     const now = new Date('2026-10-08T15:00:00.000Z');
     expect(receiptRangeQuery('today', now)).toBe('since:2026-10-08');
@@ -209,14 +220,14 @@ describe('Done › Work: the work, what done meant, and your call', () => {
     expect(doc(m).querySelector('.rc-row .rc-chip')!.textContent).toBe('Partly done');
   });
 
-  it('reads direct receipt operation results and keeps producer claims separate from human calls', async () => {
+  it('reads named receipt results with numeric receipt totals and keeps producer claims separate from human calls', async () => {
     const m = await openWith(snapshot());
     m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => {
       const assessment = { evidence_status: 'recorded', verification_status: 'producer_reported', acceptance_status: 'awaiting_human_review', outcome_status: null };
       const row = { receipt_id: 'row-1', external_receipt_id: 'rcpt-abc', summary: ROW.summary, criteria: { met: 1, unmet: 0, unknown: 1 }, producer_claims: { outcome_status: 'succeeded', verification_status: 'verified', acceptance_status: 'accepted' }, receipt_assessment: assessment };
       return name === 'orgx_get_work_receipt'
         ? { structuredContent: { ok: true, ...row, criteria: [{ id: 'c1', text: 'Check the PR', status: 'unknown', evidence_ids: [] }], evidence: [], uncertain: [] } }
-        : { structuredContent: { ok: true, total: 1, results: [row], window_days: 120 } };
+        : { structuredContent: { ok: true, total: 1, results: [row], receipts: 1, workstreams: 1, window_days: 120 } };
     });
     click(m, '[data-tab="done"]');
     await m.flush(); await m.flush();
