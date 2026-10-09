@@ -19,6 +19,9 @@
 (function attachPanelTour(global) {
   'use strict';
   if (global.OrgXPanelTour) return;
+  /** Host-aware copy: {host}, {Host}, {assistant}, {settings} name the app the panel is inside. */
+  function fill(text) { var H = global.OrgXPanelHost; return H ? H.fill(text) : String(text).replace(/\{(?:host|chat)\}/g, 'the chat').replace(/\{(?:Host|Chat)\}/g, 'The assistant').replace(/\{assistant\}/g, 'the assistant').replace(/\{settings\}/g, 'the app’s settings'); }
+
   var KEY = 'orgx.panel.tour.v1';
   var seenInMemory = false;
 
@@ -76,8 +79,8 @@
 
   var STEPS = [
     { id: 'welcome', tab: 'needs', vis: 'welcome', eyebrow: 'Welcome to OrgX', next: 'Show me',
-      title: 'Decide agent work without leaving ChatGPT',
-      body: 'OrgX keeps your agents’ decisions, progress and proof in one place. This panel brings the part that needs you into ChatGPT, so work doesn’t wait on you.',
+      title: 'Decide agent work without leaving {host}',
+      body: 'OrgX keeps your agents’ decisions, progress and proof in one place. This panel brings the part that needs you into {host}, so work doesn’t wait on you.',
       tip: 'Seven short steps, about a minute. It uses your own workspace, and nothing you press during the tour is sent.' },
     { id: 'queue', tab: 'needs', vis: 'queue', target: ['ox-attention-line', '.pn-list .row', '.queue .row'],
       title: 'See what needs you, ranked by what it holds up',
@@ -89,8 +92,8 @@
       try: 'Press the main button now. During the tour nothing is sent.', tryOk: 'That’s the step you’ll see. Nothing was sent.',
       tip: 'When OrgX needs more than a click, like a credential, the button opens the decision in OrgX instead.' },
     { id: 'ask', tab: 'needs', vis: 'ask', target: ['.pn-asks'],
-      title: 'Let ChatGPT do the reading',
-      body: 'Ask for the risk or the cost of waiting. ChatGPT reads the decision through OrgX. Only you can approve it.',
+      title: 'Let {assistant} do the reading',
+      body: 'Ask for the risk or the cost of waiting. {Host} reads the decision through OrgX. Only you can approve it.',
       tip: 'Beside a chat, the answer lands in that chat. From the sidebar, it opens a new one.' },
     { id: 'work', tab: 'work', vis: 'work', target: ['.pn-work'],
       title: 'Watch the work move',
@@ -102,8 +105,8 @@
       tip: 'Your full history is one tap away: Decision history and the work ledger in OrgX.' },
     { id: 'launch', tab: 'done', vis: 'launch', target: ['.pn-done .pn-launch'],
       title: 'Start new work with a sentence',
-      body: 'Each prompt shows the exact words it sends. ChatGPT turns them into OrgX actions: planning, starting an initiative, handing work to an agent.',
-      tip: 'Type the same kind of sentence anywhere in ChatGPT, for example “What should I do next in OrgX?”' },
+      body: 'Each prompt shows the exact words it sends. {Host} turns them into OrgX actions: planning, starting an initiative, handing work to an agent.',
+      tip: 'Type the same kind of sentence anywhere in {host}, for example “What should I do next in OrgX?”' },
     { id: 'ready', tab: 'needs', vis: 'ready', eyebrow: 'Ready', finish: true,
       title: 'You’re set',
       body: 'Your most urgent decision is open. Replay this tour any time from ? in the header.',
@@ -176,11 +179,11 @@
       var card = state.el.querySelector('.pn-coach');
       card.classList.toggle('is-center', !st.target);
       var eyebrow = st.eyebrow || 'Step ' + i + ' of ' + (n - 2);
-      var tryHtml = st.try ? '<p class="pn-try' + (state.done[i] ? ' is-ok' : '') + '"><i aria-hidden="true">✓</i><span>' + esc(state.done[i] ? st.tryOk : st.try) + '</span></p>' : '';
+      var tryHtml = st.try ? '<p class="pn-try' + (state.done[i] ? ' is-ok' : '') + '"><i aria-hidden="true">✓</i><span>' + esc(fill(state.done[i] ? st.tryOk : st.try)) + '</span></p>' : '';
       card.innerHTML = '<div class="pn-coach-in"><div class="pn-vis" aria-hidden="true">' + VIS[st.vis]() + '</div>' +
-        '<span class="pn-coach-e">' + esc(eyebrow) + '</span><h2 class="pn-coach-t" id="pn-coach-t">' + esc(st.title) + '</h2>' +
-        '<p class="pn-coach-b">' + esc(st.body) + '</p>' + tryHtml +
-        '<p class="pn-coach-tip"><b>' + (i === 0 || st.finish ? 'Good to know' : 'Get more from it') + '</b>' + esc(st.tip) + '</p>' +
+        '<span class="pn-coach-e">' + esc(eyebrow) + '</span><h2 class="pn-coach-t" id="pn-coach-t">' + esc(fill(st.title)) + '</h2>' +
+        '<p class="pn-coach-b">' + esc(fill(st.body)) + '</p>' + tryHtml +
+        '<p class="pn-coach-tip"><b>' + (i === 0 || st.finish ? 'Good to know' : 'Get more from it') + '</b>' + esc(fill(st.tip)) + '</p>' +
         '<div class="pn-coach-ft"><span class="pn-pips" aria-hidden="true">' + STEPS.map(function pip(_, k) { return '<i class="' + (k === i ? 'on' : k < i ? 'past' : '') + '"></i>'; }).join('') + '</span>' +
         (st.finish ? '' : '<button type="button" class="pn-coach-skip" data-tour="skip">Skip</button>') +
         (i > 0 && !st.finish ? '<button type="button" class="secondary-btn" data-tour="back">Back</button>' : '') +
@@ -188,7 +191,7 @@
       card.scrollTop = 0;
       place();
       if (!narrow()) { var nb = card.querySelector('[data-tour="next"]'); if (nb) nb.focus({ preventScroll: true }); }
-      if (opts.announce) opts.announce(st.title);
+      if (opts.announce) opts.announce(fill(st.title));
     }
     function go(i) {
       state.i = Math.max(0, Math.min(STEPS.length - 1, i));

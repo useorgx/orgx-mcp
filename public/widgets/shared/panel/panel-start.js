@@ -1,11 +1,11 @@
 /**
- * OrgX panel: Start. The place to set work going from ChatGPT.
+ * OrgX panel: Start. The place to set work going from the chat (ChatGPT, Claude or any MCP Apps host).
  *
  * One question and one composer, after the OrgX chat composer: say what should
  * get done, then two quiet controls in the composer's own bar — who takes it
  * (a menu, OrgX picks by default) and how (initiative, plan first, hand off).
  * The panel never runs anything itself: it sends one plain sentence to
- * ChatGPT, which uses OrgX to do it, and it shows that exact sentence before
+ * the assistant, which uses OrgX to do it, and it shows that exact sentence before
  * it is sent. Ideas fill the composer rather than firing.
  *
  *   OrgXPanelStart.html(opts)           -> the Start view
@@ -14,6 +14,9 @@
 (function attachPanelStart(global) {
   'use strict';
   if (global.OrgXPanelStart) return;
+  /** Host-aware copy: {host}, {Host}, {assistant}, {settings} name the app the panel is inside. */
+  function fill(text) { var H = global.OrgXPanelHost; return H ? H.fill(text) : String(text).replace(/\{(?:host|chat)\}/g, 'the chat').replace(/\{(?:Host|Chat)\}/g, 'The assistant').replace(/\{assistant\}/g, 'the assistant').replace(/\{settings\}/g, 'the app’s settings'); }
+
 
   function esc(value) {
     return String(value == null ? '' : value)
@@ -42,7 +45,7 @@
     ['delegate', 'Hand off', 'OrgX gives it to the best-fit agent and starts now.'],
   ];
 
-  /** The exact sentence each verb sends. Plain words; OrgX is named so ChatGPT uses it. */
+  /** The exact sentence each verb sends. Plain words; OrgX is named so the assistant uses it. */
   function sentence(verb, opts) {
     var text = String((opts && opts.text) || '').trim().replace(/\s+/g, ' ').replace(/[.。]+$/, '');
     if (!text) return '';
@@ -119,7 +122,7 @@
 
     var status = opts.status
       ? '<p class="st-status" role="status" data-outcome="' + esc(opts.status) + '">' +
-        (opts.status === 'sent' ? 'Sent. ChatGPT is taking it to OrgX; questions will come back to Needs you.' : opts.status === 'copied' ? 'Copied. Paste it into the chat to send it.' : 'Couldn’t send it from here. Type it in the chat.') + '</p>'
+        (opts.status === 'sent' ? fill('Sent. {Host} is taking it to OrgX; questions will come back to Needs you.') : opts.status === 'copied' ? 'Copied. Paste it into the chat to send it.' : 'Couldn’t send it from here. Type it in the chat.') + '</p>'
       : '';
 
     // Ideas: three, for the picked agent or one each across the team; the
