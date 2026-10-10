@@ -212,8 +212,8 @@
     },
     "index": {
       "file": "public/widgets/index.html",
-      "bytes": 24955,
-      "hash": "dddb9c2635cd",
+      "bytes": 24949,
+      "hash": "9d51352824ed",
       "primaryRgb": "17,24,39",
       "sharedRefs": [
         "shared/interaction-kit.css",

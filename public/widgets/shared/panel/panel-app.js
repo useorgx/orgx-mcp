@@ -528,7 +528,7 @@
         : (ui.mode === 'global' ? '<h1 class="sr-only">OrgX</h1>' : '');
       var mark = Brand ? '<span class="pn-mark-slot">' + Brand.mark(22) + '</span>' : '';
       var tabs = tabsHtml();
-      var help = tabs ? '<button type="button" class="quiet-btn pn-help" data-action="tour" aria-label="How the OrgX panel works">?</button>' : '';
+      var help = tabs ? '<button type="button" class="quiet-btn pn-help" data-action="tour" aria-label="How OrgX works here">?</button>' : '';
       var display = displayButtonHtml();
       return '<header class="top' + (tabs ? ' has-tabs' : '') + '">' + mark + '<div class="top-id"><span class="brand" aria-hidden="' + (name ? 'false' : 'true') + '">OrgX</span>' +
         (name ? '<span aria-hidden="true">·</span>' : '') + nameHtml + '</div>' + tabs +

@@ -101,7 +101,7 @@ export const PANEL_FOCUS_SCHEMA = z
  */
 export const PANEL_SNAPSHOT_TOOL_CONTRACT = {
   id: PANEL_TOOL_ID,
-  title: 'OrgX panel',
+  title: 'OrgX',
   description:
     'App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only.',
   inputSchema: {
@@ -1323,15 +1323,15 @@ export function selectPanelApprovalMeta(
 
 export function summarizePanelSnapshot(snapshot: PanelSnapshot): string {
   if (snapshot.state === 'no_workspace') {
-    return 'OrgX panel: no workspace is selected for this session.';
+    return 'OrgX: no workspace is selected for this session.';
   }
   if (snapshot.state === 'degraded') {
-    return 'OrgX panel: the decision queue could not be read right now.';
+    return 'OrgX: the decision queue could not be read right now.';
   }
   const pending = snapshot.attention.pending;
   return pending === 0
-    ? 'OrgX panel: nothing needs your decision.'
-    : `OrgX panel: ${pending} need${pending === 1 ? 's' : ''} your decision.`;
+    ? 'OrgX: nothing needs your decision.'
+    : `OrgX: ${pending} need${pending === 1 ? 's' : ''} your decision.`;
 }
 
 // ---------------------------------------------------------------------------

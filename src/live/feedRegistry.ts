@@ -284,7 +284,7 @@ export const FEEDS: Record<string, FeedDefinition> = {
 
   [PANEL_FEED_TYPE]: {
     type: PANEL_FEED_TYPE,
-    label: 'OrgX panel',
+    label: 'OrgX',
     // The feed id is a workspace; what it shows is the viewer's own queue.
     scope: 'user',
     cadence: PANEL,

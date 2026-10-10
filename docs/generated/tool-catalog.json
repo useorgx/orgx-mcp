@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-09T21:24:13.090Z",
-  "sourceHash": "81effe2e3f5a790c",
+  "generatedAt": "2026-10-10T00:06:04.502Z",
+  "sourceHash": "ee56e36be429a1f4",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -1879,7 +1879,7 @@
     },
     {
       "id": "orgx_panel_snapshot",
-      "title": "OrgX panel",
+      "title": "OrgX",
       "description": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only. Work receipts are read with orgx_list_work_receipts and orgx_get_work_receipt.",
       "category": "Decisions",
       "inputSchema": {
