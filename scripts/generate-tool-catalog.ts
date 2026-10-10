@@ -30,6 +30,10 @@ import {
 } from '../src/toolDefinitions';
 import { DISPATCH_CONTRACT_SHAPE } from '../src/dispatchContract';
 import { CLAUDE_DIRECTORY_TOOL_ADAPTERS } from '../src/claudeDirectoryTools';
+import { WORKFLOW_TOOL_ADAPTERS, EXTENDED_WORKFLOW_TOOL_ADAPTERS } from '../src/workflowTools';
+import { RECEIPT_OPERATION_TOOLS } from '../src/receiptOperationTools';
+import { WIDGET_OPERATION_TOOLS } from '../src/widgetOperations';
+import { getPublicOperationContract } from '../src/publicOperationContracts';
 
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
 import {
@@ -57,6 +61,8 @@ interface CatalogTool {
   inputSchema: Record<string, unknown>;
   responseExample?: Record<string, unknown>;
   securityScopes: string[];
+  securitySchemes?: unknown;
+  annotations?: unknown;
   readOnly: boolean;
   source:
     | 'chatgpt'
@@ -66,8 +72,19 @@ interface CatalogTool {
     | 'flywheel'
     | 'contract'
     | 'claude_directory'
+    | 'workflow_operation'
+    | 'receipt_operation'
+    | 'widget_operation'
     | 'inline';
   profiles: string[];
+  /** Compatibility profiles may retain an earlier contract for the same ID. */
+  profileContracts?: Record<string, {
+    title: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+    securitySchemes?: unknown;
+    annotations?: unknown;
+  }>;
   deprecated?: { replacement: string; note: string };
 }
 
@@ -849,10 +866,15 @@ function processToolDef(
     id,
     title: def.title,
     description: def.description,
-    category: TOOL_CATEGORY_MAP[id] || 'Other',
+    category: source === 'workflow_operation' ? 'Workflow Operations'
+      : source === 'receipt_operation' ? 'Portable Work Receipts'
+        : source === 'widget_operation' ? 'Human Widget Operations'
+          : TOOL_CATEGORY_MAP[id] || 'Other',
     inputSchema: safeZodToJsonSchema(def.inputSchema),
     responseExample: TOOL_RESPONSE_EXAMPLES[id],
     securityScopes: extractScopes(def.securitySchemes),
+    securitySchemes: def.securitySchemes,
+    annotations: def.annotations,
     readOnly: isReadOnly(def._meta, def.annotations),
     source,
     profiles: profilesForTool(id),
@@ -872,6 +894,13 @@ function computeSourceHash(): string {
     path.join(rootDir, 'src/authorizationPolicy.ts'),
     path.join(rootDir, 'src/contractTools.ts'),
     path.join(rootDir, 'src/claudeDirectoryTools.ts'),
+    path.join(rootDir, 'src/workflowTools.ts'),
+    path.join(rootDir, 'src/receiptOperationTools.ts'),
+    path.join(rootDir, 'src/portableReceiptInput.ts'),
+    path.join(rootDir, 'src/widgetOperations.ts'),
+    path.join(rootDir, 'src/widgetToolContract.ts'),
+    path.join(rootDir, 'src/panelSurface.ts'),
+    path.join(rootDir, 'src/publicOperationContracts.ts'),
     path.join(rootDir, 'scripts/generate-tool-catalog.ts'),
   ];
   const hash = createHash('sha256');
@@ -1340,8 +1369,29 @@ function main() {
   const tools: CatalogTool[] = [];
   const seen = new Set<string>();
 
-  function addTool(tool: CatalogTool) {
+  function addTool(tool: CatalogTool, preferOperationContract = false) {
     if (seen.has(tool.id)) {
+      if (preferOperationContract) {
+        // Existing directory aliases sometimes reuse the vNext ID with an
+        // older schema. Document the authoritative public operation while
+        // retaining every distinct legacy ID in the complete inventory.
+        const index = tools.findIndex((entry) => entry.id === tool.id);
+        const previous = tools[index]!;
+        if (previous.source === 'claude_directory' && previous.profiles.includes('claude-directory-legacy')) {
+          tool.profileContracts = {
+            ...previous.profileContracts,
+            'claude-directory-legacy': {
+              title: previous.title,
+              description: previous.description,
+              inputSchema: previous.inputSchema,
+              securitySchemes: previous.securitySchemes,
+              annotations: previous.annotations,
+            },
+          };
+        }
+        tools[index] = tool;
+        return;
+      }
       console.warn(
         `[generate-tool-catalog] Duplicate tool ID: ${tool.id} — skipping`
       );
@@ -1378,6 +1428,13 @@ function main() {
 
   // Inline-registered tools
   for (const meta of INLINE_TOOL_METADATA) {
+    const contract = getPublicOperationContract(meta.id);
+    if (contract) {
+      // Inline cards and panel callbacks carry the same full safety and OAuth
+      // contract as live registration, not just flattened scope strings.
+      addTool(processToolDef(contract, 'inline'));
+      continue;
+    }
     addTool({
       id: meta.id,
       title: meta.title,
@@ -1390,6 +1447,16 @@ function main() {
       source: 'inline',
       profiles: meta.profiles ?? profilesForTool(meta.id),
     });
+  }
+
+  for (const def of [...WORKFLOW_TOOL_ADAPTERS, ...EXTENDED_WORKFLOW_TOOL_ADAPTERS]) {
+    addTool(processToolDef(def, 'workflow_operation'), true);
+  }
+  for (const def of RECEIPT_OPERATION_TOOLS) {
+    addTool(processToolDef(def, 'receipt_operation'), true);
+  }
+  for (const def of WIDGET_OPERATION_TOOLS) {
+    addTool(processToolDef(def, 'widget_operation'), true);
   }
 
   // Validate: every tool from TOOL_PROFILES should be in the catalog

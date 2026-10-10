@@ -9,6 +9,8 @@ import {
 } from '../src/panelReceipts';
 import { handlePanelSnapshot, handleReceiptCall, type PanelSurfaceHost } from '../src/panelSurface';
 import { WIDGET_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas/widgets';
+import { projectWorkReceiptDetail, RECEIPT_OPERATION_OUTPUT_SCHEMAS } from '../src/receiptOperationTools';
+import { OrgXApiError } from '../src/orgxApi';
 import { mountPanel, snapshot } from './fixtures/panel';
 
 const WS = '11111111-1111-4111-8111-111111111111';
@@ -58,6 +60,16 @@ const FULL = {
 };
 
 describe('Work Ledger receipts, shaped for the panel', () => {
+  it.each([
+    [403, 'The Work Ledger needs you signed in to this workspace.'],
+    [404, 'The Work Ledger has nothing for this yet.'],
+    [502, 'The Work Ledger answered 502.'],
+  ] as const)('preserves the actual API failure status %i without exposing internal details', (status, expected) => {
+    const error = new OrgXApiError('The receipt request was rejected.', 'Private upstream request, token and stack', status);
+    expect(ledgerFailure(error)).toBe(expected);
+    expect(ledgerFailure(error)).not.toContain(error.internalDetails);
+  });
+
   it('reads a range as a since: filter on its first day', () => {
     const now = new Date('2026-10-08T15:00:00.000Z');
     expect(receiptRangeQuery('today', now)).toBe('since:2026-10-08');
@@ -134,16 +146,24 @@ describe('orgx_panel_snapshot: receipts, one receipt, and history that says why 
 describe('orgx_widget_receipt_call: a person\'s call on a receipt', () => {
   it('records the call in the session workspace and says what it recorded', async () => {
     const recordReceiptCall = vi.fn(async () => undefined);
-    const r = await handleReceiptCall(host({ recordReceiptCall }), { receipt_id: 'rcpt-abc', status: 'failed' });
-    expect(recordReceiptCall).toHaveBeenCalledWith({ workspaceId: WS, receiptId: 'rcpt-abc', status: 'failed' });
+    const r = await handleReceiptCall(host({ recordReceiptCall }), { receipt_id: 'rcpt-abc', status: 'failed', approval_token: 'receipt-token' });
+    expect(recordReceiptCall).toHaveBeenCalledWith({ workspaceId: WS, receiptId: 'rcpt-abc', status: 'failed', approvalToken: 'receipt-token' });
     expect(r.structuredContent).toEqual({ recorded: true, receipt_id: 'rcpt-abc', status: 'failed', reason: null });
   });
 
   it('refuses a call it cannot record, and says why', async () => {
     const bad = await handleReceiptCall(host({ recordReceiptCall: vi.fn() }), { receipt_id: 'rcpt-abc', status: 'great' });
     expect(bad.isError).toBe(true);
-    const refused = await handleReceiptCall(host({ recordReceiptCall: vi.fn(async () => { throw Object.assign(new Error('x'), { status: 404 }); }) }), { receipt_id: 'nope', status: 'succeeded' });
+    const refused = await handleReceiptCall(host({ recordReceiptCall: vi.fn(async () => { throw Object.assign(new Error('x'), { status: 404 }); }) }), { receipt_id: 'nope', status: 'succeeded', approval_token: 'receipt-token' });
     expect(refused.structuredContent).toMatchObject({ recorded: false, reason: 'The Work Ledger has no receipt with that id.' });
+  });
+
+  it('refuses a model-style call that has an authenticated user but no hidden human capability', async () => {
+    const recordReceiptCall = vi.fn();
+    const refused = await handleReceiptCall(host({ recordReceiptCall }), { receipt_id: 'rcpt-abc', status: 'succeeded' });
+    expect(refused.isError).toBe(true);
+    expect(recordReceiptCall).not.toHaveBeenCalled();
+    expect(refused.structuredContent).toMatchObject({ recorded: false, reason: 'Open the receipt again before recording your call.' });
   });
 });
 
@@ -171,12 +191,12 @@ describe('Done › Work: the work, what done meant, and your call', () => {
     const m = await openWith(snapshot());
     m.calls.callServerTool.mockImplementation(async ({ name, arguments: args }: { name: string; arguments: Record<string, unknown> }) => {
       if (name === 'orgx_widget_receipt_call') return { structuredContent: { recorded: true, receipt_id: args.receipt_id, status: args.status, reason: null } };
-      if (args.view === 'receipt') return { structuredContent: snapshot({ receipt: DETAIL }) };
+      if (name === 'orgx_get_work_receipt') return { structuredContent: snapshot({ receipt: DETAIL }), _meta: { 'orgx/widgetApproval': { receipt_approval_tokens: { 'rcpt-abc': 'receipt-token' } } } };
       return { structuredContent: snapshot({ receipts: LIST }) };
     });
     click(m, '[data-tab="done"]');
     await m.flush(); await m.flush();
-    expect(m.calls.callServerTool.mock.calls[0]![0]).toMatchObject({ name: 'orgx_panel_snapshot', arguments: { view: 'receipts', range: '7d' } });
+    expect(m.calls.callServerTool.mock.calls[0]![0]).toMatchObject({ name: 'orgx_list_work_receipts', arguments: { query: expect.stringMatching(/^since:\d{4}-\d{2}-\d{2}$/), limit: 50 } });
     // Nothing selected: quality across the range.
     expect(doc(m).querySelector('.q-card .md-title')!.textContent).toBe('1 piece of work, 4 checks');
     expect(doc(m).querySelector('.rc-row .rc-pips')!.getAttribute('aria-label')).toBe('2 of 4 checks met, 1 not met, 1 with no evidence');
@@ -195,9 +215,127 @@ describe('Done › Work: the work, what done meant, and your call', () => {
 
     click(m, '[data-action="receipt-call"][data-status="partially_succeeded"]');
     await m.flush(); await m.flush();
-    expect(m.calls.callServerTool).toHaveBeenCalledWith(expect.objectContaining({ name: 'orgx_widget_receipt_call', arguments: { receipt_id: 'rcpt-abc', status: 'partially_succeeded' } }));
+    expect(m.calls.callServerTool).toHaveBeenCalledWith(expect.objectContaining({ name: 'orgx_widget_receipt_call', arguments: { receipt_id: 'rcpt-abc', status: 'partially_succeeded', approval_token: 'receipt-token' } }));
     expect(doc(m).querySelector('.rc-cn')!.textContent).toContain('Recorded in the Work Ledger');
     expect(doc(m).querySelector('.rc-row .rc-chip')!.textContent).toBe('Partly done');
+  });
+
+  it('reads named receipt results with numeric receipt totals and keeps producer claims separate from human calls', async () => {
+    const m = await openWith(snapshot());
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => {
+      const assessment = { evidence_status: 'recorded', verification_status: 'producer_reported', acceptance_status: 'awaiting_human_review', outcome_status: null };
+      const row = { receipt_id: 'row-1', external_receipt_id: 'rcpt-abc', summary: ROW.summary, criteria: { met: 1, unmet: 0, unknown: 1 }, producer_claims: { outcome_status: 'succeeded', verification_status: 'verified', acceptance_status: 'accepted' }, receipt_assessment: assessment };
+      return name === 'orgx_get_work_receipt'
+        ? { structuredContent: { ok: true, ...row, criteria: [{ id: 'c1', text: 'Check the PR', status: 'unknown', evidence_ids: [] }], evidence: [], uncertain: [] } }
+        : { structuredContent: { ok: true, total: 1, results: [row], receipts: 1, workstreams: 1, window_days: 120 } };
+    });
+    click(m, '[data-tab="done"]');
+    await m.flush(); await m.flush();
+    expect(doc(m).querySelector('.rc-row .rc-chip')!.textContent).toBe('Agent reports done');
+    click(m, '[data-action="work-receipt"][data-id="rcpt-abc"]');
+    await m.flush(); await m.flush();
+    expect(doc(m).querySelector('.rc-verdict')!.textContent).toContain('Agent reports verified');
+    expect(doc(m).querySelector('.rc-verdict')!.textContent).not.toContain('Accepted');
+    expect(doc(m).querySelector('[data-action="receipt-call"]')).toBeNull();
+    expect(doc(m).querySelector('.rc-call')!.textContent).toContain('Review this receipt in the Work Ledger');
+  });
+
+  it.each([
+    { label: 'a claimed agreement', agreement: { agreed_at: '2026-10-08T12:00:00Z', agreed_by: 'a claimed reviewer' } },
+    { label: 'an expectation declaration', agreement: { declared_at: '2026-10-08T12:00:00Z' } },
+  ])('renders the real named projection with reported sources, uncertainty, intent and $label', async ({ agreement }) => {
+    const m = await openWith(snapshot());
+    const projected = RECEIPT_OPERATION_OUTPUT_SCHEMAS.orgx_get_work_receipt.parse(projectWorkReceiptDetail({
+      receipt_id: 'ledger-current',
+      receipt: {
+        schema_version: 'agent-work-receipt/v0.2', receipt_id: 'rcpt-abc',
+        intent: { summary: ROW.summary, objective: 'Stop flaky checkout failures', criteria: [
+          { id: 'c1', text: 'The checkout suite passes', source: 'learned', source_label: 'a previous producer-reported call' },
+        ] },
+        outcome: { status: 'partially_succeeded', summary: 'The agent observed intermittent failures', criteria_results: [
+          { criterion_id: 'c1', status: 'met', confidence: 0.45, evidence_ids: ['e1'] },
+        ] },
+        verification: { status: 'verified' }, evidence: [{ id: 'e1', kind: 'test_run', summary: 'A reported test attempt' }],
+        extensions: { 'org.orgx.expectations/v1': {
+          set_id: 'producer-expectation-set', ...agreement,
+          criteria: [{ id: 'c1', source: 'learned', source_label: 'a previous producer-reported call' }],
+        } },
+      },
+    }));
+    const row = { ...projected, criteria: { met: 1, unmet: 0, unknown: 0 } };
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => name === 'orgx_get_work_receipt'
+      ? { structuredContent: projected }
+      : { structuredContent: { ok: true, total: 1, results: [row] } });
+    click(m, '[data-tab="done"]');
+    await m.flush(); await m.flush();
+    click(m, '[data-action="work-receipt"][data-id="rcpt-abc"]');
+    await m.flush(); await m.flush();
+    const card = doc(m).querySelector('.rc-card')!;
+    expect(card.querySelector('.rc-cs')?.textContent).toBe('Met · a guess');
+    expect(card.querySelector('.xp-src')?.textContent).toContain('Agent reports: learned');
+    expect(card.querySelector('.xp-src')?.textContent).toContain('a previous producer-reported call');
+    expect(card.querySelector('.xp-src')?.getAttribute('title')).toContain('has not confirmed its provenance');
+    expect(card.textContent).toContain('Stop flaky checkout failures');
+    expect(card.textContent).toContain('Agent-reported outcome');
+    expect(card.textContent).toContain('The agent observed intermittent failures');
+    const reportedBar = card.querySelector('.rc-reported-bar')?.textContent;
+    if (agreement.agreed_at) {
+      expect(reportedBar).toContain('Agent reports an expectation agreement');
+      expect(reportedBar).toContain('OrgX has not confirmed this human agreement');
+    } else {
+      expect(reportedBar).toContain('The agent reports which expectations this receipt used');
+      expect(reportedBar).toContain('does not confirm a human agreement');
+      expect(reportedBar).not.toContain('Agent reports an expectation agreement');
+    }
+    expect(card.textContent).not.toContain('Judged against the bar you agreed');
+    expect(card.querySelector('.rc-verdict')?.textContent).toContain('Agent reports partly done');
+    expect(card.querySelector('.rc-verdict')?.textContent).not.toContain('Accepted');
+    expect(card.querySelector('[data-action="receipt-call"]')).toBeNull();
+  });
+
+  it('uses fresh detail counts and shows when its bounded projection omits checks or evidence', async () => {
+    const m = await openWith(snapshot());
+    const row = { receipt_id: 'row-1', external_receipt_id: 'rcpt-abc', summary: ROW.summary, criteria: { met: 10, unmet: 0, unknown: 0 } };
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => name === 'orgx_get_work_receipt'
+      ? { structuredContent: { ok: true, ...row, criteria: [{ id: 'c1', text: 'A fresh check', status: 'unknown' }], criteria_total: 55,
+          evidence: [{ id: 'e1', kind: 'link', summary: 'First evidence', uri: 'https://github.com/acme/app/pull/1' }], evidence_total: 20 } }
+      : { structuredContent: { ok: true, total: 1, results: [row] } });
+    click(m, '[data-tab="done"]');
+    await m.flush(); await m.flush();
+    click(m, '[data-action="work-receipt"][data-id="rcpt-abc"]');
+    await m.flush(); await m.flush();
+    const receipts = (m.dom.window as unknown as { OrgXPanelReceipts: { normalizeDetail(data: unknown, id: string, row: unknown): { row: { criteria: unknown } } } }).OrgXPanelReceipts;
+    expect(receipts.normalizeDetail({ receipt_id: 'row-1', criteria: [{ status: 'unknown' }] }, 'rcpt-abc', row).row.criteria).toEqual({ met: 0, unmet: 0, unknown: 1 });
+    expect(doc(m).querySelector('.rc-card')?.textContent).toContain('Showing 1 of 55 checks');
+    expect(doc(m).querySelector('.rc-card')?.textContent).toContain('Showing 1 of 20 evidence items');
+  });
+
+  it.each([
+    { label: 'historical identifier judgment', judgment: { scope: 'legacy_receipt_identifier', outcome_status: 'failed', reviewed_receipt_id: null }, acceptance: 'awaiting_human_review', assessedOutcome: null, expected: 'Agent reports done' },
+    { label: 'document judgment', judgment: { scope: 'receipt_document', outcome_status: 'failed', reviewed_receipt_id: 'row-1' }, acceptance: 'human_reviewed', assessedOutcome: 'failed', expected: 'Not done' },
+    { label: 'judgment for a different receipt document', judgment: { scope: 'receipt_document', outcome_status: 'failed', reviewed_receipt_id: 'old-row' }, acceptance: 'human_reviewed', assessedOutcome: 'failed', expected: 'Agent reports done' },
+    { label: 'judgment for an earlier revision of the same receipt document', judgment: { scope: 'receipt_document', outcome_status: 'failed', reviewed_receipt_id: 'row-1', reviewed_receipt_revision: 'previous-revision' }, receiptRevision: 'current-revision', acceptance: 'human_reviewed', assessedOutcome: 'failed', expected: 'Agent reports done' },
+    { label: 'judgment for the current revision of the receipt document', judgment: { scope: 'receipt_document', outcome_status: 'failed', reviewed_receipt_id: 'row-1', reviewed_receipt_revision: 'current-revision' }, receiptRevision: 'current-revision', acceptance: 'human_reviewed', assessedOutcome: 'failed', expected: 'Not done' },
+    { label: 'assessment-confirmed review without a scoped judgment', judgment: { outcome_status: 'failed' }, acceptance: 'human_reviewed', assessedOutcome: 'partially_succeeded', expected: 'Partly done' },
+  ])('shows the current receipt outcome for $label in its list and detail', async ({ judgment, acceptance, assessedOutcome, expected, receiptRevision }) => {
+    const m = await openWith(snapshot());
+    const row = {
+      receipt_id: 'row-1', external_receipt_id: 'rcpt-abc', summary: ROW.summary,
+      criteria: { met: 1, unmet: 0, unknown: 1 },
+      producer_claims: { outcome_status: 'succeeded', verification_status: 'verified', acceptance_status: 'accepted' },
+      human_judgment: judgment,
+      receipt_review_revision: receiptRevision,
+      receipt_assessment: { evidence_status: 'recorded', verification_status: 'producer_reported', acceptance_status: acceptance, outcome_status: assessedOutcome },
+    };
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => name === 'orgx_get_work_receipt'
+      ? { structuredContent: { ok: true, ...row, criteria: [], evidence: [], uncertain: [] } }
+      : { structuredContent: { ok: true, total: 1, results: [row], window_days: 120 } });
+    click(m, '[data-tab="done"]');
+    await m.flush(); await m.flush();
+    expect(doc(m).querySelector('.rc-row .rc-chip')!.textContent).toBe(expected);
+    click(m, '[data-action="work-receipt"][data-id="rcpt-abc"]');
+    await m.flush(); await m.flush();
+    expect(doc(m).querySelector('.rc-verdict .rc-chip')!.textContent).toBe(expected);
   });
 
   it('says why receipts could not be read and offers to try again', async () => {
@@ -219,7 +357,7 @@ describe('Needs you: the work behind a decision', () => {
     m.calls.callServerTool.mockResolvedValue({ structuredContent: snapshot({ receipts: LIST }) });
     m.app().ontoolresult({ structuredContent: data, _meta: { 'orgx/widgetApproval': { approval_tokens: {} } } });
     await m.flush(); await m.flush(); await m.flush();
-    expect(m.calls.callServerTool).toHaveBeenCalledWith(expect.objectContaining({ name: 'orgx_panel_snapshot', arguments: expect.objectContaining({ view: 'receipts', query: 'pr:3236' }) }));
+    expect(m.calls.callServerTool).toHaveBeenCalledWith(expect.objectContaining({ name: 'orgx_list_work_receipts', arguments: expect.objectContaining({ query: 'pr:3236' }) }));
     const behind = doc(m).querySelector('.packet .rc-behind')!;
     expect(behind.textContent).toContain('Fix the flaky checkout test');
     // Read before deciding: it sits above the decide bar.

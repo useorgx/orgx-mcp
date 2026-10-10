@@ -47,7 +47,13 @@ export function resolveProfileDiscoveryPolicy(
   authorization?: ProfileDiscoveryAuthorization
 ): ProfileDiscoveryPolicy {
   const resolved = resolveToolProfile(profileName).name;
-  if (resolved === 'claude-directory' || resolved === READ_ONLY_FALLBACK_PROFILE) {
+  if (resolved === 'claude-code-legacy') return {
+    includeInitiativeResource: false, includeSkillResources: false, includePrompts: false, widgetUris: new Set(),
+  };
+  if (resolved === 'claude-directory') return {
+    includeInitiativeResource: false, includeSkillResources: false, includePrompts: false, widgetUris: null,
+  };
+  if (resolved === 'claude-directory-legacy' || resolved === READ_ONLY_FALLBACK_PROFILE) {
     return {
       includeInitiativeResource: false,
       includeSkillResources: false,
@@ -65,7 +71,7 @@ export function resolveProfileDiscoveryPolicy(
         authorization.grantedScopes
       ).isAuthorized
     : true;
-  const includeLegacyAuxiliaryContent = resolved !== 'chatgpt';
+  const includeLegacyAuxiliaryContent = !['chatgpt', 'v2', 'extended'].includes(resolved);
 
   return {
     includeInitiativeResource: initiativeResourceAuthorized,

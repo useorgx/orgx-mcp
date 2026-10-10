@@ -8,6 +8,11 @@ import { getToolOutputSchema } from '../src/openaiOutputSchemas';
 
 const api = vi.hoisted(() => ({ callOrgxApiJson: vi.fn() }));
 vi.mock('agents/mcp', () => ({ McpAgent: class {
+    async getInitializeRequest() { return (this as any).ctx.storage.get('initializeRequest'); }
+    async updateProps(props: unknown) {
+      await (this as any).ctx.storage.put('props', props ?? {});
+      (this as any).props = props;
+    }
   static serve() { return { fetch: vi.fn(async () => new Response(null, { status: 501 })) }; }
   static serveSSE() { return { fetch: vi.fn(async () => new Response(null, { status: 501 })) }; }
 } }));
@@ -29,7 +34,7 @@ beforeAll(async () => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response('Fixture blocks real network', { status: 503 })));
   const { OrgXMcp } = await import('../src/index');
   worker = Object.create(OrgXMcp.prototype);
-  worker.props = { profile: 'v2', userId: 'user_artifact_fixture', orgxUserId: ID,
+  worker.props = { profile: 'legacy', userId: 'user_artifact_fixture', orgxUserId: ID,
     email: 'artifact@example.test', scope: AUTHORIZATION_PRESETS.operate.scopes.join(' '), workspace_id: WS };
   worker.ctx = { id: { toString: () => 'artifact-header-fixture' }, storage: {
     get: vi.fn(async () => undefined), put: vi.fn(async () => undefined), sql: { exec: vi.fn(() => []) } },

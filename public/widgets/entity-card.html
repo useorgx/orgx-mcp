@@ -839,7 +839,7 @@
 
     /*
      * A ruling made in OrgX: ask the server what happened rather than guess.
-     * orgx_command_status says how long to wait before asking again
+     * orgx_get_operation_status says how long to wait before asking again
      * (next_poll_after_ms) and returns null once the state is final.
      */
     var checkRuling = function () {
@@ -853,7 +853,7 @@
       view.checking = true;
       render();
       Promise.resolve()
-        .then(function () { return callTool('orgx_command_status', { kind: 'decision', id: card.id }); })
+        .then(function () { return callTool('orgx_get_operation_status', { kind: 'decision', id: card.id }); })
         .then(function (result) {
           var status = unpack(result) || {};
           view.checking = false;

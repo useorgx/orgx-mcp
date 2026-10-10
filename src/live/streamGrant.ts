@@ -122,36 +122,81 @@ export interface ToolFeedBinding {
 // for anything else, so a stale binding degrades to a static widget rather than
 // a broken subscription.
 export const TOOL_FEED_BINDINGS: Record<string, ToolFeedBinding> = {
+  orgx_get_agent_status: {
+    feedType: 'agent-status',
+    refreshTool: 'orgx_get_agent_status',
+    idSource: 'initiative_id',
+  },
+  orgx_get_initiative_progress: {
+    feedType: 'initiative-pulse',
+    refreshTool: 'orgx_get_initiative_progress',
+    idSource: 'entity_is_initiative',
+  },
+  orgx_start_agent_task: {
+    feedType: 'agent-status',
+    refreshTool: 'orgx_get_agent_status',
+    idSource: 'initiative_id',
+  },
+  orgx_handoff_task: {
+    feedType: 'agent-status',
+    refreshTool: 'orgx_get_agent_status',
+    idSource: 'initiative_id',
+  },
+  orgx_create_initiative_hierarchy: {
+    feedType: 'initiative-pulse',
+    refreshTool: 'orgx_get_initiative_progress',
+    idSource: 'entity_is_initiative',
+  },
+  orgx_list_pending_decisions: {
+    feedType: 'decisions',
+    refreshTool: 'orgx_list_pending_decisions',
+    idSource: 'initiative_id',
+  },
+  orgx_open_decision_review: {
+    feedType: 'decisions',
+    refreshTool: 'orgx_list_pending_decisions',
+    idSource: 'initiative_id',
+  },
+  orgx_get_operator_brief: {
+    feedType: 'agent-status',
+    refreshTool: 'orgx_get_agent_status',
+    idSource: 'initiative_id',
+  },
+  orgx_get_workspace_context: {
+    feedType: 'initiative-pulse',
+    refreshTool: 'orgx_get_initiative_progress',
+    idSource: 'initiative_id',
+  },
   get_agent_status: {
     feedType: 'agent-status',
-    refreshTool: 'get_agent_status',
+    refreshTool: 'orgx_get_agent_status',
     idSource: 'initiative_id',
   },
   get_initiative_pulse: {
     feedType: 'initiative-pulse',
-    refreshTool: 'get_initiative_pulse',
+    refreshTool: 'orgx_get_initiative_progress',
     // The pulse's own subject is the initiative.
     idSource: 'entity_is_initiative',
   },
   spawn_agent_task: {
     feedType: 'agent-status',
-    refreshTool: 'get_agent_status',
+    refreshTool: 'orgx_get_agent_status',
     idSource: 'initiative_id',
   },
   delegate_agent_task: {
     feedType: 'agent-status',
-    refreshTool: 'get_agent_status',
+    refreshTool: 'orgx_get_agent_status',
     idSource: 'initiative_id',
   },
   orgx_spawn: {
     feedType: 'agent-status',
-    refreshTool: 'get_agent_status',
+    refreshTool: 'orgx_get_agent_status',
     // A spawn returns a run id in `data.id`, not an initiative.
     idSource: 'initiative_id',
   },
   scaffold_initiative: {
     feedType: 'initiative-pulse',
-    refreshTool: 'get_initiative_pulse',
+    refreshTool: 'orgx_get_initiative_progress',
     // Scaffolding returns the initiative it just created.
     idSource: 'entity_is_initiative',
   },
@@ -159,12 +204,12 @@ export const TOOL_FEED_BINDINGS: Record<string, ToolFeedBinding> = {
   // initiative; see FeedDefinition.scope.
   get_pending_decisions: {
     feedType: 'decisions',
-    refreshTool: 'get_pending_decisions',
+    refreshTool: 'orgx_list_pending_decisions',
     idSource: 'initiative_id',
   },
   orgx_decide: {
     feedType: 'decisions',
-    refreshTool: 'get_pending_decisions',
+    refreshTool: 'orgx_list_pending_decisions',
     idSource: 'initiative_id',
   },
   // Widgets that arrived on main after this layer was built.
@@ -172,13 +217,13 @@ export const TOOL_FEED_BINDINGS: Record<string, ToolFeedBinding> = {
     // Inspecting an entity: show what is running on the initiative it belongs
     // to. `data.id` is the inspected entity and must not be used as the feed.
     feedType: 'agent-status',
-    refreshTool: 'get_agent_status',
+    refreshTool: 'orgx_get_agent_status',
     idSource: 'initiative_id',
   },
   get_operator_chronicle: {
     // A chronicle answers "what happened"; the panel answers "what is happening".
     feedType: 'agent-status',
-    refreshTool: 'get_agent_status',
+    refreshTool: 'orgx_get_agent_status',
     idSource: 'initiative_id',
   },
   orgx_bootstrap: {
@@ -186,7 +231,7 @@ export const TOOL_FEED_BINDINGS: Record<string, ToolFeedBinding> = {
     // workspace map opens on that initiative's live state — which is the
     // "continue where the last agent left off" case this layer exists for.
     feedType: 'initiative-pulse',
-    refreshTool: 'get_initiative_pulse',
+    refreshTool: 'orgx_get_initiative_progress',
     idSource: 'initiative_id',
   },
 };

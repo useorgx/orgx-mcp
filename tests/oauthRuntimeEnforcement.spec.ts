@@ -6,6 +6,9 @@ import { AUTHORIZATION_PRESETS } from '../src/authorizationPolicy';
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
 import { OrgXApiError } from '../src/orgxApi';
 import { attachRequestToolProfile } from '../src/requestToolProfile';
+import { handleMcpRequest } from '../src/mcpTransport';
+import * as sessionContractLookup from '../src/requestSessionToolContract';
+import { SESSION_TOOL_CONTRACT_KEY } from '../src/sessionToolContract';
 import { createEmptySessionToolStats } from '../src/sessionSummary';
 import { INFORMATIONAL_SURFACE } from '../src/toolProfiles';
 import { createEmptyMcpSessionReentryState } from '../src/welcomeBackContext';
@@ -25,6 +28,11 @@ const apiMocks = vi.hoisted(() => ({
 
 vi.mock('agents/mcp', () => ({
   McpAgent: class McpAgent {
+    async getInitializeRequest() { return (this as any).ctx.storage.get('initializeRequest'); }
+    async updateProps(props: unknown) {
+      await (this as any).ctx.storage.put('props', props ?? {});
+      (this as any).props = props;
+    }
     static serve() {
       return { fetch: vi.fn(async () => new Response(null, { status: 501 })) };
     }
@@ -268,13 +276,69 @@ afterEach(() => {
 });
 
 describe('OAuth scope enforcement through the live MCP registry', () => {
-  it('reads exact controller status through the default v2 registry and forwards workspace plus actor identity', async () => {
+  it.each([
+    { name: 'OAuth permission narrowing', previous: { scope: 'initiatives:read initiatives:write' }, incoming: { scope: 'initiatives:read' } },
+    { name: 'run tool-grant narrowing', previous: { scope: 'mcp:run', authSource: 'run_token' }, incoming: { scope: 'mcp:run', authSource: 'run_token', scopes: ['orgx_search'] } },
+    { name: 'run identity replacement', previous: { scope: 'mcp:run', authSource: 'run_token', runId: 'first-run' }, incoming: { scope: 'mcp:run', authSource: 'run_token', runId: 'second-run' } },
+    { name: 'run-to-OAuth grant replacement', previous: { scope: 'mcp:run', authSource: 'run_token' }, incoming: { scope: 'initiatives:read' } },
+  ].flatMap((scenario) => [{ ...scenario, nativeSse: false }, { ...scenario, nativeSse: true }]))('rejects $name before dispatch into a warm DO with cached props (native SSE: $nativeSse)', async ({ previous, incoming, nativeSse }) => {
+    const harness = await createHarness({ scope: previous.scope, profile: 'chatgpt', authSource: previous.authSource });
+    const cachedProps = { ...harness.worker.props, ...previous };
+    harness.worker.props = cachedProps;
+    const persisted = new Map<string, unknown>([
+      ['props', cachedProps], ...(!nativeSse ? [['initializeRequest', { method: 'initialize' }] as [string, unknown]] : []),
+      [SESSION_TOOL_CONTRACT_KEY, { profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' }],
+    ]);
+    harness.worker.ctx.storage.get = vi.fn(async (key: string) => persisted.get(key));
+    const lookup = sessionContractLookup.resolveRequestSessionToolContract;
+    vi.spyOn(sessionContractLookup, 'resolveRequestSessionToolContract').mockImplementation((request, env, props) =>
+      lookup(request, env, props, async () => harness.worker));
+    const handler = { fetch: vi.fn(async () => Response.json({ committed: true })) };
+    apiMocks.callOrgxApiJson.mockClear();
+    try {
+      const response = await handleMcpRequest(new Request(nativeSse ? 'http://localhost/sse/message?sessionId=warm-session' : 'http://localhost/mcp', {
+        method: 'POST', headers: { 'content-type': 'application/json', ...(!nativeSse ? { 'mcp-session-id': 'warm-session' } : {}) },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'orgx_create_task', arguments: { title: 'Must not create task' } } }),
+      }), { MCP_OBJECT: {} }, { props: { userId: USER_ID, profile: 'chatgpt', ...incoming }, waitUntil: vi.fn() } as any,
+      handler, async () => ({ userId: USER_ID, scope: incoming.scope }));
+      expect(response.status).toBe(409);
+      expect(handler.fetch).not.toHaveBeenCalled();
+      expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+      expect(harness.worker.props).toBe(cachedProps);
+    } finally { await closeHarness(harness); }
+  });
+
+  it('rejects removed generic write and approval names without reaching OrgX', async () => {
+    const harness = await createHarness({ scope: AUTHORIZATION_PRESETS.operate.scopes.join(' '), profile: 'chatgpt' });
+    try {
+      for (const name of ['orgx_write', 'orgx_act', 'manage_lifecycle', 'orgx_plan', 'orgx_spawn', 'orgx_decide', 'approve_decision', 'reject_decision', 'approve_agent_work']) {
+        apiMocks.callOrgxApiJson.mockClear();
+        const result = await harness.client.callTool({ name, arguments: { action: 'approve', operation: 'create', type: 'task', title: 'Must not mutate', id: INITIATIVE_ID } });
+        expect(result.isError, name).toBe(true);
+        expect(apiMocks.callOrgxApiJson, name).not.toHaveBeenCalled();
+      }
+    } finally { await closeHarness(harness); }
+  });
+
+  it('checks the current OAuth grant at invocation before a previously registered write executes', async () => {
+    const harness = await createHarness({ scope: AUTHORIZATION_PRESETS.operate.scopes.join(' '), profile: 'chatgpt' });
+    try {
+      harness.worker.props = { ...harness.worker.props, scope: AUTHORIZATION_PRESETS.read.scopes.join(' ') };
+      apiMocks.callOrgxApiJson.mockClear();
+      const result = await harness.client.callTool({ name: 'orgx_capture_decision', arguments: { decision: 'Must not create decision' } });
+      expect(result.isError).toBe(true);
+      expect(errorCode(result)).toBe('insufficient_scope');
+      expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+    } finally { await closeHarness(harness); }
+  });
+
+  it('reads exact controller status through the explicit legacy registry and forwards workspace plus actor identity', async () => {
     const controllerEnvelope = buildControllerStatusEnvelope();
     const expectedPath =
       `/api/v1/controllers/growth?workspace_id=${WORKSPACE_ID}` +
       '&protocol_version=orgx.controller.v1';
     const harness = await createHarness({
-      scope: 'decisions:read initiatives:read',
+      scope: 'decisions:read initiatives:read', profile: 'legacy',
     });
     try {
       apiMocks.callOrgxApiJson.mockImplementation(
@@ -339,7 +403,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       `/api/v1/controllers/growth?workspace_id=${inaccessibleWorkspaceId}` +
       '&protocol_version=orgx.controller.v1';
     const harness = await createHarness({
-      scope: 'decisions:read initiatives:read',
+      scope: 'decisions:read initiatives:read', profile: 'legacy',
     });
     try {
       apiMocks.callOrgxApiJson.mockRejectedValueOnce(
@@ -383,7 +447,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
     controllerEnvelope.meta.workspaceId =
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
     const harness = await createHarness({
-      scope: 'decisions:read initiatives:read',
+      scope: 'decisions:read initiatives:read', profile: 'legacy',
     });
     try {
       apiMocks.callOrgxApiJson.mockResolvedValueOnce(
@@ -413,7 +477,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
 
   it('requires both decision and initiative read grants for controller status', async () => {
     for (const scope of ['decisions:read', 'initiatives:read']) {
-      const harness = await createHarness({ scope });
+      const harness = await createHarness({ scope, profile: 'legacy' });
       try {
         const names = (await harness.client.listTools()).tools.map(
           (tool) => tool.name
@@ -442,7 +506,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
 
   it('tails material context changes through the live read-only MCP surface', async () => {
     const harness = await createHarness({
-      scope: AUTHORIZATION_PRESETS.read.scopes.join(' '),
+      scope: AUTHORIZATION_PRESETS.read.scopes.join(' '), profile: 'commander',
     });
     try {
       apiMocks.callOrgxApiJson.mockImplementation(
@@ -549,7 +613,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
 
   it('reports a verified base only when the server matched the acknowledged capsule (plan v3 Stage 2)', async () => {
     const harness = await createHarness({
-      scope: AUTHORIZATION_PRESETS.read.scopes.join(' '),
+      scope: AUTHORIZATION_PRESETS.read.scopes.join(' '), profile: 'commander',
     });
     const CAPSULE = 'capsule_0123456789abcdef01234567';
     try {
@@ -591,7 +655,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
   });
 
   it('registers the exact receipt-coverage expectation with workspace-write authority', async () => {
-    const harness = await createHarness({ scope: 'initiatives:write' });
+    const harness = await createHarness({ scope: 'initiatives:write', profile: 'legacy' });
     try {
       const result = await harness.client.callTool({
         name: 'orgx_expect',
@@ -646,12 +710,12 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
   it('advertises no private tools or initiative resource for an explicit empty grant', async () => {
     const harness = await createHarness({ scope: '' });
     try {
-      // With zero authorized registrations the SDK omits the tools capability
-      // entirely, so tools/list and tools/call both fail as unknown methods.
-      await expect(harness.client.listTools()).rejects.toThrow(/not found/i);
-      await expect(
-        harness.client.callTool({ name: 'orgx_search', arguments: {} })
-      ).rejects.toThrow(/not found/i);
+      const names = (await harness.client.listTools()).tools.map((tool) => tool.name);
+      expect(names).toEqual(['orgx_validate_work_receipt']);
+      const blockedRead = await harness.client.callTool({ name: 'orgx_search', arguments: {} });
+      expect(blockedRead.isError).toBe(true);
+      const blockedWrite = await harness.client.callTool({ name: 'orgx_create_task', arguments: { title: 'No grant', workstream_id: INITIATIVE_ID } });
+      expect(blockedWrite.isError).toBe(true);
       await expect(
         harness.client.readResource({ uri: `orgx://initiative/${INITIATIVE_ID}` })
       ).rejects.toThrow(/not found/i);
@@ -663,7 +727,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
 
   it('lists the Read surface but blocks write actions inside polymorphic tools', async () => {
     const harness = await createHarness({
-      scope: AUTHORIZATION_PRESETS.read.scopes.join(' '),
+      scope: AUTHORIZATION_PRESETS.read.scopes.join(' '), profile: 'commander',
     });
     try {
       const names = (await harness.client.listTools()).tools.map(
@@ -698,7 +762,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
 
   it('requires both write domains before orgx_spawn can hand off a task', async () => {
     const missingInitiativeWrite = await createHarness({
-      scope: 'agents:write',
+      scope: 'agents:write', profile: 'legacy',
     });
     try {
       expect(
@@ -722,7 +786,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
     }
 
     const fullyAuthorized = await createHarness({
-      scope: 'agents:write initiatives:write',
+      scope: 'agents:write initiatives:write', profile: 'legacy',
     });
     try {
       const handedOff = await fullyAuthorized.client.callTool({
@@ -753,7 +817,9 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       );
       expect(names).toContain('orgx_search');
       expect(names).toContain('orgx_inspect');
-      expect(names).toContain('orgx_decide');
+      expect(names).toContain('orgx_list_pending_decisions');
+      expect(names).not.toContain('orgx_capture_decision');
+      expect(names).not.toContain('orgx_decide');
       expect(names).not.toContain('query_org_memory');
       expect(names).not.toContain('get_agent_status');
 
@@ -792,7 +858,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
   });
 
   it('enforces the selected write domain inside orgx_write', async () => {
-    const harness = await createHarness({ scope: 'decisions:write' });
+    const harness = await createHarness({ scope: 'decisions:write', profile: 'legacy' });
     try {
       expect(
         (await harness.client.listTools()).tools.map((tool) => tool.name)
@@ -835,9 +901,10 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       const names = (await harness.client.listTools()).tools.map(
         (tool) => tool.name
       );
-      expect(names).toContain('query_org_memory');
-      expect(names).toContain('recall_memory');
-      expect(names).not.toContain('get_initiative_pulse');
+      expect(names).toContain('orgx_search');
+      expect(names).toContain('orgx_inspect');
+      expect(names).not.toContain('orgx_get_initiative_progress');
+      expect(names).not.toContain('orgx_create_task');
       await expect(
         harness.client.readResource({ uri: `orgx://initiative/${INITIATIVE_ID}` })
       ).rejects.toThrow(/not found/i);
@@ -906,7 +973,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
   });
 
   it('uses initiatives:write for plan mutations and decision scopes for decision actions', async () => {
-    const planningRead = await createHarness({ scope: 'initiatives:read' });
+    const planningRead = await createHarness({ scope: 'initiatives:read', profile: 'legacy' });
     try {
       expect(
         (await planningRead.client.listTools()).tools.map((tool) => tool.name)
@@ -929,7 +996,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       await closeHarness(planningRead);
     }
 
-    const planning = await createHarness({ scope: 'initiatives:write' });
+    const planning = await createHarness({ scope: 'initiatives:write', profile: 'legacy' });
     try {
       expect(
         (await planning.client.listTools()).tools.map((tool) => tool.name)
@@ -948,7 +1015,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       await closeHarness(planning);
     }
 
-    const decisionsRead = await createHarness({ scope: 'decisions:read' });
+    const decisionsRead = await createHarness({ scope: 'decisions:read', profile: 'legacy' });
     try {
       const listed = await decisionsRead.client.callTool({
         name: 'orgx_decide',
@@ -966,7 +1033,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       await closeHarness(decisionsRead);
     }
 
-    const decisionsWrite = await createHarness({ scope: 'decisions:write' });
+    const decisionsWrite = await createHarness({ scope: 'decisions:write', profile: 'legacy' });
     try {
       const remembered = await decisionsWrite.client.callTool({
         name: 'orgx_decide',
@@ -992,14 +1059,70 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
     }
   });
 
-  it('publishes a ChatGPT-loadable scaffold_initiative descriptor', async () => {
+  it('exposes named reads but refuses named writes under the default Read grant', async () => {
+    const harness = await createHarness({ scope: AUTHORIZATION_PRESETS.read.scopes.join(' ') });
+    try {
+      const names = (await harness.client.listTools()).tools.map((tool) => tool.name);
+      expect(names).toContain('orgx_read_plan');
+      expect(names).toContain('orgx_list_pending_decisions');
+      expect(names).not.toContain('orgx_start_plan');
+      expect(names).not.toContain('orgx_capture_decision');
+      expect(names).not.toContain('orgx_handoff_task');
+      for (const name of ['orgx_start_plan', 'orgx_capture_decision', 'orgx_handoff_task']) {
+        const result = await harness.client.callTool({ name, arguments: {} });
+        expect(result.isError, name).toBe(true);
+      }
+      expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+    } finally { await closeHarness(harness); }
+  });
+
+  it('requires both write domains for the named handoff before any backend dispatch', async () => {
+    for (const scope of ['agents:write', 'initiatives:write']) {
+      const harness = await createHarness({ scope });
+      try {
+        const names = (await harness.client.listTools()).tools.map((tool) => tool.name);
+        expect(names, scope).not.toContain('orgx_handoff_task');
+        const result = await harness.client.callTool({ name: 'orgx_handoff_task', arguments: { task_id: INITIATIVE_ID, agent_type: 'engineering' } });
+        expect(result.isError, scope).toBe(true);
+        expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+      } finally { await closeHarness(harness); }
+    }
+    const allowed = await createHarness({ scope: 'agents:write initiatives:write' });
+    try {
+      const result = await allowed.client.callTool({ name: 'orgx_handoff_task', arguments: { task_id: INITIATIVE_ID, agent_type: 'engineering' } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      const call = apiMocks.callOrgxApiJson.mock.calls.find(([, path, init]) => path === '/api/tools/execute' && JSON.parse(String(init?.body ?? '{}')).tool_id === 'handoff_task');
+      expect(call).toBeTruthy();
+      expect(JSON.parse(String(call?.[2]?.body))).toMatchObject({ args: { task_id: INITIATIVE_ID, agent: 'engineering-agent' } });
+    } finally { await closeHarness(allowed); }
+  });
+
+  it('does not mix initiative and decision write grants across named operations', async () => {
+    const harness = await createHarness({ scope: 'decisions:write' });
+    try {
+      const names = (await harness.client.listTools()).tools.map((tool) => tool.name);
+      expect(names).toContain('orgx_capture_decision');
+      expect(names).not.toContain('orgx_create_initiative');
+      expect(names).not.toContain('orgx_start_plan');
+      const denied = await harness.client.callTool({ name: 'orgx_create_initiative', arguments: { title: 'No initiative grant', workspace_id: WORKSPACE_ID } });
+      expect(denied.isError).toBe(true);
+      expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+      const captured = await harness.client.callTool({ name: 'orgx_capture_decision', arguments: { decision: 'Use decision scope', idempotency_key: 'named-decision-key' } });
+      expect(captured.isError, JSON.stringify(captured.content)).not.toBe(true);
+      const call = apiMocks.callOrgxApiJson.mock.calls.find(([, path]) => path === '/api/v1/decisions');
+      expect(call).toBeTruthy();
+      expect(call?.[3]).toMatchObject({ userId: USER_ID, orgxUserId: ORGX_USER_ID, allowFallback: false });
+    } finally { await closeHarness(harness); }
+  });
+
+  it('publishes a ChatGPT-loadable create-only hierarchy descriptor', async () => {
     const harness = await createHarness({
       scope: AUTHORIZATION_PRESETS.operate.scopes.join(' '),
       profile: 'chatgpt',
     });
     try {
       const descriptor = (await harness.client.listTools()).tools.find(
-        (tool) => tool.name === 'scaffold_initiative'
+        (tool) => tool.name === 'orgx_create_initiative_hierarchy'
       );
 
       expect(descriptor).toBeDefined();
@@ -1026,18 +1149,15 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
       } | undefined)?.properties ?? {};
       expect(Object.keys(properties)).toEqual(
         expect.arrayContaining([
-          'title',
           'workspace_id',
-          'objective_ids',
-          'mode',
-          'response_mode',
-          'workstreams',
+          'idempotency_key',
+          'plan',
           'source_evidence',
-          'external_sync',
           '_context',
         ])
       );
-      expect(properties.workstreams).toMatchObject({ type: 'array' });
+      expect(properties.plan).toMatchObject({ type: 'object', properties: { initiative: { type: 'object', properties: { title: { type: 'string' } } }, workstreams: { type: 'array' } } });
+      for (const routerField of ['action', 'operation', 'mode', 'response_mode', 'external_sync']) expect(properties).not.toHaveProperty(routerField);
     } finally {
       await closeHarness(harness);
     }

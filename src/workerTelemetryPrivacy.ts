@@ -8,6 +8,12 @@ import { OAUTH_SCOPES_SUPPORTED } from './authorizationPolicy';
 import { MCP_ACTIVATION_MILESTONES } from './mcpActivationTracker';
 import { TOOL_PROFILE_NAMES } from './toolProfiles';
 import { DEPRECATED_TOOL_IDS } from './deprecatedTools';
+import {
+  boundedMcpCompatibilityMappingId, boundedMcpCompatibilityToolId,
+  MCP_COMPATIBILITY_CONTRACT_VERSIONS, MCP_COMPATIBILITY_MAPPING_STATUSES,
+  MCP_COMPATIBILITY_NAMESPACES, MCP_COMPATIBILITY_OUTCOMES,
+  MCP_COMPATIBILITY_LEGACY_ACTIONS, MCP_COMPATIBILITY_TOOL_IDS,
+} from './mcpCompatibility';
 
 const toolIds = new Set([
   ...CHATGPT_TOOL_DEFINITIONS, ...PLAN_SESSION_TOOLS,
@@ -17,6 +23,7 @@ const toolIds = new Set([
 Object.keys(INLINE_TOOL_CONTRACTS).forEach((id) => toolIds.add(id));
 toolIds.add('orgx_lease');
 DEPRECATED_TOOL_IDS.forEach((id) => toolIds.add(id));
+MCP_COMPATIBILITY_TOOL_IDS.forEach((id) => toolIds.add(id));
 const telemetryScopes = [...OAUTH_SCOPES_SUPPORTED, 'mcp:all', 'mcp:read', 'mcp:write'];
 
 const entityTypes = ['agent', 'artifact', 'decision', 'initiative', 'milestone',
@@ -51,6 +58,12 @@ const enumProperties: Record<string, readonly string[]> = {
     'update', 'delete', 'list', 'read', 'get', 'attach', 'detach', 'approve',
     'reject', 'launch', 'pause', 'archive', 'restore', 'auto_run', 'ship', 'ship_batch'],
   replacement_action: ['list', 'auto_run', 'complete_plan'],
+  operation_contract_version: MCP_COMPATIBILITY_CONTRACT_VERSIONS,
+  compatibility_mapping_status: MCP_COMPATIBILITY_MAPPING_STATUSES,
+  compatibility_outcome: MCP_COMPATIBILITY_OUTCOMES,
+  tool_namespace: MCP_COMPATIBILITY_NAMESPACES,
+  legacy_action: [...MCP_COMPATIBILITY_LEGACY_ACTIONS, 'other'],
+  deprecation_retirement_policy: ['coordinated-upgrade'],
   error_kind: errorCodes,
   error_code: errorCodes,
   journey_phase: ['complete'],
@@ -79,6 +92,7 @@ const numericProperties = new Set([
   'edge_rate_limit_ms', 'edge_rate_limit_backend_ms', 'edge_rate_limit_identity_ms',
   'edge_rate_limit_billing_ms', 'tokens_used', 'cost_usd', 'estimated_cost_usd',
   'search_result_count', 'search_missing_title_count', 'task_count', 'deprecation_window_days',
+  'deprecation_min_quiet_days',
 ]);
 const booleanProperties = new Set([
   'has_user_id', 'has_workspace_id', 'has_initiative_id', 'has_workstream_id',
@@ -86,11 +100,14 @@ const booleanProperties = new Set([
   'followed_expected_next_tool', 'response_read_error', 'response_parse_truncated',
   'mcp_logical_error', 'session_present', 'ok', 'is_widget_tool',
   'provider_mismatch', 'routed',
+  'legacy_tool_call',
+  'mcp_response_observed',
 ]);
 const uuidProperties = new Set(['workspace_id', 'initiative_id', 'request_uuid',
   'attempt_id', 'connection_id', 'event_id']);
 const toolProperties = new Set(['tool_id', 'previous_tool_id', 'expected_next_tool_id',
-  'previous_expected_next_tool_id', 'deprecated_tool_id', 'replacement_tool_id']);
+  'previous_expected_next_tool_id', 'deprecated_tool_id', 'replacement_tool_id',
+  'normalized_tool_id', 'executed_tool_id', 'registered_tool_id']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const VERSION = /^v?\d{1,4}(?:\.\d{1,4}){0,3}(?:[-+][a-z0-9.-]{1,40})?$/i;
 
@@ -111,6 +128,10 @@ export function sanitizeWorkerTelemetryProperties(
       if (typeof value === 'boolean') result[key] = value;
     } else if (uuidProperties.has(key)) {
       if (typeof value === 'string' && UUID.test(value)) result[key] = value;
+    } else if (key === 'requested_tool_id') {
+      result[key] = boundedMcpCompatibilityToolId(value, true);
+    } else if (key === 'compatibility_mapping_id') {
+      result[key] = boundedMcpCompatibilityMappingId(value);
     } else if (toolProperties.has(key)) {
       if (typeof value === 'string') result[key] = toolIds.has(value) ? value : 'other';
     } else if (key === 'client_version') {

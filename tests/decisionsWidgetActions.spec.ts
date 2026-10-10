@@ -68,8 +68,8 @@ function mount(
       return Promise.resolve({ structuredContent: { decision_id: args.decision_id, kind: args.kind, action: 'approved', status: 'approved' } });
     }
     // The runtime rewrites the widget's get_pending_decisions refresh to the
-    // canonical orgx_decide list_pending the connection lists.
-    if (name === 'orgx_decide' && args.action === 'list_pending') {
+    // canonical orgx_list_pending_decisions the connection lists.
+    if (name === 'orgx_list_pending_decisions') {
       return Promise.resolve(opts.refresh ? opts.refresh() : { structuredContent: { decisions: [] } });
     }
     return Promise.resolve({
@@ -110,6 +110,19 @@ afterEach(() => {
 });
 
 describe('decisions widget actions', () => {
+  it('renders a singular core review packet without calling an empty queue caught up', async () => {
+    mountWidget('decisions', { payload: { data: { decision_id: D1, decision: decision(D1), requires_human_review: true, review_url: 'https://useorgx.com/decisions/' + D1 }, meta: { apiVersion: '1' } }, callTool: vi.fn() });
+    await vi.waitFor(() => expect(document.querySelector('.dq-q')?.textContent).toContain('Decision'));
+    expect(document.querySelector('.decide-in-orgx')).not.toBeNull();
+    expect(document.body.textContent).not.toContain('All caught up');
+  });
+
+  it('renders a review link when the opener supplies no inline decision', async () => {
+    mountWidget('decisions', { payload: { requires_human_review: true, review_url: 'https://useorgx.com/decisions/' + D1 }, callTool: vi.fn() });
+    await vi.waitFor(() => expect(document.querySelector('[data-needs-human-link]')).not.toBeNull());
+    expect(document.body.textContent).not.toContain('All caught up');
+  });
+
   it('approves in one click, whatever the urgency or type, sends the kind and follows the status', async () => {
     const callTool = mount([decision(D1, { urgency: 'critical', type: 'Launch approval' })], { [D1]: 'tok-1' });
     await vi.waitFor(() => expect(footer()?.getAttribute('state')).toBe('needs-you'));
@@ -120,7 +133,7 @@ describe('decisions widget actions', () => {
     expect(document.querySelector('.decide-in-orgx')).toBeNull();
 
     press();
-    await vi.waitFor(() => expect(callTool).toHaveBeenCalledWith('orgx_command_status', { kind: 'decision', id: D1 }));
+    await vi.waitFor(() => expect(callTool).toHaveBeenCalledWith('orgx_get_operation_status', { kind: 'decision', id: D1 }));
     expect(callTool.mock.calls[0]).toEqual([
       'orgx_widget_decide',
       { decision_id: D1, kind: 'decision', action: 'approve', approval_token: 'tok-1' },
@@ -479,7 +492,7 @@ describe('decisions widget: the per-item contract', () => {
     press();
     await vi.waitFor(() => expect(footer()?.getAttribute('state')).toBe('done'));
     expect(decideCalls(callTool)[0]![1]).toEqual({ decision_id: A1, kind: 'action', action: 'approve', approval_token: 'tok-a' });
-    expect(callTool.mock.calls.some(([name]) => name === 'orgx_command_status')).toBe(false);
+    expect(callTool.mock.calls.some(([name]) => name === 'orgx_get_operation_status')).toBe(false);
     expect(footer()!.getAttribute('detail')).toBe('the action can run');
   });
 
@@ -523,7 +536,7 @@ describe('decisions widget: refusals', () => {
 
     pressAction();
     await vi.waitFor(() => expect(document.querySelector('.dq-q')!.textContent).toBe('Decision fresh?'));
-    expect(callTool.mock.calls.filter(([name, args]) => name === 'orgx_decide' && args.action === 'list_pending')).toHaveLength(1);
+    expect(callTool.mock.calls.filter(([name, args]) => name === 'orgx_list_pending_decisions')).toHaveLength(1);
     expect(footer()!.getAttribute('state')).toBe('needs-you');
     press();
     await vi.waitFor(() => expect(decideCalls(callTool)).toHaveLength(2));
@@ -540,7 +553,7 @@ describe('decisions widget: refusals', () => {
     });
     await vi.waitFor(() => expect(footer()?.getAttribute('state')).toBe('needs-you'));
     press();
-    await vi.waitFor(() => expect(callTool.mock.calls.some(([name, args]) => name === 'orgx_decide' && args.action === 'list_pending')).toBe(true));
+    await vi.waitFor(() => expect(callTool.mock.calls.some(([name, args]) => name === 'orgx_list_pending_decisions')).toBe(true));
     await vi.waitFor(() => expect(footer()?.getAttribute('data-decision-id')).toBe(D2));
     const history = document.querySelector('.dq-history ox-receipt-row') as HTMLElement;
     expect(history.getAttribute('label')).toBe(`Settled in OrgX · Decision ${D1.slice(0, 4)}?`);

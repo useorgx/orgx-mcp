@@ -1,4 +1,6 @@
 import { V2_PUBLIC_SURFACE } from './toolProfiles';
+import { WIDGET_ONLY_TOOL_IDS } from './widgetToolContract';
+import { AUTHENTICATED_MCP_URL, getPublicClientProfiles } from './publicClientProfiles';
 
 type JsonRpcId = string | number | null;
 
@@ -23,10 +25,12 @@ type PublicTool = {
   };
 };
 
-const AUTHENTICATED_MCP_URL = 'https://mcp.useorgx.com/mcp';
 const PUBLIC_MCP_URL = 'https://mcp.useorgx.com/public';
 
 export const PRIMARY_AUTHENTICATED_TOOLS = V2_PUBLIC_SURFACE;
+const MODEL_OPERATION_TOOLS = PRIMARY_AUTHENTICATED_TOOLS.filter(
+  (name) => !(WIDGET_ONLY_TOOL_IDS as readonly string[]).includes(name)
+);
 
 const PUBLIC_DISCOVERY_TOOLS: PublicTool[] = [
   {
@@ -45,13 +49,13 @@ const PUBLIC_DISCOVERY_TOOLS: PublicTool[] = [
     name: 'orgx_public_tool_examples',
     title: 'OrgX tool examples',
     description:
-      'Return example prompts, arguments, and sample responses for primary OrgX tools. Discovery-only; connect the authenticated MCP endpoint to execute real tools.',
+      'Return synthetic prompts and schema-valid arguments for current OrgX model operations. Describes behavior without claiming that example work ran or was approved. Connect the authenticated MCP endpoint to execute tools.',
     inputSchema: {
       type: 'object',
       properties: {
         tool_name: {
           type: 'string',
-          enum: PRIMARY_AUTHENTICATED_TOOLS,
+          enum: MODEL_OPERATION_TOOLS,
           description:
             'Optional authenticated OrgX tool name to focus the examples on.',
         },
@@ -154,447 +158,142 @@ function buildCapabilitiesPayload() {
       'one-off notes that should not enter team memory',
     ],
     primary_authenticated_tools: PRIMARY_AUTHENTICATED_TOOLS,
+    compatibility_profiles: getPublicClientProfiles(),
+    profile_note:
+      'Profiles describe registered tool inventories. OAuth scopes, workspace access and operation policy still apply to every authenticated call.',
     safety_note:
       'This public endpoint is discovery-only. It never returns customer workspace data and never executes authenticated OrgX actions.',
   };
 }
 
-const TOOL_EXAMPLES: Record<
-  (typeof PRIMARY_AUTHENTICATED_TOOLS)[number],
-  {
-    prompt: string;
-    arguments: Record<string, unknown>;
-    sample_response: Record<string, unknown>;
-  }
-> = {
-  orgx_decide: {
-    prompt:
-      'Remember this decision for the team: we are moving onboarding analytics to PostHog.',
-    arguments: {
-      action: 'remember',
-      decision: 'Move onboarding analytics to PostHog',
-      context: 'Chosen for funnel visibility and product-led activation reporting.',
-    },
-    sample_response: {
-      saved: true,
-      type: 'decision',
-      recall_hint: 'Ask "what did we decide about onboarding analytics?"',
-    },
-  },
-  orgx_search: {
-    prompt: 'What did we decide about billing?',
-    arguments: {
-      query: 'billing decisions',
-      type: 'decision',
-    },
-    sample_response: {
-      results: [
-        {
-          type: 'decision',
-          title: 'Billing provider direction',
-          excerpt: 'Use Stripe Checkout for the first paid conversion path.',
-        },
-      ],
-    },
-  },
-  orgx_inspect: {
-    prompt: 'Show me the full context for this task before I work on it.',
-    arguments: {
-      type: 'task',
-      id: 'task_123',
-      hydrate_context: true,
-    },
-    sample_response: {
-      task: { id: 'task_123', title: 'Prepare launch checklist' },
-      hydrated_context: [],
-    },
-  },
-  orgx_recommend: {
-    prompt: 'What should we prioritize next?',
-    arguments: {
-      mode: 'next_action',
-      entity_type: 'workspace',
-      limit: 3,
-    },
-    sample_response: {
-      recommendations: [{ title: 'Unblock launch checklist', priority: 'high' }],
-    },
-  },
-  orgx_write: {
-    prompt: 'Create a high-priority task under this milestone.',
-    arguments: {
-      operation: 'create',
-      type: 'task',
-      milestone_id: 'milestone_123',
-      title: 'Prepare launch checklist',
-      priority: 'high',
-      idempotency_key: 'example-create-task-1',
-    },
-    sample_response: {
-      type: 'task',
-      data: { id: 'task_123', title: 'Prepare launch checklist' },
-    },
-  },
-  orgx_attach: {
-    prompt: 'Attach this PR as proof for the task.',
-    arguments: {
-      type: 'task',
-      id: 'task_123',
-      name: 'Launch checklist PR',
-      artifact_type: 'eng.pull_request',
-      external_url: 'https://github.com/useorgx/example/pull/1',
-      agent_type: 'engineering',
-      company_stage: 'founder_led_company',
-      business_outcome: 'Ship the launch checklist fix with reviewable proof.',
-      owner: 'engineering-agent',
-      review_date: '2026-05-27',
-      verification: ['unit tests pass', 'PR review requested'],
-      idempotency_key: 'example-attach-pr-1',
-    },
-    sample_response: {
-      artifact: { id: 'artifact_123', status: 'approved' },
-    },
-  },
-  orgx_act: {
-    prompt: 'Complete this task after proof is attached.',
-    arguments: {
-      type: 'task',
-      id: 'task_123',
-      action: 'complete',
-    },
-    sample_response: {
-      transition: { from: 'in_progress', to: 'completed' },
-    },
-  },
-  orgx_plan: {
-    prompt: 'Start a tracked plan for the new onboarding flow.',
-    arguments: {
-      action: 'start',
-      feature_name: 'New onboarding flow',
-      initial_plan: 'Draft the first-pass scope and owners.',
-    },
-    sample_response: {
-      session_id: 'plan_123',
-    },
-  },
-  orgx_spawn: {
-    prompt: 'Estimate this engineering task before delegating it.',
-    arguments: {
-      action: 'estimate',
-      title: 'Audit onboarding funnel',
-      agent_type: 'engineering-agent',
-      model_tier: 'standard',
-      budget_mode: 'cheapest_valid',
-      max_cost_usd: 0.5,
-    },
-    sample_response: {
-      estimate_only: true,
-      tier: 'standard',
-      estimated_cost_usd: 0.12,
-    },
-  },
-  orgx_submit_receipt: {
-    prompt: 'Submit the proof receipt for this completed task.',
-    arguments: {
-      receipt_type: 'proof',
-      entity_type: 'task',
-      entity_id: 'task_123',
-      summary: 'PR merged and tests passed.',
-      artifact_type: 'eng.pull_request',
-      agent_type: 'engineering',
-      business_outcome: 'Ship the launch checklist fix with reviewable proof.',
-      verification_status: 'passed',
-      evidence: { pull_request: 'https://github.com/useorgx/example/pull/1' },
-      idempotency_key: 'example-receipt-1',
-    },
-    sample_response: {
-      receipt_id: 'receipt_123',
-    },
-  },
-  orgx_emit_activity: {
-    prompt: 'Record execution progress for the active run.',
-    arguments: {
-      phase: 'running',
-      message: 'Implementation started.',
-    },
-    sample_response: {
-      ok: true,
-    },
-  },
-  orgx_request_attention: {
-    prompt:
-      'Ask the initiative owner for permission and preserve this Claude Code session.',
-    arguments: {
-      initiative_id: '00000000-0000-4000-8000-000000000000',
-      correlation_id: 'claude-permission-1',
-      source_client: 'claude-code',
-      source_tool: 'permission_prompt',
-      source_session_id: 'claude-session-123',
-      idempotency_key: 'claude-permission-1',
-      attention_kind: 'permission',
-      question: 'May this session update the deployment configuration?',
-      context: 'The scoped config diff is prepared but has not been applied.',
-      impact_if_delayed: 'Deployment work remains paused.',
-      response_mode: 'confirmation',
-      continuation: {
-        strategy: 'resume_session',
-        session_handle: 'claude-session-123',
-      },
-    },
-    sample_response: {
-      decision_id: '00000000-0000-4000-8000-000000000001',
-      status: 'pending',
-    },
-  },
-  orgx_poll_attention: {
-    prompt: 'Check whether the owner answered a preserved attention request.',
-    arguments: {
-      attention_id: '00000000-0000-4000-8000-000000000001',
-    },
-    sample_response: {
-      question: {
-        resolved: true,
-        answer: 'confirmed',
-        continuation: { should_resume: true },
-      },
-    },
-  },
-  orgx_ack_attention: {
-    prompt: 'Confirm that native execution resumed after applying the answer.',
-    arguments: {
-      attention_id: '00000000-0000-4000-8000-000000000001',
-      state: 'resumed',
-      idempotency_key: 'claude-permission-1-resumed',
-      session_handle: 'claude-session-123',
-    },
-    sample_response: {
-      ok: true,
-      continuation: { state: 'resumed' },
-    },
-  },
-  orgx_request_question: {
-    prompt:
-      'Pause this Codex session and ask the initiative owner which launch direction to use.',
-    arguments: {
-      initiative_id: '00000000-0000-4000-8000-000000000000',
-      correlation_id: 'codex-launch-question-1',
-      source_client: 'codex',
-      source_tool: 'request_user_input',
-      source_session_id: 'codex-session-123',
-      idempotency_key: 'codex-launch-question-1',
-      question: 'Which launch direction should this session implement?',
-      context:
-        'The working tree and run are preserved. The selected option changes the implementation direction.',
-      response_mode: 'single_select',
-      options: [
-        { id: 'focused', label: 'Focused launch' },
-        { id: 'broad', label: 'Broad launch' },
-      ],
-    },
-    sample_response: {
-      decision_id: '00000000-0000-4000-8000-000000000001',
-      status: 'pending',
-    },
-  },
-  orgx_poll_question: {
-    prompt: 'Check whether the initiative owner answered the paused question.',
-    arguments: {
-      question_id: '00000000-0000-4000-8000-000000000001',
-    },
-    sample_response: {
-      question: {
-        resolved: true,
-        answer: 'Focused launch',
-        continuation: { should_resume: true },
-      },
-    },
-  },
-  orgx_emit_execution_graph: {
-    prompt: 'Emit the execution graph and trust ledger for the active run.',
-    arguments: {
-      initiative_id: '00000000-0000-0000-0000-000000000000',
-      nodes: [
-        {
-          id: 'build',
-          type: 'task',
-          title: 'Build the feature',
-          status: 'completed',
-          requires_evidence: true,
-          verification: { state: 'passed', evidence_ref: 'pr#1' },
-        },
-      ],
-    },
-    sample_response: {
-      ok: true,
-    },
-  },
-  check_execution_readiness: {
-    prompt: 'Check whether this workspace is ready to dispatch agent work.',
-    arguments: {},
-    sample_response: {
-      ready: true,
-      missing: [],
-    },
-  },
-  orgx_bootstrap: {
-    prompt: 'Start an OrgX MCP session and show me the available v2 tools.',
-    arguments: {
-      client_name: 'example-client',
-    },
-    sample_response: {
-      profile: 'v2',
-      visible_tools_count: PRIMARY_AUTHENTICATED_TOOLS.length,
-      visible_tools: PRIMARY_AUTHENTICATED_TOOLS,
-    },
-  },
-  approve_decision: {
-    prompt: 'Approve the selected decision from the decisions widget.',
-    arguments: { decision_id: 'decision_123', note: 'Approved for launch.' },
-    sample_response: { status: 'approved' },
-  },
-  reject_decision: {
-    prompt: 'Request changes on this decision.',
-    arguments: { decision_id: 'decision_123', reason: 'Need clearer proof.' },
-    sample_response: { status: 'rejected' },
-  },
-  get_agent_status: {
-    prompt: 'Show me what the agents are doing.',
-    arguments: { include_idle: false },
-    sample_response: { agents: [{ id: 'agent_123', status: 'running' }] },
-  },
-  get_initiative_pulse: {
-    prompt: 'Show the health of this initiative.',
-    arguments: { initiative_id: 'initiative_123' },
-    sample_response: { health: 'on_track', blockers: [] },
-  },
-  scaffold_initiative: {
-    prompt: 'Create an initiative with workstreams, milestones, and tasks.',
-    arguments: {
-      mode: 'scaffold',
-      title: 'Example launch',
-      objective_ids: ['objective_123'],
-      workstreams: [
-        {
-          title: 'Engineering',
-          milestones: [{ title: 'Ship worker', tasks: [{ title: 'Merge PR' }] }],
-        },
-      ],
-    },
-    sample_response: {
-      initiative_id: 'initiative_123',
-      ref_map: {
-        initiative: 'initiative_123',
-        'workstream:engineering': 'workstream_123',
-      },
-      preferred_next_calls: [
-        {
-          tool: 'orgx_inspect',
-          args: {
-            type: 'initiative',
-            id: 'initiative_123',
-            hydrate_context: true,
-          },
-        },
-      ],
-    },
-  },
-  spawn_agent_task: {
-    prompt: 'Have an engineering agent handle this task.',
-    arguments: {
-      agent: 'engineering-agent',
-      task: 'Implement the worker fix and return a PR URL or structured blocker.',
-      model_tier: 'standard',
-      budget_mode: 'cheapest_valid',
-      max_cost_usd: 0.5,
-    },
-    sample_response: {
-      run_id: 'run_123',
-      status: 'queued',
-      model_tier: 'standard',
-      budget_mode: 'cheapest_valid',
-    },
-  },
-  handoff_task: {
-    prompt: 'Hand this task to the design agent.',
-    arguments: { task_id: 'task_123', agent: 'design-agent', spawn: true },
-    sample_response: { status: 'handed_off' },
-  },
-  recommend_next_action: {
-    prompt: 'Show the next best actions assigned to the operations agent.',
-    arguments: {
-      entity_type: 'workspace',
-      entity_id: 'default',
-      agent_id: 'operations-agent',
-      domain: 'operations',
-      canonical_only: true,
-      limit: 3,
-    },
-    sample_response: { recommendations: [{ title: 'Resolve blocker' }] },
-  },
-  query_org_memory: {
-    prompt: 'Search memory for billing launch decisions.',
-    arguments: { query: 'billing launch decisions', scope: 'decisions' },
-    sample_response: { results: [{ title: 'Billing launch direction' }] },
-  },
-  recall_memory: {
-    prompt: 'Recall prior decisions about onboarding.',
-    arguments: { query: 'onboarding decisions', scope: 'decisions' },
-    sample_response: { results: [{ title: 'Onboarding analytics' }] },
-  },
-  approve_agent_work: {
-    prompt: 'Show agent work awaiting approval.',
-    arguments: { action: 'list', limit: 5 },
-    sample_response: { decisions: [{ id: 'decision_123', status: 'pending' }] },
-  },
-  delegate_agent_task: {
-    prompt: 'Delegate this launch task to an agent.',
-    arguments: { agent: 'marketing-agent', task: 'Draft the launch email.' },
-    sample_response: { run_id: 'run_123', status: 'queued' },
-  },
-  track_project_progress: {
-    prompt: 'Track progress for this project.',
-    arguments: { initiative_id: 'initiative_123' },
-    sample_response: { health: 'on_track', progress: 62 },
-  },
-  review_artifact: {
-    prompt: 'Review the next artifact awaiting approval.',
-    arguments: { workspace_id: 'workspace_123' },
-    sample_response: { artifact: { id: 'artifact_123', status: 'in_review' } },
-  },
-  get_morning_brief: {
-    prompt: 'Show today’s OrgX morning brief.',
-    arguments: { workspace_id: 'workspace_123' },
-    sample_response: { brief: { receipts: [], exceptions: [] } },
-  },
-  get_operator_chronicle: {
-    prompt:
-      'Show the operator chronicle for the last 30 days so I can verify decisions, artifacts, PRs, velocity, goals, and gaps.',
-    arguments: { period: '30d' },
-    sample_response: {
-      reportingNarrative: {
-        briefMarkdown:
-          '2 decisions recorded, 3 proof artifacts attached, and 1 launch gap remains open.',
-      },
-      topPriorities: [{ title: 'Close launch proof gap', status: 'review' }],
-      prVelocity: { merged: 4, open: 1 },
-      gaps: [{ title: 'Missing final proof receipt', severity: 'medium' }],
-    },
-  },
-  consolidate_pr: {
-    prompt:
-      'Create a durable consolidation_pass receipt for this pull request.',
-    arguments: {
-      pr_url: 'https://github.com/useorgx/example/pull/42',
-      initiative_id: '00000000-0000-4000-8000-000000000000',
-      reviewer_note: 'Focus on duplication and dead code before approval.',
-    },
-    sample_response: {
-      artifact_id: 'artifact_123',
-      artifact_type: 'orchestration.consolidation_pass',
-      verdict: 'ship',
-      aq_score: 0.91,
-    },
-  },
+// Synthetic records make references consistent across examples. Replace each
+// identifier with one returned by the authenticated workspace before calling.
+const EXAMPLE_IDS = {
+  workspace: '00000000-0000-4000-8000-000000000001',
+  initiative: '00000000-0000-4000-8000-000000000002',
+  workstream: '00000000-0000-4000-8000-000000000003',
+  milestone: '00000000-0000-4000-8000-000000000004',
+  task: '00000000-0000-4000-8000-000000000005',
+  plan: '00000000-0000-4000-8000-000000000006',
+  decision: '00000000-0000-4000-8000-000000000007',
+  artifact: '00000000-0000-4000-8000-000000000008',
+  command: '00000000-0000-4000-8000-000000000009',
+};
+const EXAMPLE_PLAN = {
+  initiative: { title: 'Example onboarding launch', summary: 'Prepare a reviewed launch checklist.' },
+  workstreams: [{
+    name: 'Engineering', domain: 'engineering',
+    milestones: [{ title: 'Prepare launch', tasks: [{ title: 'Prepare launch checklist', type: 'implement' }] }],
+  }],
+};
+const EXAMPLE_RECEIPT = {
+  schema_version: 'agent-work-receipt/v0.2', receipt_id: 'example:launch-checklist:1',
+  intent: { summary: 'Prepare an example launch checklist', criteria: [{ id: 'checklist', text: 'Checklist is available for review', source: 'requested' }] },
+  actor: { type: 'agent', id: 'example-agent', runtime: { name: 'example-client' } },
+  authority: { mode: 'none', status: 'unknown', scope: { actions: [], resources: [] } },
+  actions: [{ id: 'prepare', type: 'document.prepare', summary: 'Prepare an illustrative checklist', status: 'completed' }],
+  artifacts: [],
+  evidence: [{ id: 'note', kind: 'note', summary: 'Illustrative evidence; replace with observed proof.', observed_at: '2026-10-08T12:00:00Z' }],
+  outcome: { status: 'unknown', summary: 'Human review has not been recorded.', acceptance: { status: 'pending' }, criteria_results: [{ criterion_id: 'checklist', status: 'unknown', evidence_ids: ['note'] }] },
+  verification: { status: 'unverified', method: 'No verification performed for this synthetic example.', checks: [], evidence_ids: [] },
+  cost: { currency: 'USD', total: 0, estimated: true },
+  lineage: { parent_receipt_refs: [], references: [] }, human_interventions: [],
+  timestamps: { started_at: '2026-10-08T12:00:00Z', completed_at: '2026-10-08T12:00:00Z', issued_at: '2026-10-08T12:00:00Z' },
+};
+type ToolExample = {
+  prompt: string;
+  arguments: Record<string, unknown>;
+  expected_behavior: string;
+};
+const example = (prompt: string, args: Record<string, unknown>, expectedBehavior: string): ToolExample => ({
+  prompt, arguments: args, expected_behavior: expectedBehavior,
+});
+const workReference = { type: 'task', id: EXAMPLE_IDS.task };
+const proofLocation = { external_url: 'https://github.com/useorgx/example/pull/1' };
+
+const TOOL_EXAMPLES: Record<string, ToolExample> = {
+  orgx_get_workspace_context: example('Read my authorized workspace context.', {},
+    'Reads workspace context without selecting a workspace or creating a session.'),
+  orgx_search: example('Find prior billing decisions.', { query: 'billing', type: 'decision' },
+    'Returns authorized search results and pagination; follow returned references.'),
+  orgx_inspect: example('Read this task before continuing it.', { ...workReference, hydrate_context: true },
+    'Reads one authorized work record and its linked context.'),
+  orgx_get_operator_brief: example('Show the workspace reporting for the last 30 days.', { period: '30d' },
+    'Reads recorded chronology, progress, proof, priorities and gaps.'),
+  orgx_get_next_actions: example('What should we prioritize next?', { entity_type: 'workspace', entity_id: EXAMPLE_IDS.workspace, limit: 3 },
+    'Returns suggested priorities; the compatibility service records metered MCP allowance usage.'),
+  orgx_get_agent_status: example('Show active agents.', { include_idle: false },
+    'Reads agent status; the compatibility service records metered MCP allowance usage.'),
+  orgx_get_initiative_progress: example('Read the initiative progress and blockers.', { initiative_id: EXAMPLE_IDS.initiative },
+    'Reads progress and review gates; the compatibility service records metered MCP allowance usage.'),
+  orgx_get_operation_status: example('Check the operation returned by the previous call.', { operation_id: `command:${EXAMPLE_IDS.command}` },
+    'Reads command state without starting or settling work.'),
+  orgx_check_execution_readiness: example('Check readiness before dispatch.', {},
+    'Reports credential and configuration gaps without dispatching work.'),
+  orgx_start_plan: example('Start a tracked onboarding plan.', { title: 'Example onboarding launch', initial_plan: '# Onboarding launch\nPrepare scope and owners.', idempotency_key: 'example:start-plan:1' },
+    'Creates a planning draft. Use the returned plan_ref and revision for later edits.'),
+  orgx_read_plan: example('Read the current planning draft.', { session_id: EXAMPLE_IDS.plan },
+    'Returns the draft and authoritative revision; no plan changes are made.'),
+  orgx_save_plan: example('Save the revised draft after reading its current revision.', { session_id: EXAMPLE_IDS.plan, plan_content: '# Onboarding launch\nPrepare checklist and review.', expected_version: 1, edit_summary: 'Add the review step.' },
+    'Saves when the expected revision matches; stale revisions return a conflict.'),
+  orgx_complete_plan: example('Complete the planning draft without launching work.', { session_id: EXAMPLE_IDS.plan, expected_version: 1, plan_content: '# Final launch plan\nPrepare and review the checklist.' },
+    'Completes the planning session; executable work remains separate.'),
+  orgx_validate_initiative_plan: example('Validate this hierarchy before creation.', { plan: EXAMPLE_PLAN },
+    'Returns structural findings and a digest without creating work.'),
+  orgx_create_initiative_hierarchy: example('Create the validated hierarchy without launching it.', { plan: EXAMPLE_PLAN, idempotency_key: 'example:create-hierarchy:1' },
+    'Atomically creates private work records. Chain the actual returned references into later calls.'),
+  orgx_create_initiative: example('Create the launch initiative.', { title: 'Example onboarding launch', idempotency_key: 'example:create-initiative:1' },
+    'Creates an initial initiative. Workspace policy may require objectives.'),
+  orgx_create_workstream: example('Create engineering work under this initiative.', { title: 'Engineering', initiative_id: EXAMPLE_IDS.initiative },
+    'Creates one workstream without starting or dispatching it.'),
+  orgx_create_milestone: example('Create a milestone under this workstream.', { title: 'Prepare launch', workstream_id: EXAMPLE_IDS.workstream },
+    'Creates one milestone without starting or completing work.'),
+  orgx_create_task: example('Create a task under this workstream and milestone.', { title: 'Prepare launch checklist', workstream_id: EXAMPLE_IDS.workstream, milestone_id: EXAMPLE_IDS.milestone, priority: 'high' },
+    'Creates one task; it remains separate from agent dispatch.'),
+  orgx_update_work: example('Update the task description and priority.', { ...workReference, fields: { description: 'Prepare a reviewable launch checklist.', priority: 'high' } },
+    'Updates content only; status, approval and execution authority cannot be set by this patch.'),
+  orgx_estimate_agent_task: example('Estimate the existing engineering task before dispatch.', { task: { task_id: EXAMPLE_IDS.task }, agent_type: 'engineering', max_cost_usd: 0.5 },
+    'Returns routing and cost estimates without starting a run.'),
+  orgx_start_agent_task: example('Dispatch this existing task within the budget.', { task_id: EXAMPLE_IDS.task, agent_type: 'engineering', max_cost_usd: 0.5 },
+    'Dispatches only when eligibility, authority, budget and acceptance policy allow it; may incur costs.'),
+  orgx_handoff_task: example('Hand this task to the design specialist.', { task_id: EXAMPLE_IDS.task, agent_type: 'design' },
+    'Uses the canonical handoff lifecycle; permitted dispatch may incur costs.'),
+  orgx_launch_initiative: example('Launch this initiative after readiness and approval checks.', { initiative_id: EXAMPLE_IDS.initiative },
+    'May dispatch agents and incur costs after OrgX policy checks.'),
+  orgx_pause_work: example('Pause this task and its active execution.', { level: 'task', id: EXAMPLE_IDS.task },
+    'Uses lifecycle control to pause work and stop active runs; does not complete work.'),
+  orgx_resume_work: example('Resume this paused task.', { level: 'task', id: EXAMPLE_IDS.task },
+    'Uses permitted recovery and redispatch; may incur costs.'),
+  orgx_retry_work: example('Retry this eligible failed task.', { level: 'task', id: EXAMPLE_IDS.task },
+    'Preserves attempt lineage and checks recovery policy before redispatch.'),
+  orgx_cancel_work: example('Cancel this task and active execution.', { level: 'task', id: EXAMPLE_IDS.task },
+    'Cancels through lifecycle control without reporting successful completion.'),
+  orgx_capture_decision: example('Record the proposed onboarding analytics decision for review.', { decision: 'Move onboarding analytics to PostHog', context: 'Proposed for funnel reporting; human review is pending.' },
+    'Captures a decision and returns its recorded review state; does not approve it.'),
+  orgx_list_pending_decisions: example('List decisions waiting for review.', {},
+    'Reads pending decisions; each selected decision can be opened for human review.'),
+  orgx_open_decision_review: example('Open this decision for my review.', { decision_id: EXAMPLE_IDS.decision },
+    'Opens one pending decision. The human chooses the ruling.'),
+  orgx_attach_artifact: example('Attach the PR as reviewable proof for this task.', { ...workReference, name: 'Launch checklist PR', artifact_type: 'eng.pull_request', location: proofLocation },
+    'Registers proof in review; may trigger a paid external evaluation. Attaching does not approve or complete work.'),
+  orgx_open_artifact_review: example('Open this artifact for human review.', { artifact_id: EXAMPLE_IDS.artifact },
+    'Reads the review packet. Human actions use the review UI and its authenticated authority.'),
+  orgx_request_independent_artifact_review: example('Request an independent assessment of this artifact.', { artifact_id: EXAMPLE_IDS.artifact },
+    'Queues an evaluator selected by OrgX; may incur costs. The producing agent cannot choose the score.'),
+  orgx_complete_work_with_proof: example('Attempt task completion with the linked proof.', { ...workReference, artifact: { name: 'Launch checklist PR', artifact_type: 'eng.pull_request', ...proofLocation } },
+    'Records proof and checks completion requirements. Completion can remain blocked or awaiting review.'),
+  orgx_submit_work_receipt: example('Import the portable receipt with its producer claims preserved.', { receipt: EXAMPLE_RECEIPT, idempotency_key: 'example:receipt:1' },
+    'Imports a receipt without changing work status, authoritative verification or human acceptance.'),
+  orgx_validate_work_receipt: example('Check this portable receipt before importing it.', { receipt: EXAMPLE_RECEIPT },
+    'Checks document conformance without storing it or validating whether the evidence is true.'),
+  orgx_get_work_receipt: example('Read the receipt and its separate human judgment.', { receipt_id: 'example:launch-checklist:1' },
+    'Reads bounded producer evidence, claims, human judgment and uncertainty.'),
+  orgx_list_work_receipts: example('Find receipts for this repository.', { query: 'repo:useorgx/example', limit: 10 },
+    'Searches the ledger without model inference or judgment changes.'),
+  orgx_get_receipt_review_queue: example('Show receipt outcomes waiting for a person.', { kind: 'outcome', limit: 10 },
+    'Reads review suggestions; resolution requires the human review UI.'),
+  orgx_record_plan_edit: example('Record a feedback summary without replacing the plan.', { session_id: EXAMPLE_IDS.plan, edit_summary: 'Clarify the review owner before creation.' },
+    'Appends plan feedback; does not save markdown, complete planning or launch work.'),
 };
 
 function buildToolExamplesPayload(params: Record<string, unknown> | undefined) {
@@ -610,7 +309,7 @@ function buildToolExamplesPayload(params: Record<string, unknown> | undefined) {
 
   return {
     note:
-      'These are example payloads only. Connect https://mcp.useorgx.com/mcp with OAuth to execute real OrgX tools.',
+      'These are example payloads only, using synthetic identifiers and documents. Replace identifiers with authorized references returned by OrgX. No example is an executed result or an approval. Connect https://mcp.useorgx.com/mcp with OAuth to call real tools.',
     authenticated_endpoint: AUTHENTICATED_MCP_URL,
     examples,
   };
@@ -623,9 +322,9 @@ function buildConnectionHelpPayload(params: Record<string, unknown> | undefined)
     authenticated_endpoint: AUTHENTICATED_MCP_URL,
     public_discovery_endpoint: PUBLIC_MCP_URL,
     verification_calls: [
-      'workspace action=get',
-      'get_org_snapshot view=summary',
-      'recall_memory query="recent decisions" scope=decisions',
+      { tool: 'orgx_get_workspace_context', arguments: {} },
+      { tool: 'orgx_search', arguments: { query: 'recent decisions', type: 'decision' } },
+      { tool: 'orgx_list_work_receipts', arguments: { query: '', limit: 5 } },
     ],
   };
 
@@ -709,6 +408,13 @@ function handleToolCall(request: JsonRpcRequest) {
     case 'orgx_public_capabilities':
       return jsonRpcResult(request.id, toolResult(buildCapabilitiesPayload()));
     case 'orgx_public_tool_examples':
+      if (args.tool_name !== undefined &&
+        (typeof args.tool_name !== 'string' || !MODEL_OPERATION_TOOLS.includes(args.tool_name))) {
+        return jsonRpcError(request.id, -32602, 'Unknown current model operation', {
+          available_tools: MODEL_OPERATION_TOOLS,
+          note: 'Legacy client inventories are listed in orgx_public_capabilities.compatibility_profiles.',
+        });
+      }
       return jsonRpcResult(request.id, toolResult(buildToolExamplesPayload(args)));
     case 'orgx_public_connection_help':
       return jsonRpcResult(request.id, toolResult(buildConnectionHelpPayload(args)));
@@ -780,6 +486,8 @@ export async function handlePublicMcpDiscoveryRequest(
         description: tool.description,
       })),
       primary_authenticated_tools: PRIMARY_AUTHENTICATED_TOOLS,
+      compatibility_profiles: getPublicClientProfiles(),
+      profile_note: 'Profile inventories do not grant access. OAuth scopes, workspace access and operation policy are checked on authenticated calls.',
     });
     if (request.method === 'HEAD') {
       return new Response(null, {

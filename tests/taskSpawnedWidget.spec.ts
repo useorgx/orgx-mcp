@@ -29,7 +29,7 @@ describe('task spawned widget', () => {
 describe('task spawned widget run status', () => {
   const RUN_ID = '7f3c2a10-5b1e-4c3d-9a8f-2e6b4d1c0a99';
 
-  it('polls orgx_command_status for the spawned run and shows what it says', async () => {
+  it('polls orgx_get_operation_status for the spawned run and shows what it says', async () => {
     const { mountWidget } = await import('./fixtures/live');
     const callTool = vi.fn().mockResolvedValue({
       structuredContent: { kind: 'run', id: RUN_ID, state: 'succeeded', outcome: 'checks passed', next_poll_after_ms: null },
@@ -40,7 +40,7 @@ describe('task spawned widget run status', () => {
     });
 
     await vi.waitFor(() => {
-      expect(callTool).toHaveBeenCalledWith('orgx_command_status', { kind: 'run', id: RUN_ID });
+      expect(callTool).toHaveBeenCalledWith('orgx_get_operation_status', { kind: 'run', id: RUN_ID });
     });
     await vi.waitFor(() => {
       const footer = document.querySelector('ox-footer');

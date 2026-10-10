@@ -153,8 +153,9 @@ export const RECEIPT_CALL_TOOL_CONTRACT = {
   description:
     'App-only: records a person\'s call on a Work Ledger receipt from the OrgX panel: done, partly done, not done or blocked. The ledger keeps the latest call per receipt; it overrides the agent\'s own guess and teaches OrgX what done means. USE WHEN: the person presses a call on a receipt in the OrgX panel. DO NOT USE: from a model; models read receipts with orgx_search scope=work_ledger.',
   inputSchema: {
-    receipt_id: z.string().min(1).max(200).describe('The Work Ledger receipt the call is about.'),
+    receipt_id: z.string().min(1).max(512).describe('The Work Ledger receipt the call is about.'),
     status: z.enum(RECEIPT_CALL_STATUSES).describe('The person\'s call on the outcome.'),
+    approval_token: z.string().min(1).max(4096).describe('Hidden receipt capability supplied by the widget after a person clicks.'),
   },
   annotations: {
     readOnlyHint: false,
@@ -181,6 +182,25 @@ export const PANEL_TOOL_META = {
   'openai/toolInvocation/invoking': 'Opening OrgX...',
   'openai/toolInvocation/invoked': 'OrgX is open',
   'mcp/securitySchemes': SECURITY_SCHEMES.entityReadRequiresAuth,
+} as const;
+
+/** Current Apps use named receipt reads; the older native receipt projection
+ * remains internal to explicitly legacy contracts. */
+export const CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT = {
+  ...PANEL_SNAPSHOT_TOOL_CONTRACT,
+  description: PANEL_SNAPSHOT_TOOL_CONTRACT.description + ' Work receipts are read with orgx_list_work_receipts and orgx_get_work_receipt.',
+  inputSchema: {
+    focus: PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema.focus,
+    view: z.enum(['work', 'workspaces', 'history']).optional().describe('Optional panel view: running work, authorized workspace membership, or settled decisions.'),
+    range: PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema.range.describe('For decision history: today, 7d or 30d. Defaults to 7d.'),
+  },
+  _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
+} as const;
+
+export const CURRENT_RECEIPT_CALL_TOOL_CONTRACT = {
+  ...RECEIPT_CALL_TOOL_CONTRACT,
+  description: RECEIPT_CALL_TOOL_CONTRACT.description.replace('orgx_search scope=work_ledger', 'orgx_get_work_receipt or orgx_list_work_receipts'),
+  _meta: RECEIPT_CALL_TOOL_META as unknown as Record<string, unknown>,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1352,7 +1372,7 @@ export interface PanelSurfaceHost {
   /** GET /api/v1/work-ledger/receipts/{id} payload. Throws when the read fails. */
   fetchLedgerReceipt?(params: { workspaceId: string; id: string }): Promise<unknown>;
   /** POST /api/v1/work-ledger/decisions {kind:'outcome'}: a person's call on a receipt. Throws when refused. */
-  recordReceiptCall?(params: { workspaceId: string | null; receiptId: string; status: (typeof RECEIPT_CALL_STATUSES)[number] }): Promise<void>;
+  recordReceiptCall?(params: { workspaceId: string | null; receiptId: string; status: (typeof RECEIPT_CALL_STATUSES)[number]; approvalToken: string }): Promise<void>;
   /** The viewer's workspaces, asked for only when the panel opens its switcher. */
   fetchWorkspaces?(): Promise<unknown[] | null>;
   /** A live-feed grant for this workspace, or null when live is unavailable. */
@@ -1391,6 +1411,7 @@ export async function handlePanelSnapshot(
     let decisions: unknown[] | null = null;
     let artifacts: unknown[] | null = null;
     let approvalMeta: Record<string, unknown> | null = null;
+    let receiptApprovalMeta: Record<string, unknown> | null = null;
     let appProof: unknown = undefined;
 
     let work: PanelWork | undefined;
@@ -1441,7 +1462,10 @@ export async function handlePanelSnapshot(
       const query = typeof args.query === 'string' && args.query.trim() ? args.query.trim() : receiptRangeQuery(range, host.now?.());
       try {
         const payload = host.fetchLedgerReceipts ? await host.fetchLedgerReceipts({ workspaceId: workspace.id, query, limit: PANEL_RECEIPT_LIMIT }) : null;
-        snapshot.receipts = buildPanelReceipts(payload, query);
+        const raw = asRecord(payload);
+        const split = splitWidgetApprovalMeta(asRecord(raw?.data) ?? raw ?? {});
+        receiptApprovalMeta = split.meta;
+        snapshot.receipts = buildPanelReceipts(raw ? { ...raw, data: split.data } : null, query);
       } catch (error) {
         snapshot.receipts = buildPanelReceipts(null, query, ledgerFailure(error));
       }
@@ -1450,7 +1474,10 @@ export async function handlePanelSnapshot(
       const id = args.receipt_id.trim();
       try {
         const payload = host.fetchLedgerReceipt ? await host.fetchLedgerReceipt({ workspaceId: workspace.id, id }) : null;
-        snapshot.receipt = buildPanelReceiptDetail(payload, id);
+        const raw = asRecord(payload);
+        const split = splitWidgetApprovalMeta(asRecord(raw?.data) ?? raw ?? {});
+        receiptApprovalMeta = split.meta;
+        snapshot.receipt = buildPanelReceiptDetail(raw ? { ...raw, data: split.data } : null, id);
       } catch (error) {
         snapshot.receipt = buildPanelReceiptDetail(null, id, ledgerFailure(error));
       }
@@ -1477,7 +1504,7 @@ export async function handlePanelSnapshot(
     return {
       content: [{ type: 'text', text: summarizePanelSnapshot(snapshot) }],
       structuredContent: snapshot as unknown as Record<string, unknown>,
-      ...(widgetMeta ? { _meta: { [WIDGET_APPROVAL_META_KEY]: widgetMeta } } : {}),
+      ...(widgetMeta || receiptApprovalMeta ? { _meta: { [WIDGET_APPROVAL_META_KEY]: { ...widgetMeta, ...receiptApprovalMeta } } } : {}),
     } as CallToolResult;
   });
 }
@@ -1486,29 +1513,34 @@ export function registerPanelSurface(
   server: McpServer,
   allowedTools: ReadonlySet<string> | null,
   host: PanelSurfaceHost,
-  withClientContext: <T extends Record<string, unknown>>(shape: T) => T = (shape) => shape
+  withClientContext: <T extends Record<string, unknown>>(shape: T) => T = (shape) => shape,
+  currentOperations = false
 ): void {
   if (allowedTools && !allowedTools.has(PANEL_TOOL_ID)) return;
+  const contract = currentOperations ? CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT : PANEL_SNAPSHOT_TOOL_CONTRACT;
+  const shape = withClientContext({ ...contract.inputSchema });
   registerAppTool(
     server,
     PANEL_TOOL_ID,
     {
       title: PANEL_SNAPSHOT_TOOL_CONTRACT.title,
-      description: PANEL_SNAPSHOT_TOOL_CONTRACT.description,
-      inputSchema: withClientContext({ ...PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema }),
+      description: contract.description,
+      inputSchema: currentOperations ? z.object(shape).strict() : shape,
       annotations: { ...PANEL_SNAPSHOT_TOOL_CONTRACT.annotations },
       _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
     } as Parameters<typeof registerAppTool>[2],
     async (args: Record<string, unknown>) => handlePanelSnapshot(host, args)
   );
   if (allowedTools && !allowedTools.has(RECEIPT_CALL_TOOL_ID)) return;
+  const receiptContract = currentOperations ? CURRENT_RECEIPT_CALL_TOOL_CONTRACT : RECEIPT_CALL_TOOL_CONTRACT;
+  const receiptShape = withClientContext({ ...receiptContract.inputSchema });
   registerAppTool(
     server,
     RECEIPT_CALL_TOOL_ID,
     {
       title: RECEIPT_CALL_TOOL_CONTRACT.title,
-      description: RECEIPT_CALL_TOOL_CONTRACT.description,
-      inputSchema: withClientContext({ ...RECEIPT_CALL_TOOL_CONTRACT.inputSchema }),
+      description: receiptContract.description,
+      inputSchema: currentOperations ? z.object(receiptShape).strict() : receiptShape,
       annotations: { ...RECEIPT_CALL_TOOL_CONTRACT.annotations },
       _meta: RECEIPT_CALL_TOOL_META as unknown as Record<string, unknown>,
     } as Parameters<typeof registerAppTool>[2],
@@ -1525,13 +1557,15 @@ export async function handleReceiptCall(host: PanelSurfaceHost, args: Record<str
     const status = (RECEIPT_CALL_STATUSES as readonly string[]).includes(String(args?.status)) ? (args.status as (typeof RECEIPT_CALL_STATUSES)[number]) : null;
     const fail = (message: string): CallToolResult => ({ isError: true, content: [{ type: 'text', text: message }], structuredContent: { recorded: false, receipt_id: receiptId, status, reason: message } });
     if (!receiptId || !status) return fail('A receipt and a call are required.');
+    const approvalToken = typeof args.approval_token === 'string' ? args.approval_token.trim() : '';
+    if (!approvalToken) return fail('Open the receipt again before recording your call.');
     if (!host.recordReceiptCall) return fail('Calls on receipts are not available here.');
     let workspace = host.sessionWorkspace();
     if (!workspace) {
       try { workspace = await host.inferWorkspace(); } catch { workspace = null; }
     }
     try {
-      await host.recordReceiptCall({ workspaceId: workspace?.id ?? null, receiptId, status });
+      await host.recordReceiptCall({ workspaceId: workspace?.id ?? null, receiptId, status, approvalToken });
     } catch (error) {
       return fail(ledgerFailure(error).replace('has nothing for this yet', 'has no receipt with that id'));
     }

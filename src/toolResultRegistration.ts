@@ -1,10 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS } from './claudeDirectoryToolMetadata';
+import { CLAUDE_DIRECTORY_ADAPTER_IDS } from './claudeDirectoryTools';
 import { getToolOutputSchema } from './openaiOutputSchemas';
 import { sanitizeToolResultGuidance } from './toolGuidance';
 import { prepareSearchResult, type SearchDeliveryObservation } from './searchResultDelivery';
 import { withConsistentToolVisibility } from './toolVisibility';
+import { getWorkflowToolContract } from './workflowTools';
+import { buildWidgetToolSurface } from './widgetToolSurface';
 
 function directoryToolMeta(name: string, meta: Record<string, unknown> | undefined) {
   if (name !== 'review_artifact') return meta;
@@ -13,6 +16,18 @@ function directoryToolMeta(name: string, meta: Record<string, unknown> | undefin
   const next = { ...meta };
   delete next['openai/outputTemplate'];
   delete next['ui/resourceUri'];
+  if (next.ui && typeof next.ui === 'object') {
+    next.ui = { ...(next.ui as Record<string, unknown>) };
+    delete (next.ui as Record<string, unknown>).resourceUri;
+  }
+  return next;
+}
+
+function withoutWidgetPresentation(meta: Record<string, unknown> | undefined) {
+  const next = { ...meta };
+  delete next['openai/outputTemplate'];
+  delete next['ui/resourceUri'];
+  delete next['openai/widgetAccessible'];
   if (next.ui && typeof next.ui === 'object') {
     next.ui = { ...(next.ui as Record<string, unknown>) };
     delete (next.ui as Record<string, unknown>).resourceUri;
@@ -38,7 +53,9 @@ export function installToolResultGuidanceWrapper(
   allowedTools: ReadonlySet<string> | null,
   onSearchResult?: (toolId: string, observation: SearchDeliveryObservation) => void,
   searchContext?: () => Promise<{ meta: Record<string, unknown> } | null>,
-  includeDirectoryMetadata = false
+  includeDirectoryMetadata = false,
+  profile?: string,
+  legacyDirectoryContracts = false
 ) {
   const server = mcpServer as unknown as {
     registerTool: (
@@ -48,25 +65,33 @@ export function installToolResultGuidanceWrapper(
     ) => unknown;
   };
   const original = server.registerTool.bind(server);
+  const registeredTools = new Set<string>();
 
   server.registerTool = ((
     name: string,
     config: Record<string, unknown>,
     handler: (...args: unknown[]) => unknown
   ) => {
-    const registeredSchema = getToolOutputSchema(name);
+    // Retained directory adapters return their original flat router outputs.
+    // Some IDs also name new operations with different envelopes. The old
+    // registrations never advertised output schemas, so do not infer the new
+    // operation's schema for them. Explicit registration schemas still win.
+    const registeredSchema = (legacyDirectoryContracts || profile === 'claude-directory-legacy') && CLAUDE_DIRECTORY_ADAPTER_IDS.includes(name)
+      ? undefined : getToolOutputSchema(name);
     // One visibility rule for every registration path (src/toolVisibility.ts).
     const visibleConfig = {
       ...config,
-      ...(includeDirectoryMetadata && CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS[name]
-        ? { description: CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS[name] }
+      ...(includeDirectoryMetadata && typeof config.description === 'string'
+        ? { description: (getWorkflowToolContract(name) ? config.description : CLAUDE_DIRECTORY_TOOL_DESCRIPTIONS[name] ?? config.description).split(/(?:Also known as:|USE WHEN:|NEXT:|DO NOT USE:)/i)[0].trim() }
         : {}),
       ...(includeDirectoryMetadata && typeof config.title === 'string' && config.title.trim()
         ? { annotations: { title: config.title, ...(config.annotations as Record<string, unknown> | undefined) } }
         : {}),
       _meta: withConsistentToolVisibility(
         name,
-        includeDirectoryMetadata
+        profile === 'claude-code-legacy'
+          ? withoutWidgetPresentation(config._meta as Record<string, unknown> | undefined)
+          : includeDirectoryMetadata
           ? directoryToolMeta(name, config._meta as Record<string, unknown> | undefined)
           : config._meta as Record<string, unknown> | undefined
       ),
@@ -76,14 +101,21 @@ export function installToolResultGuidanceWrapper(
         ? { ...visibleConfig, outputSchema: registeredSchema }
         : visibleConfig;
     const wrappedHandler = async (...args: unknown[]) => {
-      const result = prepareSearchResult(name, sanitizeToolResultGuidance(
+      const prepared = prepareSearchResult(name, sanitizeToolResultGuidance(
         (await handler(...args)) as
           | { structuredContent?: unknown }
           | null
           | undefined,
         allowedTools,
-        includeDirectoryMetadata
+        profile ?? includeDirectoryMetadata
       ), (observation) => onSearchResult?.(name, observation));
+      const result = prepared && typeof prepared === 'object' ? {
+        ...prepared,
+        _meta: {
+          ...(prepared as { _meta?: Record<string, unknown> })._meta,
+          'orgx/toolSurface': buildWidgetToolSurface(profile ?? 'v2', registeredTools, allowedTools),
+        },
+      } : prepared;
       if (!result || !searchContext || !['orgx_search', 'query_org_memory'].includes(name)) return result;
       try {
         const context = await searchContext();
@@ -97,6 +129,8 @@ export function installToolResultGuidanceWrapper(
         return result;
       }
     };
-    return original(name, nextConfig, wrappedHandler);
+    const tool = original(name, nextConfig, wrappedHandler);
+    registeredTools.add(name);
+    return tool;
   }) as typeof server.registerTool;
 }

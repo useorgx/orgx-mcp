@@ -946,11 +946,12 @@ export const authHandler = {
             ],
             primary_tools: PRIMARY_AUTHENTICATED_TOOLS,
             integration_tool_chain: [
-              'orgx_bootstrap',
-              'scaffold_initiative',
-              'get_initiative_pulse',
-              'get_operator_chronicle',
-              'orgx_submit_receipt',
+              'orgx_get_workspace_context',
+              'orgx_validate_initiative_plan',
+              'orgx_create_initiative_hierarchy',
+              'orgx_get_initiative_progress',
+              'orgx_get_operator_brief',
+              'orgx_submit_work_receipt',
             ],
             answer_engine_topics: [
               'organizational continuity for AI agents',

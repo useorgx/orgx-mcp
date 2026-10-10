@@ -250,7 +250,7 @@
       entity.updated_at = new Date().toISOString();
     }
     if (fixtureState === 'polling' && entity) {
-      // A real run id: the card asks orgx_command_status instead of guessing.
+      // A real run id: the card asks orgx_get_operation_status instead of guessing.
       entity.status = 'queued';
       entity.run_id = '7f3c2a10-5b1e-4c3d-9a8f-2e6b4d1c0a99';
       entity.updated_at = new Date().toISOString();
@@ -475,7 +475,7 @@
 
     /* ── Run status: ask OrgX, never guess ─────────────────────────────
        A spawn result is a snapshot from the moment the tool ran. When it
-       carries a run id the card polls orgx_command_status and shows what
+       carries a run id the card polls orgx_get_operation_status and shows what
        the server says (queued, running, done, failed, cancelled), waiting
        next_poll_after_ms between checks and stopping when it is null. */
     var runStatus = { runId: null, timer: null, failures: 0, data: null, checkedAt: null, unreachable: false, missing: false };
@@ -549,7 +549,7 @@
       }
       var runtime = window.OrgXWidgetRuntime;
       if (!runtime || !runtime.callTool) return Promise.reject(new Error('Status is unavailable here.'));
-      return Promise.resolve(runtime.callTool('orgx_command_status', { kind: 'run', id: runId })).then(function(result) {
+      return Promise.resolve(runtime.callTool('orgx_get_operation_status', { kind: 'run', id: runId })).then(function(result) {
         return runtime.extractStructuredWidgetData ? runtime.extractStructuredWidgetData(result, true) : result;
       });
     }

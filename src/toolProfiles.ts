@@ -17,6 +17,9 @@
 
 import serverManifest from '../server.json';
 import { CLAUDE_DIRECTORY_ADAPTER_IDS } from './claudeDirectoryTools';
+import { WORKFLOW_TOOL_IDS, EXTENDED_WORKFLOW_TOOL_IDS } from './workflowTools';
+import { RECEIPT_OPERATION_TOOLS } from './receiptOperationTools';
+import { WIDGET_ONLY_TOOL_IDS } from './widgetToolContract';
 
 export interface ToolProfile {
   /** Human-readable profile purpose */
@@ -33,9 +36,56 @@ export const SERVER_MANIFEST_VERSION = serverManifest.version;
  * exact order so tools/list, bootstrap, directory metadata, and public
  * discovery all describe the same surface.
  */
-export const V2_PUBLIC_SURFACE = serverManifest.tools.map((tool) => tool.name);
+export const LEGACY_V2_PUBLIC_SURFACE = [
+  "orgx_bootstrap",
+  "orgx_tail",
+  "orgx_search",
+  "orgx_inspect",
+  "orgx_controller_status",
+  "orgx_recommend",
+  "orgx_write",
+  "orgx_attach",
+  "orgx_act",
+  "manage_lifecycle",
+  "orgx_plan",
+  "orgx_spawn",
+  "orgx_decide",
+  "orgx_expect",
+  "orgx_submit_receipt",
+  "orgx_emit_activity",
+  "orgx_request_attention",
+  "orgx_poll_attention",
+  "orgx_ack_attention",
+  "orgx_request_question",
+  "orgx_poll_question",
+  "orgx_emit_execution_graph",
+  "approve_decision",
+  "reject_decision",
+  "orgx_widget_decide",
+  "orgx_command_status",
+  "orgx_panel_snapshot",
+  "orgx_widget_receipt_call",
+  "get_agent_status",
+  "get_initiative_pulse",
+  "scaffold_initiative",
+  "spawn_agent_task",
+  "handoff_task",
+  "recommend_next_action",
+  "query_org_memory",
+  "recall_memory",
+  "approve_agent_work",
+  "delegate_agent_task",
+  "track_project_progress",
+  "review_artifact",
+  "get_morning_brief",
+  "get_operator_chronicle",
+  "check_execution_readiness",
+  "consolidate_pr",
+  "request_independent_artifact_review",
+  "resume_agent_run"
+] as const;
 
-export const V2_CORE_PUBLIC_SURFACE = [
+export const LEGACY_V2_CORE_PUBLIC_SURFACE = [
   'orgx_bootstrap',
   'orgx_search',
   'orgx_inspect',
@@ -59,7 +109,7 @@ export const V2_CORE_PUBLIC_SURFACE = [
   'orgx_emit_execution_graph',
 ] as const;
 
-export const WIDGET_AFFORDANCE_SURFACE = [
+export const LEGACY_WIDGET_AFFORDANCE_SURFACE = [
   'approve_decision',
   'reject_decision',
   'orgx_widget_decide',
@@ -98,7 +148,7 @@ export const CLIENT_REPORTING_PUBLIC_SURFACE = [
  * activity/attention transports, duplicate compatibility aliases, or
  * client-specific GitHub orchestration such as consolidate_pr.
  */
-export const CHATGPT_PUBLIC_SURFACE = [
+export const LEGACY_CHATGPT_PUBLIC_SURFACE = [
   'orgx_bootstrap',
   'orgx_search',
   'orgx_inspect',
@@ -135,7 +185,7 @@ export const CHATGPT_PUBLIC_SURFACE = [
  * Stable informational baseline shared by the fail-closed fallback and the
  * Claude Code plugin. Directory expansion must not widen either profile.
  */
-export const INFORMATIONAL_SURFACE = [
+export const LEGACY_INFORMATIONAL_SURFACE = [
   'orgx_search',
   'orgx_inspect',
   'orgx_recommend',
@@ -145,13 +195,23 @@ export const INFORMATIONAL_SURFACE = [
   'get_operator_chronicle',
 ] as const;
 
+export const INFORMATIONAL_SURFACE = [
+  'orgx_search',
+  'orgx_inspect',
+  'orgx_get_next_actions',
+  'orgx_get_agent_status',
+  'orgx_get_initiative_progress',
+  'orgx_get_operator_brief',
+  'orgx_get_operation_status',
+] as const;
+
 /**
  * Anthropic directory workflows. Read and write branches of canonical routers
  * are exposed through operation-specific adapters. Compatibility aliases and
  * internal coordination transports stay outside the model-facing inventory.
  */
-export const CLAUDE_DIRECTORY_SURFACE = [
-  ...INFORMATIONAL_SURFACE,
+export const LEGACY_CLAUDE_DIRECTORY_SURFACE = [
+  ...LEGACY_INFORMATIONAL_SURFACE,
   'orgx_bootstrap',
   'check_execution_readiness',
   'orgx_command_status',
@@ -171,7 +231,7 @@ export const CLAUDE_DIRECTORY_SURFACE = [
  * session persistence and telemetry.
  */
 export const CLAUDE_PLUGIN_SURFACE = [
-  ...INFORMATIONAL_SURFACE,
+  ...LEGACY_INFORMATIONAL_SURFACE,
   'orgx_command_status',
   'orgx_controller_status',
   'orgx_emit_activity',
@@ -191,19 +251,92 @@ export const CLAUDE_PLUGIN_SURFACE = [
  */
 export const READ_ONLY_FALLBACK_PROFILE = 'read-only' as const;
 
-export const GROUPED_V2_PUBLIC_SURFACE = [
-  ...V2_PUBLIC_SURFACE,
+/** Default model operations: 35 workflow operations and five portable receipt operations. */
+export const V2_CORE_PUBLIC_SURFACE = [
+  ...WORKFLOW_TOOL_IDS,
+  ...RECEIPT_OPERATION_TOOLS.map((tool) => tool.id),
 ] as const;
+
+/** Shared card callbacks: operation-specific tools plus private human interactions. */
+export const WIDGET_AFFORDANCE_SURFACE = [
+  'orgx_record_plan_edit',
+  ...WIDGET_ONLY_TOOL_IDS,
+] as const;
+
+export const CHATGPT_PUBLIC_SURFACE = [
+  ...V2_CORE_PUBLIC_SURFACE,
+  ...WIDGET_AFFORDANCE_SURFACE,
+] as const;
+export const CLAUDE_DIRECTORY_SURFACE = [...CHATGPT_PUBLIC_SURFACE] as const;
+export const V2_PUBLIC_SURFACE = [...CHATGPT_PUBLIC_SURFACE];
+export const GROUPED_V2_PUBLIC_SURFACE = [...V2_PUBLIC_SURFACE] as const;
+export const EXTENDED_PUBLIC_SURFACE = [...new Set([
+  ...V2_PUBLIC_SURFACE,
+  ...EXTENDED_WORKFLOW_TOOL_IDS,
+])];
+
+/** Complete read and click dependencies of widgets served by older profiles. */
+const WIDGET_OPERATION_DEPENDENCIES: Readonly<Record<string, readonly string[]>> = {
+  orgx_get_workspace_context: ['orgx_get_initiative_progress'],
+  orgx_get_agent_status: ['orgx_get_operation_status', 'resume_agent_run'],
+  orgx_get_operator_brief: ['orgx_get_agent_status'],
+  orgx_list_pending_decisions: ['orgx_get_operation_status', 'orgx_widget_decide'],
+  orgx_open_decision_review: ['orgx_list_pending_decisions', 'orgx_get_operation_status', 'orgx_widget_decide'],
+  orgx_create_initiative_hierarchy: ['orgx_launch_initiative', 'orgx_get_operation_status', 'orgx_widget_decide', 'orgx_get_initiative_progress'],
+  orgx_start_agent_task: ['orgx_get_agent_status', 'orgx_get_operation_status'],
+  orgx_handoff_task: ['orgx_get_agent_status', 'orgx_get_operation_status'],
+  orgx_open_artifact_review: ['orgx_get_operation_status', 'orgx_widget_approve_artifact', 'orgx_widget_request_artifact_changes'],
+  orgx_save_plan: ['orgx_record_plan_edit', 'orgx_get_operation_status'],
+
+  orgx_bootstrap: ['orgx_get_workspace_context', 'orgx_get_initiative_progress'],
+  orgx_inspect: ['orgx_get_operation_status', 'orgx_get_agent_status'],
+  get_agent_status: ['orgx_get_agent_status', 'orgx_get_operation_status', 'resume_agent_run'],
+  get_initiative_pulse: ['orgx_get_initiative_progress'],
+  get_operator_chronicle: ['orgx_get_operator_brief', 'orgx_get_agent_status'],
+  orgx_decide: ['orgx_list_pending_decisions', 'orgx_get_operation_status', 'orgx_widget_decide'],
+  get_pending_decisions: ['orgx_list_pending_decisions', 'orgx_get_operation_status', 'orgx_widget_decide'],
+  approve_agent_work: ['orgx_list_pending_decisions', 'orgx_get_operation_status', 'orgx_widget_decide'],
+  approve_decision: ['orgx_list_pending_decisions', 'orgx_get_operation_status', 'orgx_widget_decide'],
+  reject_decision: ['orgx_list_pending_decisions', 'orgx_get_operation_status', 'orgx_widget_decide'],
+  orgx_plan: ['orgx_record_plan_edit', 'orgx_get_operation_status'],
+  orgx_start_plan: ['orgx_record_plan_edit', 'orgx_get_operation_status'],
+  orgx_read_plan: ['orgx_record_plan_edit', 'orgx_get_operation_status'],
+  orgx_improve_plan: ['orgx_record_plan_edit', 'orgx_get_operation_status'],
+  orgx_record_plan_edit: ['orgx_get_operation_status'],
+  orgx_complete_plan: ['orgx_record_plan_edit', 'orgx_get_operation_status'],
+  scaffold_initiative: ['orgx_launch_initiative', 'orgx_get_operation_status', 'orgx_widget_decide', 'orgx_get_initiative_progress'],
+  orgx_spawn: ['orgx_get_agent_status', 'orgx_get_operation_status'],
+  spawn_agent_task: ['orgx_get_agent_status', 'orgx_get_operation_status'],
+  delegate_agent_task: ['orgx_get_agent_status', 'orgx_get_operation_status'],
+  orgx_delegate_agent_task: ['orgx_get_agent_status', 'orgx_get_operation_status'],
+  review_artifact: ['orgx_get_operation_status', 'orgx_widget_approve_artifact', 'orgx_widget_request_artifact_changes'],
+  orgx_panel_snapshot: ['orgx_get_operation_status', 'orgx_get_work_receipt', 'orgx_list_work_receipts', 'orgx_widget_decide', 'orgx_widget_receipt_call', 'orgx_widget_select_workspace'],
+};
+function withWidgetDependencies(toolIds: readonly string[]): string[] {
+  const result = new Set(toolIds);
+  for (const toolId of result) {
+    for (const dependency of WIDGET_OPERATION_DEPENDENCIES[toolId] ?? []) result.add(dependency);
+  }
+  return [...result];
+}
 
 export const TOOL_PROFILES: Record<string, ToolProfile> = {
   v2: {
     description:
-      'OrgX MCP v2 public surface plus direct widget affordances for decisions, agent status, initiative pulse, scaffold, artifacts, memory search, morning brief, and task delegation',
+      'Explicit OrgX workflow and portable receipt operations, with private human widget interactions and no public action routers',
     tools: [...V2_PUBLIC_SURFACE],
+  },
+  legacy: {
+    description: 'Explicit compatibility profile for clients that still call legacy OrgX action routers and aliases. Migrate to the default operation catalog.',
+    tools: withWidgetDependencies([...LEGACY_V2_PUBLIC_SURFACE, ...LEGACY_CHATGPT_PUBLIC_SURFACE]),
+  },
+  extended: {
+    description: 'Explicit default operations plus specialist work transitions, plan critique, delegation checks and administrative actions. Every operation has its own schema.',
+    tools: [...EXTENDED_PUBLIC_SURFACE],
   },
   chatgpt: {
     description:
-      'Reviewer-ready ChatGPT App surface: canonical OrgX workflows and user-facing widgets without internal coordination transports, redundant aliases, or client-specific PR consolidation',
+      'ChatGPT workflow and portable receipt operations. Each model-facing tool performs one declared operation; private widget tools record human decisions with review authority',
     tools: [...CHATGPT_PUBLIC_SURFACE],
   },
   'claude-directory': {
@@ -211,10 +344,18 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'Anthropic Connector Directory workflows: information retrieval, durable planning, entity creation and updates, bounded delegation, human decision review, linked artifacts, proof receipts, and lifecycle control with separate read and write operations',
     tools: [...CLAUDE_DIRECTORY_SURFACE],
   },
+  'claude-directory-legacy': {
+    description: 'Compatibility inventory for older Anthropic directory clients, including their current widget read and human-action dependencies. New connections use the shared fixed operation catalog.',
+    tools: withWidgetDependencies([...LEGACY_CLAUDE_DIRECTORY_SURFACE]),
+  },
   'claude-plugin': {
     description:
       'Claude Code plugin surface: the informational read set plus lean writes for activity, receipts, artifact attach, decisions, and session bootstrap',
     tools: [...CLAUDE_PLUGIN_SURFACE],
+  },
+  'claude-code-legacy': {
+    description: 'Compatibility for the seven-tool informational Claude Code package. Preserves its declared permissions and response contracts without adding reporting or widget actions.',
+    tools: [...LEGACY_INFORMATIONAL_SURFACE],
   },
   [READ_ONLY_FALLBACK_PROFILE]: {
     description:
@@ -341,6 +482,11 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
     tools: null,
   },
 };
+
+for (const [name, profile] of Object.entries(TOOL_PROFILES)) {
+  if (name === READ_ONLY_FALLBACK_PROFILE || name === 'claude-plugin' || name === 'claude-code-legacy' || profile.tools === null) continue;
+  profile.tools = withWidgetDependencies(profile.tools);
+}
 
 export const TOOL_PROFILE_NAMES = Object.freeze(Object.keys(TOOL_PROFILES));
 

@@ -53,6 +53,12 @@ import {
 import { isModelVisibleToolMeta } from './toolVisibility';
 import { applyToolArgumentAliases } from './toolArgumentAliases';
 import { isWidgetOnlyTool } from './widgetToolContract';
+import { WORKFLOW_TOOL_ADAPTERS, EXTENDED_WORKFLOW_TOOL_ADAPTERS, resolveWorkflowInvocationSecuritySchemes, type WorkflowToolAdapter } from './workflowTools';
+import { RECEIPT_OPERATION_TOOLS, executeReceiptOperation } from './receiptOperationTools';
+import { WIDGET_OPERATION_TOOLS } from './widgetOperations';
+import { getPublicOperationContract, getPublicOperationContracts } from './publicOperationContracts';
+import { capturePrivateOperations, separateOperationWidgetMeta, type PrivateOperation } from './operationRegistration';
+import { taskProofCompletionRequest } from './workflowCompletion';
 import {
   WIDGET_APPROVAL_META_KEY,
   WIDGET_APPROVAL_SOURCE_TOOLS,
@@ -76,7 +82,9 @@ import {
   buildCompletionProofMetadata,
   executeCompleteWithProofFlow,
 } from './completeWithProof';
-import { resolveToolProfile } from './toolProfiles';
+import { resolveToolProfile, resolveProfileToolSet } from './toolProfiles';
+import { buildMcpCompatibilityMetadata } from './mcpCompatibility';
+import { SESSION_TOOL_CONTRACT_KEY, McpSessionProfileConflictError, selectSessionToolContract, assertMcpSessionIdentity, assertMcpSessionGrant, type SessionToolContract, type SessionAuthenticatedGrant } from './sessionToolContract';
 import {
   handleOpenAiAppsChallenge,
   type OpenAiAppsChallengeEnv,
@@ -95,6 +103,7 @@ import { buildSearchDiagnosticsContext, handleSearchWidgetDiagnostics } from './
 import { withRequestToolProfile } from './requestToolProfile';
 import {
   buildMcpTransportExceptionResponse,
+  handleMcpRequest,
   isOrgxApiTelemetryConfigured,
   withCorsAndHeaders,
   withSseKeepAlive,
@@ -587,6 +596,8 @@ interface OrgXMcpProps extends Record<string, unknown> {
   scope?: string;
   email?: string;
   profile?: string;
+  toolProfileExplicit?: boolean;
+  operationContractVersion?: string;
   workspace_id?: string;
   initiative_id?: string;
   sourceClient?: SourceClient;
@@ -619,6 +630,11 @@ const SUBMITTED_INFORMATIONAL_TOOL_EXECUTIONS = new Set([
   // The OrgX panel opens on its own (sidebar, beside a thread); opening it
   // must not touch session context, re-entry state or diagnostics.
   'orgx_panel_snapshot',
+  'orgx_command_status',
+  'get_pending_decisions',
+  ...WORKFLOW_TOOL_ADAPTERS.filter((tool) => tool.annotations.readOnlyHint || ['orgx_get_next_actions', 'orgx_get_agent_status', 'orgx_get_initiative_progress'].includes(tool.id)).map((tool) => tool.id),
+  ...EXTENDED_WORKFLOW_TOOL_ADAPTERS.filter((tool) => tool.annotations.readOnlyHint).map((tool) => tool.id),
+  ...RECEIPT_OPERATION_TOOLS.filter((tool) => tool.annotations.readOnlyHint).map((tool) => tool.id),
 ]);
 
 // Canonical Supabase user UUID shape. Used to guard the orgx_user_id we forward
@@ -662,6 +678,42 @@ export class OrgXMcp extends McpAgent<
   Record<string, never>,
   OrgXMcpProps
 > {
+  /** The SDK persists props on every transport reconnect; keep discovery stable. */
+  async updateProps(props?: OrgXMcpProps) {
+    const [stored, initialized, previous] = await Promise.all([
+      this.ctx.storage.get<SessionToolContract>(SESSION_TOOL_CONTRACT_KEY),
+      this.getInitializeRequest(),
+      this.ctx.storage.get<OrgXMcpProps>('props'),
+    ]);
+    if (previous?.userId) assertMcpSessionIdentity(previous.userId, props?.userId);
+    if ((initialized || stored) && previous?.userId) assertMcpSessionGrant(previous, props ?? {});
+    const binding = selectSessionToolContract({
+      stored, initialized: Boolean(initialized),
+      requestedProfile: props?.profile, internalRun: props?.authSource === 'run_token',
+    });
+    if (props?.toolProfileExplicit && stored && props.profile !== binding.profile) {
+      throw new McpSessionProfileConflictError();
+    }
+    if (!stored) await this.ctx.storage.put(SESSION_TOOL_CONTRACT_KEY, binding);
+    await super.updateProps({ ...props, profile: binding.profile, operationContractVersion: binding.contract_version });
+  }
+  /** Trusted transport lookup; clients cannot choose another session's identity or profile. */
+  async getSessionToolContract(authenticatedGrant: SessionAuthenticatedGrant): Promise<SessionToolContract | null> {
+    const [initialized, previous, stored] = await Promise.all([
+      this.getInitializeRequest(), this.ctx.storage.get<OrgXMcpProps>('props'),
+      this.ctx.storage.get<SessionToolContract>(SESSION_TOOL_CONTRACT_KEY),
+    ]);
+    // Native SSE never persists the SDK initializeRequest. Its existing actor
+    // props still bind the session before any message can reach its warm registry.
+    if (!initialized && !previous?.userId) return null;
+    if (!previous?.userId) throw new McpSessionProfileConflictError();
+    assertMcpSessionIdentity(previous.userId, authenticatedGrant.userId);
+    assertMcpSessionGrant(previous, authenticatedGrant);
+    return selectSessionToolContract({
+      stored, initialized: true,
+      internalRun: previous.authSource === 'run_token',
+    });
+  }
   // Initial McpServer — recreated in init() on each DO wake cycle
   // because MCP SDK 1.26+ prevents reconnecting an already-connected instance.
   server = createInstrumentedMcpServer();
@@ -704,7 +756,7 @@ export class OrgXMcp extends McpAgent<
   // session goes idle (best-effort session-end signal).
   private sessionToolStats: SessionToolStats = createEmptySessionToolStats();
   private sessionFlushScheduleId: string | null = null;
-  private sessionToolObservationInstalled = false;
+  private sessionToolObservationInstalled: McpServer | null = null;
 
   // Set to true when a user authenticates for the first time in this session.
   // Used to prepend a welcome message to the first tool call response.
@@ -728,7 +780,11 @@ export class OrgXMcp extends McpAgent<
    * informational call. Upstream MCP usage accounting remains authoritative.
    */
   private isDirectoryReviewProfile(): boolean {
-    return resolveToolProfile(this.props?.profile).name === 'claude-directory';
+    return ['claude-directory', 'claude-directory-legacy'].includes(resolveToolProfile(this.props?.profile).name);
+  }
+
+  private usesLegacyDirectoryContracts(): boolean {
+    return this.props?.profile === 'claude-directory-legacy';
   }
 
   private isSubmittedInformationalToolExecution(
@@ -1269,7 +1325,15 @@ export class OrgXMcp extends McpAgent<
       toolId: completion.toolName,
       status: completion.status,
       latencyMs: completion.latencyMs,
-      metadata: { telemetry_source: 'mcp_handler', ...completion.resultFlags },
+      metadata: {
+        ...buildMcpCompatibilityMetadata({
+          requestedToolId: completion.toolName, normalizedToolId: completion.toolName,
+          executedToolId: completion.toolName, registeredToolId: completion.toolName,
+          profile: this.props?.profile ?? 'read-only', contractVersion: this.props?.operationContractVersion,
+          outcome: completion.status,
+        }),
+        telemetry_source: 'mcp_handler', ...completion.resultFlags,
+      },
       userId,
       workspaceId: this.sessionContext.workspaceId ?? null,
       sourceClient: this.resolveSourceClient(),
@@ -1533,6 +1597,21 @@ export class OrgXMcp extends McpAgent<
   }
 
   private async _doInit() {
+    // RPC wake paths can load SDK props without onStart. Fresh initialization
+    // is pure here; the real SDK updateProps path owns initial persistence.
+    const [storedContract, initializeRequest, previousProps] = await Promise.all([
+      this.ctx.storage.get<SessionToolContract>(SESSION_TOOL_CONTRACT_KEY),
+      this.getInitializeRequest(), this.ctx.storage.get<OrgXMcpProps>('props'),
+    ]);
+    if (previousProps?.userId) assertMcpSessionIdentity(previousProps.userId, this.props?.userId);
+    if ((initializeRequest || storedContract) && previousProps?.userId) assertMcpSessionGrant(previousProps, this.props ?? {});
+    const contract = selectSessionToolContract({
+      stored: storedContract, initialized: Boolean(initializeRequest),
+      requestedProfile: this.props?.profile,
+      internalRun: this.props?.authSource === 'run_token',
+    });
+    if (!storedContract && initializeRequest) await this.ctx.storage.put(SESSION_TOOL_CONTRACT_KEY, contract);
+    this.props = { ...this.props, profile: contract.profile, operationContractVersion: contract.contract_version };
     // Recreate the McpServer on each DO wake cycle.
     // The MCP SDK 1.26+ guard prevents connecting an already-connected server
     // instance, so we must create a fresh one before onStart() calls connect().
@@ -1940,13 +2019,13 @@ export class OrgXMcp extends McpAgent<
     const resolvedUserId = this.props?.userId ?? this.sessionAuth.userId;
     const candidates = profileTools
       ? [...profileTools]
-      : getKnownToolContracts().map((tool) => tool.id);
+      : getPublicOperationContracts().map((tool) => tool.id);
 
     return new Set(
       candidates.filter((toolId) => {
-        const contract = (this.isDirectoryReviewProfile()
+        const contract = (this.usesLegacyDirectoryContracts()
           ? getClaudeDirectoryToolContract(toolId)
-          : null) ?? getKnownToolContract(toolId);
+          : null) ?? getPublicOperationContract(toolId);
         if (!contract?.securitySchemes) return false;
         return checkAuthRequirements(
           contract.securitySchemes,
@@ -2680,8 +2759,8 @@ export class OrgXMcp extends McpAgent<
       view: receiptId ? 'receipt' : workstreamId ? 'workstream' : view ?? 'search',
       ...body.data,
       next_calls: receiptId || workstreamId
-        ? [{ tool: 'orgx_search', args: { scope: 'work_ledger', view: 'review' } }]
-        : [{ tool: 'orgx_search', args: { scope: 'work_ledger', receipt_id: '<id from results>' } }],
+        ? [{ tool: 'orgx_list_work_receipts', args: { view: 'review' } }]
+        : [{ tool: 'orgx_list_work_receipts', args: { view: 'workstreams' } }],
     };
     return {
       content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 1).slice(0, 60_000) }],
@@ -3216,11 +3295,11 @@ export class OrgXMcp extends McpAgent<
         return ok.flatMap((r) => r.value);
       },
       fetchLedgerReceipts: async ({ workspaceId, query, limit }) => {
-        const qs = new URLSearchParams({ workspace_id: workspaceId, q: query, limit: String(limit) });
+        const qs = new URLSearchParams({ workspace_id: workspaceId, q: query, limit: String(limit), widget_meta: '1' });
         const response = await callOrgxApiJson(this.env, `/api/v1/work-ledger/receipts?${qs.toString()}`, undefined, actor(userId()));
         return response.json();
       },
-      recordReceiptCall: async ({ workspaceId, receiptId, status }) => {
+      recordReceiptCall: async ({ workspaceId, receiptId, status, approvalToken }) => {
         const response = await callOrgxApiJson(
           this.env,
           '/api/v1/work-ledger/decisions',
@@ -3229,6 +3308,7 @@ export class OrgXMcp extends McpAgent<
             body: JSON.stringify({
               ...(workspaceId ? { workspace_id: workspaceId } : {}),
               decision: { kind: 'outcome', subject: receiptId, value: { status } },
+              approval_token: approvalToken,
             }),
           },
           actor(userId())
@@ -3236,7 +3316,7 @@ export class OrgXMcp extends McpAgent<
         await response.json().catch(() => null);
       },
       fetchLedgerReceipt: async ({ workspaceId, id }) => {
-        const qs = new URLSearchParams({ workspace_id: workspaceId });
+        const qs = new URLSearchParams({ workspace_id: workspaceId, widget_meta: '1' });
         const response = await callOrgxApiJson(this.env, `/api/v1/work-ledger/receipts/${encodeURIComponent(id)}?${qs.toString()}`, undefined, actor(userId()));
         return response.json();
       },
@@ -5091,7 +5171,7 @@ export class OrgXMcp extends McpAgent<
     const registered = this.listRegisteredTools();
     const fallbackTools = allowedTools
       ? Array.from(allowedTools)
-      : getKnownToolContracts().map((tool) => tool.id);
+      : getPublicOperationContracts().map((tool) => tool.id);
     const visibleTools = (
       registered.length
         ? registered
@@ -5148,14 +5228,14 @@ export class OrgXMcp extends McpAgent<
   }
 
   private buildKnownToolDescriptor(toolId: string) {
-    const contract = getKnownToolContract(toolId);
+    const contract = getPublicOperationContract(toolId);
     if (!contract) return null;
 
     return {
       id: contract.id,
       title: contract.title,
       description: contract.description,
-      source: contract.source,
+      source: 'source' in contract ? contract.source : 'operation',
       security_schemes: contract.securitySchemes ?? [],
       annotations: contract.annotations ?? {},
       input_contract: contract.inputSchema
@@ -5167,7 +5247,7 @@ export class OrgXMcp extends McpAgent<
           ? PLAN_SESSION_ACCEPTED_ID_FORMS
           : undefined,
       notes:
-        contract.source === 'inline'
+        'source' in contract && contract.source === 'inline'
           ? 'This tool is handled inline in the worker. Prefer typed wrappers when available.'
           : undefined,
     };
@@ -7402,7 +7482,12 @@ export class OrgXMcp extends McpAgent<
         default:
           return this.toolError(`Unknown contract tool: ${toolId}`);
       }
-    }, toolId);
+    }, toolId === 'orgx_spawn' && ['estimate', 'guard', 'classify'].includes(String(args.action))
+      ? ({ estimate: 'orgx_estimate_agent_task', guard: 'orgx_check_agent_delegation', classify: 'orgx_classify_agent_task' } as Record<string, string>)[String(args.action)]
+      : toolId === 'orgx_decide' && args.action === 'list_pending'
+        ? 'orgx_list_pending_decisions'
+        : toolId === 'approve_agent_work' && args.action === 'list'
+          ? 'get_pending_decisions' : toolId);
   }
 
   private async executeCreateEntityWrapper(
@@ -7604,7 +7689,7 @@ export class OrgXMcp extends McpAgent<
 
   /** Directory operations reuse the canonical execution and scope checks. */
   private registerClaudeDirectoryTools(allowedTools: Set<string> | null) {
-    if (!this.isDirectoryReviewProfile()) return;
+    if (!this.usesLegacyDirectoryContracts()) return;
     for (const tool of CLAUDE_DIRECTORY_TOOL_ADAPTERS) {
       if (allowedTools && !allowedTools.has(tool.id)) continue;
       this.server.registerTool(
@@ -7713,35 +7798,169 @@ export class OrgXMcp extends McpAgent<
           extra: { ...observation.telemetry },
         });
       }
-    }, () => this.isDirectoryReviewProfile() ? Promise.resolve(null) : buildSearchDiagnosticsContext(this.env), this.isDirectoryReviewProfile());
+    }, () => this.isDirectoryReviewProfile() ? Promise.resolve(null) : buildSearchDiagnosticsContext(this.env), this.isDirectoryReviewProfile(), this.props?.profile, this.usesLegacyDirectoryContracts());
+  }
+
+  private async requestPublicOperation(path: string, init: { method?: string; body?: string; headers?: Record<string, string> } = {}): Promise<Record<string, unknown>> {
+    const userId = this.resolveUserId();
+    const response = await callOrgxApiJson(this.env, path, init, {
+      userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(),
+      orgxUserId: this.resolveOrgxUserId(userId),
+    });
+    return await response.json() as Record<string, unknown>;
+  }
+
+  private registerPublicOperations(allowedTools: Set<string> | null, privateOperations: Map<string, PrivateOperation>) {
+    const allowed = (id: string) => !allowedTools || allowedTools.has(id);
+    const auth = (id: string, schemes: readonly { type: string; scopes?: readonly string[] }[] | undefined) => this.buildAuthRequiredResponse({
+      toolId: id, securitySchemes: schemes, userId: this.resolveUserId() ?? undefined,
+      serverUrl: this.env.MCP_SERVER_URL, featureDescription: `use ${id.replace(/_/g, ' ')}`,
+    });
+    const directResult = (raw: Record<string, unknown>): CallToolResult => {
+      const split = separateOperationWidgetMeta(raw);
+      return { content: [{ type: 'text', text: JSON.stringify(split.data) }], structuredContent: split.data, ...(split.meta ? { _meta: split.meta } : {}) };
+    };
+    for (const tool of [...WORKFLOW_TOOL_ADAPTERS, ...EXTENDED_WORKFLOW_TOOL_ADAPTERS]) {
+      if (!allowed(tool.id)) continue;
+      if (this.usesLegacyDirectoryContracts() && getClaudeDirectoryToolContract(tool.id)) continue;
+      this.server.registerTool(tool.id, {
+        title: tool.title, description: tool.description, inputSchema: this.withClientContext(tool.inputSchema),
+        annotations: tool.annotations, _meta: { ...tool._meta, 'mcp/securitySchemes': tool.securitySchemes },
+      }, async (args: Record<string, unknown>, extra: unknown) => {
+        const schemes = resolveWorkflowInvocationSecuritySchemes(tool.id, args);
+        const blocked = auth(tool.id, schemes);
+        if (blocked) return blocked;
+        const effective = { ...args, ...(args.workspace_id === undefined && this.sessionContext?.workspaceId && 'workspace_id' in tool.inputSchema ? { workspace_id: this.sessionContext.workspaceId } : {}) };
+        if (tool.backendRequest) return this.withOrgx(async () => {
+          const request = tool.backendRequest!(effective);
+          return directResult(await this.requestPublicOperation(request.path, {
+            method: request.method, ...(request.body ? { body: JSON.stringify(request.body) } : {}), ...(request.headers ? { headers: request.headers } : {}),
+          }));
+        }, tool.id);
+        const canonicalArgs = tool.toCanonicalArgs(effective);
+        if (tool.id === 'orgx_open_artifact_review' && typeof canonicalArgs.artifact_id === 'string') return this.withOrgx(async () => {
+          const params = new URLSearchParams({ widget_meta: '1', ...(effective.workspace_id ? { workspace_id: String(effective.workspace_id) } : {}) });
+          const raw = await this.requestPublicOperation(`/api/v1/workflows/artifact-review/${encodeURIComponent(canonicalArgs.artifact_id as string)}?${params}`);
+          const split = separateOperationWidgetMeta(raw);
+          const data = split.data.data && typeof split.data.data === 'object' ? split.data.data as Record<string, unknown> : split.data;
+          return { content: [{ type: 'text', text: summarizeArtifactReviewEnvelope(data as any) }], structuredContent: data, ...(split.meta ? { _meta: split.meta } : {}) };
+        }, tool.id);
+        if (tool.id === 'orgx_complete_work_with_proof' && canonicalArgs.type === 'task') return this.withOrgx(async () => {
+          const request = await taskProofCompletionRequest(canonicalArgs);
+          return directResult(await this.requestPublicOperation('/api/v1/workflows/complete-with-proof', {
+            method: 'POST', body: JSON.stringify(request.body), headers: { 'Idempotency-Key': request.idempotencyKey },
+          }));
+        }, tool.id);
+        if (tool.id === 'orgx_get_operation_status') {
+          if (!canonicalArgs.kind && typeof canonicalArgs.operation_id === 'string' && ORGX_UUID_RE.test(canonicalArgs.operation_id)) {
+            // Opaque UUIDs from existing durable APIs remain useful. An
+            // untyped reference requires all read domains at the outer gate;
+            // each lookup also checks its own domain before reaching OrgX.
+            let missing: CallToolResult | undefined;
+            for (const kind of ['command', 'run', 'decision'] as const) {
+              const result = await this.executeChatGPTTool(tool.canonicalToolId, { kind, id: canonicalArgs.operation_id }, resolveWorkflowInvocationSecuritySchemes(tool.id, { kind }));
+              if (result.isError || result.structuredContent?.state !== 'not_found') return result;
+              missing = result;
+            }
+            return missing!;
+          }
+          if (!canonicalArgs.kind || !canonicalArgs.id) return this.toolError('Supply a typed operation_id or kind and id.', { code: 'invalid_operation_reference', status: 400 });
+          return this.executeChatGPTTool(tool.canonicalToolId, canonicalArgs, schemes);
+        }
+        const implementation = privateOperations.get(tool.canonicalToolId);
+        if (!implementation) return this.toolError(`Operation implementation unavailable: ${tool.id}`, { code: 'operation_unavailable', status: 503 });
+        const result = await implementation.handler(canonicalArgs, extra) as CallToolResult;
+        if (tool.id === 'orgx_open_artifact_review' && result.structuredContent) {
+          const artifact = result.structuredContent.artifact as Record<string, unknown> | undefined;
+          if (typeof artifact?.id === 'string') return this.withOrgx(async () => {
+            const params = new URLSearchParams({ widget_meta: '1', ...(effective.workspace_id ? { workspace_id: String(effective.workspace_id) } : {}) });
+            const raw = await this.requestPublicOperation(`/api/v1/workflows/artifact-review/${encodeURIComponent(artifact.id as string)}?${params}`);
+            const split = separateOperationWidgetMeta(raw);
+            const data = split.data.data && typeof split.data.data === 'object' ? split.data.data as Record<string, unknown> : split.data;
+            return { ...result, structuredContent: { ...result.structuredContent, ...data }, ...(split.meta ? { _meta: { ...result._meta, ...split.meta } } : {}) };
+          }, tool.id);
+        }
+        if (tool.id === 'orgx_complete_work_with_proof' && result.structuredContent && !result.isError) return {
+          ...result, structuredContent: { data: result.structuredContent, meta: { apiVersion: '1', workspaceId: effective.workspace_id ?? this.sessionContext?.workspaceId ?? null, implementation: 'compatibility' } },
+        };
+        return result;
+      });
+    }
+    for (const tool of RECEIPT_OPERATION_TOOLS) {
+      if (!allowed(tool.id)) continue;
+      this.server.registerTool(tool.id, {
+        title: tool.title, description: tool.description,
+        inputSchema: tool.id === 'orgx_list_work_receipts'
+          ? z.object(this.withClientContext(tool.inputSchema)).strict()
+          : this.withClientContext(tool.inputSchema), annotations: tool.annotations,
+        _meta: { 'mcp/securitySchemes': tool.securitySchemes,
+          ...(['orgx_submit_work_receipt', 'orgx_get_work_receipt'].includes(tool.id) ? { 'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.proofReceipt, ui: { resourceUri: WIDGET_URIS.proofReceipt } } : {}),
+        },
+      }, async (args: Record<string, unknown>) => {
+        const blocked = auth(tool.id, tool.securitySchemes);
+        if (blocked) return blocked;
+        return this.withOrgx(async () => {
+          const { _context, ...input } = args;
+          const raw = await executeReceiptOperation(tool.id, input, {
+            workspaceId: this.sessionContext?.workspaceId,
+            request: (path, init) => this.requestPublicOperation(
+              tool.id === 'orgx_get_work_receipt' || tool.id === 'orgx_list_work_receipts' ? `${path}${path.includes('?') ? '&' : '?'}widget_meta=1` : path, init),
+          });
+          return directResult(raw);
+        }, tool.id);
+      });
+    }
+    for (const tool of WIDGET_OPERATION_TOOLS) {
+      if (!allowed(tool.id)) continue;
+      this.server.registerTool(tool.id, {
+        title: tool.title, description: tool.description, inputSchema: this.withClientContext(tool.inputSchema), annotations: tool.annotations,
+        _meta: { 'mcp/securitySchemes': tool.securitySchemes },
+      }, async (args: Record<string, unknown>) => {
+        const blocked = auth(tool.id, tool.securitySchemes);
+        if (blocked) return blocked;
+        if (tool.id === 'orgx_widget_select_workspace') return this.executeContractTool('orgx_bootstrap', { workspace_id: args.workspace_id }, tool.securitySchemes, allowedTools);
+        return this.withOrgx(async () => {
+          const { _context, artifact_id, ...input } = args;
+          const verb = tool.id === 'orgx_widget_approve_artifact' ? 'approve' : 'request-changes';
+          const raw = await this.requestPublicOperation(`/api/v1/workflows/artifact-review/${encodeURIComponent(String(artifact_id))}/${verb}`, { method: 'POST', body: JSON.stringify(input) });
+          const data = raw.data && typeof raw.data === 'object' ? raw.data as Record<string, unknown> : raw;
+          return directResult(data);
+        }, tool.id);
+      });
+    }
   }
 
   private registerTools() {
     // Resolve tool profile from connection props (e.g. ?profile=executor).
     // Missing names default to v2; unknown names fail closed to the
     // read-only fallback; null is explicit full only.
-    const profileTools = resolveToolProfile(this.props?.profile).tools;
+    const profileTools = resolveProfileToolSet(this.props?.profile ?? 'v2');
     // A v2 run token's granted scopes cap whatever the profile allows.
-    const allowedTools = applyRunTokenScopes(
+    const publicAllowedTools = applyRunTokenScopes(
       this.resolveScopeAwareAllowedTools(profileTools),
       this.hasScopedRunToken() ? this.props?.scopes : undefined
     );
 
     // Apply profile-aware result-guidance filtering to every subsequent
     // registration without changing tool schemas or result envelopes.
-    this.installToolResultGuidanceWrapper(allowedTools);
+    this.installToolResultGuidanceWrapper(publicAllowedTools);
 
     // Observe every tool invocation (session summary stats + idle flush).
     // Installed before any registration so registerAppTool widget tools are
     // covered too; idempotent per in-memory DO lifetime.
-    if (!this.sessionToolObservationInstalled) {
-      this.sessionToolObservationInstalled = true;
+    if (this.sessionToolObservationInstalled !== this.server) {
+      this.sessionToolObservationInstalled = this.server;
       installSessionToolObservationWrapper(
         this.server,
         (toolName) => this.observeSessionToolCall(toolName),
         (completion) => this.recordHandlerToolInvocation(completion)
       );
     }
+
+    const adapters = [...WORKFLOW_TOOL_ADAPTERS, ...EXTENDED_WORKFLOW_TOOL_ADAPTERS].filter((tool) =>
+      (!publicAllowedTools || publicAllowedTools.has(tool.id)) && !(this.usesLegacyDirectoryContracts() && getClaudeDirectoryToolContract(tool.id)));
+    const allowedTools = publicAllowedTools ? new Set([...publicAllowedTools, ...adapters.filter((tool) => !tool.backendRequest).map((tool) => tool.canonicalToolId)]) : null;
+    const privateRegistration = capturePrivateOperations(this.server, publicAllowedTools, new Set(adapters.map((tool) => tool.id)));
 
     // Register ChatGPT App tools (data-driven)
     this.registerChatGPTTools(allowedTools);
@@ -7763,7 +7982,7 @@ export class OrgXMcp extends McpAgent<
     this.registerClaudeDirectoryTools(allowedTools);
 
     // OrgX panel (ChatGPT sidebar + thread entrypoints): src/panelSurface.ts.
-    registerPanelSurface(this.server, allowedTools, this.panelSurfaceHost(), (shape) => this.withClientContext(shape));
+    registerPanelSurface(this.server, allowedTools, this.panelSurfaceHost(), (shape) => this.withClientContext(shape), this.props?.profile !== 'legacy' && this.props?.profile !== 'full' && !this.usesLegacyDirectoryContracts());
 
     // Note: previously registered legacy unprefixed aliases (bootstrap,
     // inspect, search, attach, act, write, submit_receipt, emit_activity)
@@ -13096,6 +13315,8 @@ export class OrgXMcp extends McpAgent<
     // =========================================================================
     this.registerFlywheelTools(allowedTools);
     this.registerWorkLeaseTool(allowedTools);
+    privateRegistration.finish();
+    this.registerPublicOperations(publicAllowedTools, privateRegistration.operations);
   }
 
   /** Advisory file leases for agents sharing a repository (src/workLeases.ts). */
@@ -15196,7 +15417,7 @@ const rateLimitedSseHandler = {
     }
 
     // POST /sse → rewrite to /mcp (OpenAI client sends JSON-RPC to /sse)
-    if (request.method === 'POST') {
+    if (request.method === 'POST' && new URL(request.url).pathname === '/sse') {
       console.info('[mcp] route POST /sse -> /mcp (http JSON-RPC)');
       const rewritten = new URL(request.url);
       rewritten.pathname = '/mcp';
@@ -15235,6 +15456,21 @@ const rateLimitedSseHandler = {
 
 const profileAwareSseHandler = withRequestToolProfile(rateLimitedSseHandler);
 
+/** OAuthProvider or run-token verification has already authenticated this context. */
+function observeVerifiedMcpTransport(handler: typeof profileAwareHttpHandler) {
+  return {
+    fetch(request: Request, env: Env, ctx: ExecutionContext) {
+      const props = (ctx as ExecutionContext & { props?: OrgXMcpProps }).props;
+      return handleMcpRequest(request, env, ctx, handler, async () => ({
+        userId: props?.userId, orgxUserId: props?.orgxUserId,
+        scope: props?.scope, email: props?.email,
+      }));
+    },
+  };
+}
+const observedHttpHandler = observeVerifiedMcpTransport(profileAwareHttpHandler);
+const observedSseHandler = observeVerifiedMcpTransport(profileAwareSseHandler);
+
 // =============================================================================
 // OAUTH PROVIDER (DEFAULT EXPORT)
 //
@@ -15247,8 +15483,8 @@ const profileAwareSseHandler = withRequestToolProfile(rateLimitedSseHandler);
 
 const oauthProvider = new OAuthProvider({
   apiHandlers: {
-    '/mcp': profileAwareHttpHandler,
-    '/sse': profileAwareSseHandler,
+    '/mcp': observedHttpHandler,
+    '/sse': observedSseHandler,
   },
   defaultHandler: authHandler,
   authorizeEndpoint: '/authorize',
@@ -15264,7 +15500,7 @@ const oauthProvider = new OAuthProvider({
  * MCP endpoint with a per-run, user-scoped bearer that the OAuth provider would
  * reject (it isn't an OAuth access token). Verify it here, inject the resolved
  * identity as `props`, and delegate straight to the MCP handler — bypassing the
- * OAuth provider. Only our own `oxrun1.` tokens are intercepted, so OAuth
+ * OAuth provider. Only our own `oxrun1.`/`oxrun2.` tokens are intercepted, so OAuth
  * bearers are untouched.
  */
 async function tryRunTokenAuth(
@@ -15273,7 +15509,7 @@ async function tryRunTokenAuth(
   ctx: ExecutionContext
 ): Promise<Response | null> {
   const url = new URL(request.url);
-  if (url.pathname !== '/mcp' && url.pathname !== '/sse') return null;
+  if (!['/mcp', '/sse', '/sse/message'].includes(url.pathname)) return null;
 
   const header = request.headers.get('authorization');
   if (!header || !header.toLowerCase().startsWith('bearer ')) return null;
@@ -15303,7 +15539,7 @@ async function tryRunTokenAuth(
   };
 
   const handler =
-    url.pathname === '/sse' ? getSseHandler() : getHttpHandler();
+    url.pathname === '/mcp' ? observedHttpHandler : observedSseHandler;
   const response = await handler.fetch(request, env, ctx);
   return withSecurityHeaders(response);
 }
@@ -15371,6 +15607,7 @@ const worker = {
     const isMcpTransportRoute =
       requestUrl.pathname === '/mcp' ||
       requestUrl.pathname === '/sse' ||
+      requestUrl.pathname === '/sse/message' ||
       /^\/v1\/[^/]+\/servers\/[^/]+\/?$/.test(requestUrl.pathname) ||
       (requestUrl.pathname === '/' &&
         (request.method === 'POST' ||

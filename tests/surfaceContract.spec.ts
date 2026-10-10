@@ -30,7 +30,13 @@ import serverManifest from '../server.json';
 import submission from '../chatgpt-app-submission.json';
 import { AUTHORIZATION_PRESETS } from '../src/authorizationPolicy';
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
-import { OPENAI_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas';
+import { OPENAI_OUTPUT_SCHEMAS, getToolOutputSchema } from '../src/openaiOutputSchemas';
+import { CANONICAL_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas/canonical';
+import { getPublicOperationContract } from '../src/publicOperationContracts';
+import { checkAuthRequirements } from '../src/authHelpers';
+import { buildAgentWorkReceiptImportRequest } from '../src/agentWorkReceiptV1';
+import { RECEIPT_OPERATION_OUTPUT_SCHEMAS } from '../src/receiptOperationTools';
+import { OrgXApiError } from '../src/orgxApi';
 import { WIDGET_RESOURCES } from '../src/toolDefinitions';
 import {
   CHATGPT_PUBLIC_SURFACE,
@@ -66,6 +72,11 @@ const apiMocks = vi.hoisted(() => ({
 
 vi.mock('agents/mcp', () => ({
   McpAgent: class McpAgent {
+    async getInitializeRequest() { return (this as any).ctx.storage.get('initializeRequest'); }
+    async updateProps(props: unknown) {
+      await (this as any).ctx.storage.put('props', props ?? {});
+      (this as any).props = props;
+    }
     static serve() {
       return { fetch: vi.fn(async () => new Response(null, { status: 501 })) };
     }
@@ -126,12 +137,15 @@ type ListedTool = {
 async function connectProfile(
   profile: string,
   clientName = 'surface-contract',
-  grantedScopes?: readonly string[]
+  grantedScopes?: readonly string[],
+  staleSession?: { previousProfile: string },
+  freshSse = false,
 ) {
   const { OrgXMcp } = await import('../src/index');
   const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
   worker.props = {
     profile,
+    ...(profile === 'full' ? { authSource: 'run_token' } : {}),
     userId: 'surface-contract-user',
     orgxUserId: '33333333-3333-4333-8333-333333333333',
     scope: (grantedScopes ?? (READ_PRESET_PROFILES.has(profile)
@@ -140,11 +154,15 @@ async function connectProfile(
     )).join(' '),
     workspace_id: WORKSPACE_ID,
   };
+  const stored = new Map<string, unknown>(staleSession ? [
+    ['props', { ...worker.props, profile: staleSession.previousProfile }],
+    ['initializeRequest', { jsonrpc: '2.0', method: 'initialize', id: 1 }],
+  ] : []);
   worker.ctx = {
     id: { toString: () => `surface-${profile}` },
     storage: {
-      get: vi.fn(async () => undefined),
-      put: vi.fn(async () => undefined),
+      get: vi.fn(async (key: string) => stored.get(key)),
+      put: vi.fn(async (key: string, value: unknown) => { stored.set(key, value); }),
       sql: { exec: vi.fn(() => []) },
     },
     waitUntil: vi.fn((promise: Promise<unknown>) => promise),
@@ -172,6 +190,7 @@ async function connectProfile(
   }));
   worker.fetchEntityCollection = vi.fn(async () => []);
 
+  if (freshSse) await worker.updateProps(worker.props);
   await worker._doInit();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: clientName, version: '1.0.0' });
@@ -256,7 +275,7 @@ function widgetSource(stem: string): string {
 /** callTool / callToolResult / callServerTool names written as literals. */
 function parseWidgetToolCalls(source: string): string[] {
   const names = new Set<string>();
-  const re = /\b(?:callTool|callToolResult|callServerTool)\(\s*['"]([a-z0-9_]+)['"]/g;
+  const re = /\b(?:callTool|callToolResult|callServerTool|callWidgetRead|callWidgetToolResult)\(\s*['"]([a-z0-9_]+)['"]/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(source))) names.add(match[1]!);
   return [...names].sort();
@@ -284,10 +303,13 @@ describe('one public contract per profile', () => {
       const { client } = await connectProfile(profile);
       const listed = (await client.listTools()).tools as ListedTool[];
       const names = listed.map((tool) => tool.name).sort();
-      if (!names.includes('orgx_bootstrap')) return;
+      const bootstrapTool = names.includes('orgx_bootstrap')
+        ? 'orgx_bootstrap'
+        : names.includes('orgx_widget_select_workspace') ? 'orgx_widget_select_workspace' : null;
+      if (!bootstrapTool) return;
 
       const result = await client.callTool({
-        name: 'orgx_bootstrap',
+        name: bootstrapTool,
         arguments: { workspace_id: WORKSPACE_ID },
       });
       expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
@@ -296,9 +318,14 @@ describe('one public contract per profile', () => {
         widget_only_tools: string[];
         visible_tools_count: number;
         listed_tools_count: number;
-        safe_first_calls: Array<{ tool: string }>;
+        safe_first_calls: Array<{ tool: string; args: Record<string, unknown> }>;
         recommended_workflows: Record<string, string[]>;
       };
+      // Exercise the real handler through SDK JSON Schema validation, then
+      // ensure the runtime schema retains every routing hint it produced.
+      const validated = CANONICAL_OUTPUT_SCHEMAS.orgx_bootstrap.parse(payload);
+      expect(validated.safe_first_calls).toEqual(payload.safe_first_calls);
+      expect(validated.recommended_workflows).toEqual(payload.recommended_workflows);
 
       const modelVisible = listed
         .filter((tool) => isModelVisibleToolMeta(tool._meta))
@@ -318,11 +345,20 @@ describe('one public contract per profile', () => {
       }
       if (profile === 'claude-directory') {
         expect(payload.recommended_workflows.plan_feature).toContain('orgx_start_plan');
-        expect(payload.recommended_workflows.execute_task).toContain('orgx_delegate_work');
+        expect(payload.recommended_workflows.execute_task).toContain('orgx_start_agent_task');
         expect(payload.recommended_workflows.human_decision_review).toEqual([
           'orgx_list_pending_decisions', 'orgx_open_decision_review',
         ]);
-        expect(payload.recommended_workflows.review_and_prove_work).toContain('orgx_complete_with_proof');
+        expect(payload.recommended_workflows.review_and_prove_work).toContain('orgx_complete_work_with_proof');
+      }
+      if (profile === 'chatgpt') {
+        expect(payload.safe_first_calls).toContainEqual({
+          tool: 'orgx_get_operator_brief', args: { period: '30d' },
+        });
+        expect(payload.recommended_workflows.preserve_work_receipt).toContain('orgx_submit_work_receipt');
+        const schema = getToolOutputSchema(bootstrapTool)!;
+        expect(schema.safeParse({ ...payload, safe_first_calls: 'malformed' }).success).toBe(false);
+        expect(schema.safeParse({ ...payload, undeclared_top_level: true }).success).toBe(false);
       }
     },
     30000
@@ -348,7 +384,8 @@ describe('one public contract per profile', () => {
     async (profile) => {
       const { client } = await connectProfile(profile);
       const listed = (await client.listTools()).tools as ListedTool[];
-      const resources = new Set((await client.listResources()).resources.map((r) => r.uri));
+      const resources = new Set(client.getServerCapabilities()?.resources
+        ? (await client.listResources()).resources.map((r) => r.uri) : []);
       for (const tool of listed) {
         for (const uri of templateUrisOf(tool)) {
           expect(resources, `${profile} ${tool.name} -> ${uri}`).toContain(uri);
@@ -421,24 +458,22 @@ describe('one public contract per profile', () => {
     }
   }, 30000);
 
-  it('claude-directory: a read grant discovers only informational and non-dispatching operations', async () => {
+  it('claude-directory: a read grant follows operation scope contracts and excludes work mutations', async () => {
     const { client, worker } = await connectProfile(
       'claude-directory', 'directory-read-grant', AUTHORIZATION_PRESETS.read.scopes
     );
     try {
       const listed = (await client.listTools()).tools.map((tool) => tool.name).sort();
-      expect(listed).toEqual([
-        'orgx_search', 'orgx_inspect', 'orgx_recommend', 'get_agent_status',
-        'get_initiative_pulse', 'get_morning_brief', 'get_operator_chronicle',
-        'orgx_bootstrap', 'check_execution_readiness', 'orgx_command_status',
-        'review_artifact', 'orgx_read_plan', 'orgx_check_delegation',
-        'orgx_list_pending_decisions',
-      ].sort());
+      expect(listed).toEqual(CLAUDE_DIRECTORY_SURFACE.filter((id) => {
+        const contract = getPublicOperationContract(id);
+        expect(contract, `Missing scope contract for ${id}`).toBeDefined();
+        return checkAuthRequirements(contract?.securitySchemes, 'directory-read-grant', AUTHORIZATION_PRESETS.read.scopes).isAuthorized;
+      }).sort());
       for (const name of [
-        'orgx_create_entity', 'orgx_update_entity', 'orgx_start_plan',
-        'orgx_delegate_work', 'orgx_record_decision', 'orgx_attach',
-        'orgx_submit_receipt', 'orgx_complete_with_proof', 'manage_lifecycle',
-        'resume_agent_run', 'orgx_open_decision_review',
+        'orgx_create_task', 'orgx_create_initiative_hierarchy', 'orgx_update_work', 'orgx_start_plan',
+        'orgx_start_agent_task', 'orgx_capture_decision', 'orgx_attach_artifact',
+        'orgx_submit_work_receipt', 'orgx_complete_work_with_proof', 'orgx_cancel_work',
+        'orgx_retry_work', 'orgx_resume_work', 'orgx_launch_initiative',
       ]) {
         expect(listed, `${name} must require a write grant`).not.toContain(name);
       }
@@ -657,7 +692,7 @@ describe('decision results through the declared output schemas (A3, A4)', () => 
   ] as const)(
     '%s returns pending decisions with proof that pass its output schema',
     async (name, args) => {
-      const { client } = await connectProfile('chatgpt');
+      const { client } = await connectProfile('legacy');
       await client.listTools(); // the client validates against the listed schemas
       const result = await client.callTool({ name, arguments: args });
       expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
@@ -670,7 +705,7 @@ describe('decision results through the declared output schemas (A3, A4)', () => 
       expect(result._meta?.['orgx/widgetApproval']).toEqual({
         approval_tokens: { 'decision-1': 'signed-token' },
       });
-      const schema = OPENAI_OUTPUT_SCHEMAS[name];
+      const schema = getToolOutputSchema(name)!;
       expect(schema.safeParse(result.structuredContent).success).toBe(true);
     },
     30000
@@ -692,7 +727,7 @@ describe('decision results through the declared output schemas (A3, A4)', () => 
   ] as const)(
     '%s action=%s answers needs_human as a normal result and never settles',
     async (name, action, extra) => {
-      const { client } = await connectProfile('chatgpt');
+      const { client } = await connectProfile('legacy');
       await client.listTools();
       apiMocks.callOrgxApiJson.mockClear();
       const result = await client.callTool({
@@ -714,7 +749,7 @@ describe('decision results through the declared output schemas (A3, A4)', () => 
       expect(text).toMatch(/Not settled/);
       // Nothing was sent upstream: MCP never approves or rejects.
       expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
-      expect(OPENAI_OUTPUT_SCHEMAS[name].safeParse(result.structuredContent).success).toBe(true);
+      expect(getToolOutputSchema(name)!.safeParse(result.structuredContent).success).toBe(true);
     },
     30000
   );
@@ -722,7 +757,7 @@ describe('decision results through the declared output schemas (A3, A4)', () => 
 
 describe('argument aliases reach the real handler (A5)', () => {
   it('orgx_recommend initiative_id is forwarded as the initiative scope', async () => {
-    const { client } = await connectProfile('chatgpt');
+    const { client } = await connectProfile('legacy');
     apiMocks.callOrgxApiJson.mockClear();
     await client.callTool({ name: 'orgx_recommend', arguments: { initiative_id: INITIATIVE_ID } });
     const bodies = apiMocks.callOrgxApiJson.mock.calls.map(([, , init]) =>
@@ -732,7 +767,7 @@ describe('argument aliases reach the real handler (A5)', () => {
   }, 30000);
 
   it('orgx_bootstrap initiativeId binds the initiative', async () => {
-    const { client, worker } = await connectProfile('chatgpt');
+    const { client, worker } = await connectProfile('legacy');
     worker.fetchEntityRecord = vi.fn(async () => ({
       id: INITIATIVE_ID,
       type: 'initiative',
@@ -746,3 +781,255 @@ describe('argument aliases reach the real handler (A5)', () => {
     expect(result.structuredContent).toMatchObject({ initiative: { id: INITIATIVE_ID } });
   }, 30000);
 });
+
+describe('explicit operations through the live MCP registry', () => {
+  function portableReceipt() {
+    const { body } = buildAgentWorkReceiptImportRequest({ receipt_type: 'proof', summary: 'Login test passed', evidence: { links: ['https://example.com/test'] }, verification_status: 'passed' }, { workspaceId: WORKSPACE_ID, receiptId: 'portable-receipt', issuedAt: '2026-10-08T12:00:00.000Z' });
+    return { ...body.receipt, schema_version: 'agent-work-receipt/v0.2', intent: { ...(body.receipt.intent as object), criteria: [{ id: 'login', text: 'Login works' }] }, outcome: { ...(body.receipt.outcome as object), criteria_results: [{ criterion_id: 'login', status: 'met', evidence_ids: ['evidence-1'] }] }, provenance: [{ path: '/outcome/status', basis: 'declared', confidence: 0.8 }] };
+  }
+
+  it('lists separate receipt operations and hides both legacy routers and human capability inputs', async () => {
+    const tools = await listProfile('chatgpt');
+    for (const id of Object.keys(RECEIPT_OPERATION_OUTPUT_SCHEMAS)) {
+      const tool = tools.find((item) => item.name === id);
+      expect(tool, id).toBeDefined();
+      expect(tool?.outputSchema, id).toBeDefined();
+      expect(tool?.inputSchema?.properties, id).not.toHaveProperty('action');
+      expect(tool?.inputSchema?.properties, id).not.toHaveProperty('approval_token');
+    }
+    for (const id of ['orgx_act', 'orgx_write', 'orgx_plan', 'orgx_spawn', 'orgx_decide', 'manage_lifecycle', 'approve_agent_work']) expect(tools.map((item) => item.name)).not.toContain(id);
+  });
+
+  it('new pending-decision list preserves evidence and delivers approval tokens only to widget metadata', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    try {
+      await client.listTools();
+      const result = await client.callTool({ name: 'orgx_list_pending_decisions', arguments: {} });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({ proof: pendingDecisionsPayload.proof });
+      expect(result._meta?.['orgx/widgetApproval']).toEqual({ approval_tokens: { 'decision-1': 'signed-token' } });
+      expect(JSON.stringify(result.content)).not.toContain('signed-token');
+      expect(JSON.stringify(result.structuredContent)).not.toContain('signed-token');
+    } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('imports the complete v0.2 document through the canonical receipt admission with no legacy write', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    const original = apiMocks.callOrgxApiJson.getMockImplementation();
+    apiMocks.callOrgxApiJson.mockClear();
+    apiMocks.callOrgxApiJson.mockImplementation(async (_env: unknown, path: string) => {
+      if (path === '/api/v1/agent-work-receipts') return Response.json({ ok: true, receipt_id: 'ledger-receipt', external_receipt_id: 'portable-receipt', schema_version: 'agent-work-receipt/v0.2', idempotent: false });
+      return Response.json({ ok: true, data: {} });
+    });
+    try {
+      await client.listTools();
+      const receipt = portableReceipt();
+      const result = await client.callTool({ name: 'orgx_submit_work_receipt', arguments: { workspace_id: WORKSPACE_ID, receipt, idempotency_key: 'portable-retry' } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      const calls = apiMocks.callOrgxApiJson.mock.calls;
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.[1]).toBe('/api/v1/agent-work-receipts');
+      expect(JSON.parse(String(calls[0]?.[2]?.body))).toEqual({ workspace_id: WORKSPACE_ID, receipt, idempotency_key: 'portable-retry' });
+      expect(result.structuredContent).toMatchObject({ effects: { work_status_changed: false, authoritative_verification_changed: false, human_acceptance_changed: false } });
+      expect(RECEIPT_OPERATION_OUTPUT_SCHEMAS.orgx_submit_work_receipt.safeParse(result.structuredContent).success).toBe(true);
+    } finally { apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('never downgrades foreign-workspace or invalid-receipt rejection into a legacy write', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    const original = apiMocks.callOrgxApiJson.getMockImplementation();
+    apiMocks.callOrgxApiJson.mockClear();
+    apiMocks.callOrgxApiJson.mockRejectedValue(new OrgXApiError('Workspace access denied', 'test foreign workspace', 403));
+    try {
+      const result = await client.callTool({ name: 'orgx_submit_work_receipt', arguments: { workspace_id: '99999999-9999-4999-8999-999999999999', receipt: portableReceipt() } });
+      expect(result.isError).toBe(true);
+      expect(apiMocks.callOrgxApiJson).toHaveBeenCalledOnce();
+      expect(apiMocks.callOrgxApiJson.mock.calls[0]?.[1]).toBe('/api/v1/agent-work-receipts');
+    } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('allows anonymous document validation without importing or changing work', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    const original = apiMocks.callOrgxApiJson.getMockImplementation();
+    worker.props = { profile: 'chatgpt', scope: '' };
+    worker.sessionAuth = {}; worker.sessionContext = {};
+    apiMocks.callOrgxApiJson.mockClear();
+    apiMocks.callOrgxApiJson.mockResolvedValue(Response.json({ ok: true, valid: true, persistence: { stored: false, import_requires_authentication: true } }));
+    try {
+      const receipt = portableReceipt();
+      const result = await client.callTool({ name: 'orgx_validate_work_receipt', arguments: { receipt } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({ valid: true, persistence: { stored: false } });
+      expect(apiMocks.callOrgxApiJson).toHaveBeenCalledOnce();
+      expect(apiMocks.callOrgxApiJson.mock.calls[0]?.[1]).toBe('/api/v1/agent-work-receipts/validate');
+      expect(JSON.parse(String(apiMocks.callOrgxApiJson.mock.calls[0]?.[2]?.body))).toEqual(receipt);
+    } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('receipt reads keep the human capability out of model content and preserve separate producer and human verdicts', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    const original = apiMocks.callOrgxApiJson.getMockImplementation();
+    apiMocks.callOrgxApiJson.mockResolvedValue(Response.json({ ok: true, data: { receipt_id: 'ledger-receipt', receipt: portableReceipt(), receipt_assessment: { evidence_status: 'recorded', verification_status: 'producer_reported', acceptance_status: 'human_reviewed', outcome_status: 'failed' }, human_judgment: { outcome_status: 'failed', actor_id: 'human', decided_at: '2026-10-08T13:00:00Z' }, _widget_meta: { receipt_approval_tokens: { 'portable-receipt': 'receipt-secret-token' }, token_ttl_seconds: 900 } } }));
+    try {
+      await client.listTools();
+      const result = await client.callTool({ name: 'orgx_get_work_receipt', arguments: { workspace_id: WORKSPACE_ID, receipt_id: 'portable-receipt' } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({ producer_claims: { outcome_status: 'succeeded' }, human_judgment: { outcome_status: 'failed' } });
+      expect(result._meta?.['orgx/widgetApproval']).toMatchObject({ receipt_approval_tokens: { 'portable-receipt': 'receipt-secret-token' } });
+      expect(JSON.stringify(result.content)).not.toContain('receipt-secret-token');
+      expect(JSON.stringify(result.structuredContent)).not.toContain('receipt-secret-token');
+    } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('rejects workflow-status changes through a content update before any backend call', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    apiMocks.callOrgxApiJson.mockClear();
+    try {
+      const result = await client.callTool({ name: 'orgx_update_work', arguments: { type: 'task', id: INITIATIVE_ID, fields: { status: 'completed' } } });
+      expect(result.isError).toBe(true);
+      expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+    } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('cannot turn the create-task operation into launch or update by adding hidden router arguments', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    const execute = vi.spyOn(worker, 'executeContractTool').mockResolvedValue({ isError: true, content: [{ type: 'text', text: 'Fixture stopped after operation routing.' }] });
+    try {
+      await client.callTool({ name: 'orgx_create_task', arguments: { title: 'Login regression', workstream_id: INITIATIVE_ID, action: 'launch', operation: 'update', type: 'initiative', status: 'completed', user_id: 'forged-person' } });
+      expect(execute).toHaveBeenCalledOnce();
+      const [name, args] = execute.mock.calls[0]!;
+      expect(name).toBe('orgx_write');
+      expect(args).toMatchObject({ operation: 'create', type: 'task', title: 'Login regression' });
+      expect(args).not.toHaveProperty('action');
+      expect(args).not.toHaveProperty('status');
+      expect(args).not.toHaveProperty('user_id');
+    } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('validates the actual receipt collection and review-queue projections including bounds and counts', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    const original = apiMocks.callOrgxApiJson.getMockImplementation();
+    apiMocks.callOrgxApiJson.mockImplementation(async (_env: unknown, path: string) => Response.json({ ok: true, data: path.includes('/review?') ? { total: 0, items: [], criteria_proposals: [], queue_limit: 200, queue_truncated: false, window_days: 120 } : { total: 0, results: [], receipts: 0, workstreams: 0, window_days: 120, query: { text: '', filters: {} }, _widget_meta: { receipt_approval_tokens: {}, token_ttl_seconds: 900 } } }));
+    try {
+      await client.listTools();
+      for (const name of ['orgx_list_work_receipts', 'orgx_get_receipt_review_queue']) {
+        const result = await client.callTool({ name, arguments: { workspace_id: WORKSPACE_ID } });
+        expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+        expect(result.structuredContent).toMatchObject({ total: 0, window_days: 120 });
+      }
+    } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+});
+
+describe('core proof and artifact operations through MCP output contracts', () => {
+  it('opens an explicit artifact from the core review route and keeps its capability hidden', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    const original = apiMocks.callOrgxApiJson.getMockImplementation();
+    apiMocks.callOrgxApiJson.mockClear();
+    apiMocks.callOrgxApiJson.mockImplementation(async () => Response.json({ data: {
+      artifact: { id: INITIATIVE_ID, name: 'Reviewed deliverable', status: 'in_review', version: 2 },
+      reviewContract: null, reviewContractSource: 'entity_fallback', available_actions: [{ id: 'request_changes' }],
+      _widget_meta: { approval_tokens: { [INITIATIVE_ID]: 'artifact-hidden-capability' } },
+    }, meta: { apiVersion: '1', workspaceId: WORKSPACE_ID } }));
+    try {
+      await client.listTools();
+      const result = await client.callTool({ name: 'orgx_open_artifact_review', arguments: { artifact_id: INITIATIVE_ID, workspace_id: WORKSPACE_ID } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(apiMocks.callOrgxApiJson).toHaveBeenCalledOnce();
+      expect(apiMocks.callOrgxApiJson.mock.calls[0]?.[1]).toContain(`/api/v1/workflows/artifact-review/${INITIATIVE_ID}?`);
+      expect(result.structuredContent).toMatchObject({ available_actions: [{ id: 'request_changes' }] });
+      expect(JSON.stringify(result.structuredContent)).not.toContain('artifact-hidden-capability');
+      expect(JSON.stringify(result.content)).not.toContain('artifact-hidden-capability');
+      expect(result._meta?.['orgx/widgetApproval']).toEqual({ approval_tokens: { [INITIATIVE_ID]: 'artifact-hidden-capability' } });
+    } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('preserves a core task completion failure and recorded proof instead of losing the partial result', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    const original = apiMocks.callOrgxApiJson.getMockImplementation();
+    apiMocks.callOrgxApiJson.mockClear();
+    const payload = { data: { completed: false, state: 'failed', proof_attached: true, artifact: { id: 'proof' }, verification: null, completion: null, error: { code: 'conflict', message: 'Task changed after proof attached' } }, meta: { apiVersion: '1', workspaceId: WORKSPACE_ID } };
+    apiMocks.callOrgxApiJson.mockImplementation(async () => Response.json(payload));
+    try {
+      await client.listTools();
+      const result = await client.callTool({ name: 'orgx_complete_work_with_proof', arguments: { type: 'task', id: INITIATIVE_ID, workspace_id: WORKSPACE_ID, artifact: { artifact_type: 'document', external_url: 'https://example.com/proof' } } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(result.structuredContent).toEqual(payload);
+      expect(apiMocks.callOrgxApiJson).toHaveBeenCalledOnce();
+      expect(apiMocks.callOrgxApiJson.mock.calls[0]?.[1]).toBe('/api/v1/workflows/complete-with-proof');
+      expect(apiMocks.callOrgxApiJson.mock.calls[0]?.[2]?.headers).toMatchObject({ 'Idempotency-Key': expect.stringMatching(/^mcp-proof:/) });
+    } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+});
+
+
+describe('current session wire contracts', () => {
+  it('initializes a fresh SSE session with a bound grant and no persisted initializeRequest', async () => {
+    const { client, worker } = await connectProfile('chatgpt', 'fresh-sse', undefined, undefined, true);
+    try {
+      expect(await worker.ctx.storage.get('initializeRequest')).toBeUndefined();
+      expect(await worker.getSessionToolContract(worker.props))
+        .toEqual({ profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' });
+      expect((await client.listTools()).tools.map((tool) => tool.name).sort())
+        .toEqual([...CHATGPT_PUBLIC_SURFACE].sort());
+    } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('rejects a pre-operation ChatGPT session so the host refreshes discovery', async () => {
+    await expect(connectProfile('chatgpt', 'cached-chatgpt', undefined, { previousProfile: 'chatgpt' }))
+      .rejects.toThrow('Reconnect without a session ID');
+  }, 30000);
+
+  it('binds a current profile and rejects identity or explicit selector changes', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    try {
+      await worker.updateProps(worker.props);
+      await worker.ctx.storage.put('initializeRequest', { jsonrpc: '2.0', method: 'initialize', id: 1 });
+      expect(await worker.getSessionToolContract(worker.props))
+        .toEqual({ profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' });
+      expect(await worker.getSessionToolContract({ ...worker.props, scope: worker.props.scope.split(' ').reverse().join(' '), email: 'refreshed@example.test' }))
+        .toEqual({ profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' });
+      await expect(worker.getSessionToolContract({ ...worker.props, scope: 'initiatives:read' }))
+        .rejects.toThrow('different authenticated grant');
+      await worker.updateProps({ ...worker.props, profile: 'v2', toolProfileExplicit: false });
+      expect(worker.props.profile).toBe('chatgpt');
+      await expect(worker.updateProps({ ...worker.props, profile: 'extended', toolProfileExplicit: true }))
+        .rejects.toThrow('Reconnect');
+      await expect(worker.updateProps({ ...worker.props, userId: 'other-actor' }))
+        .rejects.toThrow('another authenticated identity');
+      await expect(worker.getSessionToolContract({ ...worker.props, userId: 'other-actor' }))
+        .rejects.toThrow('another authenticated identity');
+      // Native SSE keeps actor props without persisting initializeRequest.
+      // Its session must remain bound despite that missing SDK marker.
+      await worker.ctx.storage.put('initializeRequest', undefined);
+      expect(await worker.getSessionToolContract(worker.props))
+        .toEqual({ profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' });
+      await expect(worker.getSessionToolContract({ ...worker.props, userId: 'other-actor' }))
+        .rejects.toThrow('another authenticated identity');
+      await expect(worker.getSessionToolContract({ ...worker.props, scope: 'initiatives:read' }))
+        .rejects.toThrow('different authenticated grant');
+      expect((await client.listTools()).tools.map((tool) => tool.name).sort())
+        .toEqual([...CHATGPT_PUBLIC_SURFACE].sort());
+    } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+});
+
+
+it.each(['commander', 'executor', 'full'])('%s preserves the runtime completion concurrency contract', async (profile) => {
+  const { client } = await connectProfile(profile);
+  const tool = (await client.listTools()).tools.find((entry) => entry.name === 'orgx_complete_work')!;
+  expect(tool).toBeDefined();
+  expect(tool.inputSchema.properties).toHaveProperty('task_id');
+  expect(tool.inputSchema.properties).toHaveProperty('expected_updated_at');
+  expect(tool.inputSchema.properties).toHaveProperty('expected_aggregate_version');
+  expect(tool.inputSchema.properties).not.toHaveProperty('type');
+  expect(tool.inputSchema.required).toContain('task_id');
+  expect(tool.inputSchema.required).toContain('expected_updated_at');
+  expect(tool.inputSchema.required).toContain('expected_aggregate_version');
+}, 30000);
+
+
+it('requires internal runs with pre-operation sessions to reconnect too', async () => {
+  await expect(connectProfile('full', 'cached-internal-run', undefined, { previousProfile: 'full' }))
+    .rejects.toThrow('Reconnect without a session ID');
+}, 30000);

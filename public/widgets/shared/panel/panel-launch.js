@@ -5,10 +5,11 @@
  * plain request ChatGPT turns into a real OrgX tool call, and each line
  * says what OrgX does with it, never a tool id. Mapping (ChatGPT profile):
  *
- *   launch   -> scaffold_initiative   plan     -> orgx_plan (existing initiative only)
- *   delegate -> orgx_spawn            status   -> get_agent_status
- *   next     -> orgx_recommend        brief    -> get_morning_brief
- *   pulse    -> get_initiative_pulse  risk/wait/check -> orgx_inspect, orgx_command_status
+ *   launch   -> orgx_create_initiative_hierarchy + orgx_launch_initiative
+ *   plan     -> orgx_start_plan / orgx_save_plan (existing initiative only)
+ *   delegate -> orgx_start_agent_task         status -> orgx_get_agent_status
+ *   next     -> orgx_get_next_actions         brief  -> orgx_get_operator_brief
+ *   pulse    -> orgx_get_initiative_progress  risk/wait/check -> orgx_inspect, orgx_get_operation_status
  *
  * Restraint rules (kept here so every caller gets them):
  *   - launch prompts never render above a pending decision (callers choose

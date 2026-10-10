@@ -67,7 +67,7 @@ describe('work-ledger search output contract', () => {
     worker.sessionContext = { workspaceId: 'workspace-1' };
     worker.fetchOrgxJsonOrNull = vi.fn(async () => ({ ok: true, data: structuredClone(variant.data) }));
     const server = new McpServer({ name: 'work-ledger-contract', version: '1' });
-    installToolResultGuidanceWrapper(server, new Set(['orgx_search']));
+    installToolResultGuidanceWrapper(server, new Set(['orgx_search', 'orgx_list_work_receipts']));
     server.registerTool('orgx_search', { inputSchema: {} }, async () =>
       worker.searchWorkLedger({ scope: 'work_ledger', ...variant.args }, 'user-1'));
     const client = new Client({ name: 'strict-ledger-reader', version: '1' });

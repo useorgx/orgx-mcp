@@ -25,6 +25,54 @@
   function ago(iso) { var t = global.OrgXTime; return iso && t && t.relative ? t.relative(iso) : ''; }
   function links() { return global.OrgXLinks || null; }
 
+  function rec(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; }
+  function normalizeRow(value) {
+    var row = rec(value), claims = rec(row.producer_claims), assessment = rec(row.receipt_assessment);
+    var judgment = rec(row.human_judgment), counts = rec(row.criteria);
+    var hasClaims = Boolean(row.producer_claims);
+    var documentJudgment = judgment.scope === 'receipt_document';
+    var sameDocument = documentJudgment && typeof judgment.reviewed_receipt_id === 'string' && judgment.reviewed_receipt_id === row.receipt_id &&
+      (judgment.reviewed_receipt_revision || null) === (row.receipt_review_revision || null);
+    var humanOutcome = sameDocument ? judgment.outcome_status : null;
+    if (!humanOutcome && !documentJudgment && assessment.acceptance_status === 'human_reviewed') humanOutcome = assessment.outcome_status;
+    return Object.assign({}, row, {
+      id: row.external_receipt_id || row.externalId || row.receipt_id || row.id,
+      outcome: humanOutcome || claims.outcome_status || row.outcome || null,
+      outcome_source: humanOutcome ? 'human' : hasClaims ? 'producer' : row.outcome_source || null,
+      verification: hasClaims ? (assessment.verification_status === 'producer_reported' ? null : assessment.verification_status || null) : row.verification || null,
+      producer_verification: claims.verification_status || null,
+      accepted: hasClaims ? (assessment.acceptance_status === 'accepted' ? 'accepted' : assessment.acceptance_status === 'rejected' ? 'rejected' : null) : row.accepted || null,
+      criteria: { met: Number(counts.met) || 0, unmet: Number(counts.unmet) || 0, unknown: Number(counts.unknown) || 0 },
+      actor: row.actor || null, at: row.at || null, prs: row.prs || [],
+    });
+  }
+  function normalizeList(data, query) {
+    if (data && data.ok !== false && Array.isArray(data.results)) {
+      return { status: 'ok', query: query || '', total: Number(data.total) || data.results.length, items: data.results.map(normalizeRow), reason: null };
+    }
+    if (data && data.receipts && Array.isArray(data.receipts.items)) return data.receipts;
+    if (data && data.status && Array.isArray(data.items)) return data;
+    return { status: 'unavailable', query: query || '', total: 0, items: [], reason: null };
+  }
+  function normalizeDetail(data, id, fallbackRow) {
+    if (data && data.receipt && data.receipt.status) return data.receipt;
+    if (data && data.status && data.id) return data;
+    if (!data || data.ok === false || !data.receipt_id) return { status: 'unavailable', id: id, row: fallbackRow || null, reason: null, criteria: [], artifacts: [], uncertain: [] };
+    var criteria = Array.isArray(data.criteria) ? data.criteria : [];
+    var row = normalizeRow(Object.assign({}, fallbackRow || {}, data, { criteria: criteria.reduce(function count(all, c) { all[c.status === 'met' ? 'met' : c.status === 'unmet' ? 'unmet' : 'unknown'] += 1; return all; }, { met: 0, unmet: 0, unknown: 0 }) }));
+    return { status: 'ok', id: id, row: row,
+      criteria: criteria.map(function criterion(c) { return Object.assign({}, c, { status: ['met', 'unmet'].indexOf(c.status) === -1 ? 'unknown' : c.status }); }),
+      artifacts: (Array.isArray(data.evidence) ? data.evidence : []).map(function evidence(e) { return { kind: e.kind || 'evidence', name: e.summary || e.id || 'Evidence', url: e.uri || null }; }),
+      criteria_total: Math.max(criteria.length, Number(data.criteria_total) || 0),
+      evidence_total: Math.max(Array.isArray(data.evidence) ? data.evidence.length : 0, Number(data.evidence_total) || 0),
+      uncertain: Array.isArray(data.uncertain) ? data.uncertain : [],
+      objective: typeof data.objective === 'string' ? data.objective : null,
+      outcome_summary: typeof data.outcome_summary === 'string' ? data.outcome_summary : null,
+      producer_reported: Boolean(data.producer_claims),
+      reported_bar: data.reported_bar && data.reported_bar.basis === 'producer_reported' ? data.reported_bar : null,
+    };
+  }
+
   var OUTCOME = {
     succeeded: ['Done', 'ok'],
     partially_succeeded: ['Partly done', 'warn'],
@@ -33,12 +81,16 @@
   };
   function outcomeOf(row) {
     var o = OUTCOME[String(row.outcome || '').toLowerCase()];
+    if (o && row.outcome_source === 'producer') return ['Agent reports ' + o[0].toLowerCase(), 'mute'];
     return o || [row.outcome ? String(row.outcome).replace(/_/g, ' ') : 'Recorded', 'mute'];
   }
   function verifiedOf(row) {
     var v = String(row.verification || '').toLowerCase();
     if (v === 'verified' || v === 'passed') return ['Checked after', 'ok'];
     if (v === 'failed') return ['Check failed', 'bad'];
+    var reported = String(row.producer_verification || '').toLowerCase();
+    if (reported === 'verified' || reported === 'passed') return ['Agent reports verified', 'mute'];
+    if (reported === 'failed') return ['Agent reports failed check', 'warn'];
     return ['Not checked after', 'mute'];
   }
   function acceptedOf(row) {
@@ -98,6 +150,12 @@
 
   /** Where a check came from, as a chip; a learned one names the call behind it when the ledger does. */
   function sourceChip(x) {
+    if (x.basis === 'producer_reported' && x.source) {
+      var reported = { rule: 'workspace rule', artifact_type: 'kind of work', learned: 'learned', suggested: 'suggested', drafted: 'drafted' };
+      var source = reported[x.source] || String(x.source).replace(/_/g, ' ');
+      return '<span class="xp-src" data-src="' + esc(x.source) + '" title="The agent reports this source. OrgX has not confirmed its provenance.">Agent reports: ' +
+        esc(source + (x.source_label ? ' · ' + x.source_label : '')) + '</span>';
+    }
     var X = global.OrgXExpectations;
     if (!X || !x.source) return '';
     var label = x.source === 'learned' && x.source_label ? 'from ' + x.source_label : '';
@@ -110,6 +168,16 @@
     if (!bar || !bar.agreed_at) return '';
     var when = X && X.shortDate ? X.shortDate(bar.agreed_at) : '';
     return '<p class="rc-bar">Judged against the bar you agreed on' + (when ? ' ' + esc(when) : '') + '.</p>';
+  }
+
+  function reportedBarLine(detail) {
+    var bar = detail && detail.reported_bar;
+    if (!bar || bar.basis !== 'producer_reported') return '';
+    if (!bar.agreed_at && !bar.agreed_by) return '<p class="rc-bar rc-reported-bar">The agent reports which expectations this receipt used. This report does not confirm a human agreement.</p>';
+    var X = global.OrgXExpectations;
+    var when = bar.agreed_at && X && X.shortDate ? X.shortDate(bar.agreed_at) : '';
+    return '<p class="rc-bar rc-reported-bar">Agent reports an expectation agreement' + (when ? ' on ' + esc(when) : '') +
+      '. OrgX has not confirmed this human agreement.</p>';
   }
 
   /**
@@ -131,15 +199,18 @@
       body = '<p class="rc-quiet">' + esc(detail.reason || 'This receipt could not be read right now.') + '</p>';
     } else {
       var crit = detail.criteria || [];
-      body += '<section class="rc-sec" aria-label="What done meant"><h4 class="rc-h">What done meant</h4>' + barLine(detail) +
+      if (detail.objective) body += '<section class="rc-sec"><h4 class="rc-h">Intended outcome</h4><p class="rc-p">' + esc(detail.objective) + '</p></section>';
+      body += '<section class="rc-sec" aria-label="What done meant"><h4 class="rc-h">What done meant</h4>' + barLine(detail) + reportedBarLine(detail) +
+        (detail.producer_reported ? '<p class="rc-quiet">The agent reports these check results and sources.</p>' : '') +
         (crit.length
           ? '<ul class="rc-crits" role="list">' + crit.map(function c(x) {
             var guess = typeof x.confidence === 'number' && x.confidence < 0.6;
             return '<li class="rc-c" data-s="' + x.status + '"><span class="rc-cm" aria-hidden="true">' + MARK[x.status] + '</span>' +
               '<span class="rc-ct">' + esc(x.text) + (x.source ? '<span class="rc-src">' + sourceChip(x) + '</span>' : '') + '</span><span class="rc-cs">' + STATUS_WORD[x.status] + (guess && x.status !== 'unknown' ? ' · a guess' : '') + '</span></li>';
           }).join('') + '</ul>'
-          : '<p class="rc-quiet">No criteria were written down for this work, so nothing can be checked against them.</p>') + '</section>';
-      if (detail.outcome_summary) body += '<section class="rc-sec"><h4 class="rc-h">What happened</h4><p class="rc-p">' + esc(detail.outcome_summary) + '</p></section>';
+          : '<p class="rc-quiet">No criteria were written down for this work, so nothing can be checked against them.</p>') +
+        (detail.criteria_total > crit.length ? '<p class="rc-quiet">Showing ' + crit.length + ' of ' + esc(detail.criteria_total) + ' checks. Open the Work Ledger for the complete receipt.</p>' : '') + '</section>';
+      if (detail.outcome_summary) body += '<section class="rc-sec"><h4 class="rc-h">' + (detail.producer_reported ? 'Agent-reported outcome' : 'What happened') + '</h4><p class="rc-p">' + esc(detail.outcome_summary) + '</p></section>';
       var arts = detail.artifacts || [];
       if (arts.length) {
         body += '<section class="rc-sec"><h4 class="rc-h">Evidence</h4><ul class="rc-arts" role="list">' + arts.slice(0, 8).map(function a(x) {
@@ -147,7 +218,8 @@
           return '<li>' + (x.url
             ? '<button type="button" class="rc-art" data-action="open" data-url="' + esc(x.url) + '">' + esc(label) + ' ↗</button>'
             : '<span class="rc-art is-plain">' + esc(label) + '</span>') + '<span class="rc-ak">' + esc(String(x.kind).replace(/_/g, ' ')) + '</span></li>';
-        }).join('') + '</ul></section>';
+        }).join('') + '</ul>' +
+          (Math.max(arts.length, Number(detail.evidence_total) || 0) > Math.min(arts.length, 8) ? '<p class="rc-quiet">Showing ' + Math.min(arts.length, 8) + ' of ' + esc(Math.max(arts.length, Number(detail.evidence_total) || 0)) + ' evidence items. Open the Work Ledger for the complete receipt.</p>' : '') + '</section>';
       }
       var unsure = detail.uncertain || [];
       if (unsure.length) {
@@ -167,6 +239,7 @@
   var CALLS = [['succeeded', 'Done'], ['partially_succeeded', 'Partly'], ['failed', 'Not done'], ['blocked', 'Blocked']];
   /** call: { status, phase: 'saving'|'saved'|'failed', reason } or undefined */
   function callHtml(r, call) {
+    if (call && call.phase === 'unavailable') return '<section class="rc-sec rc-call" aria-label="Your call"><h4 class="rc-h">Your call</h4><p class="rc-cn">Review this receipt in the Work Ledger to record your call.</p></section>';
     var agentSays = outcomeOf(r)[0];
     var current = call && call.phase !== 'failed' ? call.status : null;
     var note = !call ? 'The agent says “' + agentSays + '”. Your call overrides it and teaches OrgX what done means here.'
@@ -176,7 +249,7 @@
     return '<section class="rc-sec rc-call" aria-label="Your call"><h4 class="rc-h">Your call</h4>' +
       '<div class="seg rc-calls" role="group" aria-label="Was this done?">' + CALLS.map(function c(x) {
         return '<button type="button" class="seg-b" data-action="receipt-call" data-id="' + esc(r.id) + '" data-status="' + x[0] + '" aria-pressed="' + (current === x[0]) + '"' +
-          (call && call.phase === 'saving' ? ' disabled' : '') + '>' + x[1] + '</button>';
+          (call && (call.phase === 'saving' || call.phase === 'saved') ? ' disabled' : '') + '>' + x[1] + '</button>';
       }).join('') + '</div><p class="rc-cn" role="status" data-phase="' + esc(call ? call.phase : 'idle') + '">' + esc(note) + '</p></section>';
   }
 
@@ -199,5 +272,5 @@
     return m ? m[1] : null;
   }
 
-  global.OrgXPanelReceipts = { listHtml: listHtml, detailHtml: detailHtml, behindHtml: behindHtml, iterateSentence: iterateSentence, prOf: prOf, pips: pips };
+  global.OrgXPanelReceipts = { normalizeList: normalizeList, normalizeDetail: normalizeDetail, listHtml: listHtml, detailHtml: detailHtml, behindHtml: behindHtml, iterateSentence: iterateSentence, prOf: prOf, pips: pips };
 })(typeof window !== 'undefined' ? window : globalThis);

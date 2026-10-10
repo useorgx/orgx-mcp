@@ -90,7 +90,7 @@ export function workLedgerPayload(variant: typeof WORK_LEDGER_OUTPUT_VARIANTS[nu
   return {
     _v2_tool: 'orgx_search', scope: 'work_ledger', view: variant.view, ...variant.data,
     next_calls: variant.view === 'receipt' || variant.view === 'workstream'
-      ? [{ tool: 'orgx_search', args: { scope: 'work_ledger', view: 'review' } }]
-      : [{ tool: 'orgx_search', args: { scope: 'work_ledger', receipt_id: '<id from results>' } }],
+      ? [{ tool: 'orgx_list_work_receipts', args: { view: 'review' } }]
+      : [{ tool: 'orgx_list_work_receipts', args: { view: 'workstreams' } }],
   };
 }

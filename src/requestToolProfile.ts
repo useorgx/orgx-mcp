@@ -34,7 +34,9 @@ export function attachRequestToolProfile(
     new URL(request.url).searchParams.get('profile') ??
     request.headers.get(ORGX_TOOL_PROFILE_HEADER);
   const context = ctx as RequestContextWithProps;
-  const resolved = resolveToolProfile(requestedProfile);
+  // OAuth/session metadata is already verified. A client that omits its
+  // selector on a later request must retain that profile, not get the default.
+  const resolved = resolveToolProfile(requestedProfile ?? (typeof context.props?.profile === 'string' ? context.props.profile : undefined));
   const provablyInternal = context.props?.authSource === 'run_token';
   const profile =
     resolved.name === 'full' && !provablyInternal
@@ -45,7 +47,7 @@ export function attachRequestToolProfile(
       '[mcp:profiles] External full profile request; failing closed to read-only surface'
     );
   }
-  context.props = { ...(context.props ?? {}), profile };
+  context.props = { ...(context.props ?? {}), profile, toolProfileExplicit: requestedProfile !== null };
 }
 
 /**

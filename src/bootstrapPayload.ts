@@ -1,10 +1,10 @@
 import {
-  CLAUDE_DIRECTORY_SURFACE,
   SERVER_MANIFEST_VERSION,
-  V2_CORE_PUBLIC_SURFACE,
   V2_PUBLIC_SURFACE,
+  resolveProfileToolSet,
   resolveToolProfile,
 } from './toolProfiles';
+import { isWidgetOnlyTool } from './widgetToolContract';
 
 export type BootstrapSafeFirstCall = {
   tool: string;
@@ -131,10 +131,9 @@ export function resolveBootstrapSessionModel(
 
 export const V2_PUBLIC_TOOL_IDS = V2_PUBLIC_SURFACE;
 
-const CANONICAL_GUIDANCE_TOOL_IDS = new Set<string>(V2_CORE_PUBLIC_SURFACE);
-const DIRECTORY_GUIDANCE_TOOL_IDS = new Set<string>(CLAUDE_DIRECTORY_SURFACE);
+const LEGACY_GUIDANCE_PROFILES = new Set(['legacy', 'full', 'claude-plugin', 'memory', 'commander', 'planner', 'executor', 'observer']);
 
-export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
+export const LEGACY_BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
   string,
   BootstrapSafeFirstCall[]
 > = {
@@ -171,7 +170,7 @@ export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<
   ],
 };
 
-export const BOOTSTRAP_RECOMMENDED_WORKFLOWS = {
+export const LEGACY_BOOTSTRAP_RECOMMENDED_WORKFLOWS = {
   plan_feature: [
     'orgx_bootstrap',
     'orgx_plan',
@@ -202,7 +201,7 @@ export const BOOTSTRAP_RECOMMENDED_WORKFLOWS = {
 } as const;
 
 /** Directory workflows use its operation-specific read/write contracts. */
-export const CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS = {
+export const LEGACY_CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS = {
   plan_feature: [
     'orgx_bootstrap', 'orgx_read_plan', 'orgx_start_plan', 'orgx_improve_plan',
     'orgx_record_plan_edit', 'orgx_complete_plan', 'orgx_create_entity',
@@ -224,13 +223,67 @@ export const CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS = {
   control_execution: ['get_agent_status', 'manage_lifecycle', 'orgx_command_status'],
 } as const;
 
+const CURRENT_SAFE_FIRST_CALLS: BootstrapSafeFirstCall[] = [
+  { tool: 'orgx_get_workspace_context', args: {} },
+  { tool: 'orgx_get_operator_brief', args: { period: '30d' } },
+  { tool: 'orgx_search', args: { type: 'initiative', limit: 10 } },
+];
+
+export const BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE: Record<string, BootstrapSafeFirstCall[]> = {
+  v2: CURRENT_SAFE_FIRST_CALLS,
+  chatgpt: CURRENT_SAFE_FIRST_CALLS,
+  'claude-directory': CURRENT_SAFE_FIRST_CALLS,
+  extended: CURRENT_SAFE_FIRST_CALLS,
+  'read-only': CURRENT_SAFE_FIRST_CALLS.filter((call) => call.tool !== 'orgx_get_workspace_context'),
+};
+
+/** Ordered operation stages for the current host-independent workflow catalog. */
+export const BOOTSTRAP_RECOMMENDED_WORKFLOWS = {
+  plan_feature: [
+    'orgx_get_workspace_context', 'orgx_read_plan', 'orgx_start_plan',
+    'orgx_save_plan', 'orgx_record_plan_edit', 'orgx_complete_plan',
+  ],
+  scaffold_hierarchy: [
+    'orgx_get_workspace_context', 'orgx_start_plan', 'orgx_save_plan',
+    'orgx_validate_initiative_plan', 'orgx_create_initiative_hierarchy',
+    'orgx_inspect', 'orgx_validate_work_receipt', 'orgx_submit_work_receipt',
+  ],
+  execute_task: [
+    'orgx_get_workspace_context', 'orgx_search', 'orgx_inspect',
+    'orgx_check_execution_readiness', 'orgx_estimate_agent_task',
+    'orgx_start_agent_task', 'orgx_get_agent_status', 'orgx_get_operation_status',
+    'orgx_attach_artifact', 'orgx_complete_work_with_proof',
+    'orgx_validate_work_receipt', 'orgx_submit_work_receipt',
+  ],
+  record_decision: ['orgx_search', 'orgx_capture_decision', 'orgx_inspect'],
+  human_decision_review: ['orgx_list_pending_decisions', 'orgx_open_decision_review'],
+  review_and_prove_work: [
+    'orgx_open_artifact_review', 'orgx_attach_artifact',
+    'orgx_request_independent_artifact_review', 'orgx_complete_work_with_proof',
+    'orgx_validate_work_receipt', 'orgx_submit_work_receipt', 'orgx_get_work_receipt',
+  ],
+  control_execution: [
+    'orgx_get_agent_status', 'orgx_get_operation_status',
+    'orgx_pause_work', 'orgx_resume_work', 'orgx_retry_work', 'orgx_cancel_work',
+  ],
+  preserve_work_receipt: [
+    'orgx_validate_work_receipt', 'orgx_submit_work_receipt',
+    'orgx_get_work_receipt', 'orgx_list_work_receipts', 'orgx_get_receipt_review_queue',
+  ],
+} as const;
+
+/** Both directory and ChatGPT hosts use the same portable operation stages. */
+export const CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS = BOOTSTRAP_RECOMMENDED_WORKFLOWS;
+
 function isVisibleCanonicalTool(
   tool: string,
   visibleTools: ReadonlySet<string> | null,
   profile?: string
 ): boolean {
+  const inventory = resolveProfileToolSet(profile);
   return (
-    (profile === 'claude-directory' ? DIRECTORY_GUIDANCE_TOOL_IDS : CANONICAL_GUIDANCE_TOOL_IDS).has(tool) &&
+    !isWidgetOnlyTool(tool) &&
+    (inventory === null || inventory.has(tool)) &&
     (visibleTools === null || visibleTools.has(tool))
   );
 }
@@ -239,23 +292,27 @@ export function getBootstrapSafeFirstCalls(
   profile: string,
   visibleTools: ReadonlySet<string> | null = null
 ): BootstrapSafeFirstCall[] {
-  const calls =
-    BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE[profile] ??
-    BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE.v2;
-  return calls.filter((call) => isVisibleCanonicalTool(call.tool, visibleTools, profile));
+  const resolved = resolveToolProfile(profile).name;
+  const legacy = LEGACY_GUIDANCE_PROFILES.has(resolved) || resolved === 'claude-directory-legacy';
+  const source = legacy ? LEGACY_BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE : BOOTSTRAP_SAFE_FIRST_CALLS_BY_PROFILE;
+  const calls = source[resolved] ?? source.v2;
+  return calls.filter((call) => isVisibleCanonicalTool(call.tool, visibleTools, resolved));
 }
 
 export function getBootstrapRecommendedWorkflows(
   visibleTools: ReadonlySet<string> | null = null,
   profile?: string
 ): Record<string, string[]> {
-  const workflows = profile === 'claude-directory'
-    ? CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS
-    : BOOTSTRAP_RECOMMENDED_WORKFLOWS;
+  const resolved = resolveToolProfile(profile).name;
+  const workflows = resolved === 'claude-directory-legacy'
+    ? LEGACY_CLAUDE_DIRECTORY_RECOMMENDED_WORKFLOWS
+    : LEGACY_GUIDANCE_PROFILES.has(resolved)
+      ? LEGACY_BOOTSTRAP_RECOMMENDED_WORKFLOWS
+      : BOOTSTRAP_RECOMMENDED_WORKFLOWS;
   return Object.fromEntries(
     Object.entries(workflows).map(([name, tools]) => [
       name,
-      tools.filter((tool: string) => isVisibleCanonicalTool(tool, visibleTools, profile)),
+      tools.filter((tool: string) => isVisibleCanonicalTool(tool, visibleTools, resolved)),
     ])
   );
 }

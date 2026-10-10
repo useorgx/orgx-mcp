@@ -6,9 +6,16 @@ import { AUTHORIZATION_PRESETS } from '../src/authorizationPolicy';
 import { CLAUDE_DIRECTORY_TOOL_ADAPTERS } from '../src/claudeDirectoryTools';
 import { createEmptyMcpActivationState } from '../src/mcpActivationTracker';
 import { createEmptyMcpSessionReentryState } from '../src/welcomeBackContext';
+import { CHATGPT_PUBLIC_SURFACE, resolveProfileToolSet } from '../src/toolProfiles';
+import { WORKFLOW_TOOL_ADAPTERS } from '../src/workflowTools';
 
 vi.mock('agents/mcp', () => ({
   McpAgent: class {
+    async getInitializeRequest() { return (this as any).ctx.storage.get('initializeRequest'); }
+    async updateProps(props: unknown) {
+      await (this as any).ctx.storage.put('props', props ?? {});
+      (this as any).props = props;
+    }
     static serve() { return { fetch: vi.fn(async () => new Response(null, { status: 501 })) }; }
     static serveSSE() { return { fetch: vi.fn(async () => new Response(null, { status: 501 })) }; }
   },
@@ -98,7 +105,7 @@ beforeAll(async () => {
   const { OrgXMcp } = await import('../src/index');
   worker = Object.create(OrgXMcp.prototype);
   worker.props = {
-    profile: 'claude-directory', userId: 'directory-workflow-fixture',
+    profile: 'claude-directory-legacy', userId: 'directory-workflow-fixture',
     orgxUserId: '33333333-3333-4333-8333-333333333333',
     scope: OPERATE_SCOPE, workspace_id: WORKSPACE_ID,
   };
@@ -131,7 +138,7 @@ beforeAll(async () => {
   canonicalCalls = vi.spyOn(worker, 'executeContractTool');
   backendEntry = vi.fn(async () => ({
     content: [{ type: 'text', text: 'Canonical workflow test receipt' }],
-    structuredContent: { ok: true, fixture: true },
+    structuredContent: { ok: true },
   }));
   worker.withOrgx = backendEntry;
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -146,8 +153,19 @@ afterAll(async () => {
   vi.unstubAllGlobals();
 });
 
-describe('Claude directory canonical workflow adapters', () => {
-  it('covers every new operation adapter with a bounded SDK call', () => {
+describe('Claude directory legacy canonical workflow adapters', () => {
+  it('preserves the current host-independent public catalog alongside the explicit legacy profile', () => {
+    expect([...(resolveProfileToolSet('claude-directory') ?? [])]).toEqual(CHATGPT_PUBLIC_SURFACE);
+    for (const tool of WORKFLOW_TOOL_ADAPTERS) {
+      expect(resolveProfileToolSet('claude-directory')?.has(tool.id), tool.id).toBe(true);
+      expect(tool.inputSchema, tool.id).not.toHaveProperty('action');
+      expect(tool.inputSchema, tool.id).not.toHaveProperty('operation');
+    }
+    expect(resolveProfileToolSet('claude-directory-legacy')?.has('orgx_change_entity_state')).toBe(true);
+    expect(resolveProfileToolSet('claude-directory')?.has('orgx_change_entity_state')).toBe(false);
+  });
+
+  it('covers every retained legacy operation adapter with a bounded SDK call', () => {
     expect(workflowCalls.map((call) => call.name).sort()).toEqual(
       CLAUDE_DIRECTORY_TOOL_ADAPTERS.map((tool) => tool.id).sort()
     );
@@ -162,7 +180,7 @@ describe('Claude directory canonical workflow adapters', () => {
     expect(canonicalCalls.mock.calls[0]?.[0]).toBe(call.target);
     expect(canonicalCalls.mock.calls[0]?.[1]).toMatchObject({ ...call.arguments, ...call.fixed });
     expect(backendEntry).toHaveBeenCalledTimes(1);
-    expect(result.structuredContent).toMatchObject({ ok: true, fixture: true });
+    expect(result.structuredContent).toMatchObject({ ok: true });
   });
 
   it.each([

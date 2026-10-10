@@ -1,0 +1,49 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "app-6a1083cac4788191a47b657dc58c4315",
+  "version": "1.1.0",
+  "description": "Shared team context across AI clients, agreed quality criteria, work evidence, and human review for finished outcomes.",
+  "author": {
+    "name": "Knodible",
+    "url": "https://useorgx.com"
+  },
+  "homepage": "https://useorgx.com/integrations/mcp",
+  "repository": "https://github.com/useorgx/orgx-mcp",
+  "license": "MIT",
+  "keywords": [
+    "orgx",
+    "mcp",
+    "initiatives",
+    "decisions",
+    "work-receipts"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "OrgX",
+        "shortDescription": "Team context, work with proof",
+        "longDescription": "Keep your team’s work moving across ChatGPT and other connected AI clients. OrgX brings shared context, plans, decisions, quality criteria, and work evidence into one workspace so the next person or agent can pick up where work left off.\n\nTurn a goal into a plan, make clear what a good result looks like, organize the work, and dispatch authorized agent tasks. Review the actual deliverables and supporting evidence, make the calls that need human judgment, and retain decisions and reusable team lessons for the next round of work. Interactive views show progress, blockers, decisions, and receipts.\n\nAfter connecting your OrgX workspace, start with: “OrgX, show my workspace and one useful next step.” You can also ask OrgX to plan a goal or review a deliverable against your team’s criteria.\n\nOrgX accesses only the workspace data and operations your account permits. Recording a receipt preserves reported results; it does not by itself verify the evidence, establish human acceptance, or prove work is complete. Agent execution and artifact evaluation can incur costs and require authorization.",
+        "developerName": "Knodible",
+        "category": "Productivity",
+        "capabilities": [
+          "Interactive",
+          "Read",
+          "Write"
+        ],
+        "websiteURL": "https://useorgx.com",
+        "privacyPolicyURL": "https://useorgx.com/privacy",
+        "termsOfServiceURL": "https://useorgx.com/terms",
+        "defaultPrompt": [
+          "OrgX, show my workspace and one useful next step.",
+          "OrgX, help me plan a goal and define what a good result looks like.",
+          "OrgX, review a deliverable against our criteria and show the evidence."
+        ],
+        "brandColor": "#14B8A6",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/logo.png",
+        "supportURL": "https://useorgx.com/support"
+      },
+      "onboardingSkill": "./skills/orgx-initiative-ops/SKILL.md"
+    }
+  }
+}

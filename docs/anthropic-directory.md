@@ -8,21 +8,28 @@ human decision review, linked artifacts, and completion evidence.
 
 `https://mcp.useorgx.com/mcp?profile=claude-directory`
 
-The directory has **29 captured tools: 28 model-visible operations and one
-app-only agent-run resume action**. This is a workflow surface, not a tool-count
-limit. The operation registry in `src/claudeDirectoryTools.ts` forwards to the
-existing canonical handlers; it does not introduce another backend router.
+The directory has **48 captured tools: 41 model-visible operations and seven
+app-only widget operations**. It shares the 40 core workflow/receipt operations
+and one explicit plan-edit journal operation with the ChatGPT profile.
+`src/workflowTools.ts` and `src/receiptOperationTools.ts` expose each operation
+upfront, bind existing handlers or fixed OrgX routes, and publish input/output
+schemas, scopes, titles, and annotations.
 
 | Workflow | Tools |
 |---|---|
-| Context and recall | `orgx_bootstrap`, `orgx_search`, `orgx_inspect`, `orgx_recommend` |
-| Monitoring and reporting | `get_agent_status`, `get_initiative_pulse`, `get_morning_brief`, `get_operator_chronicle`, `orgx_command_status`, `check_execution_readiness` |
-| Work records | `orgx_create_entity`, `orgx_update_entity`, `orgx_change_entity_state`, `manage_lifecycle` |
-| Planning | `orgx_start_plan`, `orgx_read_plan`, `orgx_improve_plan`, `orgx_record_plan_edit`, `orgx_complete_plan` |
-| Delegation | `orgx_check_delegation`, `orgx_delegate_work` |
-| Decisions | `orgx_list_pending_decisions`, `orgx_record_decision`, `orgx_open_decision_review` |
-| Deliverables and proof | `review_artifact`, `orgx_attach`, `orgx_submit_receipt`, `orgx_complete_with_proof` |
-| Human widget action | `resume_agent_run` (app-only) |
+| Context, recall, and monitoring | `orgx_get_workspace_context`, `orgx_search`, `orgx_inspect`, `orgx_get_operator_brief`, `orgx_get_next_actions`, `orgx_get_agent_status`, `orgx_get_initiative_progress`, `orgx_get_operation_status`, `orgx_check_execution_readiness` |
+| Planning and organization | `orgx_start_plan`, `orgx_read_plan`, `orgx_save_plan`, `orgx_complete_plan`, `orgx_validate_initiative_plan`, `orgx_create_initiative_hierarchy`, `orgx_create_initiative`, `orgx_create_workstream`, `orgx_create_milestone`, `orgx_create_task`, `orgx_update_work` |
+| Execution | `orgx_estimate_agent_task`, `orgx_start_agent_task`, `orgx_handoff_task`, `orgx_launch_initiative`, `orgx_pause_work`, `orgx_resume_work`, `orgx_retry_work`, `orgx_cancel_work` |
+| Decisions | `orgx_capture_decision`, `orgx_list_pending_decisions`, `orgx_open_decision_review` |
+| Deliverables and proof | `orgx_attach_artifact`, `orgx_open_artifact_review`, `orgx_request_independent_artifact_review`, `orgx_complete_work_with_proof` |
+| Portable receipts | `orgx_submit_work_receipt`, `orgx_validate_work_receipt`, `orgx_get_work_receipt`, `orgx_list_work_receipts`, `orgx_get_receipt_review_queue` |
+| Plan edit journal | `orgx_record_plan_edit` |
+| App-only widget operations | `orgx_widget_decide`, `orgx_panel_snapshot`, `orgx_widget_receipt_call`, `resume_agent_run`, `orgx_widget_select_workspace`, `orgx_widget_approve_artifact`, `orgx_widget_request_artifact_changes` |
+
+The old operation registry remains at
+`https://mcp.useorgx.com/mcp?profile=claude-directory-legacy`: its original 29
+tools plus eight required widget dependencies now make 37 descriptors. It is
+a compatibility surface, not the current directory submission endpoint.
 
 Read and write operations have separate contracts. Plan retrieval cannot edit a
 plan; delegation checks cannot dispatch work; decision listing cannot record a
@@ -31,17 +38,30 @@ returns a human review URL and cannot settle an approval. Completion with proof
 requires a linked deliverable. Arbitrary deletion and media generation are not
 exposed. Delegation, launch, resume, and retry can execute paid agent work.
 
+The core hierarchy path rejects unsupported objectives, proof/acceptance
+fields, and cross-milestone edges before writing; richer compatibility
+creation is separate. The new core proof-completion path supports tasks;
+existing parent completion remains explicitly marked compatibility. Plan save and completion
+require a positive expected version, with edit-history partial failures
+reported. Portable receipt import preserves v0.1/v0.2 documents and producer
+claims; it does not verify evidence, record human acceptance, or complete work.
+Protected human outcome calls also require the compare-and-append migration
+and concurrency checks described in the architecture plan before release.
+
 Tool titles are also present in `annotations.title`; safety hints describe each
 operation. Four informational tools advertise `readOnlyHint: false` because
-mixed search, recommendation, agent status, and initiative pulse record metered
+`orgx_search`, `orgx_get_next_actions`, `orgx_get_agent_status`, and
+`orgx_get_initiative_progress` record metered
 MCP usage. Usage accounting is still a state change. Append-only artifacts,
 receipts, and decisions differ from updates and execution controls.
 
 OAuth retains the shared issuer's full scope vocabulary. The authenticated
 connection's granted scopes filter discovery, and canonical invocation-time
 checks enforce the selected operation's scope. Read grants cannot discover write
-operations. The app-only resume action requires `agents:write` on this profile.
-Unknown profile names still fail closed to the original seven informational
+operations. App-only callbacks still enforce their operation's scopes and
+protected human transitions require the appropriate signed click capability.
+The app-only resume action requires `agents:write` on this profile.
+Unknown profile names still fail closed to seven canonical informational
 tools; the Claude Code plugin and OpenAI profiles retain their own contracts.
 
 The worker suppresses optional session persistence, activation/reentry writes,
@@ -51,10 +71,12 @@ MCP framework may persist connection lifecycle state, so the endpoint is not
 stateless.
 
 No prompts, downloadable skill packs, or generic initiative resource are
-advertised. Eight widget families are served: search-results, agent-status,
-initiative-pulse, morning-brief, entity-card, work-ledger, workspace-map, and
-proof-receipt. Planning and decision adapters return structured results; artifact
-review returns its envelope without the incompatible shared action widget.
+advertised. The shared 14 widget families are served: search-results,
+agent-status, initiative-pulse, morning-brief, entity-card, work-ledger,
+workspace-map, proof-receipt, decisions, scaffolded-initiative, task-spawned,
+artifact-review, plan-session-live, and orgx-panel. Tools return typed results;
+artifact and receipt cards separate producer claims from verified or human
+judgments. The legacy directory retains its eight-family resource policy.
 
 ## Verification and reviewer access
 

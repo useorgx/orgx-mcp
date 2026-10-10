@@ -28,6 +28,11 @@ const apiMocks = vi.hoisted(() => ({
 
 vi.mock('agents/mcp', () => ({
   McpAgent: class McpAgent {
+    async getInitializeRequest() { return (this as any).ctx.storage.get('initializeRequest'); }
+    async updateProps(props: unknown) {
+      await (this as any).ctx.storage.put('props', props ?? {});
+      (this as any).props = props;
+    }
     static serve() {
       return { fetch: vi.fn(async () => new Response(null, { status: 501 })) };
     }
@@ -619,8 +624,21 @@ describe('orgx_panel_snapshot on the worker', () => {
   });
 
   it('reads In progress through the same agent-status read and projection as get_agent_status, only when asked', async () => {
-    const { worker, client } = await createWorker();
+    const { worker, client, spy } = await createWorker();
     const enrich = vi.spyOn(worker as never, 'maybeEnrichWithArtifactProof' as never);
+    const sessionBefore = structuredClone(worker.sessionContext);
+    apiMocks.callOrgxApiJson.mockClear();
+    apiMocks.callOrgxApiRaw.mockClear();
+    worker.fetchEntityCollection.mockClear();
+
+    const rejected = await client.callTool({ name: 'orgx_panel_snapshot', arguments: { view: 'work', workspace_id: OTHER_WS } });
+    expect(rejected.isError).toBe(true);
+    expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+    expect(apiMocks.callOrgxApiRaw).not.toHaveBeenCalled();
+    expect(worker.fetchEntityCollection).not.toHaveBeenCalled();
+    expect(enrich).not.toHaveBeenCalled();
+    expect(spy).not.toHaveBeenCalled();
+    expect(worker.sessionContext).toEqual(sessionBefore);
 
     const plain = await client.callTool({ name: 'orgx_panel_snapshot', arguments: {} });
     expect((plain.structuredContent as Record<string, unknown>).work).toBeUndefined();
@@ -629,7 +647,7 @@ describe('orgx_panel_snapshot on the worker', () => {
       .map((call) => JSON.parse(String(call[2]?.body)).tool_id);
     expect(toolIds()).not.toContain('get_agent_status');
 
-    const result = await client.callTool({ name: 'orgx_panel_snapshot', arguments: { view: 'work', workspace_id: OTHER_WS } });
+    const result = await client.callTool({ name: 'orgx_panel_snapshot', arguments: { view: 'work' } });
     expect(result.isError).not.toBe(true);
     const statusCall = apiMocks.callOrgxApiJson.mock.calls.find(
       (call) => call[1] === '/api/tools/execute' && JSON.parse(String(call[2]?.body)).tool_id === 'get_agent_status'
@@ -643,6 +661,8 @@ describe('orgx_panel_snapshot on the worker', () => {
     expect(work.status).toBe('ok');
     expect(work.items.map((i: { agent: string; state: string }) => `${i.agent}:${i.state}`)).toEqual(['Dana:blocked', 'Eli:running']);
     expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(result.structuredContent).success).toBe(true);
+    expect(spy).not.toHaveBeenCalled();
+    expect(worker.sessionContext).toEqual(sessionBefore);
   });
 
   it('lists the tool with its entrypoints and returns a valid snapshot scoped to the session', async () => {
@@ -655,8 +675,18 @@ describe('orgx_panel_snapshot on the worker', () => {
     expect(Object.keys((tool?.inputSchema as { properties: Record<string, unknown> }).properties)).not.toContain('workspace_id');
 
     const sessionBefore = structuredClone(worker.sessionContext);
-    const result = await client.callTool({ name: 'orgx_panel_snapshot', arguments: { workspace_id: OTHER_WS } });
+    apiMocks.callOrgxApiJson.mockClear();
+    apiMocks.callOrgxApiRaw.mockClear();
+    worker.fetchEntityCollection.mockClear();
+    const rejected = await client.callTool({ name: 'orgx_panel_snapshot', arguments: { workspace_id: OTHER_WS } });
+    expect(rejected.isError).toBe(true);
+    expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+    expect(apiMocks.callOrgxApiRaw).not.toHaveBeenCalled();
+    expect(worker.fetchEntityCollection).not.toHaveBeenCalled();
+    expect(spy).not.toHaveBeenCalled();
+    expect(worker.sessionContext).toEqual(sessionBefore);
 
+    const result = await client.callTool({ name: 'orgx_panel_snapshot', arguments: {} });
     expect(result.isError).not.toBe(true);
     const executeCall = apiMocks.callOrgxApiJson.mock.calls.find((call) => call[1] === '/api/tools/execute');
     const body = JSON.parse(String(executeCall?.[2]?.body));

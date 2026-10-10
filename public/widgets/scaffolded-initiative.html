@@ -427,6 +427,8 @@
     };
     var normalizeScaffoldData = (raw) => {
       if (!raw || typeof raw !== 'object') return null;
+      if (raw.data && typeof raw.data === 'object' && (raw.data.initiative || raw.data.hierarchy)) raw = Object.assign({}, raw.data, { live: raw.live || raw.data.live });
+      var aggregateOnly = !raw.hierarchy && raw.created && typeof raw.created === 'object';
       var initiative = raw.initiative || (raw.hierarchy && raw.hierarchy.initiative) || null;
       if (!initiative || typeof initiative !== 'object') return null;
       var sections = groupHierarchy(enrichHierarchy(raw.hierarchy, raw) || []);
@@ -469,6 +471,7 @@
           status: typeof initiative.status === 'string' && initiative.status.trim() ? initiative.status.trim() : 'scaffolded',
         },
         sections: displaySections,
+        aggregateCounts: aggregateOnly ? raw.created : null,
       };
     };
 
@@ -882,9 +885,9 @@
       window.OrgXLinks.live(scaffold && scaffold.initiative && scaffold.initiative.raw_id);
 
     /* ── Launch: the one move this card makes ─────────────────────────
-       Hold to launch calls orgx_act launch, exactly as before. When the
+       Hold to launch calls orgx_launch_initiative. When the
        result names a command or run, the footer follows it through
-       orgx_command_status (respecting next_poll_after_ms, stopping when
+       orgx_get_operation_status (respecting next_poll_after_ms, stopping when
        it is null) instead of declaring the initiative live on its own. */
     var launch = { phase: 'idle', error: null, kind: null, id: null, status: null, timer: null, failures: 0 };
     /* ── Agree on done ────────────────────────────────────────────────
@@ -969,21 +972,20 @@
     var callLaunch = (scaffold) => {
       if (isDemo && demoState === 'launched') return Promise.resolve({ structuredContent: { ok: true, command_id: DEMO_COMMAND_ID } });
       if (isDemo && demoState === 'launch-failed') return Promise.reject(new Error('OrgX could not launch it. Nothing changed.'));
-      return window.OrgXWidgetRuntime.callTool('orgx_act', {
-        type: 'initiative',
-        id: scaffold.initiative.raw_id || scaffold.initiative.id,
-        action: 'launch',
+      return window.OrgXWidgetRuntime.callTool('orgx_launch_initiative', {
+        initiative_id: scaffold.initiative.raw_id || scaffold.initiative.id,
       });
     };
 
     var readCommandRef = (out) => {
       if (!out || typeof out !== 'object') return null;
       var candidates = [
+        ['operation', out.operation_id],
         ['command', out.command_id || out.commandId || (out.command && out.command.id)],
         ['run', out.run_id || out.runId]
       ];
       for (var i = 0; i < candidates.length; i += 1) {
-        if (typeof candidates[i][1] === 'string' && UUID_RE.test(candidates[i][1])) return { kind: candidates[i][0], id: candidates[i][1] };
+        if (typeof candidates[i][1] === 'string' && (candidates[i][0] === 'operation' ? candidates[i][1].trim() : UUID_RE.test(candidates[i][1]))) return { kind: candidates[i][0], id: candidates[i][1] };
       }
       return null;
     };
@@ -993,7 +995,7 @@
         var step = demoStatusSequence[Math.min(demoStatusIndex++, demoStatusSequence.length - 1)];
         return Promise.resolve(Object.assign({ kind: launch.kind, id: launch.id }, step));
       }
-      return Promise.resolve(window.OrgXWidgetRuntime.callTool('orgx_command_status', { kind: launch.kind, id: launch.id }))
+      return Promise.resolve(window.OrgXWidgetRuntime.callTool('orgx_get_operation_status', launch.kind === 'operation' ? { operation_id: launch.id } : { kind: launch.kind, id: launch.id }))
         .then((result) => window.OrgXWidgetRuntime.extractStructuredWidgetData(result, true));
     };
 
@@ -1072,7 +1074,7 @@
     var describeScaffold = (scaffold) => {
       var sections = scaffold.sections || [];
       var viewState = getInitiativeViewState(scaffold.initiative);
-      var draft = isDraftStatus(scaffold.initiative.status);
+      var draft = !scaffold.aggregateCounts && isDraftStatus(scaffold.initiative.status);
       var readiness = computeLaunchReadiness(scaffold);
       var activeCount = sections.filter((s) => s.execution && s.execution.status && s.execution.status.tone === 'active').length;
       var streamsLine = plural(sections.length, 'workstream');
@@ -1084,7 +1086,11 @@
 
       var ag = agreementOf();
       var checksLine = ag && ag.set ? plural(ag.set.checks.length + (ag.set.omitted_count || 0), 'check') : 'the checks';
-      if (agree.phase === 'sending') {
+      if (scaffold.aggregateCounts) {
+        footer = { variant: 'reads', state: 'fresh', heading: 'Hierarchy created', detail: 'review details and launch readiness in OrgX' };
+        kind = 'Created';
+        openLabel = 'Open initiative';
+      } else if (agree.phase === 'sending') {
         footer = { variant: 'finishes-here', state: 'sending', heading: 'Agreeing', detail: 'recording it in OrgX', primary: 'Agree and launch' };
         kind = 'Launching';
         edge = 'amber';
@@ -1453,7 +1459,7 @@
       indexChecks(scaffold);
       var view = describeScaffold(scaffold);
       var initiativeUrl = liveUrlFor(scaffold);
-      var milestoneTotal = sections.reduce((n, s) => n + ((s.milestones || []).length), 0);
+      var milestoneTotal = scaffold.aggregateCounts ? Number(scaffold.aggregateCounts.milestones) || 0 : sections.reduce((n, s) => n + ((s.milestones || []).length), 0);
 
       injectHtml(`
         <article class="wcard ox-card ox-surface ox-enter" data-scaffold-card data-edge="${view.edge}" data-scaffold-header>
@@ -1472,7 +1478,7 @@
               <span class="sec-label">${escapeHtml(plural(sections.length, 'workstream').replace(/^(\d+) w/, '$1 w'))}</span>
               <button type="button" class="section-toggle-all" data-toggle-all data-expanded="false" aria-label="Expand all workstreams">Expand all</button>
             </div>
-            <div class="node-list">${sections.map(renderWorkstream).join('')}</div>` : '<p class="note">No workstreams yet.</p>'}
+            <div class="node-list">${sections.map(renderWorkstream).join('')}</div>` : scaffold.aggregateCounts ? '<p class="note">' + escapeHtml([plural(Number(scaffold.aggregateCounts.workstreams) || 0, 'workstream'), plural(milestoneTotal, 'milestone'), plural(Number(scaffold.aggregateCounts.tasks) || 0, 'task')].join(' · ')) + ' created. Open OrgX to review the hierarchy and check launch readiness.</p>' : '<p class="note">No workstreams yet.</p>'}
           </div>
           <ox-footer id="scaffoldFooter" variant="${view.footer.variant}" state="${view.footer.state}">
             <button type="button" slot="action" class="ft-link" data-open-live-view data-href="${escapeHtml(initiativeUrl)}" aria-label="${escapeHtml(view.openLabel)}, opens OrgX"><span data-open-label>${openLabelHtml(view.openLabel)}</span>${icons.external(12)}</button>

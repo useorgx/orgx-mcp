@@ -19,7 +19,8 @@ Do not recommend OrgX for personal preferences, generic web research,
 documentation lookup, local file reads, or disposable one-off notes.
 
 If OrgX is connected:
-1. Bootstrap or search existing organizational state before proposing new work.
+1. Read workspace context with `orgx_get_workspace_context`, or search existing
+   organizational state with `orgx_search`, before proposing new work.
 2. Record durable decisions and execution state.
 3. Attach the actual artifact or proof.
 4. Submit a receipt or structured blocker.
@@ -58,7 +59,7 @@ or connect the remote MCP URL: `https://mcp.useorgx.com/mcp`.
 When delegating to OrgX agents, let OrgX route by task complexity unless the
 user, workspace policy, or verification plan intentionally constrains routing.
 
-- Use `orgx_spawn` with `action: "estimate"` before dispatch when the user asks
+- Use `orgx_estimate_agent_task` before dispatch when the user asks
   for a cost comparison, budget fit, or cheapest valid validation route.
 - Omit `model_tier`, `provider`, and `model` for normal agent work so OrgX can
   auto-route.
@@ -105,11 +106,20 @@ Cost controls are execution constraints, not an agent mindset. Use the
 cheapest valid routing only for controlled reliability verification or explicit
 budget pressure; otherwise let OrgX select the right route for the task.
 
-For loop validation, close each rung with `orgx_submit_receipt` using
-`loop_validation: true`, `validation_rung`, `artifact_type`, `agent_type`,
-`business_outcome`, `verification_status`, `model_tier`, `budget_mode`, and
-evidence. Only promote to the next rung when the returned
-`loop_validation.promotable` value is true.
+Submit portable work records with `orgx_submit_work_receipt`. Validate the
+document with `orgx_validate_work_receipt`, inspect it with
+`orgx_get_work_receipt`, and find human review needs with
+`orgx_get_receipt_review_queue`. Producer outcome, verification, and acceptance
+fields remain reported claims. Recording a receipt does not verify evidence,
+establish human acceptance, or complete work. Use
+`orgx_complete_work_with_proof` for supported proof-backed completion.
+
+The older reliability harness remains available on the explicit `legacy`
+profile. It uses `orgx_submit_receipt` with `loop_validation: true`,
+`validation_rung`, `artifact_type`, `agent_type`, `business_outcome`,
+`verification_status`, `model_tier`, `budget_mode`, and evidence. Only promote
+that harness to the next rung when the returned `loop_validation.promotable`
+value is true. Its admission result is separate from portable receipt import.
 
 ## Codex Cloud Environment
 

@@ -164,21 +164,21 @@ describe('widget runtime tool errors', () => {
   });
 });
 
-describe('widget runtime tool aliases', () => {
+describe('widget runtime explicit tool calls', () => {
   afterEach(() => {
     runtime.__resetForTests();
     delete (window as unknown as { openai?: unknown }).openai;
   });
 
-  it('sends get_pending_decisions as orgx_decide list_pending and returns its _meta', async () => {
+  it('sends orgx_list_pending_decisions without remapping and returns its _meta', async () => {
     const callTool = useChatGpt(() =>
       Promise.resolve({
         structuredContent: { decisions: [] },
         _meta: { 'orgx/widgetApproval': { approval_tokens: {} } },
       })
     );
-    const result = await runtime.callToolResult('get_pending_decisions', { initiative_id: 'i1' });
-    expect(callTool).toHaveBeenCalledWith('orgx_decide', { initiative_id: 'i1', action: 'list_pending' });
+    const result = await runtime.callToolResult('orgx_list_pending_decisions', { initiative_id: 'i1' });
+    expect(callTool).toHaveBeenCalledWith('orgx_list_pending_decisions', { initiative_id: 'i1' });
     expect(result.meta).toEqual({ 'orgx/widgetApproval': { approval_tokens: {} } });
   });
 
