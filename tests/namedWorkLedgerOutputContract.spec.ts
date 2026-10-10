@@ -1,7 +1,9 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv';
 import { describe, expect, it, vi } from 'vitest';
+import { buildAgentWorkReceiptImportRequest } from '../src/agentWorkReceiptV1';
 import { getToolOutputSchema } from '../src/openaiOutputSchemas';
 import { installToolResultGuidanceWrapper } from '../src/toolResultRegistration';
 import { WORK_LEDGER_OUTPUT_VARIANTS } from './fixtures/workLedgerOutputVariants';
@@ -16,7 +18,7 @@ vi.mock('../src/orgxApi', async (original) => ({ ...await original<typeof import
 const WS = '11111111-1111-4111-8111-111111111111';
 const ID = '22222222-2222-4222-8222-222222222222';
 
-async function connect() {
+async function connect(extraToolIds: string[] = []) {
   const { OrgXMcp } = await import('../src/index');
   const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
   worker.sessionContext = { workspaceId: WS };
@@ -27,7 +29,7 @@ async function connect() {
   worker.buildAuthRequiredResponse = () => null; worker.withOrgx = (callback: () => unknown) => callback();
   worker.withClientContext = (shape: unknown) => shape;
   const server = new McpServer({ name: 'named-ledger-contract', version: '1' }); worker.server = server;
-  const visible = new Set(['orgx_list_work_receipts', 'orgx_get_work_receipt', 'orgx_attach_artifact']);
+  const visible = new Set(['orgx_list_work_receipts', 'orgx_get_work_receipt', 'orgx_attach_artifact', ...extraToolIds]);
   installToolResultGuidanceWrapper(server, visible);
   // The same production registration method used by _doInit, with the real
   // compatibility handler captured behind the fixed artifact operation.
@@ -79,6 +81,95 @@ describe('registered named work ledger operation', () => {
       expect(api.callOrgxApiJson).toHaveBeenCalledOnce();
       expect(api.callOrgxApiJson.mock.calls[0][1]).toBe('/api/client/artifacts');
       expect(JSON.parse(api.callOrgxApiJson.mock.calls[0][2].body).status).toBe('in_review');
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+});
+
+const NONBLANK_PATTERN = '^[\\s\\S]*\\S[\\s\\S]*$';
+
+function portableReceipt() {
+  const { body } = buildAgentWorkReceiptImportRequest({
+    receipt_type: 'proof', summary: 'Recorded bounded execution evidence',
+    evidence: { links: ['https://example.test/review/496'] }, verification_status: 'passed',
+  }, { workspaceId: WS, receiptId: 'codex-living-work-memory-trail-execution-fixture-v1', issuedAt: '2026-10-10T00:00:00.000Z' });
+  return {
+    ...body.receipt, schema_version: 'agent-work-receipt/v0.2',
+    intent: {
+      ...(body.receipt.intent as object),
+      summary: 'Record actual execution evidence at a pinned commit.\nPreserve commands, digests and bounded local benchmark results — résumé 📎.',
+      objective: 'Keep independent review pending until a person evaluates the evidence.',
+      criteria: [{ id: 'receipt-compatibility', text: 'Portable receipt text reaches validation intact.\nProducer success remains a claim.', required: true, source: 'requested' }],
+    },
+    outcome: { ...(body.receipt.outcome as object), criteria_results: [{ criterion_id: 'receipt-compatibility', status: 'met', evidence_ids: ['evidence-1'], confidence: 0.7 }] },
+    provenance: [{ path: '/outcome/status', basis: 'declared', confidence: 0.7 }],
+    extensions: { 'org.orgx.review/v1': { version: 'org.orgx.review/v1', criteria: [{ criterion_id: 'receipt-compatibility' }], episodes: [], sources: [] } },
+  };
+}
+
+/** Model a consumer that applies full-string regex matching to every pattern.
+ * All other advertised JSON Schema constraints are retained by the real SDK
+ * validator; this does not replace structural validation with a string walk. */
+function patternConsumerSchema(schema: unknown, fullMatch: boolean, legacyNonblank = false): any {
+  if (Array.isArray(schema)) return schema.map((value) => patternConsumerSchema(value, fullMatch, legacyNonblank));
+  if (!schema || typeof schema !== 'object') return schema;
+  return Object.fromEntries(Object.entries(schema).map(([key, value]) => {
+    if (key !== 'pattern' || typeof value !== 'string') return [key, patternConsumerSchema(value, fullMatch, legacyNonblank)];
+    const pattern = legacyNonblank && value === NONBLANK_PATTERN ? '\\S' : value;
+    return [key, fullMatch ? `^(?:${pattern})$` : pattern];
+  }));
+}
+
+describe('registered portable receipt input compatibility', () => {
+  it.each(['orgx_validate_work_receipt', 'orgx_submit_work_receipt'])('preserves a complete multiline receipt through strict SDK and both pattern consumers: %s', async (name) => {
+    const document = portableReceipt();
+    const response = name === 'orgx_validate_work_receipt'
+      ? { ok: true, valid: true, persistence: { stored: false, import_requires_authentication: true } }
+      : { ok: true, receipt_id: ID, external_receipt_id: document.receipt_id, schema_version: document.schema_version, idempotent: false };
+    api.callOrgxApiJson.mockReset().mockResolvedValue(Response.json(response));
+    const { server, client } = await connect([name]);
+    try {
+      const descriptor = (await client.listTools()).tools.find((tool) => tool.name === name)!;
+      const args = { receipt: document, ...(name === 'orgx_submit_work_receipt' ? { idempotency_key: 'portable-compatible-v1' } : {}) };
+      for (const fullMatch of [false, true]) {
+        const validation = new AjvJsonSchemaValidator().getValidator(patternConsumerSchema(descriptor.inputSchema, fullMatch))(args);
+        expect(validation.valid, JSON.stringify(validation)).toBe(true);
+      }
+      const result = await client.callTool({ name, arguments: args });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(api.callOrgxApiJson).toHaveBeenCalledOnce();
+      const sent = JSON.parse(api.callOrgxApiJson.mock.calls[0][2].body);
+      expect(name === 'orgx_validate_work_receipt' ? sent : sent.receipt).toEqual(document);
+      if (name === 'orgx_validate_work_receipt') expect(result.structuredContent?.persistence).toEqual({ stored: false, import_requires_authentication: true });
+      else expect(result.structuredContent?.effects).toMatchObject({ work_status_changed: false, authoritative_verification_changed: false, human_acceptance_changed: false });
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+
+  it('reproduces the legacy pattern rejection only under full-string matching', async () => {
+    const { server, client } = await connect(['orgx_validate_work_receipt']);
+    try {
+      const descriptor = (await client.listTools()).tools.find((tool) => tool.name === 'orgx_validate_work_receipt')!;
+      const args = { receipt: portableReceipt() };
+      const standard = new AjvJsonSchemaValidator().getValidator(patternConsumerSchema(descriptor.inputSchema, false, true))(args);
+      const fullMatch = new AjvJsonSchemaValidator().getValidator(patternConsumerSchema(descriptor.inputSchema, true, true))(args);
+      expect(standard.valid).toBe(true);
+      expect(fullMatch.valid).toBe(false);
+      expect(fullMatch.errorMessage).toContain('pattern');
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+
+  it.each(['receipt_id', 'summary', 'actor_id'])('rejects whitespace-only %s before the handler and in both schema consumers', async (field) => {
+    api.callOrgxApiJson.mockReset();
+    const { server, client } = await connect(['orgx_validate_work_receipt']);
+    try {
+      const document = portableReceipt();
+      if (field === 'receipt_id') document.receipt_id = ' \t\r\n\u00a0\u2028';
+      else if (field === 'summary') document.intent.summary = ' \t\r\n\u00a0\u2028';
+      else (document.actor as { id: string }).id = ' \t\r\n\u00a0\u2028';
+      const descriptor = (await client.listTools()).tools.find((tool) => tool.name === 'orgx_validate_work_receipt')!;
+      const args = { receipt: document };
+      for (const fullMatch of [false, true]) expect(new AjvJsonSchemaValidator().getValidator(patternConsumerSchema(descriptor.inputSchema, fullMatch))(args).valid).toBe(false);
+      expect((await client.callTool({ name: descriptor.name, arguments: args })).isError).toBe(true);
+      expect(api.callOrgxApiJson).not.toHaveBeenCalled();
     } finally { await Promise.allSettled([client.close(), server.close()]); }
   });
 });

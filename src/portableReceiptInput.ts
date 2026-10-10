@@ -9,11 +9,16 @@ import { z } from 'zod';
  */
 const portable_json_object = z.record(z.unknown());
 
-const portable_id = z.string().min(1).max(512).regex(new RegExp("\\S"));
+// Some schema consumers require patterns to match the complete string. Keep
+// the portable contract's contains-nonwhitespace rule, including multiline
+// text, explicit across both JSON Schema search and full-string matching.
+const portable_nonblank = /^[\s\S]*\S[\s\S]*$/;
 
-const portable_long_string = z.string().min(1).max(20000).regex(new RegExp("\\S"));
+const portable_id = z.string().min(1).max(512).regex(portable_nonblank);
 
-const portable_short_string = z.string().min(1).max(512).regex(new RegExp("\\S"));
+const portable_long_string = z.string().min(1).max(20000).regex(portable_nonblank);
+
+const portable_short_string = z.string().min(1).max(512).regex(portable_nonblank);
 
 const portable_digest = z.object({
   algorithm: portable_short_string,

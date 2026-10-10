@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-10T00:04:03.434Z",
-  "sourceHash": "4c67905881f5b44d",
+  "generatedAt": "2026-10-10T00:53:12.170Z",
+  "sourceHash": "ac073b2314ebe655",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -8940,7 +8940,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 512,
-                "pattern": "\\S"
+                "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
               },
               "intent": {
                 "type": "object",
@@ -8949,7 +8949,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 20000,
-                    "pattern": "\\S"
+                    "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
                   },
                   "objective": {
                     "$ref": "#/properties/receipt/properties/intent/properties/summary"
@@ -8975,7 +8975,7 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 512,
-                        "pattern": "\\S"
+                        "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
                       },
                       "type": {
                         "$ref": "#/properties/receipt/properties/intent/properties/request_ref/properties/system"
@@ -10328,7 +10328,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 512,
-                "pattern": "\\S"
+                "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
               },
               "intent": {
                 "type": "object",
@@ -10337,7 +10337,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 20000,
-                    "pattern": "\\S"
+                    "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
                   },
                   "objective": {
                     "$ref": "#/properties/receipt/properties/intent/properties/summary"
@@ -10363,7 +10363,7 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 512,
-                        "pattern": "\\S"
+                        "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
                       },
                       "type": {
                         "$ref": "#/properties/receipt/properties/intent/properties/request_ref/properties/system"
