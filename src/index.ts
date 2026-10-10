@@ -7902,8 +7902,16 @@ export class OrgXMcp extends McpAgent<
         if (blocked) return blocked;
         return this.withOrgx(async () => {
           const { _context, ...input } = args;
+          // A ChatGPT session often has no selected workspace; the panel's
+          // reads infer the authenticated one and the ledger must agree with
+          // them instead of refusing ("Select an authenticated workspace").
+          const workspaceId =
+            (typeof input.workspace_id === 'string' && input.workspace_id) ||
+            this.sessionContext?.workspaceId ||
+            (await this.inferSessionWorkspace(this.props?.userId ?? this.sessionAuth?.userId ?? null))?.id ||
+            undefined;
           const raw = await executeReceiptOperation(tool.id, input, {
-            workspaceId: this.sessionContext?.workspaceId,
+            workspaceId,
             request: (path, init) => this.requestPublicOperation(
               tool.id === 'orgx_get_work_receipt' || tool.id === 'orgx_list_work_receipts' ? `${path}${path.includes('?') ? '&' : '?'}widget_meta=1` : path, init),
           });

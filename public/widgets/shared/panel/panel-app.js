@@ -526,6 +526,11 @@
     function workspaceId() {
       return ui.snapshot && ui.snapshot.workspace ? ui.snapshot.workspace.id : null;
     }
+    /** The ledger tools answer only for a named workspace; the panel always knows its own. */
+    function withWorkspace(args) {
+      var id = workspaceId();
+      return id ? Object.assign({ workspace_id: id }, args) : args;
+    }
     function findItem(id) {
       var s = ui.snapshot;
       if (!s || !id) return null;
@@ -1616,7 +1621,7 @@
         var selector = '[data-action="' + parts[0] + '"]' + (parts[1] ? '[data-id="' + parts[1] + '"]' : '') +
           (parts[2] ? '[data-option="' + (window.CSS && CSS.escape ? CSS.escape(parts[2]) : parts[2]) + '"]' : '');
         var again = root.querySelector(selector);
-        if (again && again.focus) again.focus();
+        if (again && again.focus) again.focus({ preventScroll: true });
       }
       if (ui.composer) {
         var area = root.querySelector('textarea[data-reason="' + ui.composer.id + '"]');
@@ -1690,7 +1695,7 @@
         if (changed && !quiet) {
           if (Host) Host.haptic('tap');
           var t = root.querySelector('#pn-tab-' + tab);
-          if (t) t.focus();
+          if (t) t.focus({ preventScroll: true });
           announce(tab === 'needs' ? 'Needs you.' : tab === 'work' ? 'In progress.' : tab === 'done' ? 'Done.' : 'Start.');
         }
         if (after) after();
@@ -1784,15 +1789,19 @@
       return 'since:' + start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
     }
 
+    var receiptsInflight = null;
     function fetchReceipts(range) {
       var cached = ui.receipts[range];
       if (cached && cached.status === 'ok') { render(); return; }
       if (isGallery) { ui.receipts[range] = gallery.receipts(range); rememberRows(ui.receipts[range]); ui.receiptsPhase = 'ready'; render(); return; }
+      if (receiptsInflight === range) { render(); return; }
+      receiptsInflight = range;
       ui.receiptsPhase = 'loading';
       delete ui.receipts[range];
       render();
       var gen = ui.generation;
-      R.callWidgetRead('orgx_list_work_receipts', { query: receiptRangeQuery(range), limit: 50 }).then(function onReceipts(result) {
+      R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: receiptRangeQuery(range), limit: 50 })).then(function onReceipts(result) {
+        if (receiptsInflight === range) receiptsInflight = null;
         if (gen !== ui.generation) return;
         var data = result && result.data;
         if (isSnapshot(data)) accept(data, result.meta || null, 'refresh');
@@ -1802,6 +1811,7 @@
         ui.receiptsPhase = ui.receipts[range].status === 'ok' ? 'ready' : 'failed';
         if (ui.tab === 'done') render();
       }, function onReceiptsError(error) {
+        if (receiptsInflight === range) receiptsInflight = null;
         if (gen !== ui.generation) return;
         ui.receipts[range] = { status: 'unavailable', query: '', total: 0, items: [], reason: safeErrorText(error, 'Work receipts could not be read right now.', 160) };
         ui.receiptsPhase = 'failed';
@@ -1816,7 +1826,7 @@
       if (!open || ui.receiptDetail[open]) return;
       if (isGallery) { ui.receiptDetail[open] = gallery.receipt(open); render(); return; }
       var gen = ui.generation;
-      R.callWidgetRead('orgx_get_work_receipt', { receipt_id: open }).then(function onReceipt(result) {
+      R.callWidgetRead('orgx_get_work_receipt', withWorkspace({ receipt_id: open })).then(function onReceipt(result) {
         if (gen !== ui.generation) return;
         var data = result && result.data;
         var detail = Receipts.normalizeDetail(data, open, ui.receiptRows[open]);
@@ -1882,7 +1892,7 @@
       ui.behind[focus.id] = 'loading';
       if (isGallery) { ui.behind[focus.id] = gallery.behind(pr); rememberRows(ui.behind[focus.id]); later(render, 0); return; }
       var gen = ui.generation;
-      R.callWidgetRead('orgx_list_work_receipts', { query: 'pr:' + pr }).then(function onBehind(result) {
+      R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: 'pr:' + pr })).then(function onBehind(result) {
         if (gen !== ui.generation) return;
         var data = result && result.data;
         ui.behind[focus.id] = Receipts.normalizeList(data, 'pr:' + pr);
@@ -2674,7 +2684,7 @@
     }
     function focusFirst(selector) {
       var el = root.querySelector(selector) || (sheetHost ? sheetHost.querySelector(selector) : null);
-      if (el) el.focus();
+      if (el) el.focus({ preventScroll: true });
     }
 
     document.addEventListener('keydown', function onKey(event) {
@@ -2867,6 +2877,15 @@
     function reducedMotion() {
       return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
+    /**
+     * Phones and touch-first devices skip the document view transition: it
+     * snapshots the whole page twice and cost ~400ms a tab switch on a
+     * mid-range phone. The CSS enter animation on the incoming view keeps
+     * the direction and the feel for a tenth of the time.
+     */
+    function cheapMotion() {
+      return Boolean(Host && (Host.isMobile() || Host.touch()));
+    }
 
     /**
      * Run a state change and its render as one view transition, so what leaves
@@ -2878,7 +2897,7 @@
      */
     function transition(kind, change, dir) {
       var html = document.documentElement;
-      var can = typeof document.startViewTransition === 'function' && !reducedMotion() && document.visibilityState !== 'hidden';
+      var can = typeof document.startViewTransition === 'function' && !reducedMotion() && document.visibilityState !== 'hidden' && !cheapMotion();
       if (!can) {
         change();
         if (kind === 'tab' && !reducedMotion()) {
@@ -3056,6 +3075,27 @@
     root.addEventListener('pointercancel', function onSwipeCancel() { swipe = null; });
 
     render();
+    /**
+     * In progress and Done › Work each read on first open and showed a
+     * skeleton while they did. Once the first snapshot is painted and the
+     * browser is idle, read both in the background, so the first tap on
+     * either tab lands on content. Once per widget life; a later tap that
+     * finds the data already there costs nothing.
+     */
+    var warmed = false;
+    function warmTabs() {
+      if (warmed || isGallery || ui.auth || !ui.snapshot) return;
+      warmed = true;
+      var idle = typeof window.requestIdleCallback === 'function'
+        ? function (fn) { window.requestIdleCallback(fn, { timeout: 1500 }); }
+        : function (fn) { window.setTimeout(fn, 300); };
+      idle(function warm() {
+        if (ui.auth || !ui.snapshot) return;
+        if (ui.tab !== 'work' && !ui.work && ui.workPhase === 'idle') fetchWork();
+        if (Receipts && !ui.receipts['7d'] && receiptsInflight !== '7d') fetchReceipts('7d');
+      });
+    }
+
     R.initWidget({
       bridge: 'mcp-apps-sdk',
       resultScope: function scope(data) {
@@ -3075,6 +3115,7 @@
         if (data === null || data === undefined) { render(); return; }
         if (accept(data, R.getToolResponseMetadata ? { 'orgx/widgetApproval': R.getToolResponseMetadata(APPROVAL_META_KEY) } : null, 'host')) {
           render();
+          warmTabs();
         } else if (!isSnapshot(data)) {
           ui.readState = { phase: 'failed', focusId: null };
           render();
