@@ -383,6 +383,8 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   // start-work prompts, first-use tour, tab views, live updates, controller). The
   // controller loads last.
   'shared/panel/panel.css',
+  // Which host and device the panel is inside; copy and layout follow it.
+  'shared/panel/panel-host.js',
   'shared/panel/panel-brand.js',
   'shared/panel/panel-launch.js',
   'shared/panel/panel-tour.js',

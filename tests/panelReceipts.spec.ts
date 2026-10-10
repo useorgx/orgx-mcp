@@ -368,6 +368,8 @@ describe('Needs you: the work behind a decision', () => {
 describe('when ChatGPT has an older copy of the OrgX tools', () => {
   it('says to refresh the app instead of echoing the validator', async () => {
     const m = await openWith(snapshot());
+    // The host named itself in the ui/initialize response.
+    (m.dom.window as unknown as { OrgXPanelHost: { _setHostInfo(info: { name: string }): void } }).OrgXPanelHost._setHostInfo({ name: 'ChatGPT' });
     m.calls.callServerTool.mockRejectedValue(new Error("Parameters failed connector schema validation: view [enum]: Value 'receipts' not in allowed enum"));
     click(m, '[data-tab="done"]');
     await m.flush(); await m.flush();

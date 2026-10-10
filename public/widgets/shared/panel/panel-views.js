@@ -9,6 +9,9 @@
 (function attachPanelViews(global) {
   'use strict';
   if (global.OrgXPanelViews) return;
+  /** Host-aware copy: {host}, {Host}, {assistant}, {settings} name the app the panel is inside. */
+  function fill(text) { var H = global.OrgXPanelHost; return H ? H.fill(text) : String(text).replace(/\{(?:host|chat)\}/g, 'the chat').replace(/\{(?:Host|Chat)\}/g, 'The assistant').replace(/\{assistant\}/g, 'the assistant').replace(/\{settings\}/g, 'the app’s settings'); }
+
 
   function esc(value) {
     return String(value == null ? '' : value)
@@ -106,7 +109,7 @@
       '<p class="md-who"><span class="md-av">' + avatar(item.agent, 'inline') + '</span>' + esc(meta.join(' · ')) + '</p>' +
       '<p class="md-text">' + esc(stateLine) + '</p>' +
       '<div class="md-acts"><button type="button" class="pn-btn" data-action="open" data-url="' + esc(item.url) + '">Open in OrgX ↗</button>' +
-      '<button type="button" class="pn-btn ghost" data-action="launch" data-prompt="' + esc(ask) + '">Ask ChatGPT</button></div></div>';
+      '<button type="button" class="pn-btn ghost" data-action="launch" data-prompt="' + esc(ask) + '">' + esc(global.OrgXPanelHost ? global.OrgXPanelHost.ask() : 'Ask in chat') + '</button></div></div>';
   }
 
   function workOverviewHtml(groups, work) {

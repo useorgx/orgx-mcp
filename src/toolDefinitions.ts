@@ -185,7 +185,8 @@ export const WIDGET_RESOURCES = [
   {
     name: 'orgx-panel-widget',
     uri: WIDGET_URIS.orgxPanel,
-    title: 'OrgX Panel',
+    // The host shows this as the app's title: just OrgX.
+    title: 'OrgX',
     // OpenAI UI extension: the panel opens inline (sidebar, beside a thread)
     // and can expand to fullscreen. Merged into the shared content _meta.
     contentMeta: {

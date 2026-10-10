@@ -431,7 +431,7 @@ function grant(feedId = WS) {
     expiresAt: Date.now() + 60_000,
     refreshTool: 'orgx_panel_snapshot',
     refreshArgs: {},
-    label: 'OrgX panel',
+    label: 'OrgX',
   };
 }
 

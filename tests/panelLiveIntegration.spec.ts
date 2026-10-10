@@ -33,7 +33,7 @@ function grant(feedId: string) {
     expiresAt: Date.now() + 10 * 60 * 1000,
     refreshTool: 'orgx_panel_snapshot',
     refreshArgs: {},
-    label: 'OrgX panel',
+    label: 'OrgX',
   };
 }
 

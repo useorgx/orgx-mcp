@@ -2,7 +2,7 @@
  * OrgX panel: start work in chat.
  *
  * The panel teaches by showing the sentence it sends. Every prompt is a
- * plain request ChatGPT turns into a real OrgX tool call, and each line
+ * plain request the host assistant turns into a real OrgX tool call, and each line
  * says what OrgX does with it, never a tool id. Mapping (ChatGPT profile):
  *
  *   launch   -> orgx_create_initiative_hierarchy + orgx_launch_initiative
@@ -22,6 +22,10 @@
 (function attachPanelLaunch(global) {
   'use strict';
   if (global.OrgXPanelLaunch) return;
+  /** Host-aware copy: {host}, {Host}, {assistant}, {settings} name the app the panel is inside. */
+  function fill(text) { var H = global.OrgXPanelHost; return H ? H.fill(text) : String(text).replace(/\{(?:host|chat)\}/g, 'the chat').replace(/\{(?:Host|Chat)\}/g, 'The assistant').replace(/\{assistant\}/g, 'the assistant').replace(/\{settings\}/g, 'the app’s settings'); }
+  function askLabel() { var H = global.OrgXPanelHost; return H ? H.ask() : 'Ask in chat'; }
+
 
   var STORE_KEY = 'orgx.panel.launch.v1';
   var memory = { dismissed: 0, sent: 0, opens: 0 };
@@ -67,7 +71,7 @@
     pulse: function (ctx) { return ctx.initiative ? { text: 'How is ' + clip(ctx.initiative, 60) + ' going in OrgX?', does: 'Reads the initiative’s progress and risks' } : null; },
     risk: function (ctx) { return { label: 'Explain the risk', text: 'In OrgX, explain the risk of approving “' + clip(ctx.title, 140) + '”', does: 'Reads the decision and its evidence' }; },
     wait: function (ctx) { return { label: 'What breaks if I wait?', text: 'In OrgX, what slips if I don’t decide “' + clip(ctx.title, 140) + '” today?', does: 'Reads what the decision holds up' }; },
-    draft: function (ctx) { return { label: 'Draft with ChatGPT', text: 'Draft a short send-back note for the OrgX decision “' + clip(ctx.title, 140) + '”: what should change?', does: 'Writes a note you can paste back here' }; },
+    draft: function (ctx) { return { label: fill('Draft with {assistant}'), text: 'Draft a short send-back note for the OrgX decision “' + clip(ctx.title, 140) + '”: what should change?', does: 'Writes a note you can paste back here' }; },
     check: function (ctx) { return { text: 'How is “' + clip(ctx.title, 120) + '” going in OrgX since I decided it?', does: 'Checks the work your decision started' }; },
   };
 
@@ -96,7 +100,7 @@
     var id = 'pn-launch-' + kind;
     return '<section class="pn-launch" data-launch="' + esc(kind) + '" aria-labelledby="' + id + '">' +
       '<h2 class="pn-launch-h" id="' + id + '">' + esc(opts.heading || 'Start work in chat') + '</h2>' +
-      '<p class="pn-launch-sub">' + esc(opts.sub || 'Each one sends this sentence to ChatGPT, which uses OrgX to do it.') + '</p>' +
+      '<p class="pn-launch-sub">' + esc(opts.sub || fill('Each one sends this sentence to {assistant}, which uses OrgX to do it.')) + '</p>' +
       '<div class="pn-launch-list">' + list.map(function item(p) {
         return '<button type="button" class="pn-prompt" data-action="launch" data-key="' + esc(p.key) + '" data-prompt="' + esc(p.text) + '">' +
           '<span class="pn-prompt-t">“' + esc(p.text) + '”</span>' +
@@ -109,9 +113,9 @@
   function chipsHtml(kind, ctx) {
     var list = prompts(kind, ctx);
     if (!list.length) return '';
-    return '<div class="pn-asks" role="group" aria-label="Ask ChatGPT about this decision"><span class="pn-asks-h">Ask ChatGPT</span>' +
+    return '<div class="pn-asks" role="group" aria-label="' + esc(askLabel()) + ' about this decision"><span class="pn-asks-h">' + esc(askLabel()) + '</span>' +
       list.map(function chip(p) {
-        return '<button type="button" class="pn-ask" data-action="launch" data-key="' + esc(p.key) + '" data-prompt="' + esc(p.text) + '" title="' + esc(p.text) + '" aria-label="Ask ChatGPT: ' + esc(p.text) + '">' +
+        return '<button type="button" class="pn-ask" data-action="launch" data-key="' + esc(p.key) + '" data-prompt="' + esc(p.text) + '" title="' + esc(p.text) + '" aria-label="' + esc(askLabel()) + ': ' + esc(p.text) + '">' +
           '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>' +
           '<span>' + esc(p.label || p.text) + '</span></button>';
       }).join('') + '</div>';
