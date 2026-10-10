@@ -156,7 +156,7 @@ describe('inside ChatGPT on a phone', () => {
     expect(doc(m).querySelector('.pn-display')).toBeNull();
   });
 
-  it('falls back to the measured floor in a full-screen phone view when ChatGPT reports no insets', async () => {
+  it('falls back to the measured composer floor in a full-screen phone view when ChatGPT reports no insets', async () => {
     const m = await mountPanel({}, {}, (win) => {
       (win as unknown as Record<string, unknown>).openai = {
         userAgent: { device: { type: 'mobile' }, capabilities: { hover: false, touch: true } }, displayMode: 'fullscreen',
@@ -166,7 +166,8 @@ describe('inside ChatGPT on a phone', () => {
     const win = m.dom.window as unknown as Window & { OrgXPanelHost: { apply(c: unknown): void } };
     win.OrgXPanelHost.apply(null);
     expect(html(m).getAttribute('data-safe-source')).toBe('floor');
-    expect(html(m).style.getPropertyValue('--pn-safe-top')).toBe('110px');
+    // The host starts the content below its own title bar; only the composer is over the view.
+    expect(html(m).style.getPropertyValue('--pn-safe-top')).toBe('0px');
     expect(html(m).style.getPropertyValue('--pn-safe-bottom')).toBe('92px');
   });
 
@@ -177,15 +178,15 @@ describe('inside ChatGPT on a phone', () => {
     mounted.push(inline);
     (inline.dom.window as unknown as Window & { OrgXPanelHost: { apply(c: unknown): void } }).OrgXPanelHost.apply(null);
     expect(html(inline).getAttribute('data-safe-source')).toBe('none');
-    expect(html(inline).style.getPropertyValue('--pn-safe-top')).toBe('0px');
+    expect(html(inline).style.getPropertyValue('--pn-safe-bottom')).toBe('0px');
     const desktop = await mountPanel({}, {}, (win) => {
       (win as unknown as Record<string, unknown>).openai = { userAgent: { device: { type: 'desktop' }, capabilities: { hover: true, touch: false } }, displayMode: 'fullscreen' };
     });
     mounted.push(desktop);
     (desktop.dom.window as unknown as Window & { OrgXPanelHost: { apply(c: unknown): void } }).OrgXPanelHost.apply(null);
-    expect(html(desktop).style.getPropertyValue('--pn-safe-top')).toBe('0px');
+    expect(html(desktop).style.getPropertyValue('--pn-safe-bottom')).toBe('0px');
     const claude = await open({ platform: 'mobile', displayMode: 'fullscreen', userAgent: 'Claude/2.1 (iOS)' });
-    expect(html(claude).style.getPropertyValue('--pn-safe-top')).toBe('0px');
+    expect(html(claude).style.getPropertyValue('--pn-safe-bottom')).toBe('0px');
   });
 
   it('follows the insets when ChatGPT changes them', async () => {

@@ -1226,9 +1226,26 @@ html[data-platform="mobile"] .panel {
   padding-bottom: calc(12px + max(var(--pn-safe-bottom), env(safe-area-inset-bottom, 0px)));
 }
 .panel .top { margin-left: calc(-1 * var(--pn-gutter) - var(--pn-inset-left)); margin-right: calc(-1 * var(--pn-gutter) - var(--pn-inset-right)); padding-left: calc(var(--pn-gutter) + var(--pn-inset-left)); padding-right: calc(var(--pn-gutter) + var(--pn-inset-right)); }
-/* On a phone the header and its tabs stay put under the host's own bar, so
-   the tabs can always be reached, however far the view has scrolled. */
-html[data-platform="mobile"] .panel .top { position: sticky; top: var(--pn-safe-top); z-index: 6; background: var(--ox-bg); }
+/* On a phone the header (mark, workspace, tabs) pins right under the host's
+   own bar and stays there however far the view scrolls. Its background
+   continues the fade the host's bar already has, with the brand's light
+   behind the mark, and the state's edge (calm, needs you, blocking) runs
+   along its bottom instead of the panel's top, so it is always in view.
+   The top offset is whichever the host reports: its insets, or the device's
+   safe area (viewport-fit=cover lets env() carry a bar the view sits under). */
+html[data-platform="mobile"] .panel { padding-top: max(var(--pn-safe-top), env(safe-area-inset-top, 0px)); border-top: 0; }
+html[data-platform="mobile"] .panel .top {
+  position: sticky; top: max(var(--pn-safe-top), env(safe-area-inset-top, 0px)); z-index: 6;
+  border-bottom: 0;
+  background:
+    radial-gradient(180px 64px at 30px 36%, rgba(var(--ox-primary-rgb), 0.14), rgba(0, 201, 167, 0.05) 55%, transparent 75%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ox-bg) 90%, var(--ox-text)) 0%, var(--ox-bg) 62%);
+}
+html[data-platform="mobile"] .panel .top::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, var(--pn-edge), color-mix(in srgb, var(--pn-edge) 35%, transparent) 55%, var(--ox-border));
+}
+html[data-platform="mobile"] .panel .top.has-tabs .pn-tabs { border-top-color: color-mix(in srgb, var(--ox-border) 60%, transparent); }
 /* The tour's dim layer covers the whole view; its card never goes under the host's bars (panel-tour.js). */
 /* Full screen on a tablet: one readable measure, centred. */
 html[data-display-mode="fullscreen"] .panel { max-width: 820px; margin-inline: auto; }

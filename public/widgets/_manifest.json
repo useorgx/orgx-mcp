@@ -305,8 +305,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 1837,
-      "hash": "605997db7cfc",
+      "bytes": 1857,
+      "hash": "3aba9c5345eb",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",

@@ -8,23 +8,26 @@ import { snapshot, D1 } from './fixtures/panel';
 
 /**
  * ChatGPT's phone app, as the panel meets it: a full-screen view with the
- * host's title bar (back, title, menu) drawn over the top and its composer
- * drawn over the bottom. Real captures showed both covering the panel: the
- * OrgX mark and the tabs under the bar, the queue and the tour's buttons
- * under the composer.
+ * host's title bar (back, title, menu) above and its composer drawn over the
+ * bottom. Real captures showed the content start below the bar at scroll
+ * top, then scroll under it (the mark and the tabs gone), and the queue and
+ * the tour's buttons under the composer.
  *
- * These tests draw that chrome over the panel as pointer-blocking overlays,
- * then tap the real controls at their on-screen coordinates. A tap that
- * lands on the chrome instead of the control fails the test, so this holds
- * only when the panel actually keeps its controls in the open area. Two
- * cases: the host reports its insets, and it reports none (the floor).
+ * These tests draw that chrome as pointer-blocking overlays, then tap the
+ * real controls at their on-screen coordinates. A tap that lands on the
+ * chrome instead of the control fails the test, so this holds only when the
+ * panel actually keeps its controls in the open area. Two cases: the host
+ * reports its insets (the bar drawn over the view, as a host that reports
+ * a top inset would), and it reports none (the host starts the content
+ * below its bar itself; only the composer is over the view, and the floor
+ * keeps the bottom clear).
  */
 const PHONE = { width: 390, height: 844 };
 const BAR = 108;
 const COMPOSER = 90;
-const CHROME = `
-  <div id="host-bar" style="position:fixed;left:0;right:0;top:0;height:${BAR}px;z-index:2147483647;background:rgba(10,12,16,.8);pointer-events:auto"></div>
-  <div id="host-composer" style="position:fixed;left:0;right:0;bottom:0;height:${COMPOSER}px;z-index:2147483647;background:rgba(10,12,16,.8);pointer-events:auto"></div>`;
+const HOST_BAR = `<div id="host-bar" style="position:fixed;left:0;right:0;top:0;height:${BAR}px;z-index:2147483647;background:rgba(10,12,16,.8);pointer-events:auto"></div>`;
+const HOST_COMPOSER = `<div id="host-composer" style="position:fixed;left:0;right:0;bottom:0;height:${COMPOSER}px;z-index:2147483647;background:rgba(10,12,16,.8);pointer-events:auto"></div>`;
+const CHROME = HOST_BAR + HOST_COMPOSER;
 
 const panelUrl = pathToFileURL(resolve('public/widgets/orgx-panel.html')).href;
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined;
@@ -33,7 +36,7 @@ let browser: Browser;
 beforeAll(async () => { browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) }); });
 afterAll(async () => { await browser?.close(); });
 
-type Host = { insets?: { top: number; right: number; bottom: number; left: number }; auth?: boolean; tour?: boolean };
+type Host = { insets?: { top: number; right: number; bottom: number; left: number }; barOverView?: boolean; auth?: boolean; tour?: boolean };
 
 async function open(host: Host) {
   const ctx = await browser.newContext({ viewport: PHONE, isMobile: true, hasTouch: true, colorScheme: 'dark' });
@@ -41,7 +44,12 @@ async function open(host: Host) {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.route(/^https?:/, (route) => route.abort());
-  const data = snapshot();
+  // A queue long enough that the view scrolls, as a real one does.
+  const base = snapshot();
+  const data = snapshot({
+    attention: { ...base.attention, pending: 8 },
+    queue: Array.from({ length: 8 }, (_, i) => ({ ...base.queue[i % 2]!, id: `${i}${base.queue[i % 2]!.id.slice(1)}`, title: `Decision ${i + 1}: ${base.queue[i % 2]!.title}` })),
+  });
   await page.addInitScript(({ data, host, D1 }) => {
     const w = window as unknown as Record<string, unknown> & { __calls: { name: string; args: unknown }[] };
     w.__calls = [];
@@ -66,7 +74,7 @@ async function open(host: Host) {
   // The cold start hands over to the content as a view transition; hit-testing waits for it to settle.
   await page.waitForFunction(() => !document.documentElement.matches(':active-view-transition'));
   await page.waitForTimeout(150);
-  await page.evaluate((html) => { const d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d); }, CHROME);
+  await page.evaluate((html) => { const d = document.createElement('div'); d.innerHTML = html; document.body.appendChild(d); }, (host.barOverView ? HOST_BAR : '') + HOST_COMPOSER);
   return { page, errors, close: () => ctx.close() };
 }
 
@@ -107,9 +115,9 @@ describe('the harness itself', () => {
 });
 
 describe.each([
-  ['the host reports its insets', { insets: { top: BAR, right: 0, bottom: COMPOSER, left: 0 } }],
-  ['the host reports no insets (the floor)', {}],
-])('ChatGPT phone chrome over the panel, when %s', (_label, host: Host) => {
+  ['the host draws its bar over the view and reports its insets', { insets: { top: BAR, right: 0, bottom: COMPOSER, left: 0 }, barOverView: true }],
+  ['the host starts the content below its bar and reports nothing (the floor)', {}],
+])('ChatGPT phone chrome, when %s', (_label, host: Host) => {
   it('keeps the mark, the workspace name and every tab tappable under the title bar', async () => {
     const { page, errors, close } = await open(host);
     try {
@@ -117,7 +125,7 @@ describe.each([
         const r = await hitAtCenter(page, sel);
         expect(r.found, sel).toBe(true);
         expect(r.hitsSelf, `${sel} is covered by ${r.hit}`).toBe(true);
-        expect(r.top, `${sel} starts under the title bar`).toBeGreaterThanOrEqual(BAR);
+        if (host.barOverView) expect(r.top, `${sel} starts under the title bar`).toBeGreaterThanOrEqual(BAR);
       }
       // A real tap on In progress switches the view; the host's bar does not swallow it.
       await page.locator('#pn-tab-work').tap();
@@ -131,11 +139,16 @@ describe.each([
     } finally { await close(); }
   }, 30000);
 
-  it('keeps the tabs reachable after the view has scrolled', async () => {
+  it('keeps the header pinned and the tabs reachable after the view has scrolled', async () => {
     const { page, close } = await open(host);
     try {
       await page.evaluate(() => window.scrollTo(0, 600));
       await page.waitForTimeout(100);
+      expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
+      const header = await hitAtCenter(page, '.ws-btn');
+      expect(header.hitsSelf, `workspace selector is covered by ${header.hit}`).toBe(true);
+      // Pinned: the header sits at the top of the open area, not scrolled away.
+      expect(header.top).toBeLessThanOrEqual((host.barOverView ? BAR : 0) + 24);
       const r = await hitAtCenter(page, '#pn-tab-start');
       expect(r.hitsSelf, `Start tab is covered by ${r.hit}`).toBe(true);
       await page.locator('#pn-tab-start').tap();
@@ -168,7 +181,7 @@ describe.each([
         const next = await hitAtCenter(page, '[data-tour="next"]');
         expect(next.hitsSelf, `step ${step}: Next is covered by ${next.hit}`).toBe(true);
         const card = await page.locator('.pn-coach').boundingBox();
-        expect(card!.y, `step ${step}: card under the title bar`).toBeGreaterThanOrEqual(BAR);
+        if (host.barOverView) expect(card!.y, `step ${step}: card under the title bar`).toBeGreaterThanOrEqual(BAR);
         expect(card!.y + card!.height, `step ${step}: card under the composer`).toBeLessThanOrEqual(PHONE.height - COMPOSER + 1);
         await page.locator('[data-tour="next"]').tap();
         await page.waitForTimeout(450);

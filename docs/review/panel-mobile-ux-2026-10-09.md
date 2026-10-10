@@ -48,40 +48,53 @@ The simulation draws a 120px title bar and a 96px composer over the gallery
 panel and reports the same insets to it (`?safe=120,0,96,0`). The exact
 values ChatGPT reports on a given phone come from the app at runtime.
 
-### When ChatGPT reports no insets: the floor and the sticky header
+### What the second set of captures settled: the host owns the top
 
-The Apps SDK documents `safeArea.insets` as device notches and gesture
-areas; a community thread confirms it clears the composer on mobile web.
-Nothing documents that it also covers the native app's title bar in the
-full-screen app view the captures show. Relying on it alone was not safe, so
-two defenses were added:
+A second set of real captures (below) showed the panel at scroll top with
+its header right under ChatGPT's bar, and the header gone only once the view
+had scrolled under the translucent bar. So ChatGPT starts a full-screen
+app's content below its own bar; the top needs no padding from the panel,
+and an earlier 110px top floor was removed (it would have doubled the gap).
+The composer, by contrast, is drawn over the bottom of the view.
 
-- **A floor.** Inside ChatGPT, on a phone, in a view that fills the screen
-  (`displayMode` is `fullscreen`, or the view is at least three quarters of
-  the screen's height), when no insets are reported, the panel uses measured
-  ones: 110px top (status bar 54pt + title bar 54pt on an iPhone with a
-  Dynamic Island) and 92px bottom (composer plus home indicator). Reported
-  insets always win; inline views, desktops and other hosts never get it.
-  `data-safe-source` on `<html>` says which applied (`host`, `floor`, `none`).
-- **A sticky header.** On a phone the header and its tabs stick at the top
-  of the open area, so the tabs can always be reached however far the view
-  has scrolled.
+What the panel does now:
+
+- **A pinned header.** On a phone the header (mark, workspace selector,
+  Refresh, help, the tab row) is `position: sticky` at the top of the open
+  area, so it sits right under the host's bar and stays there however far
+  the view scrolls. Its offset is whatever the host reports (its insets, or
+  the device's safe area; `viewport-fit=cover` lets `env()` carry a bar the
+  view sits under), and zero when the host already starts the content below
+  its bar. Its background continues the fade the host's bar has, with the
+  brand's light behind the mark, and the state's edge (calm, needs you,
+  blocking) runs along its bottom instead of the panel's top.
+- **A composer floor.** Inside ChatGPT, on a phone, in a view that fills the
+  screen, with no insets reported, the panel keeps 92px clear at the bottom
+  (composer plus home indicator, measured on an iPhone with a Dynamic
+  Island). Reported insets always win; inline views, desktops and other
+  hosts never get it. `data-safe-source` on `<html>` says which applied.
 
 `tests/panelPhoneChrome.spec.ts` verifies the outcome rather than the CSS:
 it runs the shipped panel in Chromium at 390×844 under a synthetic
-`window.openai`, draws ChatGPT's title bar and composer over it as
-pointer-blocking overlays, and taps the controls at their on-screen
-coordinates. A tap that lands on the chrome fails the test. It checks, both
-with reported insets and with the floor: the mark, the workspace name and all
-four tabs are tappable and start below the bar; the tabs stay reachable
-after scrolling; the connect card's button can be pressed and the read
-follows; the tour card and its Next button stay between the bars through
-four steps. A canary case confirms the harness sees the bar cover the tabs
-when nothing keeps the panel out from under it.
+`window.openai`, draws ChatGPT's chrome as pointer-blocking overlays, and
+taps the controls at their on-screen coordinates. A tap that lands on the
+chrome fails the test. Two host behaviours: the bar drawn over the view with
+insets reported, and the content started below the bar with nothing
+reported. In both: the mark, the workspace name and all four tabs are
+tappable; after scrolling 600px the header is still at the top of the open
+area and the Start tab still switches; the connect card's button can be
+pressed and the read follows; the tour card and its Next button stay above
+the composer through four steps. A canary case confirms the harness sees a
+bar cover the tabs when nothing keeps the panel out from under it.
 
-| Floor, Needs you | Floor, connect card |
-| --- | --- |
-| ![floor](evidence/panel-mobile-2026-10-09/chatgpt-phone-floor-needs-you.png) | ![floor onboarding](evidence/panel-mobile-2026-10-09/chatgpt-phone-floor-signed-out.png) |
+| Real ChatGPT iOS, scroll top | Real ChatGPT iOS, scrolled (before) | Simulated, scrolled (after) |
+| --- | --- | --- |
+| ![real top](evidence/panel-mobile-2026-10-09/chatgpt-phone-real-scroll-top.png) | ![real scrolled](evidence/panel-mobile-2026-10-09/chatgpt-phone-real-scrolled.png) | ![pinned](evidence/panel-mobile-2026-10-09/chatgpt-phone-pinned-scrolled-dark.png) |
+
+![pinned, light](evidence/panel-mobile-2026-10-09/chatgpt-phone-pinned-scrolled-light.png)
+
+The host's title now reads "OrgX" (the widget resource title); the panel's
+own header shows the mark and the workspace, never the word again.
 
 ## Borrowed from the other apps, and the real mark
 

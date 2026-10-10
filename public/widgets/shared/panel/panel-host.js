@@ -49,16 +49,17 @@
 
   var NAMES = { chatgpt: 'ChatGPT', claude: 'Claude', cursor: 'Cursor', vscode: 'VS Code', codex: 'Codex', gemini: 'Gemini', goose: 'Goose', unknown: null };
   /**
-   * ChatGPT's phone app draws its own title bar (back, title, menu) over the
-   * top of a full-screen app and its composer over the bottom. The Apps SDK
-   * documents safeArea.insets as device notches and gesture areas; whether a
-   * given build also reports those bars is not documented. When the panel is
+   * ChatGPT's phone app starts a full-screen app's content below its own
+   * title bar (the content then scrolls under the translucent bar), but it
+   * draws its composer over the bottom of the view. The Apps SDK documents
+   * safeArea.insets as device notches and gesture areas; whether a given
+   * build also reports the composer is not documented. When the panel is
    * inside ChatGPT on a phone, fills the screen, and no insets are reported,
-   * these floors keep the header, the tabs and the last row out from under
-   * the bars. Measured on an iPhone with a Dynamic Island (status bar 54pt +
-   * title bar 54pt; composer 80pt + home indicator). Reported insets always win.
+   * this floor keeps the last row and the tour's buttons above the composer
+   * (80pt plus the home indicator, measured on an iPhone with a Dynamic
+   * Island). The top is the host's: never padded unless it reports an inset.
    */
-  var CHATGPT_PHONE_FLOOR = { top: 110, right: 0, bottom: 92, left: 0 };
+  var CHATGPT_PHONE_FLOOR = { top: 0, right: 0, bottom: 92, left: 0 };
   var state = {
     kind: 'unknown',
     kindSource: null,
