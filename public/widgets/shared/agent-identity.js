@@ -203,8 +203,9 @@
         var shadow = this.shadowRoot;
         var wrap = shadow && shadow.querySelector('.a');
         var slot = shadow && shadow.querySelector('.f');
+        // The kit hides every <img> of a mark-kind avatar (its photo slot); the inline display wins over that.
         if (wrap && slot && wrap.getAttribute('data-kind') === 'mark' && !slot.querySelector('img.ox-mark')) {
-          slot.innerHTML = '<img class="ox-mark" src="' + MARK_SRC + '" alt="" decoding="async" style="width:72%;height:72%;border-radius:0;background:none;object-fit:contain">';
+          slot.innerHTML = '<img class="ox-mark" src="' + MARK_SRC + '" alt="" decoding="async" style="display:block;width:72%;height:72%;border-radius:0;background:none;object-fit:contain">';
         }
       } catch (_) { /* the drawn fallback stays */ }
       return out;

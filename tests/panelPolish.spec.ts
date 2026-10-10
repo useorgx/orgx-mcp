@@ -49,6 +49,8 @@ describe('the OrgX mark', () => {
       const img = a.shadowRoot.querySelector('.f img.ox-mark') as HTMLImageElement;
       expect(img).not.toBeNull();
       expect(img.getAttribute('src')).toMatch(/^data:image\/webp;base64,/);
+      // The kit's stylesheet hides a mark avatar's <img>; the real mark must still show.
+      expect(img.style.display).toBe('block');
       expect(a.shadowRoot.querySelector('.f svg')).toBeNull();
     }
   });
