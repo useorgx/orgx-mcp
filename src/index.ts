@@ -2090,7 +2090,7 @@ export class OrgXMcp extends McpAgent<
       env: this.env,
       ctx: this.ctx as any,
       event,
-      distinctId,
+      distinctId: this.resolveOrgxUserId(distinctId) ?? distinctId,
       properties,
       serverVersion: MCP_SERVER_VERSION,
     });
