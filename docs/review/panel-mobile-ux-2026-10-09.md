@@ -48,6 +48,41 @@ The simulation draws a 120px title bar and a 96px composer over the gallery
 panel and reports the same insets to it (`?safe=120,0,96,0`). The exact
 values ChatGPT reports on a given phone come from the app at runtime.
 
+### When ChatGPT reports no insets: the floor and the sticky header
+
+The Apps SDK documents `safeArea.insets` as device notches and gesture
+areas; a community thread confirms it clears the composer on mobile web.
+Nothing documents that it also covers the native app's title bar in the
+full-screen app view the captures show. Relying on it alone was not safe, so
+two defenses were added:
+
+- **A floor.** Inside ChatGPT, on a phone, in a view that fills the screen
+  (`displayMode` is `fullscreen`, or the view is at least three quarters of
+  the screen's height), when no insets are reported, the panel uses measured
+  ones: 110px top (status bar 54pt + title bar 54pt on an iPhone with a
+  Dynamic Island) and 92px bottom (composer plus home indicator). Reported
+  insets always win; inline views, desktops and other hosts never get it.
+  `data-safe-source` on `<html>` says which applied (`host`, `floor`, `none`).
+- **A sticky header.** On a phone the header and its tabs stick at the top
+  of the open area, so the tabs can always be reached however far the view
+  has scrolled.
+
+`tests/panelPhoneChrome.spec.ts` verifies the outcome rather than the CSS:
+it runs the shipped panel in Chromium at 390×844 under a synthetic
+`window.openai`, draws ChatGPT's title bar and composer over it as
+pointer-blocking overlays, and taps the controls at their on-screen
+coordinates. A tap that lands on the chrome fails the test. It checks, both
+with reported insets and with the floor: the mark, the workspace name and all
+four tabs are tappable and start below the bar; the tabs stay reachable
+after scrolling; the connect card's button can be pressed and the read
+follows; the tour card and its Next button stay between the bars through
+four steps. A canary case confirms the harness sees the bar cover the tabs
+when nothing keeps the panel out from under it.
+
+| Floor, Needs you | Floor, connect card |
+| --- | --- |
+| ![floor](evidence/panel-mobile-2026-10-09/chatgpt-phone-floor-needs-you.png) | ![floor onboarding](evidence/panel-mobile-2026-10-09/chatgpt-phone-floor-signed-out.png) |
+
 ## Borrowed from the other apps, and the real mark
 
 Canva, Runway and Figma in ChatGPT's phone app set the bar: a headline that
@@ -94,6 +129,7 @@ Every capture: no horizontal overflow, no page errors, both themes.
 
 ## Verification
 
+- `tests/panelPhoneChrome.spec.ts` (new, Chromium): the hit-test verification above.
 - `tests/panelPolish.spec.ts` (new): the boot stage and its hand-off to content,
   the real mark on every OrgX avatar, and the calm rail opening Start.
 - `tests/panelHost.spec.ts` (new): host naming from `userAgent` and from

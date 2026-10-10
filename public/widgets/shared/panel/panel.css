@@ -1226,6 +1226,9 @@ html[data-platform="mobile"] .panel {
   padding-bottom: calc(12px + max(var(--pn-safe-bottom), env(safe-area-inset-bottom, 0px)));
 }
 .panel .top { margin-left: calc(-1 * var(--pn-gutter) - var(--pn-inset-left)); margin-right: calc(-1 * var(--pn-gutter) - var(--pn-inset-right)); padding-left: calc(var(--pn-gutter) + var(--pn-inset-left)); padding-right: calc(var(--pn-gutter) + var(--pn-inset-right)); }
+/* On a phone the header and its tabs stay put under the host's own bar, so
+   the tabs can always be reached, however far the view has scrolled. */
+html[data-platform="mobile"] .panel .top { position: sticky; top: var(--pn-safe-top); z-index: 6; background: var(--ox-bg); }
 /* The tour's dim layer covers the whole view; its card never goes under the host's bars (panel-tour.js). */
 /* Full screen on a tablet: one readable measure, centred. */
 html[data-display-mode="fullscreen"] .panel { max-width: 820px; margin-inline: auto; }

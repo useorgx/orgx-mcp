@@ -48,6 +48,17 @@
   if (global.OrgXPanelHost) return;
 
   var NAMES = { chatgpt: 'ChatGPT', claude: 'Claude', cursor: 'Cursor', vscode: 'VS Code', codex: 'Codex', gemini: 'Gemini', goose: 'Goose', unknown: null };
+  /**
+   * ChatGPT's phone app draws its own title bar (back, title, menu) over the
+   * top of a full-screen app and its composer over the bottom. The Apps SDK
+   * documents safeArea.insets as device notches and gesture areas; whether a
+   * given build also reports those bars is not documented. When the panel is
+   * inside ChatGPT on a phone, fills the screen, and no insets are reported,
+   * these floors keep the header, the tabs and the last row out from under
+   * the bars. Measured on an iPhone with a Dynamic Island (status bar 54pt +
+   * title bar 54pt; composer 80pt + home indicator). Reported insets always win.
+   */
+  var CHATGPT_PHONE_FLOOR = { top: 110, right: 0, bottom: 92, left: 0 };
   var state = {
     kind: 'unknown',
     kindSource: null,
@@ -59,6 +70,7 @@
     displayMode: null,
     modes: [],
     safe: { top: 0, right: 0, bottom: 0, left: 0 },
+    safeSource: 'none',
     context: null,
   };
   var listeners = [];
@@ -182,12 +194,32 @@
         top: Math.max(0, Number(s.top) || 0), right: Math.max(0, Number(s.right) || 0),
         bottom: Math.max(0, Number(s.bottom) || 0), left: Math.max(0, Number(s.left) || 0),
       };
+      state.safeSource = state.safe.top || state.safe.right || state.safe.bottom || state.safe.left ? 'host' : 'none';
     }
     var p = inferPlatform();
     state.platform = p[0]; state.platformSource = p[1];
     detect();
+    if (state.safeSource !== 'host' && !(preview && params.get('safe'))) {
+      var floor = chatGptPhoneFloor();
+      state.safe = floor || { top: 0, right: 0, bottom: 0, left: 0 };
+      state.safeSource = floor ? 'floor' : 'none';
+    }
     paint();
     emit();
+  }
+
+  /** Inside ChatGPT, on a phone, filling the screen: the bars are over us. */
+  function fillsScreen() {
+    if (state.displayMode === 'fullscreen') return true;
+    if (state.displayMode === 'inline' || state.displayMode === 'pip') return false;
+    try {
+      var sh = global.screen && global.screen.height;
+      return Boolean(sh && global.innerHeight && global.innerHeight >= sh * 0.75);
+    } catch (_) { return false; }
+  }
+  function chatGptPhoneFloor() {
+    if (state.kind !== 'chatgpt' || state.platform !== 'mobile' || !fillsScreen()) return null;
+    return { top: CHATGPT_PHONE_FLOOR.top, right: CHATGPT_PHONE_FLOOR.right, bottom: CHATGPT_PHONE_FLOOR.bottom, left: CHATGPT_PHONE_FLOOR.left };
   }
 
   /** What the DOM carries so CSS can follow: data-host, data-platform, data-touch, data-display-mode, safe-area vars. */
@@ -198,6 +230,7 @@
     if (state.platform) html.setAttribute('data-platform', state.platform);
     html.setAttribute('data-touch', inferTouch() ? 'true' : 'false');
     if (state.displayMode) html.setAttribute('data-display-mode', state.displayMode); else html.removeAttribute('data-display-mode');
+    html.setAttribute('data-safe-source', state.safeSource);
     html.style.setProperty('--pn-safe-top', state.safe.top + 'px');
     html.style.setProperty('--pn-safe-right', state.safe.right + 'px');
     html.style.setProperty('--pn-safe-bottom', state.safe.bottom + 'px');
@@ -245,6 +278,16 @@
     }, { passive: true });
   }
 
+  // The screen fit can change (rotation, the host resizing the view): re-read it.
+  if (global.addEventListener) {
+    var resizeTimer = 0;
+    global.addEventListener('resize', function onResize() {
+      if (state.kind !== 'chatgpt') return;
+      global.clearTimeout(resizeTimer);
+      resizeTimer = global.setTimeout(function reapply() { apply(null); }, 120);
+    }, { passive: true });
+  }
+
   // First paint from what is known before any host context arrives.
   apply(null);
 
@@ -257,6 +300,7 @@
     canFullscreen: canFullscreen,
     modes: function modes() { return state.modes.slice(); },
     safeArea: function safeArea() { return state.safe; },
+    safeSource: function safeSource() { return state.safeSource; },
     apply: apply,
     onChange: function onChange(fn) { if (typeof fn === 'function') listeners.push(fn); },
     haptic: haptic,
