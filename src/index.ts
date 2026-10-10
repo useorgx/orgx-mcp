@@ -3351,7 +3351,7 @@ export class OrgXMcp extends McpAgent<
       // UX telemetry: the widget posts bounded events back to this worker
       // with this grant; they land on the viewer the panel was read for.
       telemetryContext: ({ workspaceId }) =>
-        this.isDirectoryReviewProfile()
+        this.isDirectoryReviewProfile() || this.isSubmittedInformationalToolExecution('orgx_panel_snapshot')
           ? Promise.resolve(null)
           : buildWidgetTelemetryContext(this.env, { widget: 'orgx-panel', userId: userId(), workspaceId }),
       observe: (observation) => this.observePanelSnapshot(observation, userId()),
@@ -3364,7 +3364,9 @@ export class OrgXMcp extends McpAgent<
    * panel can still draw; this is where they become visible to someone.
    */
   private observePanelSnapshot(observation: PanelSnapshotObservation, userId: string | null) {
-    if (this.isDirectoryReviewProfile()) return;
+    // Same rule as every other worker-side side effect: the directory review
+    // profile and a submitted informational read report nothing from here.
+    if (this.isDirectoryReviewProfile() || this.isSubmittedInformationalToolExecution('orgx_panel_snapshot')) return;
     const ms = (key: keyof PanelSnapshotObservation['timings']) => observation.timings[key];
     this.capturePosthogEvent('mcp_panel_snapshot_read', {
       distinctId: userId ?? this.resolveAnonymousDistinctId(),
