@@ -354,7 +354,8 @@ export function heldLaunchOf(body: unknown): { decision_id: string | null; expec
   const rec = outer && !str(outer.code) && asRec(outer.error)?.code ? { ...asRec(outer.error)!, ...outer } : outer;
   if (!rec) return null;
   const error = asRec(rec.error);
-  const code = (str(rec.code) ?? str(error?.code) ?? str(rec.error_kind) ?? '').toLowerCase();
+  // The app's launch gate answers with `blocked_reason: 'expectation_agreement'`.
+  const code = (str(rec.code) ?? str(error?.code) ?? str(rec.error_kind) ?? str(rec.blocked_reason) ?? '').toLowerCase();
   const decision = asRec(rec.decision);
   const kind = str(decision?.kind) ?? str(decision?.decision_type) ?? str(rec.decision_kind);
   const held =

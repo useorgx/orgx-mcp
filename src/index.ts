@@ -220,6 +220,7 @@ import {
 } from './scaffoldControl';
 import {
   buildQueuedScaffoldFollowups,
+  draftPlanExpectations,
   runScaffoldPostCreateFollowups,
 } from './scaffoldFollowups';
 import {
@@ -11547,7 +11548,17 @@ export class OrgXMcp extends McpAgent<
               contractWarnings: allContractWarnings,
               dependencyEdges: materializedDependencies,
               coordinationDependency,
-              expectations: suggestedExpectationSet(batch),
+              // OrgX's own bar for this plan when it can draft one (rules,
+              // kind of work, learned calls, these suggestions); else the
+              // caller's suggestions, marked as suggestions.
+              expectations:
+                (await draftPlanExpectations({
+                  env: this.env,
+                  workspaceId: effectiveCommandCenterId,
+                  batch: batch as Array<Record<string, unknown>>,
+                  actorUserId: scaffoldActorUserId ?? null,
+                  userEmail: this.resolveUserEmail(),
+                })) ?? suggestedExpectationSet(batch),
             });
             telemetryTrace.mark('draft_response');
             recordScaffoldTelemetry({
