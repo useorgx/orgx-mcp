@@ -114,11 +114,13 @@
       .pulse-health[data-tone="warning"] { --tone-rgb: var(--ox-warning-rgb); color: var(--ox-warning); }
       .pulse-health[data-tone="danger"] { --tone-rgb: var(--ox-danger-rgb); color: var(--ox-danger); }
 
-      /* Progress: one number, one bar, and what the workstreams are doing. */
+      /* Progress: literal task completion when known, then workstream context. */
       .pulse-progress { display: flex; flex-direction: column; gap: 8px; }
       .pulse-progress-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
       .pulse-progress-value { font-size: 13px; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
       .pulse-progress-value b { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--ox-text); margin-right: 4px; }
+      .pulse-progress-tally { min-width: 0; white-space: normal; line-height: 1.4; overflow-wrap: anywhere; }
+      .pulse-progress-pct { font-size: 12px; white-space: nowrap; }
       .pulse-progress-bar { position: relative; height: 8px; border-radius: 999px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.14)); overflow: hidden; }
       .pulse-progress-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--ox-teal); min-width: 0; transition: width var(--ox-dur-medium, 220ms) var(--ox-ease-out, ease-out); }
       .pulse-progress-bar[data-tone="warning"] > span { background: var(--ox-warning); }
@@ -822,6 +824,7 @@
         if (!record) return false;
         if (readString(record, ["name", "title"])) return true;
         if (typeof record.health_score === "number") return true;
+        if (normalizeTaskProgress(record)) return true;
         var numericKeys = [
           "progress_pct",
           "pending_decisions",
@@ -853,6 +856,34 @@
           .filter(Boolean);
       };
 
+      // Task counts are facts from the continuity projection, never estimates
+      // from weighted initiative progress or workstream status populations.
+      var normalizeTaskProgress = function (record) {
+        var continuity = asObject(record && record.continuity);
+        var progress = asObject(continuity && continuity.progress) || asObject(record && record.task_progress);
+        if (!progress) return null;
+        var count = function (value) {
+          return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+        };
+        var completed = count(progress.completed);
+        var total = count(progress.total);
+        if (completed !== null && total !== null && completed > total) completed = null;
+        var pct = typeof progress.pct === "number" && Number.isFinite(progress.pct) ? progress.pct : null;
+        var active = count(progress.active);
+        var blocked = count(progress.blocked);
+        if (total !== null) {
+          var remaining = total - (completed === null ? 0 : completed);
+          if (active !== null && active > remaining) active = null;
+          if (blocked !== null && blocked > remaining) blocked = null;
+          if (active !== null && blocked !== null && active + blocked > remaining) {
+            active = null;
+            blocked = null;
+          }
+        }
+        if (completed === null && total === null && pct === null && active === null && blocked === null) return null;
+        return { completed: completed, total: total, pct: pct, active: active, blocked: blocked };
+      };
+
       var normalizePulse = function (payload) {
         if (!payload) return null;
         var record = unwrapPulseRecord(payload);
@@ -863,12 +894,14 @@
           asObject(record.workstream_summary) || asObject(record.workstreamSummary) || {};
         var artifacts = normalizeArtifacts(record);
         var milestones = normalizeMilestones(record);
+        var taskProgress = normalizeTaskProgress(record);
         return {
           id: readString(record, ["id", "initiative_id", "initiativeId"]),
           name: readString(record, ["name", "title"]) || "Initiative",
           status: readString(record, ["status", "state"]) || "active",
           message: plainCopy(readString(record, ["message", "summary"])),
-          progress_pct: typeof record.progress_pct === "number" ? record.progress_pct : 0,
+          progress_pct: typeof record.progress_pct === "number" ? record.progress_pct : taskProgress && taskProgress.pct !== null ? taskProgress.pct : 0,
+          task_progress: taskProgress,
           pending_decisions:
             typeof record.pending_decisions === "number"
               ? record.pending_decisions
@@ -1180,11 +1213,27 @@
       };
       var SEGMENT_WORDS = { done: "done", review: "in review", active: "active", blocked: "blocked", planned: "not started" };
 
-      /* One number ("64% through"), one bar, the health chip, then what the
-         workstreams are doing: "4 workstreams · 2 active · 1 blocked · 1 not started".
-         The blocker reason, when there is one, is said once underneath. */
+      /* A task tally is authoritative for completion; weighted percentage is
+         only a fallback. Keep known task states separate from workstreams. */
       var renderProgress = function (pulseData, healthHtml) {
-        var pct = Math.max(0, Math.min(100, Math.round(Number(pulseData.progress_pct) || 0)));
+        var taskProgress = pulseData.task_progress;
+        var hasTaskTally = Boolean(taskProgress && taskProgress.completed !== null && taskProgress.total !== null);
+        var progress = hasTaskTally
+          ? taskProgress.total > 0 ? taskProgress.completed / taskProgress.total * 100 : 0
+          : pulseData.progress_pct;
+        var pct = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
+        var progressLabel = hasTaskTally
+          ? taskProgress.completed + " of " + taskProgress.total + " tasks done"
+          : pct + "% progress";
+        var taskFacts = [];
+        if (taskProgress && taskProgress.active !== null) {
+          taskFacts.push('<span class="f-active"><i aria-hidden="true"></i>' + escapeHtml(plural(taskProgress.active, "task") + " active") + "</span>");
+          progressLabel += ", " + plural(taskProgress.active, "task") + " active";
+        }
+        if (taskProgress && taskProgress.blocked !== null) {
+          taskFacts.push('<span' + (taskProgress.blocked > 0 ? ' class="f-blocked"' : '') + '><i aria-hidden="true"></i>' + escapeHtml(plural(taskProgress.blocked, "task") + " blocked") + "</span>");
+          progressLabel += ", " + plural(taskProgress.blocked, "task") + " blocked";
+        }
         var source = pulseData.workstreams.length ? pulseData.workstreams : [];
         var counts = {};
         source.forEach(function (item) {
@@ -1208,10 +1257,13 @@
         return (
           '<div class="pulse-progress">' +
             '<div class="pulse-progress-head">' +
-              '<span class="pulse-progress-value"><b>' + pct + "%</b>" + (pct >= 100 ? "complete" : "through") + "</span>" +
+              (hasTaskTally
+                ? '<span class="pulse-progress-value pulse-progress-tally"><b>' + taskProgress.completed + " of " + taskProgress.total + '</b> tasks done<span class="pulse-progress-pct"> · ' + pct + "%</span></span>"
+                : '<span class="pulse-progress-value"><b>' + pct + "%</b>progress</span>") +
               healthHtml +
             "</div>" +
-            '<div class="pulse-progress-bar" role="img" aria-label="' + escapeHtml(pct + "% through" + (counts.blocked ? ", " + counts.blocked + " blocked" : "")) + '"><span style="width:' + pct + '%"></span></div>' +
+            '<div class="pulse-progress-bar" role="img" aria-label="' + escapeHtml(progressLabel + (counts.blocked ? ", " + plural(counts.blocked, "workstream") + " blocked" : "")) + '"><span style="width:' + pct + '%"></span></div>' +
+            (taskFacts.length ? '<div class="pulse-facts pulse-task-facts" role="group" aria-label="Task status counts">' + taskFacts.join("") + "</div>" : "") +
             (facts.length ? '<div class="pulse-facts">' + facts.join("") + "</div>" : "") +
             (blockers.length
               ? '<div class="pulse-blocker">' + window.OrgXIcons.icon("blocked", 16) + "<span>" + escapeHtml(blockers[0]) +

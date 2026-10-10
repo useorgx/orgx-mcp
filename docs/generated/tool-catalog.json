@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-10T01:49:40.084Z",
-  "sourceHash": "c00b6891cafb2d1f",
+  "generatedAt": "2026-10-10T02:31:49.249Z",
+  "sourceHash": "47a25f18dce58f35",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -13695,6 +13695,87 @@
               "preview_markdown": {
                 "type": "string",
                 "maxLength": 25000
+              },
+              "artifact_hash": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "atomic_unit_type": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "modality_proof": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "playback",
+                      "execution",
+                      "schema",
+                      "render",
+                      "runtime",
+                      "mixed"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "passed",
+                      "failed",
+                      "blocked",
+                      "not_run"
+                    ]
+                  },
+                  "artifact_version": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "checked_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "evidence_refs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "maxLength": 2000
+                        },
+                        "hash": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        }
+                      },
+                      "required": [
+                        "url"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 30
+                  }
+                },
+                "required": [
+                  "kind",
+                  "status",
+                  "artifact_version",
+                  "checked_at",
+                  "evidence_refs"
+                ],
+                "additionalProperties": false,
+                "description": "Versioned execution or render evidence for the new artifact. Does not assert an independent evaluation or human acceptance."
               }
             },
             "required": [
@@ -13709,7 +13790,8 @@
               "minLength": 1,
               "maxLength": 2000
             },
-            "maxItems": 30
+            "maxItems": 30,
+            "description": "Verification notes. A client with a cached schema can encode one producer modality_proof as orgx:modality-proof:v1: followed by the same closed JSON envelope; OrgX validates it before recording."
           },
           "quality_score": {
             "type": "number",

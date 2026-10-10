@@ -147,9 +147,14 @@ async function main() {
 
   const server = await createStaticServer(publicDir, port);
   const baseUrl = `http://127.0.0.1:${port}`;
-  const browser = await chromium.launch({ headless: true });
+  let browser;
 
   try {
+    const executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH?.trim();
+    browser = await chromium.launch({
+      headless: true,
+      ...(executablePath ? { executablePath } : {}),
+    });
     for (const capture of widgetCaptures) {
       const page = await browser.newPage({ deviceScaleFactor: 2 });
       await captureWidget(page, baseUrl, capture);
@@ -164,7 +169,7 @@ async function main() {
     widgetCaptures.forEach((capture) => console.log(`- ${capture.path}`));
     console.log(`- ${finalOgPath}`);
   } finally {
-    await browser.close();
+    await browser?.close();
     await new Promise((resolveClose, rejectClose) =>
       server.close((error) => (error ? rejectClose(error) : resolveClose()))
     );
