@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -31,11 +31,11 @@ const predecessor = { artifact_id: "33333333-3333-4333-8333-333333333333",
   expected_version: 2, expected_updated_at: "2026-10-10T07:00:00.123+02:00" };
 const completionArtifact = { artifact_type: "eng.diff_pack", external_url: "https://example.test/proof" };
 
-async function connectCompletionOperations() {
+async function connectCompletionOperations(apiEnv: Record<string, string> = {}) {
   const { OrgXMcp } = await import("../src/index");
   const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
   worker.sessionContext = { workspaceId: WORKSPACE_ID };
-  worker.env = { ORGX_API_URL: "https://orgx.test", MCP_SERVER_URL: "https://mcp.orgx.test" };
+  worker.env = { ORGX_API_URL: "https://orgx.test", MCP_SERVER_URL: "https://mcp.orgx.test", ...apiEnv };
   worker.resolveUserId = () => "completion-fixture-user";
   worker.resolveUserEmail = () => "member@example.test";
   worker.resolveOrgxUserId = () => TASK_ID;
@@ -75,8 +75,9 @@ describe("registered completion predecessor boundary", () => {
       } });
       expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
       expect(completionApi.callOrgxApiJson).toHaveBeenCalledOnce();
-      const [, path, init] = completionApi.callOrgxApiJson.mock.calls[0];
+      const [, path, init, options] = completionApi.callOrgxApiJson.mock.calls[0];
       expect(path).toBe("/api/v1/workflows/complete-with-proof");
+      expect(options).toMatchObject({ allowFallback: false });
       expect(init.method).toBe("POST");
       expect(new Headers(init.headers).get("Idempotency-Key")).toMatch(/^mcp-proof:[a-f0-9]{64}$/);
       const body = JSON.parse(init.body);
@@ -150,6 +151,146 @@ describe("registered completion predecessor boundary", () => {
       expect(completionApi.callOrgxApiJson).not.toHaveBeenCalled();
       expect(compatibilityHandler).not.toHaveBeenCalled();
     } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+});
+
+describe("registered keyed completion transport", () => {
+  const apiEnv = {
+    ORGX_API_URL: "https://primary.example.test",
+    ORGX_API_FALLBACK_URL: "https://fallback.example.test",
+    ORGX_SERVICE_KEY: "oxk-completion-transport-fixture",
+  };
+  const input = { type: "task", id: TASK_ID, artifact: completionArtifact,
+    idempotency_key: "completion-transport-content-bound-v1" };
+  const envelope = (state: string) => ({
+    data: { completed: state === "completed", proof_attached: true, state,
+      artifact: { artifact: { id: predecessor.artifact_id, version: 1 }, duplicate: false },
+      completion: state === "completed" ? { duplicate: false } : null,
+      ...(state === "failed" ? { error: { code: "conflict", message: "Task changed after proof was saved" } } : {}),
+      ...(state === "blocked" ? { task_progress: { status: "in_progress", changed: true },
+        verification: { ready: false, blockers: ["Independent review required"] } } : {}),
+    }, meta: { apiVersion: "1", workspaceId: WORKSPACE_ID },
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  async function useRealApi() {
+    const actual = await vi.importActual<typeof import("../src/orgxApi")>("../src/orgxApi");
+    completionApi.callOrgxApiJson.mockReset().mockImplementation(actual.callOrgxApiJson);
+    return actual;
+  }
+
+  function delayedResponse(init: RequestInit, delayMs: number, response: Response) {
+    return new Promise<Response>((resolve, reject) => {
+      const timer = setTimeout(() => resolve(response), delayMs);
+      init.signal?.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(new DOMException("Request aborted", "AbortError"));
+      }, { once: true });
+    });
+  }
+
+  it.each(["blocked", "failed", "completed"])("preserves the delayed %s result beyond the short primary deadline", async (state) => {
+    await useRealApi();
+    const { server, client } = await connectCompletionOperations(apiEnv);
+    const expected = envelope(state);
+    let durableWrites = 0;
+    const fetchMock = vi.fn((url: string, init: RequestInit) => {
+      if (new URL(String(url)).host === "fallback.example.test")
+        return Promise.resolve(new Response("<!doctype html><title>Fallback application</title>",
+          { headers: { "Content-Type": "text/html" } }));
+      durableWrites += 1;
+      return delayedResponse(init, 6_000, Response.json(expected));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.useFakeTimers();
+    try {
+      const pending = client.callTool({ name: "orgx_complete_work_with_proof", arguments: input });
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+      await vi.advanceTimersByTimeAsync(6_000);
+      const result = await pending;
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(result.structuredContent).toEqual(expected);
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(durableWrites).toBe(1);
+      expect(new URL(String(fetchMock.mock.calls[0][0])).host).toBe("primary.example.test");
+      expect(new Headers(fetchMock.mock.calls[0][1].headers).get("Idempotency-Key")).toBe(input.idempotency_key);
+    } finally { vi.useRealTimers(); await Promise.allSettled([client.close(), server.close()]); }
+  });
+
+  it("does not replay an unknown committed write and retains the identical retry key", async () => {
+    await useRealApi();
+    const { server, client } = await connectCompletionOperations(apiEnv);
+    let durableWrites = 0;
+    const committedKeys = new Set<string>();
+    const expected = envelope("blocked");
+    const fetchMock = vi.fn((url: string, init: RequestInit) => {
+      const key = new Headers(init.headers).get("Idempotency-Key")!;
+      expect(new URL(String(url)).host).toBe("primary.example.test");
+      const duplicate = committedKeys.has(key);
+      if (!duplicate) { committedKeys.add(key); durableWrites += 1; }
+      return delayedResponse(init, duplicate ? 6_000 : 31_000,
+        Response.json({ ...expected, data: { ...expected.data,
+          artifact: { ...expected.data.artifact, duplicate } } }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.useFakeTimers();
+    try {
+      const first = client.callTool({ name: "orgx_complete_work_with_proof", arguments: input });
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+      await vi.advanceTimersByTimeAsync(30_000);
+      const unknown = await first;
+      expect(unknown.isError).toBe(true);
+      expect(unknown.structuredContent).toBeUndefined();
+      expect(JSON.stringify(unknown.content)).toContain("The request took too long");
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(durableWrites).toBe(1);
+      const retry = client.callTool({ name: "orgx_complete_work_with_proof", arguments: input });
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      await vi.advanceTimersByTimeAsync(6_000);
+      const recovered = await retry;
+      expect(recovered.isError).not.toBe(true);
+      expect(recovered.structuredContent).toMatchObject({ data: {
+        completed: false, artifact: { artifact: { id: predecessor.artifact_id, version: 1 }, duplicate: true },
+      } });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(durableWrites).toBe(1);
+      expect(fetchMock.mock.calls.map(([, init]) => new Headers(init.headers).get("Idempotency-Key")))
+        .toEqual([input.idempotency_key, input.idempotency_key]);
+    } finally { vi.useRealTimers(); await Promise.allSettled([client.close(), server.close()]); }
+  });
+
+  it.each([409, 503])("returns a primary HTTP %s without a second write", async (status) => {
+    await useRealApi();
+    const { server, client } = await connectCompletionOperations(apiEnv);
+    const fetchMock = vi.fn(async () => Response.json({ error: {
+      code: status === 409 ? "conflict" : "workflow_unavailable", message: "Proof remains recorded; completion did not settle",
+    } }, { status }));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const result = await client.callTool({ name: "orgx_complete_work_with_proof", arguments: input });
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result.content)).toContain("Proof remains recorded; completion did not settle");
+      expect(fetchMock).toHaveBeenCalledOnce();
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+
+  it("keeps the short primary deadline and fallback for ordinary reads", async () => {
+    const actual = await useRealApi();
+    const fetchMock = vi.fn((url: string, init: RequestInit) =>
+      new URL(String(url)).host === "primary.example.test"
+        ? delayedResponse(init, 6_000, Response.json({ data: "primary" }))
+        : Promise.resolve(Response.json({ data: "fallback" })));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.useFakeTimers();
+    const pending = actual.callOrgxApiJson(apiEnv, "/api/v1/workflows/read-only");
+    await vi.advanceTimersByTimeAsync(5_000);
+    await expect((await pending).json()).resolves.toEqual({ data: "fallback" });
+    expect(fetchMock.mock.calls.map(([url]) => new URL(String(url)).host))
+      .toEqual(["primary.example.test", "fallback.example.test"]);
   });
 });
 

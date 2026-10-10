@@ -7847,11 +7847,11 @@ export class OrgXMcp extends McpAgent<
     }, () => this.isDirectoryReviewProfile() ? Promise.resolve(null) : buildSearchDiagnosticsContext(this.env), this.isDirectoryReviewProfile(), this.props?.profile, this.usesLegacyDirectoryContracts());
   }
 
-  private async requestPublicOperation(path: string, init: { method?: string; body?: string; headers?: Record<string, string> } = {}): Promise<Record<string, unknown>> {
+  private async requestPublicOperation(path: string, init: { method?: string; body?: string; headers?: Record<string, string> } = {}, options: { allowFallback?: boolean } = {}): Promise<Record<string, unknown>> {
     const userId = this.resolveUserId();
     const response = await callOrgxApiJson(this.env, path, init, {
       userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(),
-      orgxUserId: this.resolveOrgxUserId(userId),
+      orgxUserId: this.resolveOrgxUserId(userId), ...options,
     });
     return await response.json() as Record<string, unknown>;
   }
@@ -7895,7 +7895,9 @@ export class OrgXMcp extends McpAgent<
           const request = await taskProofCompletionRequest(canonicalArgs);
           return directResult(await this.requestPublicOperation('/api/v1/workflows/complete-with-proof', {
             method: 'POST', body: JSON.stringify(request.body), headers: { 'Idempotency-Key': request.idempotencyKey },
-          }));
+          // Keyed proof writes can commit before the short primary deadline.
+          // Keep their response and retries on the same canonical data plane.
+          }, { allowFallback: false }));
         }, tool.id);
         if (tool.id === 'orgx_get_operation_status') {
           if (!canonicalArgs.kind && typeof canonicalArgs.operation_id === 'string' && ORGX_UUID_RE.test(canonicalArgs.operation_id)) {
