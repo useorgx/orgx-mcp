@@ -478,7 +478,7 @@
         "idempotentHint": true
       },
       "justifications": {
-        "read_only_justification": "Search the workspace receipt ledger within its 120-day window. Accepts free text and exact filters: outcome, verification, accepted, type, area, repo, actor, ws, entity, initiative, pr, file, since, until, conf, unmet and status. Results distinguish producer claims from OrgX human judgments and include matched terms. Does not run model inference or change judgments. This operation reads or validates data without changing durable business state.",
+        "read_only_justification": "Read one bounded workspace ledger view: receipts (default), workstreams, or review. Receipt search accepts free text and exact filters: outcome, verification, accepted, type, area, repo, actor, ws, entity, initiative, pr, file, since, until, conf, unmet and status, within the 120-day window. Workstreams retain receipt rollups and confirmed mappings; review returns pending human calls and criterion proposals. Results distinguish producer claims from human judgments. Follow validated next_calls; no view resolves judgments, runs model inference, or changes work. This operation reads or validates data without changing durable business state.",
         "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
         "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
@@ -527,7 +527,7 @@
         "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only. This operation reads or validates data without changing durable business state.",
+        "read_only_justification": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only. Work receipts are read with orgx_list_work_receipts and orgx_get_work_receipt. This operation reads or validates data without changing durable business state.",
         "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
         "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }

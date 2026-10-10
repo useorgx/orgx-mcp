@@ -159,6 +159,7 @@ import {
   CONTEXT_TAIL_UNAVAILABLE_CHANGE_CLASSES,
 } from './workCommandContract';
 import { buildMetricExpectationRequest } from './metricExpectationContract';
+import { buildTaskPredictionRequest } from './taskPredictionContract';
 import { buildExecutionGraphEmission } from './agenticScaleProof';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
@@ -2759,8 +2760,8 @@ export class OrgXMcp extends McpAgent<
       view: receiptId ? 'receipt' : workstreamId ? 'workstream' : view ?? 'search',
       ...body.data,
       next_calls: receiptId || workstreamId
-        ? [{ tool: 'orgx_search', args: { scope: 'work_ledger', view: 'review' } }]
-        : [{ tool: 'orgx_search', args: { scope: 'work_ledger', receipt_id: '<id from results>' } }],
+        ? [{ tool: 'orgx_list_work_receipts', args: { view: 'review' } }]
+        : [{ tool: 'orgx_list_work_receipts', args: { view: 'workstreams' } }],
     };
     return {
       content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 1).slice(0, 60_000) }],
@@ -6698,7 +6699,8 @@ export class OrgXMcp extends McpAgent<
               }
             );
           }
-          const built = buildMetricExpectationRequest(args, {
+          const taskPrediction = args.mode === 'task_prediction';
+          const built = (taskPrediction ? buildTaskPredictionRequest : buildMetricExpectationRequest)(args, {
             workspaceId: expectationWorkspaceId,
           });
           if (!built.ok) {
@@ -6727,9 +6729,10 @@ export class OrgXMcp extends McpAgent<
             }
           );
           const result = (await response.json()) as Record<string, unknown>;
+          const resultDocument = taskPrediction ? result.prediction : result.expectation;
           const expectation =
-            result.expectation && typeof result.expectation === 'object'
-              ? (result.expectation as Record<string, unknown>)
+            resultDocument && typeof resultDocument === 'object'
+              ? (resultDocument as Record<string, unknown>)
               : null;
           const replayed = result.replayed === true;
           const expectationId =
@@ -6738,16 +6741,17 @@ export class OrgXMcp extends McpAgent<
             ...result,
             _v2_tool: 'orgx_expect',
             idempotency_key: built.idempotencyKey,
+            ...(taskPrediction && 'task_id' in built.body
+              ? { next_calls: [{ tool: 'orgx_inspect', args: { type: 'task', id: built.body.task_id } }] }
+              : {}),
           };
           return {
             content: [
               {
                 type: 'text',
                 text: `${
-                  replayed
-                    ? 'Metric expectation replayed'
-                    : 'Metric expectation registered'
-                }${expectationId ? ` · ${expectationId}` : ''} · observation pending`,
+                  taskPrediction ? 'Task prediction' : 'Metric expectation'
+                } ${replayed ? 'replayed' : 'registered'}${expectationId ? ` · ${expectationId}` : ''} · observation pending`,
               },
             ],
             structuredContent: payload,
@@ -7886,7 +7890,10 @@ export class OrgXMcp extends McpAgent<
     for (const tool of RECEIPT_OPERATION_TOOLS) {
       if (!allowed(tool.id)) continue;
       this.server.registerTool(tool.id, {
-        title: tool.title, description: tool.description, inputSchema: this.withClientContext(tool.inputSchema), annotations: tool.annotations,
+        title: tool.title, description: tool.description,
+        inputSchema: tool.id === 'orgx_list_work_receipts'
+          ? z.object(this.withClientContext(tool.inputSchema)).strict()
+          : this.withClientContext(tool.inputSchema), annotations: tool.annotations,
         _meta: { 'mcp/securitySchemes': tool.securitySchemes,
           ...(['orgx_submit_work_receipt', 'orgx_get_work_receipt'].includes(tool.id) ? { 'openai/outputTemplate': OUTPUT_TEMPLATE_URIS.proofReceipt, ui: { resourceUri: WIDGET_URIS.proofReceipt } } : {}),
         },

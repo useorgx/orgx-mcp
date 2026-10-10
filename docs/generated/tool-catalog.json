@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-10T00:06:04.502Z",
-  "sourceHash": "ee56e36be429a1f4",
+  "generatedAt": "2026-10-10T01:49:40.084Z",
+  "sourceHash": "c00b6891cafb2d1f",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -6855,16 +6855,24 @@
     },
     {
       "id": "orgx_expect",
-      "title": "Register OrgX Metric Expectation",
-      "description": "Pre-registers one delayed, workspace-level outcome against an exact observer before its measurement window starts. The current bounded contract supports only orgx.run_receipt_coverage.v1: the share of non-benchmark terminal OrgX Business sessions whose schema-valid automatic Agent Work Receipt is stored within the configured deadline. It records a falsifiable threshold and sample-size gate; it does not infer causality, run arbitrary SQL, or match natural-language outcomes. Defaults reproduce the first production gate: at least 95% within 60 seconds over at least 20 runs. USE WHEN: work promises this delayed reliability result and the future window has not started. NEXT: let the scheduled observer resolve it after the window; inspect compiled context after resolution. DO NOT USE WHEN: reporting execution completion — use orgx_submit_receipt; or for an unsupported business metric.",
+      "title": "Register OrgX Expectation",
+      "description": "Register an OrgX prediction before acting. mode=task_prediction records the expected outcome, confidence, and met/unmet predictions for criteria in the task's current agreed expectation set; it requires the exact set ID/version and an idempotency_key. Checked receipt evidence resolves those predictions. mode=metric_coverage (default) registers the exact orgx.run_receipt_coverage.v1 observer before its window starts, with defaults of at least 95% within 60 seconds over at least 20 runs. USE WHEN: stating a task prediction before work starts or registering the supported delayed reliability result. NEXT: inspect the task and its agreed criteria; submit receipt evidence when work finishes. DO NOT USE WHEN: reporting completion — use orgx_submit_receipt; or registering an unsupported metric.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
         "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "metric_coverage",
+              "task_prediction"
+            ],
+            "description": "metric_coverage (default) registers the supported delayed observer; task_prediction records expected task results before acting."
+          },
           "metric": {
             "type": "string",
             "const": "orgx.run_receipt_coverage.v1",
-            "description": "REQUIRED exact observer registry ID. No other metric is currently admitted."
+            "description": "Required for metric_coverage: exact observer registry ID."
           },
           "workspace_id": {
             "type": "string",
@@ -6872,11 +6880,11 @@
           },
           "window_starts_at": {
             "type": "string",
-            "description": "REQUIRED future ISO-8601 datetime with timezone offset. Registration is rejected after this window begins."
+            "description": "Required for metric_coverage: future ISO-8601 datetime with timezone offset. Registration is rejected after this window begins."
           },
           "window_ends_at": {
             "type": "string",
-            "description": "REQUIRED ISO-8601 datetime with timezone offset, after window_starts_at and no more than 31 days later."
+            "description": "Required for metric_coverage: ISO-8601 datetime with timezone offset, after window_starts_at and no more than 31 days later."
           },
           "threshold": {
             "type": "number",
@@ -6902,21 +6910,77 @@
             "maximum": 86400,
             "description": "Retry cadence when the observer is unavailable. Defaults to 300 seconds."
           },
+          "task_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required for task_prediction: task UUID. The task must be ready to start."
+          },
+          "expectation_set_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required for task_prediction: UUID of the current agreed expectation set that applies to this task."
+          },
+          "expectation_set_version": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "Required for task_prediction: exact persisted version of that agreed expectation set."
+          },
+          "expected_outcome": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Required for task_prediction: expected task outcome, stated before acting."
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Required for task_prediction: confidence in the expected outcome, from 0 to 1."
+          },
+          "criteria_predictions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "criterion_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "predicted": {
+                  "type": "string",
+                  "enum": [
+                    "met",
+                    "unmet"
+                  ]
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "criterion_id",
+                "predicted",
+                "confidence"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 50,
+            "description": "Required for task_prediction: 1 to 50 unique criterion IDs from that set, each with predicted met/unmet and confidence from 0 to 1."
+          },
           "idempotency_key": {
             "type": "string",
             "maxLength": 200,
-            "description": "Client-supplied retry key sent as Idempotency-Key. Generated when omitted; reuse the same key to replay safely."
+            "description": "Required for task_prediction. Sent as Idempotency-Key; reuse the same key when retrying. Generated when omitted for metric_coverage."
           },
           "session_id": {
             "type": "string",
             "description": "Optional bootstrap/session identifier returned by orgx_bootstrap."
           }
         },
-        "required": [
-          "metric",
-          "window_starts_at",
-          "window_ends_at"
-        ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       },
@@ -8775,7 +8839,7 @@
     {
       "id": "orgx_list_work_receipts",
       "title": "List OrgX Work Receipts",
-      "description": "Search the workspace receipt ledger within its 120-day window. Accepts free text and exact filters: outcome, verification, accepted, type, area, repo, actor, ws, entity, initiative, pr, file, since, until, conf, unmet and status. Results distinguish producer claims from OrgX human judgments and include matched terms. Does not run model inference or change judgments.",
+      "description": "Read one bounded workspace ledger view: receipts (default), workstreams, or review. Receipt search accepts free text and exact filters: outcome, verification, accepted, type, area, repo, actor, ws, entity, initiative, pr, file, since, until, conf, unmet and status, within the 120-day window. Workstreams retain receipt rollups and confirmed mappings; review returns pending human calls and criterion proposals. Results distinguish producer claims from human judgments. Follow validated next_calls; no view resolves judgments, runs model inference, or changes work.",
       "category": "Portable Work Receipts",
       "inputSchema": {
         "type": "object",
@@ -8785,10 +8849,32 @@
             "format": "uuid",
             "description": "Workspace UUID. Defaults to the authenticated workspace."
           },
+          "view": {
+            "type": "string",
+            "enum": [
+              "receipts",
+              "workstreams",
+              "review"
+            ],
+            "default": "receipts",
+            "description": "Read-only ledger projection. Existing calls default to receipt search."
+          },
           "query": {
             "type": "string",
             "maxLength": 2000,
             "default": ""
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "mapping",
+              "area",
+              "link",
+              "work_type",
+              "outcome",
+              "criterion"
+            ],
+            "description": "Optional review kind, valid only with view=review."
           },
           "limit": {
             "type": "integer",
@@ -8854,7 +8940,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 512,
-                "pattern": "\\S"
+                "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
               },
               "intent": {
                 "type": "object",
@@ -8863,7 +8949,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 20000,
-                    "pattern": "\\S"
+                    "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
                   },
                   "objective": {
                     "$ref": "#/properties/receipt/properties/intent/properties/summary"
@@ -8889,7 +8975,7 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 512,
-                        "pattern": "\\S"
+                        "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
                       },
                       "type": {
                         "$ref": "#/properties/receipt/properties/intent/properties/request_ref/properties/system"
@@ -10242,7 +10328,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 512,
-                "pattern": "\\S"
+                "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
               },
               "intent": {
                 "type": "object",
@@ -10251,7 +10337,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 20000,
-                    "pattern": "\\S"
+                    "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
                   },
                   "objective": {
                     "$ref": "#/properties/receipt/properties/intent/properties/summary"
@@ -10277,7 +10363,7 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 512,
-                        "pattern": "\\S"
+                        "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
                       },
                       "type": {
                         "$ref": "#/properties/receipt/properties/intent/properties/request_ref/properties/system"

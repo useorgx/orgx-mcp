@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 import {
+  CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT,
   PANEL_SNAPSHOT_TOOL_CONTRACT,
   PANEL_TOOL_ID,
   PANEL_TOOL_META,
@@ -38,7 +39,7 @@ type Registration = {
   };
 };
 
-function captureRegistration(allowed: ReadonlySet<string> | null = null): Registration[] {
+function captureRegistration(allowed: ReadonlySet<string> | null = null, currentOperations = false): Registration[] {
   const registrations: Registration[] = [];
   const server = {
     registerTool: vi.fn((name: string, config: Registration['config']) => {
@@ -46,7 +47,7 @@ function captureRegistration(allowed: ReadonlySet<string> | null = null): Regist
       return {};
     }),
   };
-  registerPanelSurface(server as never, allowed, {} as PanelSurfaceHost);
+  registerPanelSurface(server as never, allowed, {} as PanelSurfaceHost, undefined, currentOperations);
   return registrations;
 }
 
@@ -95,6 +96,20 @@ describe('orgx_panel_snapshot registration', () => {
     expect(captureRegistration(new Set([PANEL_TOOL_ID]))).toHaveLength(1);
   });
 
+  it('registers the current panel contract with named receipt guidance and a closed panel-only input', () => {
+    const [registration] = captureRegistration(new Set([PANEL_TOOL_ID]), true);
+    expect(registration!.config.description).toBe(CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT.description);
+    expect(registration!.config.annotations).toEqual(CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT.annotations);
+    expect(registration!.config._meta['mcp/securitySchemes']).toEqual(CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT.securitySchemes);
+    const input = registration!.config.inputSchema as unknown as z.ZodObject<z.ZodRawShape>;
+    expect(Object.keys(input.shape)).toEqual(['focus', 'view', 'range']);
+    expect(input.safeParse({ view: 'work' }).success).toBe(true);
+    expect(input.safeParse({ view: 'history', range: '30d' }).success).toBe(true);
+    for (const args of [{ view: 'receipts' }, { query: 'pr:3236' }, { receipt_id: 'rcpt-1' }, { workspace_id: 'workspace' }]) {
+      expect(input.safeParse(args).success).toBe(false);
+    }
+  });
+
   it('is app-only on the shared ChatGPT, v2 and directory surfaces, with an exact output schema and manifest entry', () => {
     expect(CHATGPT_PUBLIC_SURFACE).toContain(PANEL_TOOL_ID);
     expect(resolveProfileToolSet('v2')?.has(PANEL_TOOL_ID)).toBe(true);
@@ -106,8 +121,8 @@ describe('orgx_panel_snapshot registration', () => {
     expect(getOpenAiOutputSchema(PANEL_TOOL_ID)).toBeDefined();
     expect(PANEL_TOOL_META.ui).toMatchObject({ visibility: ['app'] });
     const manifest = serverManifest.tools.find((tool) => tool.name === PANEL_TOOL_ID);
-    expect(manifest?.annotations).toEqual(PANEL_SNAPSHOT_TOOL_CONTRACT.annotations);
-    expect(manifest?.description).toBe(PANEL_SNAPSHOT_TOOL_CONTRACT.description);
+    expect(manifest?.annotations).toEqual(CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT.annotations);
+    expect(manifest?.description).toBe(CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT.description);
   });
 
   it('is wired from index.ts with one call, never touches session state, and grants only its own feed', () => {

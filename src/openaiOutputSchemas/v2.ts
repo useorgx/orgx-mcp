@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
 import { ControllerStatusEnvelopeSchema } from '../controllerStatusContract';
+import { taskPredictionOutputSchema } from '../taskPredictionContract';
 import {
   jsonValueSchema,
   makeErrorCompatibleSchema,
   makeOpenErrorCompatibleSchema,
+  toolCallSchema,
   type SourceOutputSchema,
 } from './shared';
 
@@ -57,11 +59,14 @@ const orgxControllerStatus = makeErrorCompatibleSchema(
 );
 
 // orgx_expect — the API's expectation response spread under two worker-set
-// fields. The worker reads `replayed` and `expectation` defensively, so only
-// its own fields are declared.
+// fields. Coverage remains API-owned; task predictions also declare the exact
+// app-owned taskPrediction.ts response and the worker's navigation guidance.
 const orgxExpect = makeOpenErrorCompatibleSchema({
   _v2_tool: z.literal('orgx_expect'),
   idempotency_key: z.string(),
+  prediction: taskPredictionOutputSchema,
+  replayed: z.boolean(),
+  next_calls: z.array(toolCallSchema),
 });
 
 // orgx_emit_activity — POST /api/v1/live/activity returns EmitActivityResult

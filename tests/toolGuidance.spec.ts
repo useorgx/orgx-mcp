@@ -9,6 +9,17 @@ import { CLAUDE_DIRECTORY_SURFACE } from '../src/toolProfiles';
 import { installToolResultGuidanceWrapper } from '../src/toolResultRegistration';
 
 describe('tool result guidance', () => {
+  it('validates named ledger next_calls and filters incompatible search calls against the negotiated profile', () => {
+    const result = { structuredContent: { next_calls: [
+      { tool: 'orgx_search', args: { scope: 'work_ledger', receipt_id: 'receipt-1' } },
+      { tool: 'orgx_list_work_receipts', args: { view: 'review' } },
+      { tool: 'orgx_search', args: { scope: 'work_ledger', view: 'unsupported' } },
+    ] } };
+    expect(sanitizeToolResultGuidance(result, new Set(['orgx_search', 'orgx_list_work_receipts'])).structuredContent.next_calls)
+      .toEqual([{ tool: 'orgx_list_work_receipts', args: { view: 'review' } }]);
+    expect(sanitizeToolResultGuidance(result, new Set(['orgx_expect'])).structuredContent.next_calls).toEqual([]);
+  });
+
   it('preserves validated historical directory calls only on the explicit compatibility profile', () => {
     const visible = new Set(['orgx_read_plan', 'orgx_update_entity', 'orgx_check_delegation']);
     const result = sanitizeToolResultGuidance({ structuredContent: {

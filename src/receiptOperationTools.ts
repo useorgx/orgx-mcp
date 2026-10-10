@@ -5,6 +5,8 @@ import { portableReceiptInput } from './portableReceiptInput';
 import { SECURITY_SCHEMES } from './toolDefinitions';
 import { projectReceiptReviewExtension, receiptReviewProjectionSchema } from './receiptReviewProjection';
 import { buildPortableReceiptProof } from './portableReceiptProof';
+import { toolCallSchema } from './openaiOutputSchemas/shared';
+import { workLedgerOutputShape, workLedgerQuerySchema } from './openaiOutputSchemas/workLedger';
 
 const workspace = z.string().uuid().optional().describe('Workspace UUID. Defaults to the authenticated workspace.');
 const limit = z.number().int().min(1).max(100).default(25);
@@ -88,10 +90,14 @@ export const RECEIPT_OPERATION_OUTPUT_SCHEMAS = {
     uncertain: z.array(z.string()),
   }).passthrough(),
   orgx_list_work_receipts: z.object({
-    ok: z.literal(true), total: z.number(), results: z.array(receiptSummarySchema), window_days: z.number(),
-    query: z.object({ text: z.string(), filters: z.record(z.string()) }).optional(),
-    receipts: z.number().optional(), workstreams: z.number().optional(),
-  }).passthrough(),
+    ok: z.literal(true), total: z.number(), view: z.enum(['receipts', 'workstreams', 'review']).optional(),
+    results: z.array(receiptSummarySchema).optional(), window_days: z.number().optional(),
+    query: workLedgerQuerySchema.optional(), receipts: z.number().optional(),
+    workstreams: workLedgerOutputShape.workstreams.optional(),
+    items: workLedgerOutputShape.items.optional(), criteria_proposals: workLedgerOutputShape.criteria_proposals.optional(),
+    queue_limit: z.number().optional(), queue_truncated: z.boolean().optional(),
+    next_calls: z.array(toolCallSchema).optional(),
+  }).strict(),
   orgx_get_receipt_review_queue: z.object({
     ok: z.literal(true), total: z.number(), items: z.array(z.object({
       kind: reviewKind, subject: z.string(), question: z.string(), summary: z.string(), confidence: z.number(),
@@ -129,8 +135,9 @@ export const RECEIPT_OPERATION_TOOLS: readonly ReceiptOperationTool[] = [
   },
   {
     id: 'orgx_list_work_receipts', title: 'List OrgX Work Receipts',
-    description: 'Search the workspace receipt ledger within its 120-day window. Accepts free text and exact filters: outcome, verification, accepted, type, area, repo, actor, ws, entity, initiative, pr, file, since, until, conf, unmet and status. Results distinguish producer claims from OrgX human judgments and include matched terms. Does not run model inference or change judgments.',
-    inputSchema: { workspace_id: workspace, query: z.string().max(2000).default(''), limit }, annotations: reads, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+    description: 'Read one bounded workspace ledger view: receipts (default), workstreams, or review. Receipt search accepts free text and exact filters: outcome, verification, accepted, type, area, repo, actor, ws, entity, initiative, pr, file, since, until, conf, unmet and status, within the 120-day window. Workstreams retain receipt rollups and confirmed mappings; review returns pending human calls and criterion proposals. Results distinguish producer claims from human judgments. Follow validated next_calls; no view resolves judgments, runs model inference, or changes work.',
+    inputSchema: { workspace_id: workspace, view: z.enum(['receipts', 'workstreams', 'review']).default('receipts').describe('Read-only ledger projection. Existing calls default to receipt search.'),
+      query: z.string().max(2000).default(''), kind: reviewKind.optional().describe('Optional review kind, valid only with view=review.'), limit }, annotations: reads, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
   },
   {
     id: 'orgx_get_receipt_review_queue', title: 'Get OrgX Receipt Review Queue',
@@ -232,12 +239,27 @@ export async function executeReceiptOperation(id: ReceiptOperationId, raw: Recor
     return { ...result, summary: str(record(receipt.intent).summary) ?? '', proof: buildPortableReceiptProof(receipt), producer_claims: receiptProducerClaims(receipt), receipt_assessment: { evidence_status: array(receipt.evidence).length ? 'recorded' : 'none', verification_status: 'producer_reported', acceptance_status: 'awaiting_human_review', outcome_status: null }, effects: { receipt_stored: true, work_status_changed: false, authoritative_verification_changed: false, human_acceptance_changed: false } };
   }
   const query = new URLSearchParams({ workspace_id: workspaceId });
+  if (id === 'orgx_list_work_receipts') {
+    const view = args.view as 'receipts' | 'workstreams' | 'review';
+    if ((view === 'review' && args.query) || (view !== 'review' && args.kind)) throw new Error('Ledger text applies to receipts/workstreams; kind applies only to review.');
+    query.set('limit', String(args.limit));
+    if (view !== 'review') query.set('q', String(args.query));
+    if (args.kind) query.set('kind', String(args.kind));
+    const result = await context.request(`/api/v1/work-ledger/${view}?${query}`, { method: 'GET' });
+    if (result.ok === false || result.error) return result;
+    const data = record(result.data ?? result);
+    const first = record(array(data.results)[0]);
+    const next_calls = view === 'receipts' ? [
+      ...(str(first.receipt_id) ? [{ tool: 'orgx_get_work_receipt', args: { workspace_id: workspaceId, receipt_id: first.receipt_id } }] : []),
+      { tool: 'orgx_list_work_receipts', args: { workspace_id: workspaceId, view: 'workstreams', limit: args.limit } },
+    ] : [{ tool: 'orgx_list_work_receipts', args: { workspace_id: workspaceId, view: view === 'workstreams' ? 'review' : 'receipts', limit: args.limit } }];
+    return { ...data, ok: true, view, next_calls };
+  }
   let path: string;
   if (id === 'orgx_get_work_receipt') path = `/api/v1/work-ledger/receipts/${encodeURIComponent(String(args.receipt_id))}`;
   else {
     query.set('limit', String(args.limit));
-    path = id === 'orgx_list_work_receipts' ? '/api/v1/work-ledger/receipts' : '/api/v1/work-ledger/review';
-    if (id === 'orgx_list_work_receipts') query.set('q', String(args.query));
+    path = '/api/v1/work-ledger/review';
     if (args.kind) query.set('kind', String(args.kind));
   }
   const result = await context.request(`${path}?${query}`, { method: 'GET' });

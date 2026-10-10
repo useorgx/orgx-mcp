@@ -20,6 +20,7 @@ function isAvailable(tool: string, visibleTools: ReadonlySet<string> | null, pro
     (visibleTools === null || visibleTools.has(tool));
 }
 const CALL_LIST_KEYS = new Set([
+  'next_calls',
   'safe_first_calls',
   'suggested_next_calls',
   'preferred_next_calls',
