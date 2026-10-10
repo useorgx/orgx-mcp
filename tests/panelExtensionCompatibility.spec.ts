@@ -151,6 +151,7 @@ describe('ChatGPT extension workspace and receipt operation contract', () => {
     click(m, '[data-action="workspaces"]');
     await m.flush(); await m.flush();
     const reads = m.calls.callServerTool.mock.calls.length;
+    (m.dom.window as unknown as { OrgXPanelHost: { _setHostInfo(info: { name: string }): void } }).OrgXPanelHost._setHostInfo({ name: 'ChatGPT' });
     click(m, '[data-action="switch-workspace"][data-id="workspace-b"]');
     await m.flush(); await m.flush();
     expect(m.calls.callServerTool.mock.calls.length).toBe(reads);

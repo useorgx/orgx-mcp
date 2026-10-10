@@ -5,7 +5,7 @@
  * The verdicts are the ledger's, never the panel's: a criterion with no
  * evidence either way says so ("No evidence"), and the ledger's own list of
  * what is uncertain is shown as written. From a receipt the person can take
- * the work into ChatGPT to iterate on it, or open the ledger.
+ * the work into the chat to iterate on it, or open the ledger.
  *
  *   OrgXPanelReceipts.listHtml(receipts, opts)  -> rows for Done (Work)
  *   OrgXPanelReceipts.detailHtml(detail, row)   -> the receipt in the detail pane
@@ -16,6 +16,9 @@
 (function attachPanelReceipts(global) {
   'use strict';
   if (global.OrgXPanelReceipts) return;
+  /** Host-aware copy: {host}, {Host}, {assistant}, {settings} name the app the panel is inside. */
+  function fill(text) { var H = global.OrgXPanelHost; return H ? H.fill(text) : String(text).replace(/\{(?:host|chat)\}/g, 'the chat').replace(/\{(?:Host|Chat)\}/g, 'The assistant').replace(/\{assistant\}/g, 'the assistant').replace(/\{settings\}/g, 'the app’s settings'); }
+
 
   function esc(value) {
     return String(value == null ? '' : value)
@@ -232,7 +235,7 @@
     var l = links();
     var ledger = l && l.workLedger ? l.workLedger({ center: opts.workspaceId, range: '30d' }) : 'https://useorgx.com/work-ledger';
     var acts = '<div class="md-acts"><button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(ledger) + '">Work Ledger ↗</button>' +
-      '<button type="button" class="pn-btn" data-action="receipt-iterate" data-id="' + esc(r.id) + '">Iterate in ChatGPT</button></div>';
+      '<button type="button" class="pn-btn" data-action="receipt-iterate" data-id="' + esc(r.id) + '">' + esc(fill('Iterate in {host}')) + '</button></div>';
     return '<div class="md-card rc-card" role="region" aria-label="Work receipt">' + close + head + body + acts + '</div>';
   }
 

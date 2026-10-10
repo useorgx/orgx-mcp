@@ -26,6 +26,7 @@
     "shared/panel-interaction-state.js",
     "shared/panel/panel-app.js",
     "shared/panel/panel-brand.js",
+    "shared/panel/panel-host.js",
     "shared/panel/panel-launch.js",
     "shared/panel/panel-live.js",
     "shared/panel/panel-receipts.js",
@@ -211,8 +212,8 @@
     },
     "index": {
       "file": "public/widgets/index.html",
-      "bytes": 24955,
-      "hash": "dddb9c2635cd",
+      "bytes": 24949,
+      "hash": "9d51352824ed",
       "primaryRgb": "17,24,39",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -304,8 +305,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 1784,
-      "hash": "c9a9b2130108",
+      "bytes": 1857,
+      "hash": "3aba9c5345eb",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -324,6 +325,7 @@
         "shared/panel-interaction-state.js",
         "shared/panel/panel-app.js",
         "shared/panel/panel-brand.js",
+        "shared/panel/panel-host.js",
         "shared/panel/panel-launch.js",
         "shared/panel/panel-live.js",
         "shared/panel/panel-receipts.js",

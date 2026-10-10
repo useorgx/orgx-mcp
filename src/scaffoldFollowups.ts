@@ -106,6 +106,7 @@ export type ScaffoldFollowupResult = {
 
 type FollowupStageName = Extract<
   ScaffoldStageName,
+  | 'expectations'
   | 'agent_assignment'
   | 'billing_consume'
   | 'credential_check'
@@ -325,7 +326,18 @@ export async function runScaffoldPostCreateFollowups(params: {
   params.onStage?.('credential_check');
 
   let launch: ScaffoldLaunchResult | undefined;
-  let expectations: ExpectationSet | null = null;
+  // Draft the bar from the hierarchy just created, before launch: the app's
+  // launch gate holds only an initiative that has a drafted bar, so without
+  // this an initiative scaffolded here would start with nothing agreed.
+  let expectations: ExpectationSet | null = createdInitiativeId
+    ? await draftInitiativeExpectations({
+        env: params.env,
+        initiativeId: createdInitiativeId,
+        actorUserId,
+        userEmail,
+      })
+    : null;
+  params.onStage?.('expectations');
   let widget_meta: Record<string, unknown> | null = null;
   if (
     createdInitiativeId &&
@@ -367,7 +379,12 @@ export async function runScaffoldPostCreateFollowups(params: {
       const rawLaunchPayload = (await launchResponse.json()) as Record<string, unknown>;
       const split = splitWidgetApprovalMeta(rawLaunchPayload);
       widget_meta = split.meta;
-      expectations = findExpectationSet(split.data, (split.data as Record<string, unknown>).data);
+      // A launch that went through was agreed (or the workspace agrees
+      // automatically); the drafted bar stays the one shown unless the launch
+      // answer names its own.
+      expectations =
+        findExpectationSet(split.data, (split.data as Record<string, unknown>).data) ??
+        (expectations ? { ...expectations, status: 'agreed' } : null);
       const launchPayload = split.data as {
         message?: string;
         transition?: { from: string; to: string };
@@ -387,7 +404,10 @@ export async function runScaffoldPostCreateFollowups(params: {
     } catch (error) {
       const held = heldLaunchFromError(error);
       if (held) {
-        expectations = held.expectations;
+        // The drafted bar is the one the decision asks about; the 409 body is
+        // clipped and rarely carries the whole set.
+        const drafted = held.expectations ?? expectations;
+        expectations = drafted ? { ...drafted, decision_id: drafted.decision_id ?? held.decision_id } : null;
         launch = {
           attempted: true,
           ok: false,
@@ -639,4 +659,120 @@ export async function runScaffoldPostCreateFollowups(params: {
     ...(expectations ? { expectations } : {}),
     ...(widget_meta ? { widget_meta } : {}),
   };
+}
+
+/**
+ * Ask OrgX to draft the initiative's bar from what was just created
+ * (POST /api/initiatives/{id}/expectations). OrgX composes it from the
+ * workspace's rules, the kind of work, learned calls, the suggested_checks
+ * this scaffold carried, and drafts for anything left uncovered. Null when the
+ * app cannot draft one (an older app answers 404): the scaffold then shows the
+ * caller's suggestions, marked as suggestions, and launch is not held.
+ */
+export async function draftInitiativeExpectations(params: {
+  env: OrgxApiEnv;
+  initiativeId: string;
+  actorUserId: string | null;
+  userEmail: string | null | undefined;
+}): Promise<ExpectationSet | null> {
+  try {
+    const response = await callOrgxApiJson(
+      params.env,
+      `/api/initiatives/${encodeURIComponent(params.initiativeId)}/expectations`,
+      { method: 'POST', body: JSON.stringify({}) },
+      { userId: params.actorUserId ?? undefined, userEmail: params.userEmail ?? undefined }
+    );
+    const payload = (await response.json()) as Record<string, unknown>;
+    return findExpectationSet(payload);
+  } catch {
+    return null;
+  }
+}
+
+type BatchEntry = Record<string, unknown>;
+const recOf = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+const textOf = (value: unknown, max: number): string | undefined =>
+  typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : undefined;
+const firstAgent = (entry: BatchEntry): string | undefined => {
+  const ids = entry.assigned_agent_ids ?? recOf(entry.metadata).assigned_agent_ids;
+  return Array.isArray(ids) ? textOf(ids[0], 80) : textOf(recOf(entry.metadata).agent, 80);
+};
+
+/**
+ * The body POST /api/expectations/draft takes, from a scaffold batch: the
+ * initiative, its workstreams and tasks by ref, with each node's suggested
+ * checks, owner and expected artifacts. Milestones carry no checks.
+ */
+export function expectationDraftBody(batch: BatchEntry[], workspaceId: string): Record<string, unknown> {
+  const initiative = batch.find((entry) => entry.type === 'initiative') ?? {};
+  const initiativeMeta = recOf(initiative.metadata);
+  return {
+    workspace_id: workspaceId,
+    // A preview: OrgX composes the bar from its sources without spending a
+    // model call per uncovered task; the persisted scaffold drafts those.
+    draft: false,
+    initiative: {
+      title: textOf(initiative.title, 300) ?? textOf(initiative.name, 300) ?? 'Initiative',
+      suggested_checks: initiativeMeta.suggested_checks,
+    },
+    workstreams: batch
+      .filter((entry) => entry.type === 'workstream')
+      .slice(0, 50)
+      .map((entry) => ({
+        ref: String(entry.ref).slice(0, 120),
+        name: textOf(entry.name, 300) ?? textOf(entry.title, 300) ?? 'Workstream',
+        ...(firstAgent(entry) ? { owner_agent: firstAgent(entry) } : {}),
+        suggested_checks: recOf(entry.metadata).suggested_checks,
+      })),
+    tasks: batch
+      .filter((entry) => entry.type === 'task')
+      .slice(0, 300)
+      .map((entry) => {
+        const meta = recOf(entry.metadata);
+        const criteria = Array.isArray(meta.acceptance_criteria)
+          ? meta.acceptance_criteria.map((c) => textOf(c, 500)).filter((c): c is string => Boolean(c)).slice(0, 20)
+          : undefined;
+        return {
+          ref: String(entry.ref).slice(0, 120),
+          ...(entry.workstream_ref ? { workstream_ref: String(entry.workstream_ref).slice(0, 120) } : {}),
+          title: textOf(entry.title, 300) ?? textOf(entry.name, 300) ?? 'Task',
+          ...(textOf(entry.description, 4000) ? { description: textOf(entry.description, 4000) } : {}),
+          ...(meta.expected_artifacts ?? entry.expected_artifacts
+            ? { expected_artifacts: meta.expected_artifacts ?? entry.expected_artifacts }
+            : {}),
+          ...(textOf(meta.artifact_type, 120) ? { artifact_type: textOf(meta.artifact_type, 120) } : {}),
+          ...(firstAgent(entry) ? { owner_agent: firstAgent(entry) } : {}),
+          ...(criteria?.length ? { acceptance_criteria: criteria } : {}),
+          suggested_checks: meta.suggested_checks,
+        };
+      }),
+  };
+}
+
+/**
+ * The bar OrgX would draft for a plan that is not created yet (scaffold draft
+ * mode). Persists nothing. Null when there is no workspace to read rules and
+ * learned calls from, or the app cannot answer; draft mode then shows the
+ * caller's own suggestions, marked as suggestions.
+ */
+export async function draftPlanExpectations(params: {
+  env: OrgxApiEnv;
+  workspaceId: string | null | undefined;
+  batch: BatchEntry[];
+  actorUserId: string | null;
+  userEmail: string | null | undefined;
+}): Promise<ExpectationSet | null> {
+  if (!params.workspaceId) return null;
+  try {
+    const response = await callOrgxApiJson(
+      params.env,
+      '/api/expectations/draft',
+      { method: 'POST', body: JSON.stringify(expectationDraftBody(params.batch, params.workspaceId)) },
+      { userId: params.actorUserId ?? undefined, userEmail: params.userEmail ?? undefined }
+    );
+    return findExpectationSet((await response.json()) as Record<string, unknown>);
+  } catch {
+    return null;
+  }
 }

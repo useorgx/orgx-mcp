@@ -410,7 +410,7 @@
         { id: 'proof-receipt', name: 'Receipt', file: 'proof-receipt.html', mode: 'Readout', job: 'See the proof a receipt claims, the gap, and the next move.', supportsStates: ['populated', 'loading', 'blocked', 'empty', 'long', 'error', 'stale', 'resolved'] },
         { id: 'scaffolded-initiative', name: 'Scaffolded Initiative', file: 'scaffolded-initiative.html', mode: 'Creation', job: 'Inspect the hierarchy created from a goal.', supportsStates: ['populated', 'loading', 'empty', 'error', 'completed', 'blocked', 'resolved'] },
         { id: 'scaffold-streaming', name: 'Scaffold Streaming', file: 'scaffold-streaming.html', mode: 'Creation', job: 'Demo: watch an initiative plan arrive, workstream by workstream.', supportsStates: ['populated', 'loading', 'empty', 'error', 'blocked', 'stale', 'resolved', 'completed', 'progressing'] },
-        { id: 'orgx-panel', name: 'OrgX Panel', file: 'orgx-panel.html', mode: 'Command', job: 'Everything that needs you, answered without leaving the chat.', supportsStates: ['populated', 'loading', 'empty', 'long', 'blocked', 'error', 'stale', 'resolved'] }
+        { id: 'orgx-panel', name: 'OrgX', file: 'orgx-panel.html', mode: 'Command', job: 'Everything that needs you, answered without leaving the chat.', supportsStates: ['populated', 'loading', 'empty', 'long', 'blocked', 'error', 'stale', 'resolved'] }
       ];
       const byId = new Map(widgets.map(widget => [widget.id, widget]));
       const params = new URLSearchParams(location.search);

@@ -11,6 +11,10 @@
     var Start = window.OrgXPanelStart || null;
     var Receipts = window.OrgXPanelReceipts || null;
     var Expect = window.OrgXExpectations || null;
+    // Which app and device the panel is inside: copy names the host, layout follows the platform.
+    var Host = window.OrgXPanelHost || null;
+    function hostName() { return Host ? Host.chat() : 'the chat'; }
+    function hostFill(text) { return Host ? Host.fill(text) : String(text).replace(/\{(?:host|chat|Host|Chat)\}/g, 'the chat').replace(/\{assistant\}/g, 'the assistant').replace(/\{settings\}/g, 'the app’s settings'); }
     var root = document.getElementById('panel');
     if (Expect && root) Expect.bind(root);
     // "Change this workstream in chat", from an opened workstream in an Agree on done bar.
@@ -95,6 +99,10 @@
       live: 'off',
       liveWork: null,
       renderPending: false,
+      // Cold start: 'reading', then 'slow', then 'stalled' while no snapshot has arrived.
+      bootStage: isGallery && params.get('stage') ? params.get('stage') : 'reading',
+      // The browser says it has no network. Shown, never guessed.
+      offline: (isGallery && params.get('offline') === '1') || (typeof navigator !== 'undefined' && navigator.onLine === false),
       // Workspace switcher: the list is read when it is opened.
       wsOpen: false,
       wsPhase: 'idle',
@@ -275,13 +283,13 @@
      * refused before it reaches OrgX. Say how to fix it instead of echoing the
      * validator.
      */
-    var STALE_TOOLS = 'ChatGPT is using an older copy of the OrgX tools. Refresh the OrgX app in ChatGPT settings, then try again.';
+    function STALE_TOOLS() { return hostFill('{Host} is using an older copy of the OrgX tools. Refresh the OrgX app in {settings}, then try again.'); }
     function staleTools(error) {
       var raw = [error && error.message, error && error.details && error.details.raw].filter(function str(v) { return typeof v === 'string'; }).join(' ');
       return /connector schema validation|not in allowed enum|unrecognized key|additional propert|tool not found|unknown tool|no such tool/i.test(raw);
     }
     function safeErrorText(error, fallback, max) {
-      if (staleTools(error)) return STALE_TOOLS;
+      if (staleTools(error)) return STALE_TOOLS();
       var message = error && typeof error.message === 'string' ? error.message.trim() : '';
       if (!message || looksRaw(message) || message.length > (max || 160) || /tool (?:request|execution) failed/i.test(message)) return fallback;
       return message;
@@ -514,16 +522,46 @@
       var s = ui.snapshot;
       var name = s && s.workspace && s.workspace.name ? s.workspace.name : (s && s.workspace ? 'Workspace' : '');
       var synced = syncLabel();
-      var refresh = ui.auth || ui.readState.phase === 'failed' ? '' : '<button type="button" class="quiet-btn" data-action="refresh">Refresh</button>';
+      var refresh = ui.auth || ui.readState.phase === 'failed' ? ''
+        : '<button type="button" class="quiet-btn pn-refresh" data-action="refresh" aria-label="Refresh"' + (ui.readState.phase === 'loading' ? ' aria-busy="true"' : '') + '>' +
+          '<svg class="pn-ic pn-refresh-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>' +
+          '<span class="pn-refresh-t">Refresh</span></button>';
       var nameHtml = name
         ? (ui.mode === 'global' ? '<h1 class="ws-h">' + workspaceButtonHtml(name) + '</h1>' : '<span class="ws">' + esc(name) + '</span>')
         : (ui.mode === 'global' ? '<h1 class="sr-only">OrgX</h1>' : '');
       var mark = Brand ? '<span class="pn-mark-slot">' + Brand.mark(22) + '</span>' : '';
       var tabs = tabsHtml();
-      var help = tabs ? '<button type="button" class="quiet-btn pn-help" data-action="tour" aria-label="How the OrgX panel works">?</button>' : '';
+      var help = tabs ? '<button type="button" class="quiet-btn pn-help" data-action="tour" aria-label="How OrgX works here">?</button>' : '';
+      var display = displayButtonHtml();
       return '<header class="top' + (tabs ? ' has-tabs' : '') + '">' + mark + '<div class="top-id"><span class="brand" aria-hidden="' + (name ? 'false' : 'true') + '">OrgX</span>' +
         (name ? '<span aria-hidden="true">·</span>' : '') + nameHtml + '</div>' + tabs +
-        (synced ? '<span class="sync" data-live="' + esc(ui.live) + '"' + (ui.live === 'live' ? ' role="img" aria-label="Live: updates as they happen" title="Updates as they happen"' : '') + '>' + esc(synced) + '</span>' : '') + refresh + help + '</header>';
+        (synced ? '<span class="sync" data-live="' + esc(ui.live) + '"' + (ui.live === 'live' ? ' role="img" aria-label="Live: updates as they happen" title="Updates as they happen"' : '') + '>' + esc(synced) + '</span>' : '') + refresh + display + help + '</header>';
+    }
+
+    /**
+     * On a phone, a way to take the panel full screen and back, only where the
+     * host offers that mode. A sidebar or a desktop never shows it.
+     */
+    function displayButtonHtml() {
+      if (!Host || ui.mode !== 'global') return '';
+      var full = Host.displayMode() === 'fullscreen';
+      // Full screen the host owns (ChatGPT's phone app has its own way back) gets no button of ours.
+      if (full && Host.modes().indexOf('inline') === -1) return '';
+      if (!full && !(Host.canFullscreen() && (Host.isMobile() || Host.touch()))) return '';
+      var icon = full
+        ? '<svg class="pn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>'
+        : '<svg class="pn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+      return '<button type="button" class="quiet-btn pn-display" data-action="display-mode" data-mode="' + (full ? 'inline' : 'fullscreen') + '" aria-label="' + (full ? 'Back to the chat' : 'Open full screen') + '" title="' + (full ? 'Back to the chat' : 'Full screen') + '">' + icon + '</button>';
+    }
+    function requestDisplay(mode) {
+      if (!R || !R.requestDisplayMode) return;
+      var want = mode === 'fullscreen' ? 'fullscreen' : 'inline';
+      R.requestDisplayMode(want).then(function applied(result) {
+        var got = result && (result.mode === 'inline' || result.mode === 'fullscreen' || result.mode === 'pip') ? result.mode : want;
+        if (Host) Host.apply({ displayMode: got });
+        announce(got === 'fullscreen' ? 'Full screen.' : 'Back in the chat.');
+        render();
+      }, function failed() { announce('The view could not be changed here.'); });
     }
 
     /** The workspace name doubles as the switcher's trigger. */
@@ -558,7 +596,7 @@
             '</button></li>';
         }).join('') + '</ul>' +
           (ui.wsError ? '<p class="ws-note" role="alert">' + esc(ui.wsError) + '</p>' : '') +
-          '<p class="ws-note">You can also ask ChatGPT to switch your OrgX workspace.</p>';
+          '<p class="ws-note">' + hostFill('You can also ask {assistant} to switch your OrgX workspace.') + '</p>';
       }
       return '<div id="pn-ws-menu" class="ws-menu" role="dialog" aria-label="Switch workspace">' + body + '</div>';
     }
@@ -635,7 +673,7 @@
         if (gen !== ui.generation) return;
         ui.wsPhase = 'ready';
         ui.wsSwitchingTo = null;
-        ui.wsError = safeErrorText(error, 'Couldn’t switch. Try again, or ask ChatGPT to switch your OrgX workspace.', 160);
+        ui.wsError = safeErrorText(error, hostFill('Couldn’t switch. Try again, or ask {assistant} to switch your OrgX workspace.'), 160);
         render();
       });
     }
@@ -679,6 +717,9 @@
 
     function noticeHtml() {
       var parts = [];
+      if (ui.offline && ui.snapshot) {
+        parts.push('<div class="notice is-offline" data-tone="amber" role="status"><p><strong>You’re offline.</strong> Showing what loaded' + (ui.syncedAt ? ' at ' + esc(clock(ui.syncedAt)) : ' last') + '. It refreshes when you’re back.</p></div>');
+      }
       if (ui.readState.phase === 'failed' && ui.snapshot) {
         parts.push('<div class="notice" data-tone="amber" role="status"><p>Showing the snapshot from ' + esc(clock(ui.syncedAt)) +
           '. The latest snapshot could not be loaded.</p><button type="button" class="text-btn" data-action="refresh">Refresh</button></div>');
@@ -933,7 +974,7 @@
       }
       return '<div class="share-row"><button type="button" class="pn-chip share" data-action="share" data-id="' + esc(f.id) + '">' +
         '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8.5l4-2.5M6 7.5l4 2.5"/><circle cx="4.5" cy="8" r="2"/><circle cx="11.5" cy="5" r="2"/><circle cx="11.5" cy="11" r="2"/></svg>' +
-        '<span>Share with chat</span></button><span class="share-hint">ChatGPT can then read this decision</span></div>';
+        '<span>Share with chat</span></button><span class="share-hint">' + hostFill('{Host} can then read this decision') + '</span></div>';
     }
 
     function actionErrorHtml(style) {
@@ -1160,23 +1201,49 @@
       var frame = ui.mode === 'global'
         ? '<header class="top">' + mark + '<div class="top-id"><span class="sk sk-ws"></span></div><span class="sk sk-tab"></span><span class="sk sk-tab"></span><span class="sk sk-tab"></span></header>'
         : '';
-      var rows = '';
-      for (var i = 0; i < 4; i += 1) rows += '<div class="sk-row" style="--i:' + i + '"><span class="sk sk-av"></span><span class="sk-lines"><span class="sk sk-line" style="width:' + (86 - i * 11) + '%"></span><span class="sk sk-line sk-short"></span></span></div>';
-      var shape = '<div class="pn-skel" aria-hidden="true"><div class="sk-att"><span class="sk sk-dot"></span><span class="sk sk-line" style="width:38%"></span></div>' +
-        '<div class="sk-split"><div class="sk-list">' + rows + '</div>' +
-        '<div class="sk-detail"><span class="sk sk-line sk-meta"></span><span class="sk sk-title"></span><span class="sk sk-title sk-t2"></span>' +
-        '<span class="sk sk-line" style="width:92%"></span><span class="sk sk-line" style="width:84%"></span><span class="sk sk-block"></span>' +
-        '<span class="sk-acts"><span class="sk sk-btn sk-ghost"></span><span class="sk sk-btn"></span></span></div></div>' +
-        '<p class="sk-cap">Reading your workspace</p></div>';
+      // The stage: the mark in the middle of the open view with the team's
+      // lights in orbit (panel-brand.js), and under it what the wait means.
+      var shape = '<div class="pn-skel" aria-hidden="true">' +
+        (Brand ? Brand.bootHtml(bootCaptionHtml()) : '<div class="pn-boot">' + bootCaptionHtml() + '</div>') + '</div>';
       return frame + shape + '<p class="sr-only">Loading your decisions.</p>';
     }
 
+    /**
+     * The line under the skeleton. It changes as the wait grows, so a slow
+     * network on a phone never looks like a panel that is broken, and after
+     * a while it offers a way out instead of shimmering forever.
+     */
+    function bootCaptionHtml() {
+      if (ui.offline) return '<p class="sk-cap is-now" role="status">You’re offline. The panel loads when you’re back.</p>';
+      if (ui.bootStage === 'stalled') {
+        return '<div class="sk-stall" role="status"><p class="sk-cap is-now">OrgX hasn’t answered yet.</p>' +
+          '<div class="sk-stall-acts"><button type="button" class="secondary-btn" data-action="refresh">Try again</button>' +
+          '<button type="button" class="text-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button></div></div>';
+      }
+      if (ui.bootStage === 'slow') return '<p class="sk-cap is-now" role="status">Still reading. OrgX is taking longer than usual.</p>';
+      return '<p class="sk-cap">Reading your workspace</p>';
+    }
+
     function signedOutHtml() {
-      return header() + '<p class="lede">Sign in to OrgX to see your workspace.</p>' +
-        '<p class="sub">' + esc(ui.auth && ui.auth.code === 'insufficient_scope'
-          ? 'Reconnect OrgX and allow it to read your initiatives.'
-          : 'Connect OrgX in ChatGPT, then open this panel again.') + '</p>' +
-        '<button type="button" class="secondary-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>';
+      // Not connected yet, or connected without the Read scope: the steps,
+      // named for the app the panel is inside, and a button that checks again.
+      var scope = Boolean(ui.auth && ui.auth.code === 'insufficient_scope');
+      var mark = Brand ? '<span class="so-mark" aria-hidden="true">' + Brand.mark(40) + '</span>' : '';
+      var steps = scope
+        ? [['Reconnect OrgX', hostFill('In {settings}, open OrgX and allow it to read your initiatives.')],
+           ['Check again below', 'The panel reads your workspace as soon as it can.']]
+        : [[hostFill('Add OrgX in {settings}'), 'The connector address is mcp.useorgx.com/mcp. It takes about a minute.'],
+           ['Sign in and choose Read or Operate', 'Read shows your decisions here. Operate lets you decide them here.'],
+           ['Check again below', 'The panel reads your workspace as soon as it can.']];
+      var checking = ui.readState.phase === 'loading';
+      return header() + '<section class="pn-so" aria-labelledby="so-h">' + mark +
+        '<h2 class="so-h" id="so-h">' + esc(scope ? 'OrgX needs permission to read your workspace.' : hostFill('Connect OrgX to {host}.')) + '</h2>' +
+        '<p class="so-sub">' + esc(scope ? 'The connection is there, but it can’t see your initiatives yet.' : hostFill('Decide agent work, watch it move and keep the receipts, without leaving {host}.')) + '</p>' +
+        '<ol class="so-steps">' + steps.map(function step(x, i) {
+          return '<li class="so-step"><span class="so-n" aria-hidden="true">' + (i + 1) + '</span><span class="so-t"><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) + '</span></span></li>';
+        }).join('') + '</ol>' +
+        '<div class="so-acts"><button type="button" class="pn-btn st-cta" data-action="refresh"' + (checking ? ' aria-busy="true" disabled' : '') + '>' + (checking ? 'Checking…' : 'I’ve connected it') + '</button>' +
+        '<button type="button" class="secondary-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button></div></section>';
     }
 
     function loadErrorHtml() {
@@ -1272,18 +1339,25 @@
         ? '<button type="button" class="cm-prompt" data-action="start-open"><span class="cm-pp">What should get done next?</span><span class="cm-go" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span></button>'
         : '';
       var see = items.length ? '<button type="button" class="text-btn" data-action="tab" data-tab="work">See what’s running</button>' : '';
+      // Ways in, the way the other apps do it: a rail of concrete jobs under
+      // the prompt. Each one opens Start with the words already in the box.
+      var rail = Start && ui.mode === 'global'
+        ? '<div class="cm-rail" role="list" aria-label="Try">' + Start.starters(launchContext(s).initiative).map(function chip(x) {
+          return '<button type="button" class="st-idea" role="listitem" data-action="start-fill" data-id="' + esc(x.agent) + '" data-text="' + esc(x.text) + '">' + esc(x.text) + '</button>';
+        }).join('') + '</div>'
+        : '';
       if (firstUse) {
         // A new workspace: nothing to be clear of yet. Invite the first job.
         return '<section class="pn-calm is-first" aria-labelledby="cm-h">' +
           (Brand ? '<span class="cm-mark is-brand" aria-hidden="true">' + Brand.mark(26) + '</span>' : '') +
           '<h2 class="cm-h" id="cm-h">Start your first piece of work.</h2>' +
           '<p class="cm-sub">Say what should get done. OrgX plans it, runs it with your agents and brings decisions back here.</p>' +
-          (prompt || '<button type="button" class="pn-btn st-cta" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>') + '</section>';
+          (prompt || '<button type="button" class="pn-btn st-cta" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>') + rail + '</section>';
       }
       return '<section class="pn-calm" aria-labelledby="cm-h">' + glyph +
         '<h2 class="cm-h" id="cm-h">You’re clear.</h2>' +
         '<p class="cm-sub">Nothing needs your decision. ' + esc(moving) + (see ? ' ' + see : '') + '</p>' +
-        prompt + '</section>' + proofHtml(s, true);
+        prompt + rail + '</section>' + proofHtml(s, true);
     }
 
     /** The receipt behind the open decision, once read; starts the read the first time. */
@@ -1365,7 +1439,88 @@
       return s.state === 'ok' ? 'teal' : 'none';
     }
 
+    /**
+     * On a phone, keep Approve and Send back in reach. While the open
+     * packet's own footer is below the view (and the packet is on screen), a
+     * live clone of it floats at the bottom of the view, above the host's
+     * composer, in a host outside the panel (the panel is a size container,
+     * so nothing fixed inside it can reach the viewport). Every press on the
+     * clone is forwarded to the real footer, so the controller's handlers
+     * run unchanged and the real footer shows the ruling's progress. Once
+     * the real footer scrolls into view, the clone goes.
+     */
+    var floatHost = null;
+    function realFooter() { return root.querySelector('.pn-detail ox-footer[variant="confirms-in-orgx"]'); }
+    function forwardFooterEvent(event) {
+      var real = realFooter();
+      if (!real) return;
+      event.stopPropagation();
+      real.dispatchEvent(new CustomEvent(event.type, { bubbles: true, composed: true, detail: event.detail }));
+    }
+    function forwardFooterClick(event) {
+      var el = event.target.closest('[data-action]');
+      if (!el) return;
+      var action = el.getAttribute('data-action'), id = el.getAttribute('data-id');
+      var sel = '[data-action="' + action + '"]' + (id ? '[data-id="' + id + '"]' : '');
+      var real = root.querySelector('.pn-detail ox-footer ' + sel) || root.querySelector('.pn-detail ' + sel);
+      event.preventDefault();
+      event.stopPropagation();
+      if (real) real.click();
+    }
+    function floatFooter() {
+      if (!Host || !Host.isMobile()) return;
+      var detail = root.querySelector('.pn-detail');
+      var footer = detail && detail.querySelector('ox-footer[variant="confirms-in-orgx"]');
+      var safe = Host.safeArea();
+      var viewBottom = window.innerHeight - Math.max(safe.bottom || 0, 0);
+      var show = false;
+      if (footer && !(tour && tour.active())) {
+        var fr = footer.getBoundingClientRect();
+        var dr = detail.getBoundingClientRect();
+        show = fr.height > 0 && fr.bottom > viewBottom + 1 && dr.top < viewBottom - fr.height;
+      }
+      if (!show) { if (floatHost) { floatHost.remove(); floatHost = null; } return; }
+      if (!floatHost) {
+        floatHost = document.createElement('div');
+        floatHost.id = 'pn-float';
+        floatHost.className = 'pn-float';
+        floatHost.setAttribute('aria-hidden', 'true');
+        ['ox-primary', 'ox-action', 'ox-undo'].forEach(function on(type) { floatHost.addEventListener(type, forwardFooterEvent); });
+        floatHost.addEventListener('click', forwardFooterClick);
+        document.body.appendChild(floatHost);
+      }
+      var sig = footer.outerHTML;
+      if (floatHost.getAttribute('data-sig') !== sig) {
+        floatHost.innerHTML = '';
+        var clone = footer.cloneNode(true);
+        clone.setAttribute('data-float', 'true');
+        floatHost.appendChild(clone);
+        floatHost.setAttribute('data-sig', sig);
+      }
+      floatHost.style.setProperty('--pn-float-bottom', Math.max(safe.bottom || 0, 0) + 'px');
+    }
+    var floatQueued = false;
+    function queueFloat() {
+      if (floatQueued) return;
+      floatQueued = true;
+      window.requestAnimationFrame(function run() { floatQueued = false; floatFooter(); });
+    }
+    window.addEventListener('scroll', queueFloat, { passive: true });
+    window.addEventListener('resize', queueFloat, { passive: true });
+    // The real footer's state changes (saving, practice, disabled) without a render: the clone follows.
+    if (typeof MutationObserver === 'function') {
+      new MutationObserver(queueFloat).observe(root, { attributes: true, subtree: true, attributeFilter: ['state', 'heading', 'detail', 'disabled', 'primary-label', 'hold'] });
+    }
+
+    var bootLeaving = false;
     function render() {
+      // The first content after the cold start arrives as one move: the stage
+      // falls away and the view rises in its place (reduced motion: a cut).
+      if (!bootLeaving && ui.snapshot && root.querySelector('.pn-boot')) {
+        bootLeaving = true;
+        transition('boot', function firstPaint() { try { render(); } finally { bootLeaving = false; } });
+        return;
+      }
       var focusKey = document.activeElement && document.activeElement.getAttribute
         ? document.activeElement.getAttribute('data-action') + '|' + (document.activeElement.getAttribute('data-id') || '') +
           '|' + (document.activeElement.getAttribute('data-option') || '')
@@ -1404,6 +1559,7 @@
         ui.seenRows = seen;
       }
       window.requestAnimationFrame(fitQuestion);
+      window.requestAnimationFrame(floatFooter);
       if (R && R.reportSize) R.reportSize();
       if (tour) tour.refresh();
       maybeStartTour();
@@ -1436,20 +1592,30 @@
       later(startTour, 600);
     }
 
+    // Where each tab was scrolled to, so coming back lands where you left.
+    var scrollMemo = {};
+    function rememberScroll() { try { scrollMemo[ui.tab] = window.scrollY || window.pageYOffset || 0; } catch (_) { /* no scroll */ } }
+    function restoreScroll(tab) {
+      var y = scrollMemo[tab] || 0;
+      try { if (typeof window.scrollTo === 'function') window.scrollTo({ top: y, left: 0, behavior: 'instant' }); } catch (_) { try { window.scrollTo(0, y); } catch (__) { /* no scroll */ } }
+    }
     function setTab(tab, quiet, after) {
       if (['needs', 'work', 'done', 'start'].indexOf(tab) === -1 || (tab === 'start' && !Start)) return;
       var changed = ui.tab !== tab;
+      if (changed) rememberScroll();
       var order = ['needs', 'work', 'done', 'start'];
       var dir = order.indexOf(tab) >= order.indexOf(ui.tab) ? 'fwd' : 'back';
       function apply() {
         ui.tab = tab;
         ui.composer = changed ? null : ui.composer;
         ui.startWhoOpen = false;
-        if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); return; }
+        if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); if (changed) restoreScroll(tab); return; }
         // Done › Work reads its receipts the first time it opens; the read renders the loading rows.
         if (tab === 'done' && ui.doneLens === 'work' && Receipts && !ui.receipts[workRangeOf(ui.doneRange)]) fetchReceipts(workRangeOf(ui.doneRange));
         else render();
+        if (changed) restoreScroll(tab);
         if (changed && !quiet) {
+          if (Host) Host.haptic('tap');
           var t = root.querySelector('#pn-tab-' + tab);
           if (t) t.focus();
           announce(tab === 'needs' ? 'Needs you.' : tab === 'work' ? 'In progress.' : tab === 'done' ? 'Done.' : 'Start.');
@@ -1715,6 +1881,7 @@
         var copy = outcome === 'sent' ? 'Sent to chat' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send. Type it in the chat.';
         button.setAttribute('data-sent', outcome);
         if (status) status.textContent = copy;
+        if (Host && outcome === 'sent') Host.haptic('tap');
         announce(copy);
         later(function clear() { if (button.isConnected) { button.removeAttribute('data-sent'); if (status) status.textContent = ''; } }, 2600);
       });
@@ -1879,6 +2046,7 @@
     }
 
     function onHostContext(context, app) {
+      if (Host && context) Host.apply(context);
       if (!app) return;
       ext = X.createExtensions(app);
       ui.caps = { modelContext: Boolean(ext.modelContext), deepLink: Boolean(ext.deepLink) };
@@ -2012,12 +2180,14 @@
         remember(id);
         if (['recorded', 'failed', 'elsewhere'].indexOf(ui.rulings[id].phase) !== -1) {
           announce(ui.rulings[id].phase === 'recorded' ? 'Decision recorded. Status is unconfirmed.' : 'Check the recorded outcome in OrgX.');
+          if (Host && ui.rulings[id].phase === 'failed') Host.haptic('warn');
           render();
           return;
         }
         delete ui.answers[id];
         delete ui.notes[id];
         announce(pastTense(action === 'approve' ? ui.rulings[id].approveLabel : ui.rulings[id].rejectLabel, action) + ': ' + title);
+        if (Host) Host.haptic('success');
         render();
         later(function refreshAfterRuling() { fetchSnapshot(null, 'ruling'); }, 900);
       }
@@ -2161,7 +2331,11 @@
         case 'workspaces': transition('menu', function toggleWs() { if (ui.wsOpen) closeWorkspaces(true); else openWorkspaces(); }); break;
         case 'workspaces-retry': ui.workspaces = null; ui.wsPhase = 'idle'; openWorkspaces(); break;
         case 'switch-workspace': switchWorkspace(id); break;
-        case 'refresh': fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh'); break;
+        case 'refresh':
+          if (ui.auth) { ui.auth = null; ui.bootStage = 'reading'; }
+          fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh');
+          break;
+        case 'display-mode': requestDisplay(el.getAttribute('data-mode')); break;
         case 'open': event.preventDefault(); openUrl(el.getAttribute('data-url'), event); break;
         case 'select': selectDecision(id); break;
         case 'approve': approve(id); break;
@@ -2295,6 +2469,8 @@
           if (ui.startAgent) ui.startVerb = 'delegate';
           else if (/^Plan the next steps/.test(ui.startText)) ui.startVerb = 'plan';
           ui.startStatus = null;
+          // From another view (the calm rail): open Start with the words in the box.
+          if (ui.tab !== 'start') { setTab('start', true, function placeCaret() { var t = root.querySelector('#st-text'); if (t) { t.focus(); try { t.setSelectionRange(t.value.length, t.value.length); } catch (_) { /* not a text input */ } } }); break; }
           render();
           var ta = root.querySelector('#st-text');
           if (ta) { ta.focus(); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (_) { /* not a text input */ } }
@@ -2738,6 +2914,70 @@
       if (ui.syncedAt && Date.now() - ui.syncedAt.getTime() < FALLBACK_STALE_MS) return;
       scheduleLiveRefresh();
     });
+
+    // ── Host, device and network ───────────────────────────────────────────
+    // The host names itself after connect; the platform and safe areas come
+    // with the host context. Either can change after the first paint.
+    var hostRenderQueued = false;
+    if (Host) Host.onChange(function onHostChange() {
+      if (hostRenderQueued) return;
+      hostRenderQueued = true;
+      later(function rerender() { hostRenderQueued = false; render(); }, 0);
+    });
+
+    // A cold start that drags says so, then offers a way out, rather than
+    // shimmering forever on a slow phone network.
+    var BOOT_SLOW_MS = 6000;
+    var BOOT_STALL_MS = 15000;
+    function stillCold() { return !ui.snapshot && !ui.auth && ui.readState.phase !== 'failed'; }
+    later(function slow() { if (stillCold() && ui.bootStage === 'reading') { ui.bootStage = 'slow'; render(); } }, BOOT_SLOW_MS);
+    later(function stalled() {
+      if (!stillCold() || ui.bootStage === 'stalled') return;
+      ui.bootStage = 'stalled';
+      announce('OrgX is taking longer than usual to load.');
+      render();
+    }, BOOT_STALL_MS);
+
+    function setOffline(off) {
+      if (ui.offline === off) return;
+      ui.offline = off;
+      if (off) { announce('You’re offline. Showing what loaded last.'); render(); return; }
+      announce('Back online. Refreshing.');
+      if (isGallery) { render(); return; }
+      if (ui.auth) { ui.auth = null; ui.bootStage = 'reading'; }
+      fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh');
+    }
+    window.addEventListener('online', function onOnline() { setOffline(false); });
+    window.addEventListener('offline', function onOffline() { setOffline(true); });
+
+    // On a touch screen, a horizontal swipe across the view moves between the
+    // tabs in their own order. Vertical scrolling, text fields and the rows
+    // that scroll sideways themselves are left alone.
+    var swipe = null;
+    function swipeAllowed(target) {
+      if (ui.mode !== 'global' || !ui.snapshot || ui.auth) return false;
+      if ((tour && tour.active()) || ui.wsOpen || ui.startWhoOpen || ui.composer) return false;
+      if (!root.querySelector('.pn-tabs')) return false;
+      return !target.closest('textarea, input, select, .pn-tabs, .pn-asks, .st-try, .ws-menu, .st-menu, pre, [data-swipe="off"]');
+    }
+    root.addEventListener('pointerdown', function onSwipeStart(event) {
+      swipe = null;
+      if (event.pointerType !== 'touch' || !swipeAllowed(event.target)) return;
+      swipe = { x: event.clientX, y: event.clientY, at: Date.now() };
+    });
+    root.addEventListener('pointerup', function onSwipeEnd(event) {
+      if (!swipe || event.pointerType !== 'touch') return;
+      var dx = event.clientX - swipe.x, dy = event.clientY - swipe.y, dt = Date.now() - swipe.at;
+      swipe = null;
+      if (dt > 800 || Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+      var order = ['needs', 'work', 'done', 'start'].filter(function has(t) { return Boolean(root.querySelector('#pn-tab-' + t)); });
+      var at = order.indexOf(ui.tab);
+      var next = at === -1 ? null : order[dx < 0 ? at + 1 : at - 1];
+      if (!next) return;
+      if (Host) Host.haptic('tap');
+      setTab(next);
+    });
+    root.addEventListener('pointercancel', function onSwipeCancel() { swipe = null; });
 
     render();
     R.initWidget({

@@ -1,7 +1,7 @@
 /**
  * OrgX panel first-use tour.
  *
- * Seven short steps over the person's own panel: the spotlight moves across
+ * Six numbered steps over the person's own panel: the spotlight moves across
  * real controls (switching tabs underneath), each step leads with what they
  * get, then one way to get more from it, with a small looping visual built
  * from panel pieces. The overlay lives on <body> so panel re-renders never
@@ -19,6 +19,9 @@
 (function attachPanelTour(global) {
   'use strict';
   if (global.OrgXPanelTour) return;
+  /** Host-aware copy: {host}, {Host}, {assistant}, {settings} name the app the panel is inside. */
+  function fill(text) { var H = global.OrgXPanelHost; return H ? H.fill(text) : String(text).replace(/\{(?:host|chat)\}/g, 'the chat').replace(/\{(?:Host|Chat)\}/g, 'The assistant').replace(/\{assistant\}/g, 'the assistant').replace(/\{settings\}/g, 'the app’s settings'); }
+
   var KEY = 'orgx.panel.tour.v1';
   var seenInMemory = false;
 
@@ -76,9 +79,9 @@
 
   var STEPS = [
     { id: 'welcome', tab: 'needs', vis: 'welcome', eyebrow: 'Welcome to OrgX', next: 'Show me',
-      title: 'Decide agent work without leaving ChatGPT',
-      body: 'OrgX keeps your agents’ decisions, progress and proof in one place. This panel brings the part that needs you into ChatGPT, so work doesn’t wait on you.',
-      tip: 'Seven short steps, about a minute. It uses your own workspace, and nothing you press during the tour is sent.' },
+      title: 'Decide agent work without leaving {host}',
+      body: 'OrgX keeps your agents’ decisions, progress and proof in one place. This panel brings the part that needs you into {host}, so work doesn’t wait on you.',
+      tip: 'Six short steps, about a minute. It uses your own workspace, and nothing you press during the tour is sent.' },
     { id: 'queue', tab: 'needs', vis: 'queue', target: ['ox-attention-line', '.pn-list .row', '.queue .row'],
       title: 'See what needs you, ranked by what it holds up',
       body: 'Red means work is stopped until you answer. Decisions are sorted by urgency, then by what they block, then by age.',
@@ -89,8 +92,8 @@
       try: 'Press the main button now. During the tour nothing is sent.', tryOk: 'That’s the step you’ll see. Nothing was sent.',
       tip: 'When OrgX needs more than a click, like a credential, the button opens the decision in OrgX instead.' },
     { id: 'ask', tab: 'needs', vis: 'ask', target: ['.pn-asks'],
-      title: 'Let ChatGPT do the reading',
-      body: 'Ask for the risk or the cost of waiting. ChatGPT reads the decision through OrgX. Only you can approve it.',
+      title: 'Let {assistant} do the reading',
+      body: 'Ask for the risk or the cost of waiting. {Host} reads the decision through OrgX. Only you can approve it.',
       tip: 'Beside a chat, the answer lands in that chat. From the sidebar, it opens a new one.' },
     { id: 'work', tab: 'work', vis: 'work', target: ['.pn-work'],
       title: 'Watch the work move',
@@ -102,8 +105,8 @@
       tip: 'Your full history is one tap away: Decision history and the work ledger in OrgX.' },
     { id: 'launch', tab: 'done', vis: 'launch', target: ['.pn-done .pn-launch'],
       title: 'Start new work with a sentence',
-      body: 'Each prompt shows the exact words it sends. ChatGPT turns them into OrgX actions: planning, starting an initiative, handing work to an agent.',
-      tip: 'Type the same kind of sentence anywhere in ChatGPT, for example “What should I do next in OrgX?”' },
+      body: 'Each prompt shows the exact words it sends. {Host} turns them into OrgX actions: planning, starting an initiative, handing work to an agent.',
+      tip: 'Type the same kind of sentence anywhere in {host}, for example “What should I do next in OrgX?”' },
     { id: 'ready', tab: 'needs', vis: 'ready', eyebrow: 'Ready', finish: true,
       title: 'You’re set',
       body: 'Your most urgent decision is open. Replay this tour any time from ? in the header.',
@@ -115,6 +118,12 @@
     var state = { el: null, i: 0, done: {}, swipe: null, timer: 0 };
 
     function narrow() { return (global.innerWidth || 0) < 760; }
+    /** How much of the view the host's own chrome covers (ChatGPT's title bar and composer on a phone). */
+    function safe() {
+      var H = global.OrgXPanelHost;
+      var s = H && H.safeArea ? H.safeArea() : null;
+      return s || { top: 0, right: 0, bottom: 0, left: 0 };
+    }
     function rect(selectors) {
       var box = null;
       (selectors || []).forEach(function each(sel) {
@@ -135,7 +144,8 @@
       if (!first) return;
       var pane = first.closest('.pn-detail, .pn-list') || global.document.scrollingElement;
       if (!pane) return;
-      var pr = pane === global.document.scrollingElement ? { top: 0, height: global.innerHeight } : pane.getBoundingClientRect();
+      var sa = safe();
+      var pr = pane === global.document.scrollingElement ? { top: sa.top, height: global.innerHeight - sa.top - sa.bottom } : pane.getBoundingClientRect();
       var tr = first.getBoundingClientRect();
       var delta = (tr.top - pr.top) - Math.max(0, (pr.height - tr.height) / 3);
       if (Math.abs(delta) > 4) pane.scrollTop += delta;
@@ -145,26 +155,29 @@
       var st = STEPS[state.i];
       var W = global.innerWidth, H = global.innerHeight;
       var dim = state.el.querySelector('.pn-tour-dim'), ring = state.el.querySelector('.pn-tour-ring'), card = state.el.querySelector('.pn-coach');
+      var sa = safe();
+      // The open view: what the host's own bars do not cover.
+      var top = sa.top, bottom = H - sa.bottom, open = bottom - top;
       var r = st.target ? rect(st.target) : null;
-      if (r) { r.x = Math.max(4, r.x); r.y = Math.max(4, r.y); r.w = Math.min(W - r.x - 4, r.w); r.h = Math.min(H - r.y - 4, r.h); }
+      if (r) { r.x = Math.max(4, r.x); r.y = Math.max(top + 4, r.y); r.w = Math.min(W - r.x - 4, r.w); r.h = Math.max(0, Math.min(bottom - r.y - 4, r.h)); }
       card.style.left = card.style.top = card.style.bottom = card.style.maxHeight = '';
       if (narrow()) {
-        var below = r ? r.y + r.h / 2 > H / 2 : false;
-        card.style.maxHeight = Math.max(240, H - 24 - (r ? Math.min(r.h, 160) + 20 : 0)) + 'px';
-        if (!r || below) card.style.top = '8px'; else card.style.bottom = '8px';
+        var below = r ? r.y + r.h / 2 > top + open / 2 : false;
+        card.style.maxHeight = Math.max(240, open - 24 - (r ? Math.min(r.h, 160) + 20 : 0)) + 'px';
+        if (!r || below) card.style.top = (top + 8) + 'px'; else card.style.bottom = (sa.bottom + 8) + 'px';
         if (r) {
           var ch = card.offsetHeight;
-          var freeTop = below ? ch + 18 : 4, freeBot = below ? H - 4 : H - ch - 18;
+          var freeTop = below ? top + ch + 18 : top + 4, freeBot = below ? bottom - 4 : bottom - ch - 18;
           r.y = Math.max(r.y, freeTop); r.h = Math.max(0, Math.min(r.h, freeBot - r.y));
         }
       } else {
         var cw = card.offsetWidth, chh = card.offsetHeight, x, y;
-        if (!r) { x = (W - cw) / 2; y = Math.max(16, (H - chh) / 2); }
+        if (!r) { x = (W - cw) / 2; y = Math.max(top + 16, top + (open - chh) / 2); }
         else if (W - (r.x + r.w) >= cw + 24) { x = r.x + r.w + 16; y = r.y; }
         else if (r.x >= cw + 24) { x = r.x - cw - 16; y = r.y; }
-        else { x = Math.min(Math.max(16, r.x), W - cw - 16); y = r.y + r.h + 12 + chh < H ? r.y + r.h + 12 : Math.max(16, r.y - chh - 12); }
+        else { x = Math.min(Math.max(16, r.x), W - cw - 16); y = r.y + r.h + 12 + chh < bottom ? r.y + r.h + 12 : Math.max(top + 16, r.y - chh - 12); }
         card.style.left = Math.round(Math.max(16, Math.min(x, W - cw - 16))) + 'px';
-        card.style.top = Math.round(Math.max(16, Math.min(y, H - chh - 16))) + 'px';
+        card.style.top = Math.round(Math.max(top + 16, Math.min(y, bottom - chh - 16))) + 'px';
       }
       var hole = r && r.h > 0 ? 'M' + r.x + ' ' + r.y + 'h' + r.w + 'v' + r.h + 'h-' + r.w + 'Z' : 'M' + W / 2 + ' ' + H / 2 + 'h0v0h0Z';
       dim.style.clipPath = "path(evenodd, 'M0 0H" + W + 'V' + H + 'H0Z ' + hole + "')";
@@ -175,20 +188,21 @@
       var st = STEPS[state.i], n = STEPS.length, i = state.i;
       var card = state.el.querySelector('.pn-coach');
       card.classList.toggle('is-center', !st.target);
-      var eyebrow = st.eyebrow || 'Step ' + i + ' of ' + (n - 2);
-      var tryHtml = st.try ? '<p class="pn-try' + (state.done[i] ? ' is-ok' : '') + '"><i aria-hidden="true">✓</i><span>' + esc(state.done[i] ? st.tryOk : st.try) + '</span></p>' : '';
+      var steps = n - 2;
+      var eyebrow = st.eyebrow || 'Step ' + i + ' of ' + steps;
+      var tryHtml = st.try ? '<p class="pn-try' + (state.done[i] ? ' is-ok' : '') + '"><i aria-hidden="true">✓</i><span>' + esc(fill(state.done[i] ? st.tryOk : st.try)) + '</span></p>' : '';
       card.innerHTML = '<div class="pn-coach-in"><div class="pn-vis" aria-hidden="true">' + VIS[st.vis]() + '</div>' +
-        '<span class="pn-coach-e">' + esc(eyebrow) + '</span><h2 class="pn-coach-t" id="pn-coach-t">' + esc(st.title) + '</h2>' +
-        '<p class="pn-coach-b">' + esc(st.body) + '</p>' + tryHtml +
-        '<p class="pn-coach-tip"><b>' + (i === 0 || st.finish ? 'Good to know' : 'Get more from it') + '</b>' + esc(st.tip) + '</p>' +
-        '<div class="pn-coach-ft"><span class="pn-pips" aria-hidden="true">' + STEPS.map(function pip(_, k) { return '<i class="' + (k === i ? 'on' : k < i ? 'past' : '') + '"></i>'; }).join('') + '</span>' +
+        '<span class="pn-coach-e">' + esc(eyebrow) + '</span><h2 class="pn-coach-t" id="pn-coach-t">' + esc(fill(st.title)) + '</h2>' +
+        '<p class="pn-coach-b">' + esc(fill(st.body)) + '</p>' + tryHtml +
+        '<p class="pn-coach-tip"><b>' + (i === 0 || st.finish ? 'Good to know' : 'Get more from it') + '</b>' + esc(fill(st.tip)) + '</p>' +
+        '<div class="pn-coach-ft"><span class="pn-pips" aria-hidden="true">' + STEPS.slice(1, n - 1).map(function pip(_, k) { var at = k + 1; return '<i class="' + (at === i ? 'on' : at < i || st.finish ? 'past' : '') + '"></i>'; }).join('') + '</span>' +
         (st.finish ? '' : '<button type="button" class="pn-coach-skip" data-tour="skip">Skip</button>') +
         (i > 0 && !st.finish ? '<button type="button" class="secondary-btn" data-tour="back">Back</button>' : '') +
         '<button type="button" class="primary-btn pn-coach-next" data-tour="next">' + esc(st.finish ? 'Start deciding' : st.next || 'Next') + '</button></div></div>';
       card.scrollTop = 0;
       place();
       if (!narrow()) { var nb = card.querySelector('[data-tour="next"]'); if (nb) nb.focus({ preventScroll: true }); }
-      if (opts.announce) opts.announce(st.title);
+      if (opts.announce) opts.announce(fill(st.title));
     }
     function go(i) {
       state.i = Math.max(0, Math.min(STEPS.length - 1, i));
