@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { modalityProofInputSchema } from './modalityProofInput';
 
 import {
   getKnownToolContract,
@@ -173,13 +174,20 @@ export const WORK_CONTENT_PATCH_SCHEMA = z.object({
   metadata: contentMetadataSchema.optional(),
 }).strict().refine((value) => Object.values(value).some((field) => field !== undefined), 'A nonempty content patch is required.');
 
-const proofArtifactSchema = z.object({
+const proofArtifactFields = {
   name: z.string().trim().min(1).max(500).optional(),
   description: z.string().trim().max(4000).optional(),
   artifact_type: z.string().trim().min(1).max(120),
   artifact_url: z.string().url().max(2000).optional(),
   external_url: z.string().url().max(2000).optional(),
   preview_markdown: z.string().max(25_000).optional(),
+};
+const proofArtifactSchema = z.object(proofArtifactFields).strict().refine((value) => Boolean(value.artifact_url || value.external_url), 'A durable artifact_url or external_url is required.');
+const completionProofArtifactSchema = z.object({
+  ...proofArtifactFields,
+  artifact_hash: z.string().trim().min(1).max(240).optional(),
+  atomic_unit_type: z.string().trim().min(1).max(120).optional(),
+  modality_proof: modalityProofInputSchema.optional().describe('Versioned execution or render evidence for the new artifact. Does not assert an independent evaluation or human acceptance.'),
 }).strict().refine((value) => Boolean(value.artifact_url || value.external_url), 'A durable artifact_url or external_url is required.');
 
 const estimateFields = {
@@ -466,8 +474,8 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   operation('orgx_complete_work_with_proof', 'orgx_act', 'Complete OrgX Work With Proof',
     'Register typed proof, verify completion requirements, and apply the allowed work completion transition. May return proof recorded with completion blocked or awaiting review. Verification and human acceptance remain separate facts.',
     { ...project('orgx_act', ['type', 'id', 'artifact', 'verification', 'quality_score', 'note', 'idempotency_key', 'session_id'], {
-      type: workType, id: z.string().uuid(), artifact: proofArtifactSchema,
-      verification: z.array(z.string().trim().min(1).max(2000)).max(30).optional(),
+      type: workType, id: z.string().uuid(), artifact: completionProofArtifactSchema,
+      verification: z.array(z.string().trim().min(1).max(2000)).max(30).optional().describe('Verification notes. A client with a cached schema can encode one producer modality_proof as orgx:modality-proof:v1: followed by the same closed JSON envelope; OrgX validates it before recording.'),
       note: z.string().trim().max(4000).optional(),
     }), workspace_id: workspaceId }, {
       fixedArgs: { action: 'complete_with_proof' }, annotations: { ...modifiesRecords, openWorldHint: true }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,

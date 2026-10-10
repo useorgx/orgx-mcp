@@ -247,6 +247,7 @@ export function buildCompletionProofMetadata(
       ? { quality_score: input.qualityScore }
       : {}),
     ...(verification.length > 0 ? { verification } : {}),
+    ...(artifact.modality_proof ? { modality_proof: artifact.modality_proof } : {}),
     entity_type: input.entityType,
     entity_id: input.entityId,
     ...(input.entityType === "task" ? { task_id: input.entityId } : {}),

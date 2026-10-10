@@ -178,6 +178,21 @@ describe('fixed workflow operation contracts', () => {
     expect(() => parse('orgx_complete_work_with_proof', { type: 'task', id: UUID, artifact: { artifact_type: 'eng.pull_request', external_url: 'https://example.com/proof', status: 'approved' } })).toThrow();
   });
 
+  it('accepts versioned producer execution evidence without granting review or quality authority', () => {
+    const modality_proof = { kind: 'execution', status: 'passed', artifact_version: 1,
+      checked_at: '2026-10-10T01:30:00Z',
+      evidence_refs: [{ url: 'https://github.com/org/repo/actions/runs/1', hash: 'sha256:actual' }],
+    };
+    const base = { type: 'task', id: UUID, artifact: { artifact_type: 'eng.pull_request', external_url: 'https://github.com/org/repo/pull/1', modality_proof } };
+    expect(parse('orgx_complete_work_with_proof', base)).toEqual(base);
+    for (const patch of [
+      { artifact_version: 2 }, { evidence_refs: [] }, { checked_at: 'yesterday' },
+      { eval: { status: 'passed', score: 1 } }, { owner_id: UUID },
+    ]) expect(() => parse('orgx_complete_work_with_proof', { ...base,
+      artifact: { ...base.artifact, modality_proof: { ...modality_proof, ...patch } },
+    })).toThrow();
+  });
+
   it('opens full human review without a model-supplied ruling', () => {
     const tool = adapter('orgx_open_decision_review');
     expect(() => parse(tool.id, { decision_id: UUID, action: 'approve' })).toThrow();
