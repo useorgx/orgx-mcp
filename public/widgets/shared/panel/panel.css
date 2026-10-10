@@ -1330,18 +1330,17 @@ html[data-touch="true"] .cm-prompt:hover, html[data-touch="true"] .st-idea:hover
 @container pn (max-width: 560px) {
   .pn-asks, .cm-rail, .st-try { -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent); }
 }
-/* Decide without scrolling: on a phone the decision footer floats at the
-   bottom of the view, above the host's composer, while the end of the packet
-   is still below the view; once it scrolls into view the footer settles back
-   into place (panel-app.js floatFooter). The packet keeps the footer's height
-   while it floats, so nothing jumps. */
-html[data-platform="mobile"] .pn-detail ox-footer[data-floating="true"] {
-  position: fixed; left: 0; right: 0; z-index: 5; margin: 0;
-  bottom: max(var(--pn-safe-bottom), env(safe-area-inset-bottom, 0px));
-  padding-left: calc(var(--pn-gutter) + var(--pn-inset-left, 0px)); padding-right: calc(var(--pn-gutter) + var(--pn-inset-right, 0px));
-  background: var(--ox-bg); box-shadow: 0 -14px 28px -14px rgba(0, 0, 0, 0.65);
+/* Decide without scrolling: on a phone a live clone of the open packet's
+   footer floats at the bottom of the view, above the host's composer, while
+   the real footer is below the view (panel-app.js floatFooter). The host
+   lives on <body>: the panel is a size container, so nothing fixed inside it
+   can reach the viewport. */
+.pn-float {
+  position: fixed; left: 0; right: 0; z-index: 2147482000;
+  bottom: max(var(--pn-float-bottom, 0px), env(safe-area-inset-bottom, 0px));
+  padding: 0 calc(var(--pn-gutter, 16px) + var(--pn-inset-right, 0px)) 0 calc(var(--pn-gutter, 16px) + var(--pn-inset-left, 0px));
+  background: var(--ox-bg); color: var(--ox-text); font-family: var(--ox-font);
+  box-shadow: 0 -14px 28px -14px rgba(0, 0, 0, 0.65);
 }
-html[data-platform="mobile"] .pn-detail[data-float-pad] { padding-bottom: var(--pn-foot-h, 0px); }
-@media (prefers-reduced-motion: no-preference) {
-  html[data-platform="mobile"] .pn-detail ox-footer[data-floating="true"] { animation: vt-rise 220ms var(--pn-ease); }
-}
+.pn-float ox-footer { margin: 0; }
+@media (prefers-reduced-motion: no-preference) { .pn-float { animation: vt-rise 220ms var(--pn-ease); } }

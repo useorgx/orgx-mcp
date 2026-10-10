@@ -127,7 +127,7 @@ the sentence into the chat and the host answers in its own sheet.
 
 | | Before | After |
 | --- | --- | --- |
-| Deciding a long packet | Approve and Send back scrolled away under the packet. | On a phone the footer floats at the bottom of the view, above the composer, while the packet's end is below the view; once the end scrolls in, it settles back into place. The packet keeps the footer's height meanwhile, so nothing jumps. |
+| Deciding a long packet | Approve and Send back scrolled away under the packet. | On a phone, while the packet's own footer is below the view, a live clone of it floats at the bottom of the view above the composer, in a host on `<body>` (the panel is a size container, so nothing fixed inside it can reach the viewport). Every press on the clone is forwarded to the real footer, so the controller's handlers run unchanged. Once the real footer scrolls into view, the clone goes. |
 | Coming back to a tab | Every switch landed at the top. | Each tab remembers its scroll position and returns there. |
 | The tab underline | Blinked out and in. | Travels between tabs as one piece (a view-transition name on the selected tab's underline). |
 | Pressing things | Nothing moved under the finger. | Chips, rows, buttons and tabs settle slightly on press; a tab tap and a sent chip tick on the haptic motor; a sent chip pops with a check. |
@@ -137,8 +137,9 @@ the sentence into the chat and the host answers in its own sheet.
 ![floating footer](evidence/panel-mobile-2026-10-09/chatgpt-phone-floating-footer.png)
 
 `tests/panelPhoneChrome.spec.ts` checks the floating footer on a tall
-packet (tappable, above the composer, in view after a scroll) in both host
-behaviours; `tests/panelPolish.spec.ts` checks the scroll memory and the busy
+packet in both host behaviours: the clone is tappable above the composer, a
+press on it reaches the ruling tool, and it leaves once the real footer is
+in view; `tests/panelPolish.spec.ts` checks the scroll memory and the busy
 refresh icon.
 
 ## Host resolution

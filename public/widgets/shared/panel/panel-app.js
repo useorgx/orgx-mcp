@@ -1440,35 +1440,64 @@
     }
 
     /**
-     * On a phone, keep Approve and Send back in reach: while the end of the
-     * open packet is below the view, its footer floats at the bottom of the
-     * view (above the host's composer); once the end comes into view the
-     * footer takes its place in the flow again. The packet keeps the
-     * footer's height while it floats, so nothing jumps.
+     * On a phone, keep Approve and Send back in reach. While the open
+     * packet's own footer is below the view (and the packet is on screen), a
+     * live clone of it floats at the bottom of the view, above the host's
+     * composer, in a host outside the panel (the panel is a size container,
+     * so nothing fixed inside it can reach the viewport). Every press on the
+     * clone is forwarded to the real footer, so the controller's handlers
+     * run unchanged and the real footer shows the ruling's progress. Once
+     * the real footer scrolls into view, the clone goes.
      */
+    var floatHost = null;
+    function realFooter() { return root.querySelector('.pn-detail ox-footer[variant="confirms-in-orgx"]'); }
+    function forwardFooterEvent(event) {
+      var real = realFooter();
+      if (!real) return;
+      event.stopPropagation();
+      real.dispatchEvent(new CustomEvent(event.type, { bubbles: true, composed: true, detail: event.detail }));
+    }
+    function forwardFooterClick(event) {
+      var el = event.target.closest('[data-action]');
+      if (!el) return;
+      var action = el.getAttribute('data-action'), id = el.getAttribute('data-id');
+      var sel = '[data-action="' + action + '"]' + (id ? '[data-id="' + id + '"]' : '');
+      var real = root.querySelector('.pn-detail ox-footer ' + sel) || root.querySelector('.pn-detail ' + sel);
+      event.preventDefault();
+      event.stopPropagation();
+      if (real) real.click();
+    }
     function floatFooter() {
       if (!Host || !Host.isMobile()) return;
       var detail = root.querySelector('.pn-detail');
       var footer = detail && detail.querySelector('ox-footer[variant="confirms-in-orgx"]');
-      if (!detail || !footer) return;
       var safe = Host.safeArea();
       var viewBottom = window.innerHeight - Math.max(safe.bottom || 0, 0);
-      var floating = footer.getAttribute('data-floating') === 'true';
-      var h = floating ? parseFloat(detail.style.getPropertyValue('--pn-foot-h')) || footer.offsetHeight : footer.offsetHeight;
-      var d = detail.getBoundingClientRect();
-      // Natural footer bottom: with it floating, that is the padded end of the packet.
-      var naturalBottom = floating ? d.bottom : footer.getBoundingClientRect().bottom;
-      var should = naturalBottom > viewBottom + 1 && d.top < viewBottom - h;
-      if (should === floating) return;
-      if (should) {
-        detail.style.setProperty('--pn-foot-h', h + 'px');
-        detail.setAttribute('data-float-pad', '');
-        footer.setAttribute('data-floating', 'true');
-      } else {
-        footer.removeAttribute('data-floating');
-        detail.removeAttribute('data-float-pad');
-        detail.style.removeProperty('--pn-foot-h');
+      var show = false;
+      if (footer && !(tour && tour.active())) {
+        var fr = footer.getBoundingClientRect();
+        var dr = detail.getBoundingClientRect();
+        show = fr.height > 0 && fr.bottom > viewBottom + 1 && dr.top < viewBottom - fr.height;
       }
+      if (!show) { if (floatHost) { floatHost.remove(); floatHost = null; } return; }
+      if (!floatHost) {
+        floatHost = document.createElement('div');
+        floatHost.id = 'pn-float';
+        floatHost.className = 'pn-float';
+        floatHost.setAttribute('aria-hidden', 'true');
+        ['ox-primary', 'ox-action', 'ox-undo'].forEach(function on(type) { floatHost.addEventListener(type, forwardFooterEvent); });
+        floatHost.addEventListener('click', forwardFooterClick);
+        document.body.appendChild(floatHost);
+      }
+      var sig = footer.outerHTML;
+      if (floatHost.getAttribute('data-sig') !== sig) {
+        floatHost.innerHTML = '';
+        var clone = footer.cloneNode(true);
+        clone.setAttribute('data-float', 'true');
+        floatHost.appendChild(clone);
+        floatHost.setAttribute('data-sig', sig);
+      }
+      floatHost.style.setProperty('--pn-float-bottom', Math.max(safe.bottom || 0, 0) + 'px');
     }
     var floatQueued = false;
     function queueFloat() {
@@ -1478,6 +1507,10 @@
     }
     window.addEventListener('scroll', queueFloat, { passive: true });
     window.addEventListener('resize', queueFloat, { passive: true });
+    // The real footer's state changes (saving, practice, disabled) without a render: the clone follows.
+    if (typeof MutationObserver === 'function') {
+      new MutationObserver(queueFloat).observe(root, { attributes: true, subtree: true, attributeFilter: ['state', 'heading', 'detail', 'disabled', 'primary-label', 'hold'] });
+    }
 
     var bootLeaving = false;
     function render() {

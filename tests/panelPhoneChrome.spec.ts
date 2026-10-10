@@ -177,13 +177,23 @@ describe.each([
   it('keeps Approve and Send back in reach while a long packet scrolls', async () => {
     const { page, close } = await open({ ...host, tall: true });
     try {
-      await page.evaluate(() => window.scrollTo(0, 420));
-      await page.waitForTimeout(150);
-      const footer = await hitAtCenter(page, 'ox-footer[variant="confirms-in-orgx"]');
+      await page.evaluate(() => window.scrollTo(0, 120));
+      await page.waitForTimeout(200);
+      // The real footer is below the view; its clone floats above the composer.
+      await page.locator('#pn-float ox-footer').waitFor();
+      const footer = await hitAtCenter(page, '#pn-float ox-footer');
       expect(footer.found).toBe(true);
-      expect(footer.hitsSelf, `decision footer is covered by ${footer.hit}`).toBe(true);
-      expect(footer.bottom, 'decision footer sits under the composer').toBeLessThanOrEqual(PHONE.height - COMPOSER + 1);
-      expect(footer.top, 'decision footer scrolled out of view').toBeLessThanOrEqual(PHONE.height - COMPOSER);
+      expect(footer.hitsSelf, `floating footer is covered by ${footer.hit}`).toBe(true);
+      expect(footer.bottom, 'floating footer sits under the composer').toBeLessThanOrEqual(PHONE.height - COMPOSER + 1);
+      // A press on the clone rules through the real footer.
+      await page.locator('#pn-float ox-footer').evaluate((f) => f.dispatchEvent(new CustomEvent('ox-primary', { bubbles: true, composed: true })));
+      await page.waitForTimeout(300);
+      const calls = await page.evaluate(() => (window as unknown as { __calls: { name: string }[] }).__calls.map((c) => c.name));
+      expect(calls).toContain('orgx_widget_decide');
+      // Once the real footer scrolls into view, the clone goes.
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await page.waitForTimeout(250);
+      expect(await page.locator('#pn-float').count()).toBe(0);
     } finally { await close(); }
   }, 30000);
 
