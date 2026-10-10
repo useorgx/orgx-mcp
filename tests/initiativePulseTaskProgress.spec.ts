@@ -352,9 +352,10 @@ describe('initiative pulse: task progress preserves review and host interactions
     expect(outputButton.getAttribute('aria-expanded')).toBe('true');
     expect(outputButton.getAttribute('aria-pressed')).toBe('true');
     expect(visibleText()).toContain('1 waiting for your review');
-    expect(visibleText()).toContain('1 draft');
+    expect(visibleText()).toContain('1 not accepted');
+    expect(document.querySelector('.pulse-artifact-row ox-state-chip[label="Draft"]')).not.toBeNull();
     expect(visibleText()).toContain('1 accepted');
-    expect(visibleText()).toContain('4 more in OrgX');
+    expect(visibleText()).toContain('3 shown · 7 tracked in OrgX');
 
     const openExternal = vi.fn();
     scope.openai.openExternal = openExternal;

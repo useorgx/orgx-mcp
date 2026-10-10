@@ -26,9 +26,7 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2302040a'/%3E%3Ccircle cx='32' cy='32' r='15' fill='none' stroke='%2300C9A7' stroke-width='6'/%3E%3Cpath d='M20 34l7-7 6 6 12-12' stroke='%2300C9A7' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"
     />
     <style>
-      /* Canvas: Q6 (the whole population, drill to what needs you) and K3 (quality
-         across an initiative). Surfaces, text and status colors come from the kit
-         tokens and the widget theme; this sheet lays the pulse out. */
+      /* Pulse layout. */
       :root { --ox-primary-rgb: 0, 201, 167; }
 
       /* The kit's primaries are its action lime (--ox-action) in every widget. */
@@ -190,6 +188,9 @@
         font-size: 12.5px; line-height: 1.4; color: var(--ox-text-muted); overflow-wrap: anywhere;
         display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
       }
+      .pulse-artifact-row .pulse-list-meta { display: block; overflow: visible; -webkit-line-clamp: unset; }
+      .pulse-artifact-breadcrumb { display: block; overflow-wrap: anywhere; }
+      .pulse-artifact-task { position: relative; z-index: 1; display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; font-size: 11.5px; color: var(--ox-text-2); }
       .pulse-list-meta b { font-weight: 600; color: var(--ox-text-2); }
       .pulse-list-trailing { display: flex; align-items: center; gap: 10px; color: var(--ox-text-muted); }
       .pulse-list-trailing > svg { width: 14px; height: 14px; }
@@ -197,9 +198,9 @@
       .pulse-meta-pct, .pulse-meta-status { display: none; font-variant-numeric: tabular-nums; }
       .pulse-meta-status { font-weight: 600; color: var(--ox-text-2); }
       .pulse-meta-status .pulse-meta-separator { font-weight: 400; color: var(--ox-text-muted); }
-      .pulse-meta-status[data-tone="good"] { color: var(--ox-teal); }
-      .pulse-meta-status[data-tone="warning"] { color: var(--ox-warning); }
-      .pulse-meta-status[data-tone="danger"] { color: var(--ox-danger); }
+.pulse-meta-status[data-tone=good]{color:var(--ox-teal)}
+.pulse-meta-status[data-tone=warning],.pulse-artifact-row [state=needs_you]::part(chip){color:var(--ox-warning-text)}
+.pulse-meta-status[data-tone=danger]{color:var(--ox-danger)}
       .pulse-bar { width: 64px; height: 6px; border-radius: 3px; background: var(--ox-skeleton, rgba(127,127,127,0.14)); overflow: hidden; flex: none; }
       .pulse-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--ox-text-2); }
       .pulse-bar[data-tone="danger"] > span { background: var(--ox-danger); }
@@ -253,6 +254,7 @@
         .has-chip .pulse-list-trailing ox-state-chip { display: none; }
         .has-chip { grid-template-columns: 32px minmax(0, 1fr); }
         .pulse-list-row { gap: 10px; }
+        .pulse-artifact-row .pulse-list-trailing { grid-column: 2; justify-content: flex-start; }
         .pulse-rail { gap: 0; margin: 0 -6px; }
         .pulse-rail-button { padding: 0 6px; gap: 5px; font-size: 12.5px; }
       }
@@ -754,46 +756,54 @@
           });
       };
 
+      var artifactTimestamp = function (artifact) {
+        var keys = ["updated_at", "updatedAt", "created_at", "createdAt"];
+        for (var i = 0; i < keys.length; i += 1) {
+          var stamp = readString(artifact, [keys[i]]) || "", time = Date.parse(stamp);
+          if (Number.isFinite(time)) return { milliseconds: time, fraction: Number(((stamp.match(/\.(\d{1,9})(?:Z|[+-]\d{2}(?::?\d{2})?)$/i) || [])[1] || "").padEnd(9, "0")) };
+        }
+        return { milliseconds: 0, fraction: 0 };
+      };
+      var compareArtifactTimestamps = function (a, b) {
+        var left = artifactTimestamp(a), right = artifactTimestamp(b);
+        return left.milliseconds - right.milliseconds || left.fraction - right.fraction;
+      };
+      var artifactVersion = function (a) { return typeof a.version === "number" && Number.isFinite(a.version) ? String(a.version) : readString(a, ["version"]); };
+      var sameArtifactRevision = function (a, b) {
+        var left = readString(a, ["updated_at", "updatedAt"]), right = readString(b, ["updated_at", "updatedAt"]), av = artifactVersion(a), bv = artifactVersion(b);
+        return Boolean(left && left === right && Number.isFinite(Date.parse(left)) && !(av !== null && bv !== null && av !== bv));
+      };
+      var isNewerArtifact = function (a, b) {
+        var delta = compareArtifactTimestamps(a, b), av = artifactVersion(a), bv = artifactVersion(b);
+        return delta > 0 || delta === 0 && av !== null && bv !== null && Number.isFinite(Number(av)) && Number.isFinite(Number(bv)) && Number(av) > Number(bv);
+      };
       var normalizeArtifacts = function (payload) {
-        var proofCards = Array.isArray(payload && payload.proof_cards)
-          ? payload.proof_cards
-          : [];
-        var recentArtifacts = Array.isArray(payload && payload.recent_artifacts)
-          ? payload.recent_artifacts
-          : [];
-        var seen = Object.create(null);
-        var raw = [];
-        proofCards.concat(recentArtifacts).forEach(function (item, index) {
+        var recent = Array.isArray(payload && payload.recent_artifacts) ? payload.recent_artifacts : [];
+        var proofs = Array.isArray(payload && payload.proof_cards) ? payload.proof_cards : [];
+        var rows = [], seen = Object.create(null);
+        recent.concat(proofs).forEach(function (item, index) {
           var artifact = asObject(item) || {};
-          var key =
-            readString(artifact, ["id", "artifact_id", "artifactId", "primary_url", "primaryUrl"]) ||
-            "artifact-" + index;
-          if (seen[key]) return;
-          seen[key] = true;
-          raw.push(item);
+          var key = readString(artifact, ["id", "artifact_id", "artifactId", "primary_url", "primaryUrl"]) || "artifact-" + index;
+          if (typeof seen[key] === "number") {
+            var previous = rows[seen[key]], newer = isNewerArtifact(artifact, previous), preferred = newer ? artifact : previous;
+            rows[seen[key]] = sameArtifactRevision(artifact, previous) ? Object.assign({}, newer ? previous : artifact, preferred) : preferred;
+            if (sameArtifactRevision(artifact, previous) && asObject(artifact.metadata) && asObject(previous.metadata)) rows[seen[key]].metadata = Object.assign({}, (newer ? previous : artifact).metadata, preferred.metadata);
+          } else { seen[key] = rows.length; rows.push(artifact); }
         });
-        return raw
-          .map(function (item, index) {
-            var artifact = asObject(item) || {};
-            return {
-              id: readString(artifact, ["id", "artifact_id", "artifactId"]) || "artifact-" + index,
-              title:
-                readString(artifact, ["title", "name", "label"]) ||
-                "Untitled artifact",
-              status: readString(artifact, ["status", "state"]) || "draft",
-              artifact_type: readString(artifact, ["artifact_type", "artifactType", "type"]),
-              created_at:
-                readString(artifact, ["created_at", "createdAt", "updated_at", "updatedAt"]) || null,
-              created_by_name: readString(artifact, ["created_by_name", "createdByName", "created_by"]),
-              primary_url: artifactUrl(artifact, null),
-              primary_label: artifactLabel(artifact),
-              live_url: readString(artifact, ["live_url", "liveUrl"]),
-              needs_review: Boolean(artifact.needs_review),
-            };
-          })
-          .filter(function (artifact) {
-            return artifact.title;
+        return rows.map(function (artifact, index) {
+          return Object.assign({}, artifact, {
+            id: readString(artifact, ["id", "artifact_id", "artifactId"]) || "artifact-" + index,
+            title: readString(artifact, ["title", "name", "label"]) || "Untitled artifact",
+            status: readString(artifact, ["status", "state"]) || "draft",
+            artifact_type: readString(artifact, ["artifact_type", "artifactType", "type"]),
+            created_at: readString(artifact, ["created_at", "createdAt"]) || null,
+            updated_at: readString(artifact, ["updated_at", "updatedAt"]) || null,
+            created_by_name: readString(artifact, ["created_by_name", "createdByName", "created_by"]),
+            context: asObject(artifact.context), task_url: readString(artifact, ["task_url", "taskUrl"]),
+            primary_url: artifactUrl(artifact, null), primary_label: artifactLabel(artifact),
+            live_url: readString(artifact, ["live_url", "liveUrl"]), needs_review: Boolean(artifact.needs_review)
           });
+        }).sort(function (a, b) { return compareArtifactTimestamps(b, a) || a.id.localeCompare(b.id); });
       };
 
       // Hosts do not always hand us the flat pulse record. Descend through the
@@ -1170,6 +1180,10 @@
         else if (key === "failed") { state = "failed_step"; }
         else if (key === "in_review" || key === "review" || key === "needs_review") { state = "needs_you"; label = kind === "artifact" ? "Your review" : "Needs you"; }
         else if (key === "changes_requested") { state = "failed_step"; label = "Changes requested"; }
+        else if (kind === "artifact" && key === "eval_passed") { state = "needs_you"; label = "Eval passed"; }
+        else if (kind === "artifact" && key === "eval_failed") { state = "failed_step"; label = "Eval failed"; }
+        else if (kind === "artifact" && key === "archived") { state = "view_only"; label = "Archived"; }
+        else if (kind === "artifact" && key === "superseded") { state = "superseded"; label = "Superseded"; }
         else if (key === "draft") { state = "draft"; label = "Draft"; }
         else if (key === "completed" || key === "approved" || key === "done") { state = "succeeded"; label = kind === "artifact" ? "Accepted" : "Done"; }
         else if (key === "active" || key === "running" || key === "in_progress") { state = "running"; label = key === "active" ? "Active" : ""; }
@@ -1178,8 +1192,6 @@
         else if (key === "paused") { state = "handed_off"; label = "Paused"; }
         return { state: state, label: label };
       };
-      // At phone width the chip column costs the title half its line; the
-      // status moves into the meta line as one coloured word instead.
       var statusWord = function (status, blockerCount, kind) {
         var spec = chipSpec(status, blockerCount, kind);
         var tone = spec.state === "blocked" || spec.state === "failed_step" ? "danger" : spec.state === "needs_you" || spec.state === "stale" ? "warning" : spec.state === "running" || spec.state === "succeeded" ? "good" : "";
@@ -1482,73 +1494,56 @@
         return parts.join("");
       };
 
-      // K3 in miniature: every output item, worst first, with one quality strip on top.
+      var ARTIFACT_FORMAT_DOMAINS = { eng: "Engineering", engineering: "Engineering", design: "Design", product: "Product", mkt: "Marketing", mktg: "Marketing", marketing: "Marketing", ops: "Operations", operations: "Operations", sales: "Sales", finance: "Finance", data: "Data", research: "Research", support: "Support", security: "Security" };
       var renderArtifactsPanel = function (pulseData, dashboardUrl) {
+        var summary = pulseData.artifact_summary || {};
         if (!pulseData.recent_artifacts.length) {
-          return '<div class="pulse-empty">Nothing has been delivered for this initiative yet.</div>';
+          return '<div class="pulse-empty">' + (summary.total > 0
+            ? escapeHtml(String(summary.total)) + ' artifacts are tracked in OrgX. Open the live view to inspect them.'
+            : 'No artifacts are available for this initiative yet.') + '</div>';
         }
-        var rank = function (artifact) {
-          var key = toStatusKey(artifact.status);
-          return key === "changes_requested" ? 0 : key === "in_review" || artifact.needs_review ? 1 : key === "draft" ? 2 : 3;
-        };
+        var visible = pulseData.recent_artifacts.slice().sort(function (a, b) {
+          return compareArtifactTimestamps(b, a) || a.id.localeCompare(b.id);
+        }).slice(0, 6);
         var counts = { fail: 0, you: 0, unv: 0, met: 0 };
-        pulseData.recent_artifacts.forEach(function (artifact) {
+        visible.forEach(function (artifact) {
           var key = toStatusKey(artifact.status);
           if (key === "changes_requested") counts.fail += 1;
           else if (key === "in_review" || artifact.needs_review) counts.you += 1;
           else if (key === "approved" || key === "completed") counts.met += 1;
           else counts.unv += 1;
         });
-        var summary = pulseData.artifact_summary || {};
-        var strip =
-          '<div class="pulse-quality">' +
-            '<div class="pulse-quality-strip" aria-hidden="true">' +
-              (counts.fail ? '<i class="q-fail" style="flex:' + counts.fail + ' 0 0"></i>' : "") +
-              (counts.you ? '<i class="q-you" style="flex:' + counts.you + ' 0 0"></i>' : "") +
-              (counts.unv ? '<i class="q-unv" style="flex:' + counts.unv + ' 0 0"></i>' : "") +
-              (counts.met ? '<i class="q-met" style="flex:' + counts.met + ' 0 0"></i>' : "") +
-            "</div>" +
-            '<div class="pulse-facts">' +
-              (counts.fail ? '<span class="f-blocked"><i></i>' + counts.fail + " changes requested</span>" : "") +
-              (counts.you ? '<span class="f-review"><i></i>' + counts.you + " waiting for your review</span>" : "") +
-              (counts.unv ? '<span class="f-planned"><i></i>' + counts.unv + " draft</span>" : "") +
-              (counts.met ? '<span class="f-done"><i></i>' + counts.met + " accepted</span>" : "") +
-              (typeof summary.total === "number" && summary.total > pulseData.recent_artifacts.length
-                ? "<span>" + (summary.total - pulseData.recent_artifacts.length) + " more in OrgX</span>"
-                : "") +
-            "</div>" +
-          "</div>";
-
-        return (
-          strip +
-          '<div class="pulse-list">' +
-          pulseData.recent_artifacts
-            .slice()
-            .sort(function (a, b) { return rank(a) - rank(b); })
-            .slice(0, 6)
-            .map(function (artifact) {
-              var key = toStatusKey(artifact.status);
-              var age = formatRelative(artifact.created_at);
-              var url = artifact.primary_url || artifact.live_url || dashboardUrl || "";
-              var meta = joinMeta([
-                artifact.artifact_type ? escapeHtml(titleCase(String(artifact.artifact_type).split(".").pop())) : "",
-                artifact.created_by_name ? "<b>" + escapeHtml(artifact.created_by_name) + "</b>" : "",
-                age ? escapeHtml(age) : "",
-              ]);
-              var tone = key === "changes_requested" ? "red" : key === "in_review" || artifact.needs_review ? "amber" : key === "approved" ? "teal" : "";
-              return linkRow(
-                url,
-                icon("artifact"),
-                tone,
-                artifact.title,
-                statusWord(artifact.status, 0, "artifact") + meta,
-                chipFor(artifact.status, 0, "artifact"),
-                "has-chip pulse-artifact-row" + (key === "in_review" || key === "draft" ? " is-review" : "")
-              );
-            })
-            .join("") +
-          "</div>"
-        );
+        var strip = '<div class="pulse-quality"><div class="pulse-quality-strip" aria-hidden="true">' +
+          (counts.fail ? '<i class="q-fail" style="flex:' + counts.fail + ' 0 0"></i>' : "") +
+          (counts.you ? '<i class="q-you" style="flex:' + counts.you + ' 0 0"></i>' : "") +
+          (counts.unv ? '<i class="q-unv" style="flex:' + counts.unv + ' 0 0"></i>' : "") +
+          (counts.met ? '<i class="q-met" style="flex:' + counts.met + ' 0 0"></i>' : "") +
+          '</div><div class="pulse-facts"><span>' + visible.length + ' shown' +
+          (typeof summary.total === "number" ? ' · ' + summary.total + (summary.unit === "available_artifact" ? ' available' : ' tracked in OrgX') : '') + '</span>' +
+          (counts.fail ? '<span class="f-blocked"><i></i>' + counts.fail + ' changes requested</span>' : '') +
+          (counts.you ? '<span class="f-review"><i></i>' + counts.you + ' waiting for your review</span>' : '') +
+          (counts.unv ? '<span class="f-planned"><i></i>' + counts.unv + ' not accepted</span>' : '') +
+          (counts.met ? '<span class="f-done"><i></i>' + counts.met + ' accepted</span>' : '') + '</div></div>';
+        return strip + '<div class="pulse-list">' + visible.map(function (artifact) {
+          var key = toStatusKey(artifact.status), context = artifact.context || {};
+          var breadcrumb = ["workstream", "milestone", "task"].map(function (kind) {
+            return readString(asObject(context[kind]) || {}, ["title", "name"]);
+          }).filter(Boolean).map(escapeHtml).join(' / ');
+          var updatedAge = formatRelative(artifact.updated_at), age = updatedAge || formatRelative(artifact.created_at);
+          var format = artifact.artifact_type ? String(artifact.artifact_type).split('.').map(function (part, index) { return index === 0 && ARTIFACT_FORMAT_DOMAINS[part.toLowerCase()] || titleCase(part.replace(/_/g, ' ')); }).join(' / ') : '';
+          var meta = joinMeta([format ? escapeHtml(format) : '',
+            artifact.version !== null && artifact.version !== undefined ? 'v' + escapeHtml(String(artifact.version)) : '',
+            artifact.created_by_name ? '<b>' + escapeHtml(artifact.created_by_name) + '</b>' : '',
+            age ? escapeHtml((updatedAge ? 'Updated ' : 'Created ') + age) : '']);
+          if (breadcrumb) meta += '<span class="pulse-artifact-breadcrumb">' + breadcrumb + '</span>';
+          var tone = key === "changes_requested" ? "red" : key === "in_review" || artifact.needs_review ? "amber" : key === "approved" ? "teal" : "";
+          var taskUrl = window.OrgXLinks.normalize(artifact.task_url);
+          var taskLink = taskUrl ? '<a class="pulse-artifact-task" href="' + escapeHtml(taskUrl) + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' + escapeHtml(JSON.stringify(taskUrl)).replace(/'/g, "&#39;") + ', event)\'>Open task</a>' : '';
+          return linkRow(artifact.primary_url || artifact.live_url || dashboardUrl || '', icon("artifact"), tone,
+            artifact.title, statusWord(artifact.status, 0, "artifact") + meta,
+            chipFor(artifact.status, 0, "artifact") + taskLink,
+            "has-chip pulse-artifact-row" + (key === "in_review" || key === "draft" ? " is-review" : ""));
+        }).join('') + '</div>';
       };
 
       var renderPanel = function (panel, pulseData, dashboardUrl, attentionItems) {
@@ -1812,7 +1807,7 @@
             alert: false,
           });
         }
-        if (pulse.recent_artifacts.length) {
+        if (pulse.recent_artifacts.length || (pulse.artifact_summary && pulse.artifact_summary.total > 0)) {
           sections.push({
             key: "artifacts",
             value:
@@ -1840,7 +1835,7 @@
         var syncLabel =
           formatRelative(pulse.updated_at) ||
           formatRelative(
-            pulse.recent_artifacts.length ? pulse.recent_artifacts[0].created_at : null
+            pulse.recent_artifacts.length ? pulse.recent_artifacts[0].updated_at || pulse.recent_artifacts[0].created_at : null
           ) ||
           "now";
         var updatedAt = pulse.updated_at ? new Date(pulse.updated_at).getTime() : NaN;
