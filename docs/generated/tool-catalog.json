@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-10T07:52:28.782Z",
-  "sourceHash": "54e40863fb150110",
+  "generatedAt": "2026-10-10T08:32:11.673Z",
+  "sourceHash": "c27b9010ad056b32",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -13776,6 +13776,31 @@
                 ],
                 "additionalProperties": false,
                 "description": "Versioned execution or render evidence for the new artifact. Does not assert an independent evaluation or human acceptance."
+              },
+              "predecessor": {
+                "type": "object",
+                "properties": {
+                  "artifact_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "expected_version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "expected_updated_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "artifact_id",
+                  "expected_version",
+                  "expected_updated_at"
+                ],
+                "additionalProperties": false,
+                "description": "Exact prior proof artifact revision being replaced. OrgX validates its task, actor, type, version and timestamp before linking a new report; prior evidence and reviews remain intact."
               }
             },
             "required": [

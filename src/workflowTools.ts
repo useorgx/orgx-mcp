@@ -188,6 +188,11 @@ const completionProofArtifactSchema = z.object({
   artifact_hash: z.string().trim().min(1).max(240).optional(),
   atomic_unit_type: z.string().trim().min(1).max(120).optional(),
   modality_proof: modalityProofInputSchema.optional().describe('Versioned execution or render evidence for the new artifact. Does not assert an independent evaluation or human acceptance.'),
+  predecessor: z.object({
+    artifact_id: z.string().uuid(),
+    expected_version: z.number().int().positive().max(2_147_483_647),
+    expected_updated_at: z.string().datetime({ offset: true }),
+  }).strict().optional().describe('Exact prior proof artifact revision being replaced. OrgX validates its task, actor, type, version and timestamp before linking a new report; prior evidence and reviews remain intact.'),
 }).strict().refine((value) => Boolean(value.artifact_url || value.external_url), 'A durable artifact_url or external_url is required.');
 
 const estimateFields = {

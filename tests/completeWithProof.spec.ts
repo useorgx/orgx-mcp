@@ -1,9 +1,157 @@
 import { describe, expect, it, vi } from "vitest";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { getWorkflowToolContract } from "../src/workflowTools";
 
 import {
   buildCompletionProofMetadata,
   executeCompleteWithProofFlow,
 } from "../src/completeWithProof";
+
+const completionApi = vi.hoisted(() => ({ callOrgxApiJson: vi.fn() }));
+vi.mock("agents/mcp", () => ({ McpAgent: class {
+  static serve() { return { fetch: vi.fn() }; }
+  static serveSSE() { return { fetch: vi.fn() }; }
+} }));
+vi.mock("../src/oauth", () => ({ OAuthState: class {} }));
+vi.mock("@sentry/cloudflare", () => ({ captureException: vi.fn(), captureMessage: vi.fn(),
+  wrapMcpServerWithSentry: <T>(server: T) => server,
+  withSentry: <T>(_options: unknown, worker: T) => worker }));
+vi.mock("@cloudflare/workers-oauth-provider", () => ({ default: class {} }));
+vi.mock("../src/orgxApi", async (original) => ({
+  ...await original<typeof import("../src/orgxApi")>(),
+  callOrgxApiJson: completionApi.callOrgxApiJson,
+}));
+
+const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
+const TASK_ID = "22222222-2222-4222-8222-222222222222";
+const predecessor = { artifact_id: "33333333-3333-4333-8333-333333333333",
+  expected_version: 2, expected_updated_at: "2026-10-10T07:00:00.123+02:00" };
+const completionArtifact = { artifact_type: "eng.diff_pack", external_url: "https://example.test/proof" };
+
+async function connectCompletionOperations() {
+  const { OrgXMcp } = await import("../src/index");
+  const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
+  worker.sessionContext = { workspaceId: WORKSPACE_ID };
+  worker.env = { ORGX_API_URL: "https://orgx.test", MCP_SERVER_URL: "https://mcp.orgx.test" };
+  worker.resolveUserId = () => "completion-fixture-user";
+  worker.resolveUserEmail = () => "member@example.test";
+  worker.resolveOrgxUserId = () => TASK_ID;
+  worker.delegationClaims = () => ({ grantedScopes: ["initiatives:read", "initiatives:write"] });
+  worker.buildAuthRequiredResponse = () => null;
+  worker.withOrgx = (callback: () => unknown) => callback();
+  worker.withClientContext = (shape: unknown) => shape;
+  const server = new McpServer({ name: "completion-predecessor", version: "1" });
+  worker.server = server;
+  const compatibilityHandler = vi.fn(async () => ({ content: [] }));
+  worker.registerPublicOperations(new Set([
+    "orgx_complete_work_with_proof", "orgx_attach_artifact", "orgx_ship_batch_work",
+  ]), new Map([
+    ["orgx_act", { config: {}, handler: compatibilityHandler }],
+    ["orgx_attach", { config: {}, handler: compatibilityHandler }],
+  ]));
+  const client = new Client({ name: "completion-predecessor", version: "1" });
+  const [reader, writer] = InMemoryTransport.createLinkedPair();
+  await server.connect(writer);
+  await client.connect(reader);
+  return { server, client, compatibilityHandler };
+}
+
+describe("registered completion predecessor boundary", () => {
+  it.each([false, true])("forwards a typed predecessor losslessly with replacement=%s", async (replacement) => {
+    completionApi.callOrgxApiJson.mockReset().mockResolvedValue(Response.json({
+      data: { completed: false, proof_attached: true, state: "awaiting_review" },
+      meta: { apiVersion: "1", workspaceId: WORKSPACE_ID },
+    }));
+    const { server, client } = await connectCompletionOperations();
+    const modality_proof = { kind: "execution", status: "passed", artifact_version: 1,
+      checked_at: "2026-10-10T07:01:00Z", evidence_refs: [{ url: "https://example.test/ci/1", hash: "actual-sha" }] };
+    try {
+      const result = await client.callTool({ name: "orgx_complete_work_with_proof", arguments: {
+        type: "task", id: TASK_ID,
+        artifact: { ...completionArtifact, modality_proof, ...(replacement ? { predecessor } : {}) },
+      } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(completionApi.callOrgxApiJson).toHaveBeenCalledOnce();
+      const [, path, init] = completionApi.callOrgxApiJson.mock.calls[0];
+      expect(path).toBe("/api/v1/workflows/complete-with-proof");
+      expect(init.method).toBe("POST");
+      expect(new Headers(init.headers).get("Idempotency-Key")).toMatch(/^mcp-proof:[a-f0-9]{64}$/);
+      const body = JSON.parse(init.body);
+      expect(body).toMatchObject({ type: "task", id: TASK_ID, workspace_id: WORKSPACE_ID,
+        artifact: { artifact_type: "eng.diff_pack", artifact_url: completionArtifact.external_url, modality_proof } });
+      if (replacement) expect(body.artifact.predecessor).toEqual(predecessor);
+      else expect(body.artifact).not.toHaveProperty("predecessor");
+      expect(result.structuredContent).toMatchObject({ data: { completed: false, proof_attached: true } });
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+
+  it.each([
+    null,
+    { ...predecessor, artifact_id: "not-a-uuid" },
+    { ...predecessor, expected_version: 0 },
+    { ...predecessor, expected_version: -1 },
+    { ...predecessor, expected_version: 1.5 },
+    { ...predecessor, expected_version: 2_147_483_648 },
+    { ...predecessor, expected_version: "2" },
+    { ...predecessor, expected_updated_at: "2026-10-10T07:00:00" },
+    { ...predecessor, expected_updated_at: "not-a-date" },
+    { ...predecessor, force: true },
+    { ...predecessor, status: "approved" },
+    { ...predecessor, quality_score: 5 },
+    { ...predecessor, user_id: TASK_ID },
+    { artifact_id: predecessor.artifact_id, expected_version: 2 },
+  ])("rejects malformed or privileged predecessor fields before API effects: %j", async (invalid) => {
+    completionApi.callOrgxApiJson.mockReset();
+    const { server, client, compatibilityHandler } = await connectCompletionOperations();
+    try {
+      const result = await client.callTool({ name: "orgx_complete_work_with_proof", arguments: {
+        type: "task", id: TASK_ID, artifact: { ...completionArtifact, predecessor: invalid },
+      } });
+      expect(result.isError).toBe(true);
+      expect(completionApi.callOrgxApiJson).not.toHaveBeenCalled();
+      expect(compatibilityHandler).not.toHaveBeenCalled();
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+
+  it("returns a predecessor conflict without retrying or manufacturing completion", async () => {
+    const conflict = { data: { completed: false, proof_attached: false, artifact: null,
+      state: "failed", error: { code: "conflict", message: "Predecessor revision changed" } },
+      meta: { apiVersion: "1", workspaceId: WORKSPACE_ID } };
+    completionApi.callOrgxApiJson.mockReset().mockResolvedValue(Response.json(conflict, { status: 409 }));
+    const { server, client } = await connectCompletionOperations();
+    try {
+      const result = await client.callTool({ name: "orgx_complete_work_with_proof", arguments: {
+        type: "task", id: TASK_ID, artifact: { ...completionArtifact, predecessor },
+      } });
+      expect(result.structuredContent).toEqual(conflict);
+      expect(completionApi.callOrgxApiJson).toHaveBeenCalledOnce();
+      expect(result.structuredContent).toMatchObject({ data: { completed: false, proof_attached: false } });
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+
+  it("keeps replacement out of generic attach and milestone batch contracts", async () => {
+    const attach = getWorkflowToolContract("orgx_attach_artifact")!;
+    expect(z.object(attach.inputSchema).strict().safeParse({ type: "task", id: TASK_ID,
+      name: "Ordinary attachment", artifact_type: "eng.diff_pack",
+      location: { external_url: completionArtifact.external_url }, predecessor }).success).toBe(false);
+    completionApi.callOrgxApiJson.mockReset();
+    const { server, client, compatibilityHandler } = await connectCompletionOperations();
+    try {
+      for (const call of [
+        { name: "orgx_attach_artifact", arguments: { type: "task", id: TASK_ID,
+          name: "Ordinary attachment", artifact_type: "eng.diff_pack",
+          location: { external_url: completionArtifact.external_url, predecessor } } },
+        { name: "orgx_ship_batch_work", arguments: { type: "milestone", id: TASK_ID,
+          artifact: { ...completionArtifact, predecessor } } },
+      ]) expect((await client.callTool(call)).isError).toBe(true);
+      expect(completionApi.callOrgxApiJson).not.toHaveBeenCalled();
+      expect(compatibilityHandler).not.toHaveBeenCalled();
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+});
 
 describe("buildCompletionProofMetadata", () => {
   it("claims nothing the caller did not assert", () => {

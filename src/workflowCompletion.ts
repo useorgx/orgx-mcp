@@ -34,6 +34,7 @@ export async function taskProofCompletionRequest(args: Record<string, unknown>) 
       ...(artifact.artifact_hash !== undefined ? { artifact_hash: artifact.artifact_hash } : {}),
       ...(artifact.atomic_unit_type !== undefined ? { atomic_unit_type: artifact.atomic_unit_type } : {}),
       ...(artifact.modality_proof !== undefined ? { modality_proof: artifact.modality_proof } : {}),
+      ...(artifact.predecessor !== undefined ? { predecessor: artifact.predecessor } : {}),
       ...(args.verification !== undefined ? { verification: args.verification } : {}),
       ...(args.quality_score !== undefined ? { quality_score: args.quality_score } : {}),
     } } : {}),

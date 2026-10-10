@@ -76,4 +76,34 @@ describe('operation registration boundary', () => {
     expect((await taskProofCompletionRequest({ ...args, verification: [verification[0]] })).idempotencyKey)
       .not.toBe(request.idempotencyKey);
   });
+
+  it('forwards the exact predecessor revision and binds each compare-and-swap field into retries', async () => {
+    const predecessor = { artifact_id: '11111111-1111-4111-8111-111111111111',
+      expected_version: 2, expected_updated_at: '2026-10-10T07:00:00.123+02:00' };
+    const modality_proof = { kind: 'execution', status: 'passed', artifact_version: 1,
+      checked_at: '2026-10-10T07:01:00Z', evidence_refs: [{ url: 'https://example.test/ci/1', hash: 'actual-sha' }] };
+    const args = { type: 'task', id: 'task', artifact: { artifact_type: 'eng.diff_pack',
+      external_url: 'https://example.test/proof', predecessor, modality_proof } };
+    const request = await taskProofCompletionRequest(args);
+    expect(request.body.artifact).toMatchObject({ predecessor, modality_proof });
+    expect(request.body.artifact?.predecessor).toEqual(predecessor);
+    expect(await taskProofCompletionRequest(args)).toEqual(request);
+    const reordered = { expected_updated_at: predecessor.expected_updated_at,
+      expected_version: predecessor.expected_version, artifact_id: predecessor.artifact_id };
+    expect((await taskProofCompletionRequest({ ...args, artifact: { ...args.artifact, predecessor: reordered } })).idempotencyKey)
+      .toBe(request.idempotencyKey);
+    for (const change of [
+      { artifact_id: '22222222-2222-4222-8222-222222222222' },
+      { expected_version: 3 },
+      { expected_updated_at: '2026-10-10T07:00:00.124+02:00' },
+    ]) {
+      const changed = await taskProofCompletionRequest({ ...args,
+        artifact: { ...args.artifact, predecessor: { ...predecessor, ...change } } });
+      expect(changed.idempotencyKey).not.toBe(request.idempotencyKey);
+    }
+    const { predecessor: _predecessor, ...ordinaryArtifact } = args.artifact;
+    const ordinary = await taskProofCompletionRequest({ ...args, artifact: ordinaryArtifact });
+    expect(ordinary.body.artifact).not.toHaveProperty('predecessor');
+    expect(ordinary.idempotencyKey).not.toBe(request.idempotencyKey);
+  });
 });
