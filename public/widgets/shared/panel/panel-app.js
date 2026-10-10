@@ -109,6 +109,22 @@
       workspaces: null,
       wsError: null,
     };
+    // Who takes it and how are the person's own settings: they survive the host
+    // re-creating the widget (ChatGPT does after every send).
+    var START_KEY = 'orgx.panel.start.v1';
+    (function restoreStart() {
+      try {
+        var raw = window.localStorage && window.localStorage.getItem(START_KEY);
+        var saved = raw ? JSON.parse(raw) : null;
+        if (saved && typeof saved === 'object') {
+          if (typeof saved.agent === 'string') ui.startAgent = saved.agent;
+          if (typeof saved.verb === 'string') ui.startVerb = saved.verb;
+        }
+      } catch (_) { /* private window or blocked storage */ }
+    })();
+    function rememberStart() {
+      try { if (window.localStorage) window.localStorage.setItem(START_KEY, JSON.stringify({ agent: ui.startAgent, verb: ui.startVerb })); } catch (_) { /* memory only */ }
+    }
     var live = null;
     var tour = null;
     // The local preview's fixtures (panel-gallery.js), once loaded.
@@ -693,7 +709,8 @@
         ? ui.work.items.some(function b(i) { return i.state === 'blocked'; })
         : Boolean(ui.liveWork && ui.liveWork.blocked);
       var workCount = workRead ? ui.work.total : ui.liveWork ? ui.liveWork.total : null;
-      var counts = { needs: s.attention.pending, work: workCount, done: ui.session.length };
+      // Done counts what was settled here; a zero would read as nothing done, so it waits until there is one.
+      var counts = { needs: s.attention.pending, work: workCount, done: ui.session.length || undefined };
       ui.countChanged = {};
       Object.keys(counts).forEach(function diff(k) {
         if (ui.lastCounts && ui.lastCounts[k] !== undefined && ui.lastCounts[k] !== null && counts[k] !== ui.lastCounts[k]) ui.countChanged[k] = true;
@@ -702,7 +719,7 @@
       return Views.tabsHtml({
         changed: ui.countChanged,
         active: ui.tab,
-        counts: { needs: s.attention.pending, work: workCount, done: ui.session.length },
+        counts: counts,
         tones: { needs: s.attention.pending ? (s.attention.blocking ? 'red' : 'amber') : '', work: blocked ? 'red' : '', done: ui.session.length ? 'teal' : '' },
       });
     }
@@ -1117,7 +1134,7 @@
       if (grouped) {
         // Inside a group the title is the group's; the line is what differs.
         return '<li class="row grow' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + ' ' + (item.detail || '') + '. ' + meta) + '">' +
-          distinguisherHtml(item) + '<span class="row-meta"><span>' + esc(meta) + '</span></span></button>' + acts +
+          (opts.sub || distinguisherHtml(item)) + '<span class="row-meta"><span>' + esc(meta) + '</span></span></button>' + acts +
           (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
       }
       return '<li class="row' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
@@ -1145,12 +1162,15 @@
       });
       return order.map(function render(key) {
         var members = groups[key];
-        var distinct = members.every(function has(item) { return Boolean(distinguisherHtml(item)); });
+        var lines = members.map(distinguisherOf);
+        var distinct = lines.every(Boolean);
         if (members.length < 2 || !distinct) return members.map(function one(item) { return rowHtml(item); }).join('');
+        // Commands that share a long prefix ("cd ~/Code/worktrees/<a> && …") show from where they differ.
+        var cut = lines.every(function cmd(l) { return l.cmd; }) ? sharedCut(lines.map(function t(l) { return l.text; })) : 0;
         var gid = 'grp-' + members[0].id;
         return '<li class="qgroup" aria-labelledby="' + gid + '"><p class="qgroup-h" id="' + gid + '"><span class="row-av" aria-hidden="true">' + askerAvatar(members[0].asker_kind, members[0].asker, 'row') + '</span><span class="qgroup-t">' + esc(key) + '</span>' +
           '<span class="qgroup-n">' + members.length + '</span></p><ul class="qgroup-rows" role="list">' +
-          members.map(function member(item) { return rowHtml(item, { grouped: true }); }).join('') + '</ul></li>';
+          members.map(function member(item, i) { return rowHtml(item, { grouped: true, sub: distinguisherHtml(item, lines[i], cut) }); }).join('') + '</ul></li>';
       }).join('');
     }
 
@@ -1159,14 +1179,39 @@
      * command or the PR. Show that, so five "merge stopped" rows read as five
      * different merges.
      */
-    function distinguisherHtml(item) {
+    function distinguisherOf(item) {
       var head = splitHeadline(item.detail || '');
       var source = head.body || (head.headline !== splitHeadline(item.title).headline ? head.headline : '');
-      if (!source) return '';
+      if (!source) return null;
       var body = structureBody(source);
       var text = body.commands[0] || body.lede[0] || (body.facts[0] ? body.facts[0].v : '') || source;
-      if (!text) return '';
-      return '<span class="row-sub' + (body.commands[0] ? ' is-cmd' : '') + '">' + esc(text.length > 90 ? text.slice(0, 89) + '…' : text) + '</span>';
+      return text ? { text: text, cmd: Boolean(body.commands[0]) } : null;
+    }
+    /**
+     * Where a set of commands stops agreeing. The cut lands on the last word
+     * or path step of the shared start, and only once that start is long
+     * enough to be noise ("gh pr merge 3236" / "3237" keeps every word).
+     */
+    function sharedCut(texts) {
+      var first = texts[0] || '';
+      var n = first.length;
+      texts.forEach(function shrink(t) {
+        var i = 0;
+        while (i < n && i < t.length && t.charAt(i) === first.charAt(i)) i += 1;
+        n = i;
+      });
+      var head = first.slice(0, n);
+      var atWord = head.lastIndexOf(' ');
+      var atPath = head.lastIndexOf('/');
+      if (atWord >= 12) return atWord + 1;
+      if (atPath >= 12) return atPath;
+      return 0;
+    }
+    function distinguisherHtml(item, line, cut) {
+      var l = line || distinguisherOf(item);
+      if (!l) return '';
+      var text = cut ? '…' + (l.text.charAt(cut) === '/' ? '' : ' ') + l.text.slice(cut) : l.text;
+      return '<span class="row-sub' + (l.cmd ? ' is-cmd' : '') + '"' + (cut ? ' title="' + esc(l.text) + '"' : '') + '>' + esc(text.length > 90 ? text.slice(0, 89) + '…' : text) + '</span>';
     }
 
     function proofHtml(s, calm) {
@@ -1499,6 +1544,33 @@
       }
       floatHost.style.setProperty('--pn-float-bottom', Math.max(safe.bottom || 0, 0) + 'px');
     }
+    /**
+     * On a phone the who-takes-it menu opens as a sheet above the host's own
+     * composer instead of a dropdown that runs under it. It lives on <body>
+     * for the same reason the floating footer does; the menu element itself
+     * moves there, so its buttons keep their actions and the shared handler.
+     */
+    var sheetHost = null;
+    function sheetMenu() {
+      var menu = Host && Host.isMobile() ? root.querySelector('.st-menu') : null;
+      if (!menu) {
+        if (sheetHost) { sheetHost.remove(); sheetHost = null; }
+        return;
+      }
+      if (!sheetHost) {
+        sheetHost = document.createElement('div');
+        sheetHost.id = 'pn-sheet';
+        sheetHost.className = 'pn-sheet';
+        sheetHost.innerHTML = '<button type="button" class="pn-sheet-scrim" data-action="start-who" aria-label="Close"></button><div class="pn-sheet-card" role="dialog" aria-label="Who takes it"></div>';
+        sheetHost.addEventListener('click', onClick);
+        document.body.appendChild(sheetHost);
+      }
+      var card = sheetHost.querySelector('.pn-sheet-card');
+      card.innerHTML = '';
+      card.appendChild(menu);
+      var safe = Host.safeArea();
+      sheetHost.style.setProperty('--pn-float-bottom', Math.max(safe.bottom || 0, 0) + 'px');
+    }
     var floatQueued = false;
     function queueFloat() {
       if (floatQueued) return;
@@ -1560,6 +1632,7 @@
       }
       window.requestAnimationFrame(fitQuestion);
       window.requestAnimationFrame(floatFooter);
+      sheetMenu();
       if (R && R.reportSize) R.reportSize();
       if (tour) tour.refresh();
       maybeStartTour();
@@ -2319,10 +2392,10 @@
       R.openWidgetLink(url, event);
     }
 
-    root.addEventListener('click', function onClick(event) {
+    function onClick(event) {
       if (ui.startWhoOpen && !event.target.closest('.st-menu, [data-action="start-who"]')) transition('menu', function dismiss() { ui.startWhoOpen = false; render(); });
       var el = event.target.closest('[data-action]');
-      if (!el || !root.contains(el) || el.disabled) return;
+      if (!el || !(root.contains(el) || (sheetHost && sheetHost.contains(el))) || el.disabled) return;
       var action = el.getAttribute('data-action');
       var id = el.getAttribute('data-id');
       // During the tour only the practice press is live; picks and send-back wait.
@@ -2460,15 +2533,17 @@
           // Picking an agent means handing it to them; OrgX picks keeps the chosen verb.
           if (id) ui.startVerb = 'delegate'; else if (ui.startVerb === 'delegate') ui.startVerb = '';
           ui.startStatus = null;
+          rememberStart();
           transition('menu', function picked() { ui.startWhoOpen = false; render(); focusFirst('#st-text'); });
           break;
-        case 'start-verb': ui.startVerb = id || ''; ui.startStatus = null; render(); focusFirst('[data-action="start-verb"][aria-checked="true"]'); break;
+        case 'start-verb': ui.startVerb = id || ''; ui.startStatus = null; rememberStart(); render(); focusFirst('[data-action="start-verb"][aria-checked="true"]'); break;
         case 'start-fill':
           ui.startText = el.getAttribute('data-text') || '';
           ui.startAgent = id || ui.startAgent;
           if (ui.startAgent) ui.startVerb = 'delegate';
           else if (/^Plan the next steps/.test(ui.startText)) ui.startVerb = 'plan';
           ui.startStatus = null;
+          rememberStart();
           // From another view (the calm rail): open Start with the words in the box.
           if (ui.tab !== 'start') { setTab('start', true, function placeCaret() { var t = root.querySelector('#st-text'); if (t) { t.focus(); try { t.setSelectionRange(t.value.length, t.value.length); } catch (_) { /* not a text input */ } } }); break; }
           render();
@@ -2490,7 +2565,8 @@
         case 'why': transition('expand', function why() { ui.whyOpen = ui.whyOpen === id ? null : id; render(); focusFirst('[data-action="why"]'); }); break;
         default: break;
       }
-    });
+    }
+    root.addEventListener('click', onClick);
 
     root.addEventListener('input', function onInput(event) {
       var area = event.target;
@@ -2597,7 +2673,7 @@
       if (back) back.focus();
     }
     function focusFirst(selector) {
-      var el = root.querySelector(selector);
+      var el = root.querySelector(selector) || (sheetHost ? sheetHost.querySelector(selector) : null);
       if (el) el.focus();
     }
 

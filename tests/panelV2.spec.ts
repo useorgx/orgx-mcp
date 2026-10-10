@@ -22,7 +22,7 @@ describe('panel v2 tabs', () => {
   it('shows Needs you, In progress and Done with honest counts', async () => {
     const m = await open();
     const tabs = Array.from(doc(m).querySelectorAll('.pn-tab')).map((t) => t.textContent);
-    expect(tabs).toEqual(['Needs you2', 'In progress', 'Done0', 'Start']);
+    expect(tabs).toEqual(['Needs you2', 'In progress', 'Done', 'Start']); // Done counts only once something was settled here
     expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('needs');
   });
 

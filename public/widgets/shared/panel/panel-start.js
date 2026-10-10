@@ -52,9 +52,11 @@
     var agent = agentByKey(opts && opts.agent);
     if (verb === 'initiative') return 'Start a new initiative in OrgX: ' + text + '.';
     if (verb === 'plan') return 'Plan this in OrgX before anything runs: ' + text + '.';
+    // "and start it now": without it the assistant tends to research first
+    // and never reaches the handoff.
     return agent
-      ? 'In OrgX, hand this to ' + agent.name + ' (' + agent.role + '): ' + text + '.'
-      : 'In OrgX, hand this to the right agent: ' + text + '.';
+      ? 'In OrgX, hand this to ' + agent.name + ' (' + agent.role + ') and start it now: ' + text + '.'
+      : 'In OrgX, hand this to the best-fit agent and start it now: ' + text + '.';
   }
 
   /** Ideas per domain: concrete jobs, filled into the composer to edit. */

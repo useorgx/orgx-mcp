@@ -315,8 +315,12 @@
     if (!R) return { body: '', detail: '' };
     if (!data && opts.receiptsPhase !== 'failed') return { body: skeletonRows(4), detail: '' };
     if (!data || data.status !== 'ok') {
+      // The read failed, not the work: the ledger in OrgX is the other way to it.
+      var l0 = links();
+      var ledger0 = l0 && l0.workLedger ? l0.workLedger({ center: opts.workspaceId, range: opts.range === '30d' ? '30d' : '7d' }) : 'https://useorgx.com/work-ledger';
       return { body: '<div class="notice" data-tone="amber" role="status"><p>' + esc((data && data.reason) || 'Work receipts could not be read right now.') + '</p>' +
-        '<button type="button" class="text-btn" data-action="done-range" data-id="' + esc(opts.range) + '">Try again</button></div>', detail: '' };
+        '<span class="notice-acts"><button type="button" class="text-btn" data-action="done-range" data-id="' + esc(opts.range) + '">Try again</button>' +
+        '<button type="button" class="text-btn" data-action="open" data-url="' + esc(ledger0) + '">Open the work ledger ↗</button></span></div>', detail: '' };
     }
     if (!data.items.length) {
       return { body: '<p class="pn-done-sum">No receipts in this range. Work agents finish lands here with what done meant and whether it was met.</p>', detail: '' };
@@ -369,7 +373,9 @@
       body = skeletonRows(4);
     } else if (!opts.history || opts.history.status !== 'ok') {
       entries = null;
-      body = '<div class="notice" data-tone="amber" role="status"><p>' + esc((opts.history && opts.history.reason) || 'Decision history could not be read right now.') + '</p><button type="button" class="text-btn" data-action="done-range" data-id="' + range + '">Try again</button></div>';
+      body = '<div class="notice" data-tone="amber" role="status"><p>' + esc((opts.history && opts.history.reason) || 'Decision history could not be read right now.') + '</p>' +
+        '<span class="notice-acts"><button type="button" class="text-btn" data-action="done-range" data-id="' + range + '">Try again</button>' +
+        '<button type="button" class="text-btn" data-action="open" data-url="' + esc(historyUrl) + '">Open decision history ↗</button></span></div>';
     } else {
       entries = opts.history.items.map(historyEntry);
     }
@@ -382,7 +388,7 @@
       summary = entries.length
         ? '<p class="pn-done-sum"><b>' + count(entries.length, 'decision settled', 'decisions settled') + '</b> ' + (range === 'session' ? 'since you opened the panel' : label === 'today' ? 'today' : 'in the last ' + label) +
           (approved ? ' <span aria-hidden="true">·</span> ' + approved + ' approved' : '') + (other ? ' <span aria-hidden="true">·</span> ' + other + (range === 'session' ? ' sent back' : ' declined or closed') : '') + '</p>'
-        : '<p class="pn-done-sum">' + (range === 'session' ? 'Decisions you settle here collect as receipts. Pick a range to see what was settled in OrgX.' : 'Nothing was settled ' + (label === 'today' ? 'today' : 'in the last ' + label) + '.') + '</p>';
+        : '<p class="pn-done-sum">' + (range === 'session' ? 'Nothing settled here yet. What you decide in Needs you lands here with its receipt; pick a range for what was settled in OrgX.' : 'Nothing was settled ' + (label === 'today' ? 'today' : 'in the last ' + label) + '.') + '</p>';
       var page = Math.max(1, opts.page || 1);
       var shown = entries.slice(0, page * DONE_PAGE);
       body = shown.length ? '<ul class="dn-rows" role="list">' + shown.map(function r(e) {
