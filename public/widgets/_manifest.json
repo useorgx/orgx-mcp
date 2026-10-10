@@ -228,8 +228,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 95151,
-      "hash": "601ea990490b",
+      "bytes": 98607,
+      "hash": "a51a072cfae7",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
