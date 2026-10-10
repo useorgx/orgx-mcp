@@ -43,4 +43,37 @@ describe('operation registration boundary', () => {
     expect(first.body).not.toHaveProperty('force');
     expect((await taskProofCompletionRequest({ ...args, note: 'Changed' })).idempotencyKey).not.toBe(first.idempotencyKey);
   });
+
+  it('preserves execution evidence through the canonical request and binds retry identity to its exact contents', async () => {
+    const modality_proof = { kind: 'execution', status: 'passed', artifact_version: 1,
+      checked_at: '2026-10-10T01:30:00Z', evidence_refs: [{ url: 'https://github.com/org/repo/actions/runs/1', hash: 'sha256:actual' }] };
+    const args = { type: 'task', id: 'task', artifact: { artifact_type: 'eng.pull_request', external_url: 'https://github.com/org/repo/pull/1', artifact_hash: 'actual-head', atomic_unit_type: 'pull_request', modality_proof } };
+    const first = await taskProofCompletionRequest(args);
+    expect(first.body.artifact).toMatchObject({ artifact_hash: 'actual-head', atomic_unit_type: 'pull_request', modality_proof });
+    expect(await taskProofCompletionRequest(args)).toEqual(first);
+    const changed = await taskProofCompletionRequest({ ...args, artifact: { ...args.artifact,
+      modality_proof: { ...modality_proof, evidence_refs: [{ url: 'https://github.com/org/repo/actions/runs/2', hash: 'sha256:different' }] },
+    } });
+    expect(changed.idempotencyKey).not.toBe(first.idempotencyKey);
+  });
+
+  it('preserves the documented versioned proof string for cached tool clients', async () => {
+    const verification = [
+      'The source-pinned release CI passed.',
+      `orgx:modality-proof:v1:${JSON.stringify({
+        kind: 'execution', status: 'passed', artifact_version: 1,
+        checked_at: '2026-10-10T01:30:00Z',
+        evidence_refs: [{ url: 'https://github.com/org/repo/actions/runs/1', hash: 'actual-head' }],
+      })}`,
+    ];
+    const args = {
+      type: 'task', id: 'task', verification,
+      artifact: { artifact_type: 'eng.pull_request', external_url: 'https://github.com/org/repo/pull/1' },
+    };
+    const request = await taskProofCompletionRequest(args);
+    expect(request.body.artifact?.verification).toEqual(verification);
+    expect(await taskProofCompletionRequest(args)).toEqual(request);
+    expect((await taskProofCompletionRequest({ ...args, verification: [verification[0]] })).idempotencyKey)
+      .not.toBe(request.idempotencyKey);
+  });
 });
