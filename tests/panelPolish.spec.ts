@@ -70,7 +70,7 @@ describe('ways in when nothing needs you', () => {
     await m.flush();
     expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('start');
     expect((doc(m).querySelector('#st-text') as HTMLTextAreaElement).value).toBe('Draft the launch post for the new pricing');
-    expect(doc(m).querySelector('.st-preview')!.textContent).toContain('In OrgX, hand this to Mark (Marketing): Draft the launch post for the new pricing.');
+    expect(doc(m).querySelector('.st-preview')!.textContent).toContain('In OrgX, hand this to Mark (Marketing) and start it now: Draft the launch post for the new pricing.');
   });
 });
 
@@ -108,5 +108,76 @@ describe('feel', () => {
     click(m, '.pn-refresh');
     await m.flush();
     expect(doc(m).querySelector('.pn-refresh')!.getAttribute('aria-busy')).toBe('true');
+  });
+});
+
+describe('on a phone', () => {
+  const phone = { platform: 'mobile', deviceCapabilities: { touch: true, hover: false }, safeAreaInsets: { top: 0, right: 0, bottom: 92, left: 0 } };
+
+  it('opens who-takes-it as a sheet above the host composer, and a pick closes it and sticks', async () => {
+    const m = await mountPanel(phone, {});
+    mounted.push(m);
+    m.app().ontoolresult({ structuredContent: snapshot() });
+    await m.flush();
+    click(m, '[data-tab="start"]');
+    await m.flush();
+    click(m, '[data-action="start-who"]');
+    await m.flush();
+    const sheet = doc(m).getElementById('pn-sheet')!;
+    expect(sheet).not.toBeNull();
+    expect(sheet.parentElement).toBe(doc(m).body);
+    expect(sheet.querySelector('.st-menu')).not.toBeNull();
+    expect(doc(m).querySelector('#panel .st-menu')).toBeNull();
+    expect(sheet.style.getPropertyValue('--pn-float-bottom')).toBe('92px');
+    (sheet.querySelector('.st-opt[data-id="mark"]') as HTMLElement).click();
+    await m.flush();
+    expect(doc(m).getElementById('pn-sheet')).toBeNull();
+    expect(doc(m).querySelector('.st-who-n')!.textContent).toBe('Mark');
+    expect(JSON.parse(m.dom.window.localStorage.getItem('orgx.panel.start.v1')!)).toEqual({ agent: 'mark', verb: 'delegate' });
+  });
+
+  it('the scrim closes the sheet without choosing', async () => {
+    const m = await mountPanel(phone, {});
+    mounted.push(m);
+    m.app().ontoolresult({ structuredContent: snapshot() });
+    await m.flush();
+    click(m, '[data-tab="start"]');
+    await m.flush();
+    click(m, '[data-action="start-who"]');
+    await m.flush();
+    (doc(m).querySelector('#pn-sheet .pn-sheet-scrim') as HTMLElement).click();
+    await m.flush();
+    expect(doc(m).getElementById('pn-sheet')).toBeNull();
+    expect(doc(m).querySelector('.st-who-n')!.textContent).toBe('OrgX picks');
+  });
+
+  it('keeps who and how when the host re-creates the widget', async () => {
+    const m = await mountPanel(phone, {}, (win) => { win.localStorage.setItem('orgx.panel.start.v1', JSON.stringify({ agent: 'dana', verb: 'delegate' })); });
+    mounted.push(m);
+    m.app().ontoolresult({ structuredContent: snapshot() });
+    await m.flush();
+    click(m, '[data-tab="start"]');
+    await m.flush();
+    expect(doc(m).querySelector('.st-who-n')!.textContent).toBe('Dana');
+    expect(doc(m).querySelector('.st-verb[aria-checked="true"]')!.textContent).toBe('Hand to Dana');
+  });
+});
+
+describe('Done when a read fails', () => {
+  it('offers the work ledger in OrgX beside Try again', async () => {
+    const m = await mountPanel({}, {});
+    mounted.push(m);
+    m.app().ontoolresult({ structuredContent: snapshot() });
+    await m.flush();
+    m.calls.callServerTool.mockRejectedValue(new Error('upstream 502'));
+    click(m, '[data-tab="done"]');
+    await m.flush(); await m.flush();
+    const notice = doc(m).querySelector('.pn-done .notice')!;
+    expect(notice).not.toBeNull();
+    const acts = Array.from(notice.querySelectorAll('.text-btn')).map((b) => [b.textContent, b.getAttribute('data-action')]);
+    expect(acts[0]).toEqual(['Try again', 'done-range']);
+    expect(acts[1]![0]).toBe('Open the work ledger ↗');
+    expect(acts[1]![1]).toBe('open');
+    expect((notice.querySelector('[data-action="open"]') as HTMLElement).getAttribute('data-url')).toContain('useorgx.com');
   });
 });

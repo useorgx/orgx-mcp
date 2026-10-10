@@ -1344,3 +1344,38 @@ html[data-touch="true"] .cm-prompt:hover, html[data-touch="true"] .st-idea:hover
 }
 .pn-float ox-footer { margin: 0; }
 @media (prefers-reduced-motion: no-preference) { .pn-float { animation: vt-rise 220ms var(--pn-ease); } }
+
+/* The who-takes-it menu on a phone: a sheet that rises above the host's
+   composer (the floor the footer uses), with the page dimmed behind it.
+   panel-app.js moves the menu itself in here, so it keeps its buttons. */
+.pn-sheet { position: fixed; inset: 0; z-index: 2147482001; color: var(--ox-text); font-family: var(--ox-font); }
+.pn-sheet-scrim { position: absolute; inset: 0; margin: 0; padding: 0; border: 0; background: rgba(2, 4, 10, 0.55); cursor: default; }
+.pn-sheet-card { position: absolute; left: 0; right: 0; bottom: max(var(--pn-float-bottom, 0px), env(safe-area-inset-bottom, 0px)); padding: 0 8px 8px; }
+.pn-sheet-card .st-menu { position: static; width: auto; max-height: min(62vh, 460px); padding: 8px; border-radius: 18px; box-shadow: 0 -18px 48px -16px rgba(0, 0, 0, 0.7), inset 0 0 0 1px var(--ox-border-strong, var(--ox-border)); }
+.pn-sheet-card .st-menu::before { content: ""; display: block; width: 36px; height: 4px; margin: 0 auto 8px; border-radius: 2px; background: var(--ox-border-strong, rgba(127, 127, 127, 0.4)); }
+.pn-sheet-card .st-opt { min-height: 50px; }
+@media (prefers-reduced-motion: no-preference) {
+  .pn-sheet-scrim { animation: pn-sheet-dim 180ms ease both; }
+  .pn-sheet-card .st-menu { animation: vt-rise 240ms var(--pn-ease) both; }
+}
+@keyframes pn-sheet-dim { from { opacity: 0; } }
+
+/* Done's controls: the lens (Work | Decisions) sits by the heading and the
+   range takes the next row, evenly divided, so nothing moves when the lens
+   changes. Wide views keep both on the heading's row. */
+@container pn (max-width: 639px) {
+  .pn-done .dn-ctl { display: contents; }
+  .pn-done .dn-lens { margin-left: auto; }
+  .pn-done .dn-ctl .seg:not(.dn-lens) { display: flex; flex: 1 1 100%; }
+  .pn-done .dn-ctl .seg:not(.dn-lens) .seg-b { flex: 1 1 auto; justify-content: center; padding: 0 6px; white-space: nowrap; }
+  .pn-done .pn-done-sum { margin-top: 10px; }
+}
+/* A read that failed offers both ways on, on one line or two. */
+.notice-acts { display: flex; flex-wrap: wrap; gap: 0 14px; }
+
+/* Full screen: the page is the panel's, to the bottom. Short views (an error,
+   an empty range) used to end where their content did, with the host showing
+   through beneath. */
+html[data-display-mode="fullscreen"] body { min-height: 100dvh; }
+html[data-display-mode="fullscreen"] .panel { min-height: 100dvh; }
+

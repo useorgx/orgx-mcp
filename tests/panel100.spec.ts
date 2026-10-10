@@ -11,8 +11,8 @@ import { WIDGET_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas/widgets';
 import { mountPanel, snapshot } from './fixtures/panel';
 
 const WS = '7af01a51-49b1-47d8-98b9-91a198debca8';
-const FLOOR = (pr: number, id: string) => {
-  const question = `The OrgX floor stopped a merge action in a agent-cli session and is waiting for you.\n\nAgent's reason: PR #${pr} (https://github.com/hopeatina/orgx/pull/${pr}) adds tiles. All checks pass.\n\nCommand:\ngh pr merge ${pr}\n\nApprove to let exactly this action run once in the next 24 hours. Decline and the agent is told to continue without it.`;
+const FLOOR = (pr: number, id: string, command = `gh pr merge ${pr}`) => {
+  const question = `The OrgX floor stopped a merge action in a agent-cli session and is waiting for you.\n\nAgent's reason: PR #${pr} (https://github.com/hopeatina/orgx/pull/${pr}) adds tiles. All checks pass.\n\nCommand:\n${command}\n\nApprove to let exactly this action run once in the next 24 hours. Decline and the agent is told to continue without it.`;
   return {
     id, type: 'decision_queue', agent_id: null, agent_name: 'OrgX System', summary: question, urgency: 'medium',
     created_at: '2026-09-29T17:47:09.949Z', context: { initiative_id: '14985d6c-214c-4f9e-96ac-4f6b254e1770' },
@@ -146,6 +146,20 @@ describe('Needs you with production data', () => {
     expect(group).not.toBeNull();
     expect(Array.from(group.querySelectorAll('.row-sub.is-cmd')).map((n) => n.textContent)).toEqual(['gh pr merge 3236', 'gh pr merge 3237', 'gh pr merge 3238']);
     expect(group.querySelector('.ax-floor')).not.toBeNull();
+  });
+
+  it('shows where long commands differ instead of the start they share', async () => {
+    const worktrees = ['mcp-sc', 'once', 'floor-ui'].map((dir, i) => FLOOR(4000 + i, IDS[i]!, `cd ~/Code/orgx-worktrees/${dir} && git merge --ff-only origin/main`));
+    const snap = buildPanelSnapshot({ workspace: { id: WS, name: 'OrgX Business' }, decisions: [APPROVAL, ...worktrees], artifacts: [] });
+    const m = await openWith({ ...snap, generated_at: '2026-10-08T08:00:00.000Z' } as unknown as Record<string, unknown>);
+    const subs = Array.from(doc(m).querySelectorAll('.qgroup .row-sub.is-cmd'));
+    expect(subs.map((n) => n.textContent)).toEqual([
+      '…/mcp-sc && git merge --ff-only origin/main',
+      '…/once && git merge --ff-only origin/main',
+      '…/floor-ui && git merge --ff-only origin/main',
+    ]);
+    // The whole command is still there for anyone who wants it.
+    expect(subs[0]!.getAttribute('title')).toBe('cd ~/Code/orgx-worktrees/mcp-sc && git merge --ff-only origin/main');
   });
 
   it('says an unnamed agent asks instead of showing an "A"', async () => {
@@ -304,7 +318,7 @@ describe('Start: setting work going from the panel', () => {
     const ta = doc(m).querySelector('#st-text') as HTMLTextAreaElement;
     ta.value = 'Fix the flaky checkout test';
     ta.dispatchEvent(new m.dom.window.Event('input', { bubbles: true }));
-    const expected = 'In OrgX, hand this to Eli (Engineering): Fix the flaky checkout test.';
+    const expected = 'In OrgX, hand this to Eli (Engineering) and start it now: Fix the flaky checkout test.';
     expect(doc(m).querySelector('.st-preview')!.textContent).toBe(`Sends “${expected}”`);
     // Typing does not rebuild the composer (the caret stays where it is).
     expect(doc(m).querySelector('#st-text')).toBe(ta);
