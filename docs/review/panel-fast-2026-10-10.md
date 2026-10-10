@@ -60,6 +60,12 @@ alone took the switches from ~600 ms to 115–230 ms, so that is what shipped:
   tab lands on content instead of a skeleton. One read per range at a time:
   a tap that lands while the warm-up is in flight waits for it instead of
   reading again.
+- **A lesser read leaves the decide-here tokens alone.** The warm-up
+  surfaced this: a read whose result carries no approval metadata used to
+  wipe the tokens the first snapshot brought, and the decision's footer fell
+  back to "Decide in OrgX". The host's first result still decides whether
+  this host can decide here at all; later reads replace the tokens only when
+  they bring their own.
 - **Shared scripts serve from cache.** ChatGPT loads the panel's two dozen
   shared scripts and styles from this origin one by one, and every one was
   `max-age=0, must-revalidate`: two dozen round trips before first paint on

@@ -217,6 +217,18 @@ describe('fast by default', () => {
     expect(m.calls.callServerTool.mock.calls.length).toBe(before);
   });
 
+  it('keeps the decide-here tokens when a background read carries no approval metadata', async () => {
+    const m = await mountPanel({}, {}, (win) => {
+      (win as unknown as { requestIdleCallback: (fn: () => void) => number }).requestIdleCallback = (fn) => { fn(); return 1; };
+    });
+    mounted.push(m);
+    // The warm-up's answers echo a snapshot but carry no _meta, as a lesser read might.
+    m.calls.callServerTool.mockResolvedValue({ structuredContent: snapshot({ generated_at: '2026-10-02T12:09:00.000Z', work: { status: 'ok', total: 0, items: [] } }) });
+    m.app().ontoolresult({ structuredContent: snapshot(), _meta: { 'orgx/widgetApproval': { approval_tokens: { [snapshot().focus.id]: 'tok-1' } } } });
+    await m.flush(); await m.flush(); await m.flush();
+    expect(doc(m).querySelector('.pn-detail ox-footer[variant="confirms-in-orgx"]')).not.toBeNull();
+  });
+
   it('reads a receipts range once even when a tap lands while the warm-up is in flight', async () => {
     const m = await mountPanel({}, {}, (win) => {
       (win as unknown as { requestIdleCallback: (fn: () => void) => number }).requestIdleCallback = (fn) => { fn(); return 1; };

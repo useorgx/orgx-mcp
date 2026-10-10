@@ -7905,10 +7905,12 @@ export class OrgXMcp extends McpAgent<
           // A ChatGPT session often has no selected workspace; the panel's
           // reads infer the authenticated one and the ledger must agree with
           // them instead of refusing ("Select an authenticated workspace").
+          // Validation takes a document, not a workspace: no inference, no read.
+          const needsWorkspace = tool.id !== 'orgx_validate_work_receipt';
           const workspaceId =
             (typeof input.workspace_id === 'string' && input.workspace_id) ||
             this.sessionContext?.workspaceId ||
-            (await this.inferSessionWorkspace(this.props?.userId ?? this.sessionAuth?.userId ?? null))?.id ||
+            (needsWorkspace ? (await this.inferSessionWorkspace(this.props?.userId ?? this.sessionAuth?.userId ?? null))?.id : undefined) ||
             undefined;
           const raw = await executeReceiptOperation(tool.id, input, {
             workspaceId,

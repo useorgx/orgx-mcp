@@ -1998,7 +1998,12 @@
       ui.auth = null;
       if (ui.readState.phase === 'failed') ui.readState = { phase: 'idle' };
       ui.limited = false;
-      if (meta !== undefined) adoptTokens(meta);
+      // The host's first result says whether this host can decide here at all
+      // (no metadata API: no tokens). A later read only replaces the tokens
+      // when it carries approval metadata of its own; a lesser read (the
+      // background warm-up, a ledger list that happens to echo a snapshot)
+      // leaves the tokens it did not come with alone.
+      if (source === 'host' ? meta !== undefined : Boolean(meta && meta[APPROVAL_META_KEY])) adoptTokens(meta);
       if (live) live.update(snapshot.live || null);
       Object.keys(ui.rulings).forEach(function prune(id) {
         var r = ui.rulings[id];
