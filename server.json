@@ -90,13 +90,13 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/workspace-map.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/workspace-map.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Read OrgX Workspace Context...",
         "openai/toolInvocation/invoked": "Read OrgX Workspace Context finished",
         "openai/readOnlyHint": true,
         "openai/visibility": "public",
         "ui": {
-          "resourceUri": "ui://widget/workspace-map.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/workspace-map.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -233,12 +233,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/search-results.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/search-results.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Search OrgX...",
         "openai/toolInvocation/invoked": "Search OrgX finished",
         "openai/readOnlyHint": false,
         "ui": {
-          "resourceUri": "ui://widget/search-results.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/search-results.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -366,12 +366,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/entity-card.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/entity-card.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Inspect OrgX Work...",
         "openai/toolInvocation/invoked": "Inspect OrgX Work finished",
         "openai/readOnlyHint": true,
         "ui": {
-          "resourceUri": "ui://widget/entity-card.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/entity-card.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -445,12 +445,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/work-ledger.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/work-ledger.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Read OrgX Operator Brief...",
         "openai/toolInvocation/invoked": "Read OrgX Operator Brief finished",
         "openai/readOnlyHint": true,
         "ui": {
-          "resourceUri": "ui://widget/work-ledger.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/work-ledger.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -526,12 +526,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/morning-brief.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/morning-brief.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Get OrgX Next Actions...",
         "openai/toolInvocation/invoked": "Get OrgX Next Actions finished",
         "openai/readOnlyHint": false,
         "ui": {
-          "resourceUri": "ui://widget/morning-brief.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/morning-brief.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -591,12 +591,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/agent-status.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/agent-status.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Read OrgX Agent Status...",
         "openai/toolInvocation/invoked": "Read OrgX Agent Status finished",
         "openai/readOnlyHint": false,
         "ui": {
-          "resourceUri": "ui://widget/agent-status.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/agent-status.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -647,12 +647,12 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/initiative-pulse.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/initiative-pulse.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Read OrgX Initiative Progress...",
         "openai/toolInvocation/invoked": "Read OrgX Initiative Progress finished",
         "openai/readOnlyHint": false,
         "ui": {
-          "resourceUri": "ui://widget/initiative-pulse.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/initiative-pulse.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -868,11 +868,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Start OrgX Plan...",
         "openai/toolInvocation/invoked": "Start OrgX Plan finished",
         "ui": {
-          "resourceUri": "ui://widget/plan-session-live.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/plan-session-live.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -925,11 +925,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Read OrgX Plan...",
         "openai/toolInvocation/invoked": "Read OrgX Plan finished",
         "ui": {
-          "resourceUri": "ui://widget/plan-session-live.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/plan-session-live.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -1010,11 +1010,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Save OrgX Plan...",
         "openai/toolInvocation/invoked": "Save OrgX Plan finished",
         "ui": {
-          "resourceUri": "ui://widget/plan-session-live.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/plan-session-live.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -1127,11 +1127,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Complete OrgX Plan...",
         "openai/toolInvocation/invoked": "Complete OrgX Plan finished",
         "ui": {
-          "resourceUri": "ui://widget/plan-session-live.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/plan-session-live.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -1441,11 +1441,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/scaffolded-initiative.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/scaffolded-initiative.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Validate OrgX Initiative Plan...",
         "openai/toolInvocation/invoked": "Validate OrgX Initiative Plan finished",
         "ui": {
-          "resourceUri": "ui://widget/scaffolded-initiative.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/scaffolded-initiative.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -1765,11 +1765,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/scaffolded-initiative.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/scaffolded-initiative.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Create OrgX Initiative Hierarchy...",
         "openai/toolInvocation/invoked": "Create OrgX Initiative Hierarchy finished",
         "ui": {
-          "resourceUri": "ui://widget/scaffolded-initiative.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/scaffolded-initiative.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -2531,11 +2531,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Estimate OrgX Agent Task...",
         "openai/toolInvocation/invoked": "Estimate OrgX Agent Task finished",
         "ui": {
-          "resourceUri": "ui://widget/task-spawned.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/task-spawned.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -2741,11 +2741,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Start OrgX Agent Task...",
         "openai/toolInvocation/invoked": "Start OrgX Agent Task finished",
         "ui": {
-          "resourceUri": "ui://widget/task-spawned.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/task-spawned.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -2954,11 +2954,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/task-spawned.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Hand Off OrgX Task...",
         "openai/toolInvocation/invoked": "Hand Off OrgX Task finished",
         "ui": {
-          "resourceUri": "ui://widget/task-spawned.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/task-spawned.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -3373,11 +3373,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Capture OrgX Decision...",
         "openai/toolInvocation/invoked": "Capture OrgX Decision finished",
         "ui": {
-          "resourceUri": "ui://widget/decisions.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/decisions.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -3432,11 +3432,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "List Pending OrgX Decisions...",
         "openai/toolInvocation/invoked": "List Pending OrgX Decisions finished",
         "ui": {
-          "resourceUri": "ui://widget/decisions.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/decisions.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -3492,11 +3492,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/decisions.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Open OrgX Decision Review...",
         "openai/toolInvocation/invoked": "Open OrgX Decision Review finished",
         "ui": {
-          "resourceUri": "ui://widget/decisions.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/decisions.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -3706,9 +3706,9 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/artifact-review.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/artifact-review.skybridge.html?v=d2363a258d43",
         "ui": {
-          "resourceUri": "ui://widget/artifact-review.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/artifact-review.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -7935,9 +7935,9 @@
             ]
           }
         ],
-        "openai/outputTemplate": "ui://widget/proof-receipt.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/proof-receipt.skybridge.html?v=d2363a258d43",
         "ui": {
-          "resourceUri": "ui://widget/proof-receipt.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/proof-receipt.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -12007,9 +12007,9 @@
             ]
           }
         ],
-        "openai/outputTemplate": "ui://widget/proof-receipt.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/proof-receipt.skybridge.html?v=d2363a258d43",
         "ui": {
-          "resourceUri": "ui://widget/proof-receipt.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/proof-receipt.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -12186,11 +12186,11 @@
         }
       ],
       "_meta": {
-        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=29030a4b88e7",
+        "openai/outputTemplate": "ui://widget/plan-session-live.skybridge.html?v=d2363a258d43",
         "openai/toolInvocation/invoking": "Record OrgX Plan Edit Summary...",
         "openai/toolInvocation/invoked": "Record OrgX Plan Edit Summary finished",
         "ui": {
-          "resourceUri": "ui://widget/plan-session-live.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/plan-session-live.html?v=d2363a258d43",
           "visibility": [
             "model",
             "app"
@@ -12315,8 +12315,8 @@
     },
     {
       "name": "orgx_panel_snapshot",
-      "title": "OrgX panel",
-      "description": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only.",
+      "title": "OrgX",
+      "description": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only. Work receipts are read with orgx_list_work_receipts and orgx_get_work_receipt.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -12343,8 +12343,12 @@
           },
           "view": {
             "type": "string",
-            "maxLength": 32,
-            "description": "Optional extra view. \"work\" adds what agents are running and what waits on you; \"workspaces\" adds the workspaces the panel can switch to; \"history\" adds decisions settled in the range; \"receipts\" adds the Work Ledger receipts for the range (or for `query`); \"receipt\" adds one receipt in full with each criterion's verdict."
+            "enum": [
+              "work",
+              "workspaces",
+              "history"
+            ],
+            "description": "Optional panel view: running work, authorized workspace membership, or settled decisions."
           },
           "range": {
             "type": "string",
@@ -12353,17 +12357,7 @@
               "7d",
               "30d"
             ],
-            "description": "For views \"history\" and \"receipts\": today, 7d or 30d. Defaults to 7d."
-          },
-          "query": {
-            "type": "string",
-            "maxLength": 200,
-            "description": "For view \"receipts\": a Work Ledger filter instead of the range, e.g. \"pr:3236\" for the work behind a merge."
-          },
-          "receipt_id": {
-            "type": "string",
-            "maxLength": 200,
-            "description": "For view \"receipt\": the receipt to read in full."
+            "description": "For decision history: today, 7d or 30d. Defaults to 7d."
           }
         },
         "additionalProperties": false,
@@ -12384,7 +12378,7 @@
       ],
       "_meta": {
         "ui": {
-          "resourceUri": "ui://widget/orgx-panel.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/orgx-panel.html?v=d2363a258d43",
           "visibility": [
             "app"
           ]
@@ -12416,7 +12410,7 @@
     {
       "name": "orgx_widget_receipt_call",
       "title": "Your call on a work receipt",
-      "description": "App-only: records a person's call on a Work Ledger receipt from the OrgX panel: done, partly done, not done or blocked. The ledger keeps the latest call per receipt; it overrides the agent's own guess and teaches OrgX what done means. USE WHEN: the person presses a call on a receipt in the OrgX panel. DO NOT USE: from a model; models read receipts with orgx_search scope=work_ledger.",
+      "description": "App-only: records a person's call on a Work Ledger receipt from the OrgX panel: done, partly done, not done or blocked. The ledger keeps the latest call per receipt; it overrides the agent's own guess and teaches OrgX what done means. USE WHEN: the person presses a call on a receipt in the OrgX panel. DO NOT USE: from a model; models read receipts with orgx_get_work_receipt or orgx_list_work_receipts.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -12468,7 +12462,7 @@
       ],
       "_meta": {
         "ui": {
-          "resourceUri": "ui://widget/orgx-panel.html?v=29030a4b88e7",
+          "resourceUri": "ui://widget/orgx-panel.html?v=d2363a258d43",
           "visibility": [
             "app"
           ]

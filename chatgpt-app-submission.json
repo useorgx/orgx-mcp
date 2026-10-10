@@ -527,7 +527,7 @@
         "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only. This operation reads or validates data without changing durable business state.",
+        "read_only_justification": "App-only: the OrgX panel in the ChatGPT sidebar and beside a conversation. Returns what needs your decision (most urgent first), the review packet for one of them, the last output a person accepted, and, when asked, the work agents are running. USE WHEN: the OrgX panel opens or refreshes. NEXT: the panel shows Approve and Send back when the decision can be settled there, otherwise it links to the decision in OrgX. DO NOT USE: from a model; models read decisions with orgx_search. Read-only. Work receipts are read with orgx_list_work_receipts and orgx_get_work_receipt. This operation reads or validates data without changing durable business state.",
         "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
         "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
