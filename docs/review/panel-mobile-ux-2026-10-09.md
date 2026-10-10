@@ -115,6 +115,32 @@ brand mark while loading. Three changes follow them.
 The real mark adds 4.7 KB to every widget that inlines `agent-identity.js`;
 the payload budgets were regenerated with `pnpm widget:payload --update`.
 
+## Feel: the audit pass
+
+Every view was captured at phone size (Needs you with short and long packets,
+send-back, In progress and its detail card, Done and a receipt, Start and its
+who-menu, the workspace switcher, the agreement bar) and read against the
+design system. The structure held; what was missing was feel. The ask chips
+already use the host's native path (MCP Apps `sendMessage`, else ChatGPT's
+`sendFollowUpMessage`), the same mechanism Canva's chips use, so a tap puts
+the sentence into the chat and the host answers in its own sheet.
+
+| | Before | After |
+| --- | --- | --- |
+| Deciding a long packet | Approve and Send back scrolled away under the packet. | On a phone the footer floats at the bottom of the view, above the composer, while the packet's end is below the view; once the end scrolls in, it settles back into place. The packet keeps the footer's height meanwhile, so nothing jumps. |
+| Coming back to a tab | Every switch landed at the top. | Each tab remembers its scroll position and returns there. |
+| The tab underline | Blinked out and in. | Travels between tabs as one piece (a view-transition name on the selected tab's underline). |
+| Pressing things | Nothing moved under the finger. | Chips, rows, buttons and tabs settle slightly on press; a tab tap and a sent chip tick on the haptic motor; a sent chip pops with a check. |
+| Refresh | The word, taking width from the workspace name. | An icon that spins while the read is in flight; the word returns on wide panels and stays for screen readers. |
+| Rows that scroll sideways | A chip cut at the edge read as a bug. | The edge fades, so the cut reads as "more". |
+
+![floating footer](evidence/panel-mobile-2026-10-09/chatgpt-phone-floating-footer.png)
+
+`tests/panelPhoneChrome.spec.ts` checks the floating footer on a tall
+packet (tappable, above the composer, in view after a scroll) in both host
+behaviours; `tests/panelPolish.spec.ts` checks the scroll memory and the busy
+refresh icon.
+
 ## Host resolution
 
 MCP Apps hosts identify themselves in the `ui/initialize` response

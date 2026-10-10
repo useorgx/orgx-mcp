@@ -522,7 +522,10 @@
       var s = ui.snapshot;
       var name = s && s.workspace && s.workspace.name ? s.workspace.name : (s && s.workspace ? 'Workspace' : '');
       var synced = syncLabel();
-      var refresh = ui.auth || ui.readState.phase === 'failed' ? '' : '<button type="button" class="quiet-btn" data-action="refresh">Refresh</button>';
+      var refresh = ui.auth || ui.readState.phase === 'failed' ? ''
+        : '<button type="button" class="quiet-btn pn-refresh" data-action="refresh" aria-label="Refresh"' + (ui.readState.phase === 'loading' ? ' aria-busy="true"' : '') + '>' +
+          '<svg class="pn-ic pn-refresh-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>' +
+          '<span class="pn-refresh-t">Refresh</span></button>';
       var nameHtml = name
         ? (ui.mode === 'global' ? '<h1 class="ws-h">' + workspaceButtonHtml(name) + '</h1>' : '<span class="ws">' + esc(name) + '</span>')
         : (ui.mode === 'global' ? '<h1 class="sr-only">OrgX</h1>' : '');
@@ -1436,6 +1439,46 @@
       return s.state === 'ok' ? 'teal' : 'none';
     }
 
+    /**
+     * On a phone, keep Approve and Send back in reach: while the end of the
+     * open packet is below the view, its footer floats at the bottom of the
+     * view (above the host's composer); once the end comes into view the
+     * footer takes its place in the flow again. The packet keeps the
+     * footer's height while it floats, so nothing jumps.
+     */
+    function floatFooter() {
+      if (!Host || !Host.isMobile()) return;
+      var detail = root.querySelector('.pn-detail');
+      var footer = detail && detail.querySelector('ox-footer[variant="confirms-in-orgx"]');
+      if (!detail || !footer) return;
+      var safe = Host.safeArea();
+      var viewBottom = window.innerHeight - Math.max(safe.bottom || 0, 0);
+      var floating = footer.getAttribute('data-floating') === 'true';
+      var h = floating ? parseFloat(detail.style.getPropertyValue('--pn-foot-h')) || footer.offsetHeight : footer.offsetHeight;
+      var d = detail.getBoundingClientRect();
+      // Natural footer bottom: with it floating, that is the padded end of the packet.
+      var naturalBottom = floating ? d.bottom : footer.getBoundingClientRect().bottom;
+      var should = naturalBottom > viewBottom + 1 && d.top < viewBottom - h;
+      if (should === floating) return;
+      if (should) {
+        detail.style.setProperty('--pn-foot-h', h + 'px');
+        detail.setAttribute('data-float-pad', '');
+        footer.setAttribute('data-floating', 'true');
+      } else {
+        footer.removeAttribute('data-floating');
+        detail.removeAttribute('data-float-pad');
+        detail.style.removeProperty('--pn-foot-h');
+      }
+    }
+    var floatQueued = false;
+    function queueFloat() {
+      if (floatQueued) return;
+      floatQueued = true;
+      window.requestAnimationFrame(function run() { floatQueued = false; floatFooter(); });
+    }
+    window.addEventListener('scroll', queueFloat, { passive: true });
+    window.addEventListener('resize', queueFloat, { passive: true });
+
     var bootLeaving = false;
     function render() {
       // The first content after the cold start arrives as one move: the stage
@@ -1483,6 +1526,7 @@
         ui.seenRows = seen;
       }
       window.requestAnimationFrame(fitQuestion);
+      window.requestAnimationFrame(floatFooter);
       if (R && R.reportSize) R.reportSize();
       if (tour) tour.refresh();
       maybeStartTour();
@@ -1515,20 +1559,30 @@
       later(startTour, 600);
     }
 
+    // Where each tab was scrolled to, so coming back lands where you left.
+    var scrollMemo = {};
+    function rememberScroll() { try { scrollMemo[ui.tab] = window.scrollY || window.pageYOffset || 0; } catch (_) { /* no scroll */ } }
+    function restoreScroll(tab) {
+      var y = scrollMemo[tab] || 0;
+      try { if (typeof window.scrollTo === 'function') window.scrollTo({ top: y, left: 0, behavior: 'instant' }); } catch (_) { try { window.scrollTo(0, y); } catch (__) { /* no scroll */ } }
+    }
     function setTab(tab, quiet, after) {
       if (['needs', 'work', 'done', 'start'].indexOf(tab) === -1 || (tab === 'start' && !Start)) return;
       var changed = ui.tab !== tab;
+      if (changed) rememberScroll();
       var order = ['needs', 'work', 'done', 'start'];
       var dir = order.indexOf(tab) >= order.indexOf(ui.tab) ? 'fwd' : 'back';
       function apply() {
         ui.tab = tab;
         ui.composer = changed ? null : ui.composer;
         ui.startWhoOpen = false;
-        if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); return; }
+        if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); if (changed) restoreScroll(tab); return; }
         // Done › Work reads its receipts the first time it opens; the read renders the loading rows.
         if (tab === 'done' && ui.doneLens === 'work' && Receipts && !ui.receipts[workRangeOf(ui.doneRange)]) fetchReceipts(workRangeOf(ui.doneRange));
         else render();
+        if (changed) restoreScroll(tab);
         if (changed && !quiet) {
+          if (Host) Host.haptic('tap');
           var t = root.querySelector('#pn-tab-' + tab);
           if (t) t.focus();
           announce(tab === 'needs' ? 'Needs you.' : tab === 'work' ? 'In progress.' : tab === 'done' ? 'Done.' : 'Start.');
@@ -1794,6 +1848,7 @@
         var copy = outcome === 'sent' ? 'Sent to chat' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send. Type it in the chat.';
         button.setAttribute('data-sent', outcome);
         if (status) status.textContent = copy;
+        if (Host && outcome === 'sent') Host.haptic('tap');
         announce(copy);
         later(function clear() { if (button.isConnected) { button.removeAttribute('data-sent'); if (status) status.textContent = ''; } }, 2600);
       });

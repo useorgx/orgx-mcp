@@ -1305,3 +1305,43 @@ html[data-touch="true"] .cm-prompt:hover, html[data-touch="true"] .st-idea:hover
   .st-try .st-idea { flex: none; scroll-snap-align: start; white-space: nowrap; max-width: 86vw; overflow: hidden; text-overflow: ellipsis; }
   .st-try .st-sl { flex: none; }
 }
+
+
+/* ── Feel: what a finger gets back ─────────────────────────────────────── */
+/* Refresh: the icon spins while a read is in flight; on a narrow panel the
+   word gives its width to the workspace name. */
+.pn-refresh { display: inline-flex; align-items: center; gap: 6px; }
+.pn-refresh-i { width: 16px; height: 16px; }
+@container pn (max-width: 620px) { .pn-refresh { min-width: 44px; padding: 0; justify-content: center; } .pn-refresh-t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+@media (prefers-reduced-motion: no-preference) {
+  .pn-refresh[aria-busy="true"] .pn-refresh-i { animation: pn-spin 900ms linear infinite; }
+  /* Press: a small, fast settle under the finger. */
+  .pn-ask, .st-idea, .pn-tab, .pn-btn, .cm-prompt, .secondary-btn, .st-verb, .st-who, .st-go, .wk-row, .pn-row, .dn-row, .ws-item { transition: transform 90ms var(--pn-ease), background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+  .pn-ask:active, .st-idea:active, .pn-btn:active, .cm-prompt:active, .secondary-btn:active, .st-verb:active, .st-who:active, .st-go:active { transform: scale(0.97); }
+  .pn-tab:active { transform: translateY(1px); }
+  /* A sent chip: the tick lands with a small pop. */
+  .pn-ask[data-sent="sent"] { animation: pn-pop 260ms var(--pn-ease); }
+  /* The underline travels between tabs instead of blinking out and in. */
+  html[data-vt="tab"] .pn-tab[aria-selected="true"]::after { view-transition-name: pn-ink; }
+  ::view-transition-group(pn-ink) { animation-duration: 320ms; animation-timing-function: var(--pn-ease); }
+}
+.pn-ask[data-sent="sent"]::before { content: "✓"; margin-right: 4px; font-weight: 700; }
+/* Rows that scroll sideways: the edge says there is more. */
+@container pn (max-width: 560px) {
+  .pn-asks, .cm-rail, .st-try { -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent); }
+}
+/* Decide without scrolling: on a phone the decision footer floats at the
+   bottom of the view, above the host's composer, while the end of the packet
+   is still below the view; once it scrolls into view the footer settles back
+   into place (panel-app.js floatFooter). The packet keeps the footer's height
+   while it floats, so nothing jumps. */
+html[data-platform="mobile"] .pn-detail ox-footer[data-floating="true"] {
+  position: fixed; left: 0; right: 0; z-index: 5; margin: 0;
+  bottom: max(var(--pn-safe-bottom), env(safe-area-inset-bottom, 0px));
+  padding-left: calc(var(--pn-gutter) + var(--pn-inset-left, 0px)); padding-right: calc(var(--pn-gutter) + var(--pn-inset-right, 0px));
+  background: var(--ox-bg); box-shadow: 0 -14px 28px -14px rgba(0, 0, 0, 0.65);
+}
+html[data-platform="mobile"] .pn-detail[data-float-pad] { padding-bottom: var(--pn-foot-h, 0px); }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-platform="mobile"] .pn-detail ox-footer[data-floating="true"] { animation: vt-rise 220ms var(--pn-ease); }
+}

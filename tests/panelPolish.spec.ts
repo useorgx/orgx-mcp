@@ -73,3 +73,40 @@ describe('ways in when nothing needs you', () => {
     expect(doc(m).querySelector('.st-preview')!.textContent).toContain('In OrgX, hand this to Mark (Marketing): Draft the launch post for the new pricing.');
   });
 });
+
+describe('feel', () => {
+  it('remembers where each tab was scrolled to and returns there', async () => {
+    const m = await mountPanel({}, {}, (win) => {
+      let y = 0;
+      Object.defineProperty(win, 'scrollY', { configurable: true, get: () => y });
+      (win as unknown as { scrollTo: (o: unknown, b?: number) => void }).scrollTo = (o: unknown, b?: number) => { y = typeof o === 'number' ? (b as number) : (o as { top: number }).top; };
+    });
+    mounted.push(m);
+    m.app().ontoolresult({ structuredContent: snapshot() });
+    await m.flush();
+    m.calls.callServerTool.mockResolvedValue({ structuredContent: snapshot({ work: { status: 'ok', total: 0, items: [] } }) });
+    const win = m.dom.window as unknown as Window & { scrollTo: (o: { top: number }) => void };
+    win.scrollTo({ top: 480 });
+    click(m, '[data-tab="work"]');
+    await m.flush(); await m.flush();
+    expect(win.scrollY).toBe(0);
+    click(m, '[data-tab="needs"]');
+    await m.flush();
+    expect(win.scrollY).toBe(480);
+  });
+
+  it('shows Refresh as an icon that is busy while a read is in flight', async () => {
+    const m = await mountPanel({}, {});
+    mounted.push(m);
+    m.app().ontoolresult({ structuredContent: snapshot() });
+    await m.flush();
+    const before = doc(m).querySelector('.pn-refresh')!;
+    expect(before.getAttribute('aria-label')).toBe('Refresh');
+    expect(before.querySelector('svg')).not.toBeNull();
+    expect(before.hasAttribute('aria-busy')).toBe(false);
+    m.calls.callServerTool.mockImplementation(() => new Promise(() => {}));
+    click(m, '.pn-refresh');
+    await m.flush();
+    expect(doc(m).querySelector('.pn-refresh')!.getAttribute('aria-busy')).toBe('true');
+  });
+});
