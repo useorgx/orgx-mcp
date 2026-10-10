@@ -20,6 +20,16 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
 
+# The shared scripts and styles a widget page loads (ChatGPT fetches them one
+# by one from this origin). A phone was revalidating two dozen of them on
+# every open before it could paint. They now serve from cache for five
+# minutes and, for a week after that, serve the cached copy at once while
+# the browser checks for a newer one behind it: a deploy shows up on the open
+# after it lands. Cacheable, not immutable: the URLs carry no version.
+/widgets/shared/*
+  ! Cache-Control
+  Cache-Control: public, max-age=300, stale-while-revalidate=604800
+
 # Agent headshots for <ox-avatar> photo mode (scripts/generate-agent-photos.mjs).
 # Names are not content-hashed, so cache for a day and revalidate in the background.
 /avatars/*

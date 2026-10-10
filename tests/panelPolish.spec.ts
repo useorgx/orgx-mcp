@@ -181,3 +181,65 @@ describe('Done when a read fails', () => {
     expect((notice.querySelector('[data-action="open"]') as HTMLElement).getAttribute('data-url')).toContain('useorgx.com');
   });
 });
+
+describe('fast by default', () => {
+  it('names the workspace on every ledger read, since the ledger refuses without one', async () => {
+    const m = await mountPanel({}, {});
+    mounted.push(m);
+    m.app().ontoolresult({ structuredContent: snapshot() });
+    await m.flush();
+    m.calls.callServerTool.mockResolvedValue({ structuredContent: { ok: true, data: { receipts: [] } } });
+    click(m, '[data-tab="done"]');
+    await m.flush(); await m.flush();
+    const read = m.calls.callServerTool.mock.calls.map((c) => c[0]).find((c) => c.name === 'orgx_list_work_receipts');
+    expect(read).toBeDefined();
+    expect(read!.arguments).toMatchObject({ workspace_id: snapshot().workspace.id, limit: 50 });
+    expect(read!.arguments.query).toMatch(/^since:\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('warms In progress and Done › Work in the background once the first snapshot is on screen', async () => {
+    const m = await mountPanel({}, {}, (win) => {
+      (win as unknown as { requestIdleCallback: (fn: () => void) => number }).requestIdleCallback = (fn) => { fn(); return 1; };
+    });
+    mounted.push(m);
+    m.calls.callServerTool.mockResolvedValue({ structuredContent: snapshot({ work: { status: 'ok', total: 0, items: [] } }) });
+    m.app().ontoolresult({ structuredContent: snapshot() });
+    await m.flush(); await m.flush();
+    const names = m.calls.callServerTool.mock.calls.map((c) => c[0]);
+    expect(names.some((c) => c.name === 'orgx_panel_snapshot' && c.arguments.view === 'work')).toBe(true);
+    expect(names.some((c) => c.name === 'orgx_list_work_receipts')).toBe(true);
+    // The tab was still Needs you throughout; the warm-up never moved it.
+    expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('needs');
+    // A second snapshot does not warm again.
+    const before = m.calls.callServerTool.mock.calls.length;
+    m.app().ontoolresult({ structuredContent: snapshot({ generated_at: '2026-10-02T12:10:00.000Z' }) });
+    await m.flush(); await m.flush();
+    expect(m.calls.callServerTool.mock.calls.length).toBe(before);
+  });
+
+  it('keeps the decide-here tokens when a background read carries no approval metadata', async () => {
+    const m = await mountPanel({}, {}, (win) => {
+      (win as unknown as { requestIdleCallback: (fn: () => void) => number }).requestIdleCallback = (fn) => { fn(); return 1; };
+    });
+    mounted.push(m);
+    // The warm-up's answers echo a snapshot but carry no _meta, as a lesser read might.
+    m.calls.callServerTool.mockResolvedValue({ structuredContent: snapshot({ generated_at: '2026-10-02T12:09:00.000Z', work: { status: 'ok', total: 0, items: [] } }) });
+    m.app().ontoolresult({ structuredContent: snapshot(), _meta: { 'orgx/widgetApproval': { approval_tokens: { [snapshot().focus.id]: 'tok-1' } } } });
+    await m.flush(); await m.flush(); await m.flush();
+    expect(doc(m).querySelector('.pn-detail ox-footer[variant="confirms-in-orgx"]')).not.toBeNull();
+  });
+
+  it('reads a receipts range once even when a tap lands while the warm-up is in flight', async () => {
+    const m = await mountPanel({}, {}, (win) => {
+      (win as unknown as { requestIdleCallback: (fn: () => void) => number }).requestIdleCallback = (fn) => { fn(); return 1; };
+    });
+    mounted.push(m);
+    m.calls.callServerTool.mockImplementation(() => new Promise(() => {}));
+    m.app().ontoolresult({ structuredContent: snapshot() });
+    await m.flush();
+    click(m, '[data-tab="done"]');
+    await m.flush();
+    const reads = m.calls.callServerTool.mock.calls.map((c) => c[0]).filter((c) => c.name === 'orgx_list_work_receipts');
+    expect(reads.length).toBe(1);
+  });
+});

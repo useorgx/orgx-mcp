@@ -23,6 +23,14 @@ const mounted: Mounted[] = [];
 afterEach(() => mounted.splice(0).forEach(({ dom }) => dom.window.close()));
 
 const doc = (m: Mounted) => m.dom.window.document;
+/**
+ * The reads the live feed causes. The panel also warms In progress and Done
+ * in the background after its first snapshot (a work-view snapshot and a
+ * receipts read); those are not re-reads and are left out here.
+ */
+const liveReads = (m: Mounted) => m.calls.callServerTool.mock.calls
+  .map((c) => c[0] as { name: string; arguments: Record<string, unknown> })
+  .filter((c) => c.name === 'orgx_panel_snapshot' && c.arguments.view !== 'work');
 const wait = (m: Mounted, ms: number) => new Promise((r) => m.dom.window.setTimeout(r, ms));
 
 function grant(feedId: string) {
@@ -110,7 +118,7 @@ describe('panel live updates', () => {
     m.sources[0]!.open();
     m.sources[0]!.send(graph({ [D1]: 'v1', [D2]: 'v1' }));
     await wait(m, 400);
-    expect(m.calls.callServerTool).not.toHaveBeenCalled();
+    expect(liveReads(m)).toHaveLength(0);
   });
 
   it('removes a decision settled elsewhere at once, then re-reads quietly', async () => {
@@ -135,13 +143,13 @@ describe('panel live updates', () => {
     expect(spoken).toContain('settled elsewhere');
 
     await wait(m, 400);
-    expect(m.calls.callServerTool).toHaveBeenCalledTimes(1);
-    expect(m.calls.callServerTool.mock.calls[0]![0]).toMatchObject({ name: 'orgx_panel_snapshot', arguments: {} });
+    expect(liveReads(m)).toHaveLength(1);
+    expect(liveReads(m)[0]).toMatchObject({ name: 'orgx_panel_snapshot', arguments: {} });
 
     // The same feed state again does not read again.
     m.sources[0]!.send(graph({ [D1]: 'v1' }));
     await wait(m, 2000);
-    expect(m.calls.callServerTool).toHaveBeenCalledTimes(1);
+    expect(liveReads(m)).toHaveLength(1);
   });
 
   it('re-reads once when a new decision arrives', async () => {
@@ -150,7 +158,7 @@ describe('panel live updates', () => {
     const D3 = '44444444-4444-4444-8444-444444444444';
     m.sources[0]!.send(graph({ [D1]: 'v1', [D2]: 'v1', [D3]: 'v1' }));
     await wait(m, 400);
-    expect(m.calls.callServerTool).toHaveBeenCalledTimes(1);
+    expect(liveReads(m)).toHaveLength(1);
   });
 
   it('counts In progress from the feed before it is opened', async () => {
@@ -161,7 +169,7 @@ describe('panel live updates', () => {
     const count = doc(m).querySelector('#pn-tab-work .pn-tab-n');
     expect(count?.textContent).toBe('2');
     expect(count?.getAttribute('data-tone')).toBe('red');
-    expect(m.calls.callServerTool).not.toHaveBeenCalled();
+    expect(liveReads(m)).toHaveLength(0);
   });
 
   it('holds a repaint while the person is typing, and applies it when they leave the field', async () => {
@@ -189,18 +197,18 @@ describe('panel live updates', () => {
     m.calls.callServerTool.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
     (doc(m).querySelector('[data-action="refresh"]') as HTMLElement).click();
     await m.flush();
-    expect(m.calls.callServerTool).toHaveBeenCalledTimes(1);
+    expect(liveReads(m)).toHaveLength(1);
 
     // A new decision arrives while that read is still out.
     const D3 = '44444444-4444-4444-8444-444444444444';
     m.sources[0]!.send(graph({ [D1]: 'v1', [D2]: 'v1', [D3]: 'v1' }));
     await wait(m, 400);
-    expect(m.calls.callServerTool).toHaveBeenCalledTimes(1);
+    expect(liveReads(m)).toHaveLength(1);
 
     finish({ structuredContent: snapshot({ generated_at: '2026-10-02T12:05:00.000Z' }) });
     await wait(m, 1800);
     // The change was not dropped: one quiet re-read followed.
-    expect(m.calls.callServerTool).toHaveBeenCalledTimes(2);
+    expect(liveReads(m)).toHaveLength(2);
   });
 
   it('stops the stream when the server halts the feed', async () => {
@@ -237,7 +245,7 @@ describe('workspace switcher', () => {
     });
 
     // No workspace read until the switcher opens.
-    expect(m.calls.callServerTool).not.toHaveBeenCalled();
+    expect(liveReads(m)).toHaveLength(0);
     (doc(m).querySelector('[data-action="workspaces"]') as HTMLElement).click();
     await m.flush(); await m.flush();
     expect(m.calls.callServerTool.mock.calls[0]![0]).toMatchObject({ name: 'orgx_panel_snapshot', arguments: { view: 'workspaces' } });

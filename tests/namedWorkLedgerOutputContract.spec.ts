@@ -18,10 +18,11 @@ vi.mock('../src/orgxApi', async (original) => ({ ...await original<typeof import
 const WS = '11111111-1111-4111-8111-111111111111';
 const ID = '22222222-2222-4222-8222-222222222222';
 
-async function connect(extraToolIds: string[] = []) {
+async function connect(extraToolIds: string[] = [], session: { sessionContext?: Record<string, unknown>; inferSessionWorkspace?: () => Promise<{ id: string; name: string | null } | null> } = {}) {
   const { OrgXMcp } = await import('../src/index');
   const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
-  worker.sessionContext = { workspaceId: WS };
+  worker.sessionContext = session.sessionContext ?? { workspaceId: WS };
+  if (session.inferSessionWorkspace) worker.inferSessionWorkspace = session.inferSessionWorkspace;
   worker.env = { ORGX_API_URL: 'https://orgx.test', MCP_SERVER_URL: 'https://mcp.orgx.test' };
   worker.resolveUserId = () => 'fixture-user'; worker.resolveUserEmail = () => 'member@example.test'; worker.resolveOrgxUserId = () => ID;
   worker.delegationClaims = () => ({ grantedScopes: ['initiatives:read', 'initiatives:write'] });
@@ -37,10 +38,35 @@ async function connect(extraToolIds: string[] = []) {
   const client = new Client({ name: 'named-ledger-reader', version: '1' });
   const [reader, writer] = InMemoryTransport.createLinkedPair();
   await server.connect(writer); await client.connect(reader);
-  return { server, client };
+  return { server, client, worker };
 }
 
 describe('registered named work ledger operation', () => {
+  it('infers the authenticated workspace when the session has none selected, as the panel does', async () => {
+    // The ChatGPT connector: authenticated, nothing selected. The ledger used to
+    // refuse with "Select an authenticated workspace" while the panel's own
+    // reads inferred one and worked.
+    api.callOrgxApiJson.mockReset().mockResolvedValue(Response.json({ ok: true, data: structuredClone(WORK_LEDGER_OUTPUT_VARIANTS[0]!.data) }));
+    const infer = vi.fn(async () => ({ id: WS, name: null }));
+    const { server, client } = await connect([], { sessionContext: {}, inferSessionWorkspace: infer });
+    try {
+      const result = await client.callTool({ name: 'orgx_list_work_receipts', arguments: { view: 'receipts', limit: 3, query: 'ledger' } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(infer).toHaveBeenCalledTimes(1);
+      const path = new URL(api.callOrgxApiJson.mock.calls[0][1], 'https://orgx.test');
+      expect(path.searchParams.get('workspace_id')).toBe(WS);
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+  it('does not infer when the caller names a workspace', async () => {
+    api.callOrgxApiJson.mockReset().mockResolvedValue(Response.json({ ok: true, data: structuredClone(WORK_LEDGER_OUTPUT_VARIANTS[0]!.data) }));
+    const infer = vi.fn(async () => null);
+    const { server, client } = await connect([], { sessionContext: {}, inferSessionWorkspace: infer });
+    try {
+      const result = await client.callTool({ name: 'orgx_list_work_receipts', arguments: { view: 'receipts', limit: 3, query: 'ledger', workspace_id: WS } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(infer).not.toHaveBeenCalled();
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
   it.each(WORK_LEDGER_OUTPUT_VARIANTS.slice(0, 3))('delivers $view from the actual registered tool with closed output and bounded guidance', async (variant) => {
     api.callOrgxApiJson.mockReset().mockResolvedValue(Response.json({ ok: true, data: structuredClone(variant.data) }));
     const { server, client } = await connect();

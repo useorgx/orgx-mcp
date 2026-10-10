@@ -1214,13 +1214,19 @@
     return 'en-US';
   }
 
+  // Intl.DateTimeFormat().resolvedOptions() costs tens of milliseconds on a
+  // phone and was asked for every time shown; the browser's zone does not
+  // change under a running widget.
+  var browserTimeZone;
   function viewerTimeZone() {
     if (hostTimeZone) return hostTimeZone;
+    if (browserTimeZone !== undefined) return browserTimeZone || undefined;
     try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+      browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
     } catch (_) {
-      return undefined;
+      browserTimeZone = '';
     }
+    return browserTimeZone || undefined;
   }
 
   function dateFormatter(options) {

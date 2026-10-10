@@ -77,4 +77,15 @@ describe('widget asset headers', () => {
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("form-action 'none'");
   });
+
+  it('lets the shared scripts a page loads serve from cache, stale while revalidating', () => {
+    const shared = rules.get('/widgets/shared/*');
+    expect(shared, '/widgets/shared/* rule missing from public/_headers').toBeDefined();
+    const cache = shared!.get('Cache-Control')!;
+    expect(cache).toContain('max-age=300');
+    expect(cache).toContain('stale-while-revalidate=');
+    expect(cache).not.toContain('immutable'); // the URLs carry no version
+    // The documents themselves still revalidate every time.
+    expect(widget!.get('Cache-Control')).toContain('max-age=0');
+  });
 });
