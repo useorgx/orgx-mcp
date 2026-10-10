@@ -100,6 +100,8 @@ import {
   getClaudeDirectoryToolContract,
 } from './claudeDirectoryTools';
 import { buildSearchDiagnosticsContext, handleSearchWidgetDiagnostics } from './searchWidgetDiagnostics';
+import { buildWidgetTelemetryContext, handleWidgetTelemetry, type WidgetTelemetryReport } from './widgetTelemetry';
+import type { PanelSnapshotObservation } from './panelSurface';
 import { withRequestToolProfile } from './requestToolProfile';
 import {
   buildMcpTransportExceptionResponse,
@@ -3346,7 +3348,48 @@ export class OrgXMcp extends McpAgent<
         });
       },
       run: (runner) => this.withOrgx(runner, 'orgx_panel_snapshot'),
+      // UX telemetry: the widget posts bounded events back to this worker
+      // with this grant; they land on the viewer the panel was read for.
+      telemetryContext: ({ workspaceId }) =>
+        this.isDirectoryReviewProfile()
+          ? Promise.resolve(null)
+          : buildWidgetTelemetryContext(this.env, { widget: 'orgx-panel', userId: userId(), workspaceId }),
+      observe: (observation) => this.observePanelSnapshot(observation, userId()),
     };
+  }
+
+  /**
+   * What one panel read cost per upstream source, and which sources failed.
+   * The snapshot swallows those failures into its `degraded` list so the
+   * panel can still draw; this is where they become visible to someone.
+   */
+  private observePanelSnapshot(observation: PanelSnapshotObservation, userId: string | null) {
+    if (this.isDirectoryReviewProfile()) return;
+    const ms = (key: keyof PanelSnapshotObservation['timings']) => observation.timings[key];
+    this.capturePosthogEvent('mcp_panel_snapshot_read', {
+      distinctId: userId ?? this.resolveAnonymousDistinctId(),
+      properties: {
+        tool_id: 'orgx_panel_snapshot',
+        widget: 'orgx-panel',
+        ok: observation.failures.length === 0,
+        has_workspace: observation.hasWorkspace,
+        workspace_id: this.sessionContext?.workspaceId ?? undefined,
+        latency_ms: observation.totalMs,
+        decisions_ms: ms('decisions'), artifacts_ms: ms('artifacts'), work_ms: ms('work'),
+        history_ms: ms('history'), ledger_ms: ms('ledger'), receipt_ms: ms('receipt'), workspaces_ms: ms('workspaces'),
+        degraded_count: observation.degraded.length,
+        panel_source: observation.failures[0]?.source,
+        error_kind: observation.failures[0] ? errorKindOf(observation.failures[0].error) : undefined,
+      },
+    });
+    for (const failure of observation.failures) {
+      const error = failure.error instanceof Error ? failure.error : new Error(String(failure.error));
+      Sentry.captureException(error, {
+        level: 'warning',
+        fingerprint: ['orgx-panel-snapshot', failure.source],
+        tags: { tool_id: 'orgx_panel_snapshot', panel_source: failure.source, panel_view: observation.view },
+      });
+    }
   }
 
   private maybeUpdateSessionInitiativeContext(params: {
@@ -15565,6 +15608,47 @@ async function tryRunTokenAuth(
   return withSecurityHeaders(response);
 }
 
+/** The closed error vocabulary the privacy boundary accepts, from an upstream failure. */
+function errorKindOf(error: unknown): string {
+  if (error instanceof OrgXApiError) {
+    const status = error.statusCode ?? 0;
+    return status === 401 || status === 403 ? 'permission_denied' : status === 404 ? 'entity_not_found'
+      : status === 429 ? 'rate_limit_exceeded' : status >= 500 ? 'upstream_error' : status >= 400 ? 'invalid_request' : 'unknown';
+  }
+  if (error instanceof Error && /abort|timed? ?out/i.test(error.name + ' ' + error.message)) return 'timeout';
+  return 'exception';
+}
+
+/**
+ * The panel's UX events, from the widget through the signed grant
+ * (src/widgetTelemetry.ts): one PostHog event each, on the viewer the panel
+ * was read for, and a Sentry message for an error the widget met.
+ */
+function forwardWidgetTelemetry(env: Env, ctx: ExecutionContext, report: WidgetTelemetryReport): void {
+  const distinctId = report.subject ?? `mcp:${report.widget}`;
+  for (const event of report.events) {
+    captureWorkerPosthogEvent({
+      env, ctx, event: `mcp_${event.name}`, distinctId, serverVersion: MCP_SERVER_VERSION,
+      properties: {
+        ...event.properties,
+        widget: report.widget,
+        widget_protocol: report.protocol,
+        is_widget_tool: true,
+        ...(report.workspaceId ? { workspace_id: report.workspaceId } : {}),
+        ...(report.subject ? { has_user_id: true } : {}),
+      },
+    });
+    if (event.name === 'panel_error') {
+      const code = String(event.properties.panel_error_code ?? 'other');
+      Sentry.captureMessage(`OrgX panel widget: ${code}`, {
+        level: code === 'offline' ? 'info' : 'error',
+        fingerprint: ['orgx-panel-widget', code],
+        tags: { widget: report.widget, widget_protocol: report.protocol, panel_error_code: code, ...(event.properties.error_code ? { error_code: String(event.properties.error_code) } : {}) },
+      });
+    }
+  }
+}
+
 const worker = {
   /** Per-minute off-box probe of the app (plan v3 Stage 4). */
   async scheduled(
@@ -15585,6 +15669,8 @@ const worker = {
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
+    const widgetTelemetryResponse = await handleWidgetTelemetry(request, env, (report) => forwardWidgetTelemetry(env, ctx, report));
+    if (widgetTelemetryResponse) return withSecurityHeaders(widgetTelemetryResponse);
     const diagnosticResponse = await handleSearchWidgetDiagnostics(request, env, (event) => {
       captureWorkerPosthogEvent({
         env, ctx, event: event.failed ? 'mcp_search_widget_failed' : 'mcp_search_widget_rendered',

@@ -111,6 +111,36 @@
     };
     // Who takes it and how are the person's own settings: they survive the host
     // re-creating the widget (ChatGPT does after every send).
+    /**
+     * UX telemetry: what the panel did and how long it took, as named events
+     * with labels and numbers only (widget-runtime batches them to the
+     * worker, which keeps a closed schema). Decision titles, prompts and
+     * error messages never go on this channel; a tool error is reduced to
+     * its code.
+     */
+    function track(name, props) {
+      if (isGallery || !R || typeof R.reportWidgetEvent !== 'function') return;
+      try { R.reportWidgetEvent(name, props || {}); } catch (_) { /* never */ }
+    }
+    var SAFE_ERROR_CODES = ['authentication_required', 'insufficient_scope', 'permission_denied', 'entity_not_found', 'invalid_input', 'invalid_request', 'timeout', 'rate_limit_exceeded', 'upstream_error', 'server_error', 'tool_unavailable', 'mcp_tool_error', 'mcp_transport_error', 'workspace_context_missing', 'exception'];
+    function errorCodeOf(error) {
+      var code = error && (error.code || (error.error && error.error.code));
+      if (typeof code !== 'string') return 'unknown';
+      return SAFE_ERROR_CODES.indexOf(code) !== -1 ? code : 'other';
+    }
+    /** Times one read and reports it; the promise itself is returned untouched. */
+    function observeRead(kind, trigger, promise) {
+      var started = performance.now();
+      promise.then(function ok() {
+        track('panel_read', { panel_read_kind: kind, panel_trigger: trigger, latency_ms: performance.now() - started, ok: true });
+      }, function failed(error) {
+        var code = errorCodeOf(error && error.result ? error.result : error);
+        track('panel_read', { panel_read_kind: kind, panel_trigger: trigger, latency_ms: performance.now() - started, ok: false, error_code: code });
+        if (code === 'authentication_required' || code === 'insufficient_scope') track('panel_error', { panel_error_code: code === 'authentication_required' ? 'auth_required' : 'scope_required', panel_read_kind: kind });
+      });
+      return promise;
+    }
+    var openedTracked = false;
     var START_KEY = 'orgx.panel.start.v1';
     (function restoreStart() {
       try {
@@ -681,7 +711,9 @@
       ui.wsError = null;
       render();
       var gen = ui.generation;
+      var switchStarted = performance.now();
       R.callWidgetToolResult('orgx_widget_select_workspace', { workspace_id: id }).then(function onSwitched() {
+        track('panel_workspace_switched', { ok: true, latency_ms: performance.now() - switchStarted });
         if (gen !== ui.generation) return;
         ui.wsPhase = 'idle';
         ui.wsSwitchingTo = null;
@@ -691,6 +723,7 @@
         fetchSnapshot(null, 'switch');
         focusFirst('[data-action="workspaces"]');
       }, function onSwitchFailed(error) {
+        track('panel_workspace_switched', { ok: false, latency_ms: performance.now() - switchStarted, error_code: errorCodeOf(error) });
         if (gen !== ui.generation) return;
         ui.wsPhase = 'ready';
         ui.wsSwitchingTo = null;
@@ -1648,14 +1681,14 @@
       tour = Tour.create({
         root: root,
         go: function go(tab) { setTab(tab, true); },
-        onEnd: function ended(reason) { setTab('needs', true); announce(reason === 'finished' ? 'Tour finished.' : 'Tour closed.'); },
+        onEnd: function ended(reason) { track('panel_tour', { panel_tour_outcome: reason === 'finished' ? 'finished' : reason === 'skipped' ? 'skipped' : 'closed' }); setTab('needs', true); announce(reason === 'finished' ? 'Tour finished.' : 'Tour closed.'); },
         announce: announce,
       });
       return tour;
     }
     function startTour() {
       var t = ensureTour();
-      if (t && !t.active()) t.start();
+      if (t && !t.active()) { track('panel_tour', { panel_tour_outcome: 'started' }); t.start(); }
     }
     /**
      * First open only, on a real snapshot in the sidebar panel, with layout
@@ -1683,8 +1716,14 @@
       if (changed) rememberScroll();
       var order = ['needs', 'work', 'done', 'start'];
       var dir = order.indexOf(tab) >= order.indexOf(ui.tab) ? 'fwd' : 'back';
+      var from = ui.tab;
+      var tapped = performance.now();
+      var warm = tab === 'work' ? Boolean(ui.work && ui.work.status === 'ok')
+        : tab === 'done' ? Boolean(ui.doneLens === 'work' ? ui.receipts[workRangeOf(ui.doneRange)] : ui.doneRange === 'session' || ui.history[ui.doneRange])
+        : true;
       function apply() {
         ui.tab = tab;
+        if (changed) window.requestAnimationFrame(function painted() { track('panel_tab_switched', { panel_from_tab: from, panel_tab: tab, latency_ms: performance.now() - tapped, warm: warm }); });
         ui.composer = changed ? null : ui.composer;
         ui.startWhoOpen = false;
         if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); if (changed) restoreScroll(tab); return; }
@@ -1743,7 +1782,7 @@
       render();
       var gen = ui.generation;
       var asked = ui.doneRange;
-      R.callToolResult('orgx_panel_snapshot', { view: 'history', range: asked }).then(function onHistory(result) {
+      observeRead('history', 'range', R.callToolResult('orgx_panel_snapshot', { view: 'history', range: asked })).then(function onHistory(result) {
         if (gen !== ui.generation) return;
         var data = result && result.data;
         if (isSnapshot(data)) accept(data, result.meta || null, 'refresh');
@@ -1800,7 +1839,7 @@
       delete ui.receipts[range];
       render();
       var gen = ui.generation;
-      R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: receiptRangeQuery(range), limit: 50 })).then(function onReceipts(result) {
+      observeRead('receipts', ui.tab === 'done' ? 'tab' : 'warm', R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: receiptRangeQuery(range), limit: 50 }))).then(function onReceipts(result) {
         if (receiptsInflight === range) receiptsInflight = null;
         if (gen !== ui.generation) return;
         var data = result && result.data;
@@ -1826,7 +1865,7 @@
       if (!open || ui.receiptDetail[open]) return;
       if (isGallery) { ui.receiptDetail[open] = gallery.receipt(open); render(); return; }
       var gen = ui.generation;
-      R.callWidgetRead('orgx_get_work_receipt', withWorkspace({ receipt_id: open })).then(function onReceipt(result) {
+      observeRead('receipt', 'open', R.callWidgetRead('orgx_get_work_receipt', withWorkspace({ receipt_id: open }))).then(function onReceipt(result) {
         if (gen !== ui.generation) return;
         var data = result && result.data;
         var detail = Receipts.normalizeDetail(data, open, ui.receiptRows[open]);
@@ -1892,7 +1931,7 @@
       ui.behind[focus.id] = 'loading';
       if (isGallery) { ui.behind[focus.id] = gallery.behind(pr); rememberRows(ui.behind[focus.id]); later(render, 0); return; }
       var gen = ui.generation;
-      R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: 'pr:' + pr })).then(function onBehind(result) {
+      observeRead('behind', 'open', R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: 'pr:' + pr }))).then(function onBehind(result) {
         if (gen !== ui.generation) return;
         var data = result && result.data;
         ui.behind[focus.id] = Receipts.normalizeList(data, 'pr:' + pr);
@@ -1919,7 +1958,7 @@
       var args = { view: 'work' };
       var s = ui.snapshot;
       if (s && s.selection.status === 'selected' && s.focus) args.focus = { type: 'decision', id: s.focus.id };
-      R.callToolResult('orgx_panel_snapshot', args).then(function onWork(result) {
+      observeRead('work', ui.tab === 'work' ? 'tab' : 'warm', R.callToolResult('orgx_panel_snapshot', args)).then(function onWork(result) {
         if (gen !== ui.generation) return;
         var data = result && result.data;
         if (isSnapshot(data)) accept(data, result.meta || null, 'refresh');
@@ -1996,6 +2035,14 @@
       ui.snapshot = snapshot;
       ui.syncedAt = new Date(snapshot.generated_at);
       ui.auth = null;
+      if (!openedTracked) {
+        openedTracked = true;
+        track('panel_opened', {
+          host: Host ? Host.kind() : 'unknown', platform: Host ? Host.platform() : 'other',
+          display_mode: (Host && Host.displayMode()) || 'other', safe_source: (Host && Host.safeSource()) || 'none',
+          cold: source !== 'host', ttfc_ms: performance.now(),
+        });
+      }
       if (ui.readState.phase === 'failed') ui.readState = { phase: 'idle' };
       ui.limited = false;
       // The host's first result says whether this host can decide here at all
@@ -2036,7 +2083,7 @@
       var gen = ui.generation;
       var args = focusId ? { focus: { type: 'decision', id: focusId } } : {};
       lastFocusRequest = focusId || null;
-      var request = R.callToolResult('orgx_panel_snapshot', args).then(function onResult(result) {
+      var request = observeRead('snapshot', focusId ? 'focus' : reason === 'refresh' ? 'refresh' : reason === 'switch' ? 'switch' : reason === 'ruling' ? 'ruling' : 'open', R.callToolResult('orgx_panel_snapshot', args)).then(function onResult(result) {
         if (gen !== ui.generation || (pendingFocus !== undefined && pendingFocus !== focusId)) return;
         ui.readState = window.OrgXPanelState.readTransition(ui.readState, { type: 'completed', focusId: focusId });
         if (accept(result.data, result.meta || null, 'refresh')) {
@@ -2257,9 +2304,11 @@
         if (c.kind === 'approval') return action === 'approve' ? 'the run continues' : 'the run stops at this step';
         return action === 'approve' ? 'the agent can continue' : 'the agent reworks it';
       }
+      var pressed = performance.now();
       function settle(status) {
         if (gen !== ui.generation || !ui.rulings[id]) return;
         if (window.OrgXPanelState.isFinalRuling(ui.rulings[id].phase)) return;
+        track('panel_decision', { panel_decision_action: action, panel_outcome: status === null ? 'recorded' : undefined, latency_ms: performance.now() - pressed, ok: true });
         var transition = c.kind === 'decision' ? window.OrgXPanelState.statusTransition(status, id, action)
           : { phase: action === 'approve' ? 'confirmed' : 'rejected' };
         ui.rulings[id].phase = transition.phase === 'waiting' ? 'recorded' : transition.phase;
@@ -2294,6 +2343,8 @@
       }, function onFailed(error) {
         if (gen !== ui.generation) return;
         var code = errorKind(error);
+        track('panel_decision', { panel_decision_action: action, panel_outcome: VALIDATION_CODES.indexOf(code) !== -1 ? 'validation' : 'failed', latency_ms: performance.now() - pressed, ok: false, error_code: errorCodeOf(error) });
+        if (VALIDATION_CODES.indexOf(code) === -1) track('panel_error', { panel_error_code: 'decide_failed', error_code: errorCodeOf(error) });
         var details = error && error.details && typeof error.details === 'object' ? error.details : {};
         delete ui.rulings[id];
         if (VALIDATION_CODES.indexOf(code) !== -1) {
@@ -2570,6 +2621,7 @@
           if (!sentenceToSend || !Launch) break;
           el.setAttribute('aria-busy', 'true');
           Launch.send(sentenceToSend).then(function sentStart(outcome) {
+            track('panel_start_sent', { panel_verb: ui.startVerb || (ui.startAgent ? 'delegate' : 'initiative'), agent_picked: Boolean(ui.startAgent), panel_outcome: outcome === 'sent' ? 'sent' : outcome === 'copied' ? 'copied' : 'unsent' });
             ui.startStatus = outcome;
             if (outcome === 'sent') ui.startText = '';
             render();
@@ -2930,7 +2982,7 @@
       var gen = ui.generation;
       var args = currentReadArgs();
       var withWork = args.view === 'work';
-      R.callToolResult('orgx_panel_snapshot', args).then(function onLive(result) {
+      observeRead('snapshot', 'live', R.callToolResult('orgx_panel_snapshot', args)).then(function onLive(result) {
         if (gen !== ui.generation) return;
         var data = result && result.data;
         if (accept(data, result.meta || null, 'refresh')) {
@@ -3048,7 +3100,7 @@
       fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh');
     }
     window.addEventListener('online', function onOnline() { setOffline(false); });
-    window.addEventListener('offline', function onOffline() { setOffline(true); });
+    window.addEventListener('offline', function onOffline() { track('panel_error', { panel_error_code: 'offline' }); setOffline(true); });
 
     // On a touch screen, a horizontal swipe across the view moves between the
     // tabs in their own order. Vertical scrolling, text fields and the rows

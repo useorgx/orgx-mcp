@@ -1036,6 +1036,61 @@
     }).catch(function () { /* reporting must not break search */ });
   }
 
+  /**
+   * UX telemetry for a widget: small named events, batched and posted to the
+   * worker with the signed grant the tool result carried
+   * (_meta['orgx/widgetTelemetry']). Nothing is sent without a grant, only
+   * the configured MCP origins may receive one, and the worker keeps a closed
+   * schema: free text never leaves the widget. Flushes a little after the
+   * first event, and at once when the page hides.
+   */
+  var WIDGET_EVENT_ENDPOINT = /^https:\/\/mcp(?:-staging)?\.useorgx\.com\/telemetry\/widget$/;
+  var WIDGET_EVENT_FLUSH_MS = 1500;
+  var WIDGET_EVENT_BATCH = 25;
+  var widgetEvents = [];
+  var widgetEventTimer = null;
+  var widgetEventsSent = 0;
+  function widgetTelemetryGrant() {
+    var meta = getToolResponseMetadata('orgx/widgetTelemetry');
+    if (!meta || typeof meta.grant !== 'string' || typeof meta.endpoint !== 'string') return null;
+    if (!WIDGET_EVENT_ENDPOINT.test(meta.endpoint)) return null;
+    return meta;
+  }
+  function reportWidgetEvent(name, props) {
+    if (typeof name !== 'string' || !name) return;
+    if (widgetEvents.length >= WIDGET_EVENT_BATCH * 4) return;
+    widgetEvents.push({ name: name, props: props && typeof props === 'object' ? props : {} });
+    if (!widgetEventTimer) widgetEventTimer = setTimeout(function later() { widgetEventTimer = null; flushWidgetEvents(false); }, WIDGET_EVENT_FLUSH_MS);
+  }
+  function flushWidgetEvents(closing) {
+    if (widgetEventTimer) { clearTimeout(widgetEventTimer); widgetEventTimer = null; }
+    if (!widgetEvents.length || !global.fetch) return;
+    var grant = widgetTelemetryGrant();
+    if (!grant) { widgetEvents = []; return; }
+    while (widgetEvents.length) {
+      var batch = widgetEvents.splice(0, WIDGET_EVENT_BATCH);
+      widgetEventsSent += batch.length;
+      try {
+        global.fetch(grant.endpoint, {
+          method: 'POST', credentials: 'omit', keepalive: Boolean(closing),
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ grant: grant.grant, protocol: getProtocol(), events: batch }),
+        }).catch(function () { /* telemetry never breaks a widget */ });
+      } catch (_) { /* a closing page may refuse the call */ }
+    }
+  }
+  function flushWidgetEventsOnHide() {
+    if (global.document && global.document.visibilityState === 'hidden') flushWidgetEvents(true);
+  }
+  if (global.addEventListener) {
+    global.addEventListener('pagehide', function onHide() { flushWidgetEvents(true); });
+    if (global.document && global.document.addEventListener) global.document.addEventListener('visibilitychange', flushWidgetEventsOnHide);
+    // A page error is a UX event too; the message stays in the widget.
+    var pageErrorsReported = 0;
+    global.addEventListener('error', function onPageError() { if (pageErrorsReported++ < 3) reportWidgetEvent('panel_error', { panel_error_code: 'page_error' }); });
+    global.addEventListener('unhandledrejection', function onRejection() { if (pageErrorsReported++ < 3) reportWidgetEvent('panel_error', { panel_error_code: 'page_error' }); });
+  }
+
   // Starts the host call; a synchronous throw from the host becomes a rejection.
   function attemptHostCall(start) {
     try {
@@ -1832,6 +1887,9 @@
     persistWidgetState: persistWidgetState,
     reportSize: reportSize,
     reportSearchWidgetEvent: reportSearchWidgetEvent,
+    reportWidgetEvent: reportWidgetEvent,
+    flushWidgetEvents: flushWidgetEvents,
+    _widgetEventsSent: function sent() { return widgetEventsSent; },
     requestDisplayMode: requestDisplayMode,
     sendFollowUpMessage: sendFollowUpMessage,
     updateModelContext: updateModelContext,

@@ -83,6 +83,22 @@ const enumProperties: Record<string, readonly string[]> = {
   activation_track: ['mcp-skills'],
   provider_requested: ['openai', 'anthropic', 'google', 'azure', 'bedrock', 'local'],
   provider_used: ['openai', 'anthropic', 'google', 'azure', 'bedrock', 'local'],
+  // The OrgX panel's UX events (src/widgetTelemetry.ts): every label is one of these.
+  widget: ['orgx-panel'],
+  host: ['chatgpt', 'claude', 'cursor', 'vscode', 'codex', 'gemini', 'goose', 'unknown', 'other'],
+  platform: ['web', 'mobile', 'desktop', 'other'],
+  display_mode: ['inline', 'fullscreen', 'pip', 'other'],
+  safe_source: ['host', 'floor', 'none', 'other'],
+  panel_tab: ['needs', 'work', 'done', 'start', 'other'],
+  panel_from_tab: ['needs', 'work', 'done', 'start', 'other'],
+  panel_read_kind: ['snapshot', 'work', 'receipts', 'history', 'receipt', 'workspaces', 'behind', 'decide_status', 'other'],
+  panel_trigger: ['open', 'tab', 'refresh', 'warm', 'live', 'switch', 'ruling', 'range', 'retry', 'focus', 'other'],
+  panel_decision_action: ['approve', 'reject', 'other'],
+  panel_outcome: ['confirmed', 'rejected', 'elsewhere', 'recorded', 'failed', 'validation', 'sent', 'copied', 'unsent', 'other'],
+  panel_verb: ['initiative', 'plan', 'delegate', 'other'],
+  panel_error_code: ['page_error', 'read_failed', 'auth_required', 'scope_required', 'offline', 'tool_unavailable', 'decide_failed', 'other'],
+  panel_tour_outcome: ['started', 'finished', 'skipped', 'closed', 'other'],
+  panel_source: ['decisions', 'artifacts', 'work', 'history', 'ledger', 'receipt', 'workspaces', 'live', 'other'],
 };
 const numericProperties = new Set([
   'latency_ms', 'http_status', 'argument_count', 'estimated_argument_bytes',
@@ -93,6 +109,8 @@ const numericProperties = new Set([
   'edge_rate_limit_billing_ms', 'tokens_used', 'cost_usd', 'estimated_cost_usd',
   'search_result_count', 'search_missing_title_count', 'task_count', 'deprecation_window_days',
   'deprecation_min_quiet_days',
+  'ttfc_ms', 'decisions_ms', 'artifacts_ms', 'work_ms', 'history_ms', 'ledger_ms', 'receipt_ms', 'workspaces_ms',
+  'degraded_count', 'event_count',
 ]);
 const booleanProperties = new Set([
   'has_user_id', 'has_workspace_id', 'has_initiative_id', 'has_workstream_id',
@@ -102,6 +120,7 @@ const booleanProperties = new Set([
   'provider_mismatch', 'routed',
   'legacy_tool_call',
   'mcp_response_observed',
+  'cold', 'warm', 'agent_picked', 'has_workspace',
 ]);
 const uuidProperties = new Set(['workspace_id', 'initiative_id', 'request_uuid',
   'attempt_id', 'connection_id', 'event_id']);

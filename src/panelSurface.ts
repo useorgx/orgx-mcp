@@ -30,6 +30,7 @@ import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
+import { WIDGET_TELEMETRY_META_KEY } from './widgetTelemetry';
 import { buildEntityLink } from './deepLinks';
 import {
   expectationSetOfDecision,
@@ -1377,9 +1378,45 @@ export interface PanelSurfaceHost {
   fetchWorkspaces?(): Promise<unknown[] | null>;
   /** A live-feed grant for this workspace, or null when live is unavailable. */
   liveGrant?(workspaceId: string): Promise<StreamGrant | null>;
+  /** A UX telemetry grant for the widget (src/widgetTelemetry.ts), or null when telemetry is off. */
+  telemetryContext?(params: { workspaceId: string | null }): Promise<{ endpoint: string; grant: string } | null>;
+  /**
+   * What one snapshot read cost per source and what it went without. The
+   * worker forwards it (PostHog, and Sentry for a source that failed); the
+   * panel itself only ever sees the `degraded` list.
+   */
+  observe?(observation: PanelSnapshotObservation): void;
   /** The worker's tool wrapper (error mapping, session bookkeeping). */
   run(runner: () => Promise<CallToolResult>): Promise<CallToolResult>;
   now?(): Date;
+}
+
+export type PanelSnapshotObservation = {
+  view: 'panel' | 'work' | 'workspaces' | 'history' | 'receipts' | 'receipt';
+  hasWorkspace: boolean;
+  /** Milliseconds per source that was read. */
+  timings: Partial<Record<'decisions' | 'artifacts' | 'work' | 'history' | 'ledger' | 'receipt' | 'workspaces' | 'live', number>>;
+  /** Sources that failed, with the error, so the worker can report it. */
+  failures: Array<{ source: 'decisions' | 'artifacts' | 'work' | 'history' | 'ledger' | 'receipt' | 'workspaces' | 'live'; error: unknown }>;
+  degraded: string[];
+  totalMs: number;
+};
+
+/** A stopwatch around one source read; its result is the read's own, timing lands in the observation. */
+async function timedSource<T>(
+  observation: PanelSnapshotObservation,
+  source: PanelSnapshotObservation['failures'][number]['source'],
+  read: () => Promise<T>
+): Promise<T> {
+  const started = Date.now();
+  try {
+    return await read();
+  } catch (error) {
+    observation.failures.push({ source, error });
+    throw error;
+  } finally {
+    observation.timings[source] = Math.max(0, Date.now() - started);
+  }
 }
 
 export async function handlePanelSnapshot(
@@ -1388,6 +1425,23 @@ export async function handlePanelSnapshot(
 ): Promise<CallToolResult> {
   const auth = host.authRequired();
   if (auth) return auth;
+
+  const startedAt = Date.now();
+  const observation: PanelSnapshotObservation = {
+    view: args?.view === 'work' || args?.view === 'workspaces' || args?.view === 'history' || args?.view === 'receipts' || args?.view === 'receipt'
+      ? (args.view as PanelSnapshotObservation['view'])
+      : 'panel',
+    hasWorkspace: false,
+    timings: {},
+    failures: [],
+    degraded: [],
+    totalMs: 0,
+  };
+  const observe = () => {
+    if (!host.observe) return;
+    observation.totalMs = Math.max(0, Date.now() - startedAt);
+    try { host.observe(observation); } catch { /* telemetry never fails a read */ }
+  };
 
   return host.run(async () => {
     const parsedFocus = PANEL_FOCUS_SCHEMA.safeParse(args?.focus);
@@ -1417,10 +1471,11 @@ export async function handlePanelSnapshot(
     let work: PanelWork | undefined;
     if (workspace) {
       const workspaceId = workspace.id;
+      observation.hasWorkspace = true;
       const [decisionRead, artifactRead, workRead] = await Promise.allSettled([
-        host.fetchPendingDecisions({ workspaceId, limit: PANEL_DECISION_READ_LIMIT }),
-        host.fetchArtifacts({ workspaceId, limit: PANEL_ARTIFACT_READ_LIMIT }),
-        wantsWork && host.fetchAgentStatus ? host.fetchAgentStatus({ workspaceId }) : Promise.resolve(undefined),
+        timedSource(observation, 'decisions', () => host.fetchPendingDecisions({ workspaceId, limit: PANEL_DECISION_READ_LIMIT })),
+        timedSource(observation, 'artifacts', () => host.fetchArtifacts({ workspaceId, limit: PANEL_ARTIFACT_READ_LIMIT })),
+        wantsWork && host.fetchAgentStatus ? timedSource(observation, 'work', () => host.fetchAgentStatus!({ workspaceId })) : Promise.resolve(undefined),
       ]);
       if (wantsWork) {
         work = buildPanelWork(workRead.status === 'fulfilled' ? workRead.value ?? null : null);
@@ -1450,7 +1505,7 @@ export async function handlePanelSnapshot(
       let records: unknown[] | null = null;
       let reason: string | null = null;
       try {
-        records = host.fetchDecisionHistory ? await host.fetchDecisionHistory({ workspaceId: workspace.id }) : null;
+        records = host.fetchDecisionHistory ? await timedSource(observation, 'history', () => host.fetchDecisionHistory!({ workspaceId: workspace.id })) : null;
       } catch (error) {
         records = null;
         reason = historyFailure(error);
@@ -1461,7 +1516,7 @@ export async function handlePanelSnapshot(
     if (args?.view === 'receipts' && workspace) {
       const query = typeof args.query === 'string' && args.query.trim() ? args.query.trim() : receiptRangeQuery(range, host.now?.());
       try {
-        const payload = host.fetchLedgerReceipts ? await host.fetchLedgerReceipts({ workspaceId: workspace.id, query, limit: PANEL_RECEIPT_LIMIT }) : null;
+        const payload = host.fetchLedgerReceipts ? await timedSource(observation, 'ledger', () => host.fetchLedgerReceipts!({ workspaceId: workspace.id, query, limit: PANEL_RECEIPT_LIMIT })) : null;
         const raw = asRecord(payload);
         const split = splitWidgetApprovalMeta(asRecord(raw?.data) ?? raw ?? {});
         receiptApprovalMeta = split.meta;
@@ -1473,7 +1528,7 @@ export async function handlePanelSnapshot(
     if (args?.view === 'receipt' && workspace && typeof args.receipt_id === 'string' && args.receipt_id.trim()) {
       const id = args.receipt_id.trim();
       try {
-        const payload = host.fetchLedgerReceipt ? await host.fetchLedgerReceipt({ workspaceId: workspace.id, id }) : null;
+        const payload = host.fetchLedgerReceipt ? await timedSource(observation, 'receipt', () => host.fetchLedgerReceipt!({ workspaceId: workspace.id, id })) : null;
         const raw = asRecord(payload);
         const split = splitWidgetApprovalMeta(asRecord(raw?.data) ?? raw ?? {});
         receiptApprovalMeta = split.meta;
@@ -1485,7 +1540,7 @@ export async function handlePanelSnapshot(
     if (wantsWorkspaces) {
       let records: unknown[] | null = null;
       try {
-        records = host.fetchWorkspaces ? await host.fetchWorkspaces() : null;
+        records = host.fetchWorkspaces ? await timedSource(observation, 'workspaces', () => host.fetchWorkspaces!()) : null;
       } catch {
         records = null;
       }
@@ -1500,11 +1555,20 @@ export async function handlePanelSnapshot(
       }
     }
     const widgetMeta = selectPanelApprovalMeta(approvalMeta, snapshot);
+    let telemetry: { endpoint: string; grant: string } | null = null;
+    if (host.telemetryContext) {
+      try { telemetry = await host.telemetryContext({ workspaceId: workspace?.id ?? null }); } catch { telemetry = null; }
+    }
+    observation.degraded = snapshot.degraded.slice();
+    observe();
 
+    const meta: Record<string, unknown> = {};
+    if (widgetMeta || receiptApprovalMeta) meta[WIDGET_APPROVAL_META_KEY] = { ...widgetMeta, ...receiptApprovalMeta };
+    if (telemetry) meta[WIDGET_TELEMETRY_META_KEY] = telemetry;
     return {
       content: [{ type: 'text', text: summarizePanelSnapshot(snapshot) }],
       structuredContent: snapshot as unknown as Record<string, unknown>,
-      ...(widgetMeta || receiptApprovalMeta ? { _meta: { [WIDGET_APPROVAL_META_KEY]: { ...widgetMeta, ...receiptApprovalMeta } } } : {}),
+      ...(Object.keys(meta).length ? { _meta: meta } : {}),
     } as CallToolResult;
   });
 }
