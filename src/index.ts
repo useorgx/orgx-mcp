@@ -1,3 +1,4 @@
+import { artifactProofScope } from './artifactProofScope';
 import { parseSearchDateRange, type SearchDateRange } from './searchDateRange';
 import { McpAgent } from 'agents/mcp';
 import { applyRunTokenScopes } from './runTokenScopes';
@@ -2908,65 +2909,13 @@ export class OrgXMcp extends McpAgent<
     }
 
     try {
-      const initiativeIds = new Set<string>();
-      const workspaceId =
-        (typeof params.args.workspace_id === 'string' &&
-          params.args.workspace_id.trim().length > 0 &&
-          params.args.workspace_id.trim()) ||
-        this.sessionContext?.workspaceId ||
-        null;
-
-      const directInitiativeId =
-        (typeof params.data.initiative_id === 'string' &&
-          params.data.initiative_id.trim().length > 0 &&
-          params.data.initiative_id.trim()) ||
-        (typeof params.data.id === 'string' &&
-          params.toolId === 'get_initiative_pulse' &&
-          params.data.id.trim().length > 0 &&
-          params.data.id.trim()) ||
-        (typeof params.args.initiative_id === 'string' &&
-          params.args.initiative_id.trim().length > 0 &&
-          params.args.initiative_id.trim()) ||
-        this.sessionContext?.initiativeId ||
-        null;
-      if (directInitiativeId) initiativeIds.add(directInitiativeId);
-
-      if (Array.isArray(params.data.agents)) {
-        for (const rawAgent of params.data.agents) {
-          if (!rawAgent || typeof rawAgent !== 'object') continue;
-          const record = rawAgent as Record<string, unknown>;
-          const candidateIds = [
-            record.initiative_id,
-            record.initiativeId,
-            record.workspace_initiative_id,
-          ];
-          for (const candidate of candidateIds) {
-            if (typeof candidate === 'string' && candidate.trim().length > 0) {
-              initiativeIds.add(candidate.trim());
-            }
-          }
-          const taskArrays = [
-            record.current_tasks,
-            record.currentTasks,
-            record.active_tasks,
-            record.activeTasks,
-            record.tasks,
-            record.items,
-          ];
-          for (const candidateArray of taskArrays) {
-            if (!Array.isArray(candidateArray)) continue;
-            for (const item of candidateArray) {
-              if (!item || typeof item !== 'object') continue;
-              const task = item as Record<string, unknown>;
-              const taskInitiativeId =
-                (typeof task.initiative_id === 'string' && task.initiative_id.trim()) ||
-                (typeof task.initiativeId === 'string' && task.initiativeId.trim()) ||
-                null;
-              if (taskInitiativeId) initiativeIds.add(taskInitiativeId);
-            }
-          }
-        }
-      }
+      const scope = artifactProofScope({
+        ...params,
+        sessionWorkspaceId: this.sessionContext?.workspaceId,
+        sessionInitiativeId: this.sessionContext?.initiativeId,
+      });
+      const { workspaceId } = scope;
+      const initiativeIds = new Set(scope.initiativeIds);
 
       const artifactMap = new Map<string, Record<string, unknown>>();
       if (initiativeIds.size > 0) {
@@ -2979,6 +2928,7 @@ export class OrgXMcp extends McpAgent<
                 userId: params.userId,
                 initiativeId,
                 limit: params.toolId === 'get_agent_status' ? 24 : 8,
+                ...(params.toolId === 'get_initiative_pulse' ? { orderBy: 'updated_at', orderDirection: 'desc' as const } : {}),
               })
             )
           );
@@ -3059,11 +3009,10 @@ export class OrgXMcp extends McpAgent<
         );
       }
 
-      if (artifacts.length === 0) return evidenceData;
-
       if (params.toolId === 'get_initiative_pulse') {
         return enrichInitiativePulseWithArtifacts(evidenceData, artifacts);
       }
+      if (artifacts.length === 0) return evidenceData;
       if (params.toolId === 'get_morning_brief') {
         return enrichMorningBriefWithArtifacts(evidenceData, artifacts);
       }

@@ -5,6 +5,7 @@ import {
   agentTaskSchema,
   artifactSchema,
   artifactSummarySchema,
+  visibleArtifactSummarySchema,
   budgetPreflightSchema,
   decisionSchema,
   expectationSetSchema,
@@ -404,6 +405,10 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       progress_pct: z.number(),
       created_at: z.string(),
       milestones: z.array(resourceSchema),
+      tasks: z.array(z.object({
+        id: z.string(), title: nullableString.optional(), status: nullableString,
+        workstream_id: nullableString, milestone_id: nullableString,
+      }).strict()).optional(),
       workstreams: z.array(resourceSchema),
       // The initiative API and pulse widget support both blocker text and
       // linked resource details. Preserve either representation on the wire.
@@ -420,6 +425,10 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           state: z.string().optional(),
           headline: z.string().optional(),
           summary: z.string().optional(),
+          progress: z.object({
+            completed: nullableNumber.optional(), total: nullableNumber.optional(),
+            pct: nullableNumber.optional(), active: nullableNumber.optional(), blocked: nullableNumber.optional(),
+          }).optional(),
         })
         .optional(),
       workstream_summary: z.object({
@@ -442,6 +451,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       initiative_short_id: z.string(),
       recent_artifacts: z.array(artifactSchema),
       artifact_summary: artifactSummarySchema.nullable(),
+      visible_artifact_summary: visibleArtifactSummarySchema.optional(),
       resolved_from_name: z.boolean(),
       message: z.string(),
       next_steps: z.array(z.string()),

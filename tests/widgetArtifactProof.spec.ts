@@ -504,12 +504,14 @@ describe('widget artifact proof helpers', () => {
       eval_score: 0.86,
     });
     expect(proofCards[1]).toMatchObject({ id: 'blocker-1', eval_score: null });
-    // Delivered count includes in-review work, not just terminally approved.
+    expect((payload.recent_artifacts as Array<Record<string, unknown>>)[0].id).toBe('blocker-1');
+    expect(payload.artifact_summary).not.toHaveProperty('delivered');
+    // Available-row counts do not invent a full-scope delivered total.
     expect(payload.artifact_summary).toMatchObject({
       total: 2,
       approved: 0,
       in_review: 2,
-      delivered: 2,
+      unit: 'available_artifact',
     });
   });
 

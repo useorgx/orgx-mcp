@@ -446,7 +446,29 @@ export const capabilityGapSchema = z.object({
   recommended_agent_id: nullableString.optional(),
 });
 
+const artifactContextRefSchema = z.object({ id: z.string(), title: z.string() }).strict();
+export const artifactContextSchema = z.object({
+  initiative: artifactContextRefSchema,
+  workstream: artifactContextRefSchema.optional(),
+  milestone: artifactContextRefSchema.optional(),
+  task: artifactContextRefSchema.optional(),
+}).strict();
+
 export const artifactSchema = resourceSchema.extend({
+  metadata: z.object({
+    idempotency_key: z.string().optional(), source_client: z.string().optional(),
+    created_by_type: z.string().optional(), created_by_id: z.string().optional(),
+    assigned_agent_ids: z.array(z.string()).optional(), assigned_agent_names: z.array(z.string()).optional(),
+    preview_markdown: jsonValueSchema.optional(), content_markdown: jsonValueSchema.optional(),
+    content: jsonValueSchema.optional(), review_notes: jsonValueSchema.optional(), review_note: jsonValueSchema.optional(),
+    evaluation_anatomy: jsonValueSchema.optional(), evaluationAnatomy: jsonValueSchema.optional(),
+    eval: jsonValueSchema.optional(), eval_score: jsonValueSchema.optional(),
+    rubric_scores: jsonValueSchema.optional(), thresholds: jsonValueSchema.optional(), format: jsonValueSchema.optional(),
+  }).nullable().optional(),
+  context: artifactContextSchema.nullable().optional(),
+  content: jsonValueSchema.optional(),
+  verification: z.record(jsonValueSchema).nullable().optional(),
+  version: z.union([z.string(), z.number()]).nullable().optional(),
   artifact_type: nullableString.optional(),
   eval_score: nullableNumber.optional(),
   quality_score: nullableNumber.optional(),
@@ -467,6 +489,7 @@ export const proofHandoffSchema = z.object({
   preserve_tool_results: z.literal(true),
   live_url: nullableString,
   proof_count: z.number(),
+  proof_count_scope: z.enum(['tracked_artifact', 'available_artifact']).optional(),
   visible_proof_count: z.number(),
   review_count: z.number(),
   visible_review_count: z.number(),
@@ -480,12 +503,25 @@ export const proofHandoffSchema = z.object({
 export const artifactSummarySchema = z
   .object({
     total: z.number(),
+    unit: z.enum(['available_artifact']).optional(),
     approved: z.number().optional(),
     in_review: z.number().optional(),
     needs_review: z.number().optional(),
     draft: z.number().optional(),
     changes_requested: z.number().optional(),
-  });
+    delivered: z.number().optional(),
+    eval_passed: z.number().optional(),
+    eval_failed: z.number().optional(),
+    archived: z.number().optional(),
+    superseded: z.number().optional(),
+    rejected: z.number().optional(),
+    completed: z.number().optional(),
+    published: z.number().optional(),
+  }).catchall(z.number());
+
+export const visibleArtifactSummarySchema = artifactSummarySchema.extend({
+  unit: z.literal('visible_proof_card'),
+}).strict();
 
 /**
  * Acceptance-ledger proof the app adds to a pending-decision list on the

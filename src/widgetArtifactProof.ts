@@ -1,4 +1,5 @@
 import { buildEntityLink, buildLiveUrl } from './deepLinks';
+import { compareArtifactTimestamps, mergeInitiativeArtifactRecords, normalizeArtifactContext, type ArtifactHierarchyContext } from './widgetArtifactHierarchy';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -128,6 +129,7 @@ export type NormalizedArtifact = {
   preview_markdown: string | null;
   summary: string | null;
   created_at: string | null;
+  updated_at: string | null;
   created_by_type: string | null;
   created_by_id: string | null;
   created_by_name: string | null;
@@ -135,6 +137,14 @@ export type NormalizedArtifact = {
   entity_type: string | null;
   initiative_id: string | null;
   task_id: string | null;
+  workstream_id: string | null;
+  milestone_id: string | null;
+  context: ArtifactHierarchyContext | null;
+  description?: string | null;
+  content?: unknown;
+  verification?: Record<string, unknown> | null;
+  version?: string | number | null;
+  artifact_url: string | null;
   metadata: Record<string, unknown>;
   primary_url?: string | null;
   primary_label?: string | null;
@@ -159,6 +169,7 @@ export type WidgetProofCard = {
   eval_score: number | null;
   summary: string | null;
   created_at: string | null;
+  updated_at: string | null;
   created_by_type: string | null;
   created_by_id: string | null;
   created_by_name: string | null;
@@ -167,6 +178,20 @@ export type WidgetProofCard = {
   task_url: string | null;
   live_url: string | null;
   needs_review: boolean;
+  entity_id: string | null;
+  entity_type: string | null;
+  initiative_id: string | null;
+  workstream_id: string | null;
+  milestone_id: string | null;
+  task_id: string | null;
+  context: ArtifactHierarchyContext | null;
+  description?: string | null;
+  preview_markdown: string | null;
+  content?: unknown;
+  verification?: Record<string, unknown> | null;
+  version?: string | number | null;
+  artifact_url: string | null;
+  metadata: Record<string, unknown>;
 };
 
 export type WidgetContinuationPrompt = {
@@ -183,6 +208,7 @@ export type WidgetProofHandoff = {
   preserve_tool_results: true;
   live_url: string | null;
   proof_count: number;
+  proof_count_scope: 'tracked_artifact' | 'available_artifact';
   visible_proof_count: number;
   review_count: number;
   visible_review_count: number;
@@ -301,9 +327,13 @@ function compareArtifactsForProof(
 ): number {
   const rankDelta = proofRank(b) - proofRank(a);
   if (rankDelta !== 0) return rankDelta;
-  const at = a.created_at ? Date.parse(a.created_at) : 0;
-  const bt = b.created_at ? Date.parse(b.created_at) : 0;
-  return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0);
+  return compareArtifactsByRecency(a, b);
+}
+
+function compareArtifactsByRecency(a: NormalizedArtifact, b: NormalizedArtifact): number {
+  return compareArtifactTimestamps(
+    { updated_at: b.updated_at, created_at: b.created_at }, { updated_at: a.updated_at, created_at: a.created_at })
+    || (a.id ?? '').localeCompare(b.id ?? '');
 }
 
 export function normalizeArtifactRecord(input: unknown): NormalizedArtifact | null {
@@ -311,16 +341,11 @@ export function normalizeArtifactRecord(input: unknown): NormalizedArtifact | nu
   if (!record) return null;
   const metadata = getMetadata(record);
   const creator = resolveArtifactCreatorIdentity(record, metadata);
-  const entityId =
-    firstString(record, ['entity_id', 'entityId']) ??
-    firstString(metadata, ['entity_id', 'entityId', 'task_id', 'taskId']);
-  const entityType =
-    firstString(record, ['entity_type', 'entityType']) ??
-    firstString(metadata, ['entity_type', 'entityType']);
+  const entityId = firstString(record, ['entity_id', 'entityId']);
+  const entityType = firstString(record, ['entity_type', 'entityType']);
   const taskId =
     firstString(record, ['task_id', 'taskId']) ??
-    (entityType === 'task' ? entityId : null) ??
-    firstString(metadata, ['task_id', 'taskId']);
+    (entityType === 'task' ? entityId : null);
 
   return {
     id: firstString(record, ['id', 'artifact_id', 'artifactId']),
@@ -343,17 +368,26 @@ export function normalizeArtifactRecord(input: unknown): NormalizedArtifact | nu
       firstString(record, ['description', 'summary']) ??
       firstString(metadata, ['description', 'summary']),
     created_at:
-      firstString(record, ['created_at', 'createdAt', 'updated_at', 'updatedAt']) ??
+      firstString(record, ['created_at', 'createdAt']) ??
       firstString(metadata, ['created_at', 'createdAt']),
+    updated_at: firstString(record, ['updated_at', 'updatedAt']),
     created_by_type: creator.type,
     created_by_id: creator.id,
     created_by_name: creator.name,
     entity_id: entityId,
     entity_type: entityType,
-    initiative_id:
-      firstString(record, ['initiative_id', 'initiativeId']) ??
-      firstString(metadata, ['initiative_id', 'initiativeId']),
+    initiative_id: firstString(record, ['initiative_id', 'initiativeId']),
     task_id: taskId,
+    workstream_id: firstString(record, ['workstream_id', 'workstreamId']),
+    milestone_id: firstString(record, ['milestone_id', 'milestoneId']),
+    context: normalizeArtifactContext(record.context),
+    ...(record.description !== undefined ? { description: typeof record.description === 'string' ? record.description : null } : {}),
+    ...(record.content !== undefined || metadata.content !== undefined || metadata.content_markdown !== undefined
+      ? { content: record.content !== undefined ? record.content : metadata.content ?? metadata.content_markdown ?? null } : {}),
+    ...(record.verification !== undefined || metadata.verification !== undefined
+      ? { verification: record.verification !== undefined ? asRecord(record.verification) : asRecord(metadata.verification) } : {}),
+    ...(record.version !== undefined ? { version: typeof record.version === 'string' || typeof record.version === 'number' ? record.version : null } : {}),
+    artifact_url: firstString(record, ['artifact_url', 'artifactUrl']),
     metadata,
     primary_url: firstString(record, [
       'primary_url',
@@ -416,124 +450,6 @@ function collectAgentIdentityTokens(agent: Record<string, unknown>): Set<string>
     if (slug) tokens.add(slug);
   }
   return tokens;
-}
-
-function addOwnedTaskIds(
-  input: unknown,
-  initiativeId: string | null,
-  ids: Set<string>
-): void {
-  const record = asRecord(input);
-  if (!record) return;
-
-  const recordInitiativeId = firstString(record, ['initiative_id', 'initiativeId']);
-  if (initiativeId && recordInitiativeId && recordInitiativeId !== initiativeId) {
-    return;
-  }
-
-  const taskId =
-    firstString(record, ['task_id', 'taskId']) ??
-    (toSlug(firstString(record, ['entity_type', 'entityType', 'type'])) === 'task'
-      ? firstString(record, ['entity_id', 'entityId', 'id'])
-      : firstString(record, ['id']));
-  if (taskId) ids.add(taskId);
-}
-
-function addOwnedHierarchyIds(
-  input: unknown,
-  initiativeId: string | null,
-  ids: Set<string>
-): void {
-  const record = asRecord(input);
-  if (!record) return;
-
-  const recordInitiativeId = firstString(record, ['initiative_id', 'initiativeId']);
-  if (initiativeId && recordInitiativeId && recordInitiativeId !== initiativeId) {
-    return;
-  }
-
-  const id = firstString(record, ['id', 'entity_id', 'entityId']);
-  if (id) ids.add(id);
-
-  for (const key of [
-    'workstreams',
-    'workStreams',
-    'milestones',
-    'tasks',
-    'items',
-    'children',
-  ]) {
-    for (const child of firstArray(record, [key])) {
-      addOwnedHierarchyIds(child, initiativeId, ids);
-    }
-  }
-}
-
-function collectInitiativeOwnedEntityIds(
-  data: Record<string, unknown>,
-  initiativeId: string | null
-): Set<string> {
-  const ids = new Set<string>();
-  if (initiativeId) ids.add(initiativeId);
-
-  addOwnedHierarchyIds(data, initiativeId, ids);
-  addOwnedHierarchyIds(asRecord(data.hierarchy), initiativeId, ids);
-
-  for (const agent of firstArray(data, ['agents'])) {
-    const agentRecord = asRecord(agent);
-    if (!agentRecord) continue;
-    const agentInitiativeId = firstString(agentRecord, [
-      'initiative_id',
-      'initiativeId',
-      'workspace_initiative_id',
-    ]);
-    if (initiativeId && agentInitiativeId && agentInitiativeId !== initiativeId) {
-      continue;
-    }
-
-    for (const key of [
-      'current_tasks',
-      'currentTasks',
-      'active_tasks',
-      'activeTasks',
-      'tasks',
-      'items',
-    ]) {
-      for (const task of firstArray(agentRecord, [key])) {
-        addOwnedTaskIds(task, initiativeId, ids);
-      }
-    }
-    addOwnedTaskIds(agentRecord.task, initiativeId, ids);
-  }
-
-  return ids;
-}
-
-function artifactBelongsToInitiative(
-  artifact: NormalizedArtifact,
-  initiativeId: string | null,
-  ownedEntityIds: Set<string>
-): boolean {
-  if (!initiativeId) return true;
-
-  if (artifact.initiative_id) {
-    return artifact.initiative_id === initiativeId;
-  }
-
-  if (artifact.task_id && ownedEntityIds.has(artifact.task_id)) {
-    return true;
-  }
-
-  if (!artifact.entity_id) {
-    return false;
-  }
-
-  const entityType = toSlug(artifact.entity_type);
-  if (entityType === 'initiative') {
-    return artifact.entity_id === initiativeId;
-  }
-
-  return ownedEntityIds.has(artifact.entity_id);
 }
 
 function artifactMatchesAgent(
@@ -628,51 +544,26 @@ function summarizeArtifacts(artifacts: NormalizedArtifact[]) {
     in_review: inReview,
     needs_review: artifacts.filter((item) => isReviewableStatus(item.status))
       .length,
-    // Work produced and either shipped or in review — the honest "delivered"
-    // count for the headline, so 20 in-review deliverables don't read as 0 just
-    // because none have been terminally approved yet.
-    delivered: approved + inReview,
   };
-}
-
-function normalizeArtifactSummary(
-  value: unknown
-): Record<string, number> | null {
-  const record = asRecord(value);
-  if (!record) return null;
-
-  const summary: Record<string, number> = {};
-  for (const [key, rawValue] of Object.entries(record)) {
-    if (typeof rawValue !== 'number' || !Number.isFinite(rawValue)) continue;
-    summary[key] = Math.max(0, Math.trunc(rawValue));
-  }
-
-  return Object.keys(summary).length > 0 ? summary : null;
 }
 
 function mergeArtifactSummary(
   upstreamSummary: unknown,
   displaySummary: Record<string, number>
-): Record<string, number> {
-  const normalizedUpstream = normalizeArtifactSummary(upstreamSummary);
-  if (!normalizedUpstream) return displaySummary;
-
-  const merged: Record<string, number> = { ...displaySummary };
-  for (const [key, value] of Object.entries(normalizedUpstream)) {
-    merged[key] = Math.max(merged[key] ?? 0, value);
-  }
-  merged.total = Math.max(displaySummary.total ?? 0, normalizedUpstream.total ?? 0);
-  return merged;
+): Record<string, unknown> {
+  // Full-scope API counters may overlap (e.g. eval_passed and in_review).
+  // Preserve them exactly; a bounded proof window cannot invent a full delivered count.
+  return asRecord(upstreamSummary) ?? { ...displaySummary, unit: 'available_artifact' };
 }
 
 function countReviewableProofs(
-  summary: Record<string, number>,
+  summary: Record<string, unknown>,
   proofCards: WidgetProofCard[]
 ): number {
   return Math.max(
     proofCards.filter((item) => item.needs_review).length,
-    summary.needs_review ?? 0,
-    summary.in_review ?? 0
+    typeof summary.needs_review === 'number' ? summary.needs_review : 0,
+    typeof summary.in_review === 'number' ? summary.in_review : 0
   );
 }
 
@@ -685,6 +576,7 @@ function toWidgetProofCard(artifact: NormalizedArtifact): WidgetProofCard {
     eval_score: artifact.eval_score ?? null,
     summary: artifact.summary ?? artifact.preview_markdown,
     created_at: artifact.created_at,
+    updated_at: artifact.updated_at,
     created_by_type: artifact.created_by_type,
     created_by_id: artifact.created_by_id,
     created_by_name: artifact.created_by_name,
@@ -693,6 +585,20 @@ function toWidgetProofCard(artifact: NormalizedArtifact): WidgetProofCard {
     task_url: artifact.task_url ?? null,
     live_url: artifact.live_url ?? null,
     needs_review: isReviewableStatus(artifact.status),
+    entity_id: artifact.entity_id,
+    entity_type: artifact.entity_type,
+    initiative_id: artifact.initiative_id,
+    workstream_id: artifact.workstream_id,
+    milestone_id: artifact.milestone_id,
+    task_id: artifact.task_id,
+    context: artifact.context,
+    ...(artifact.description !== undefined ? { description: artifact.description } : {}),
+    preview_markdown: artifact.preview_markdown,
+    ...(artifact.content !== undefined ? { content: artifact.content } : {}),
+    ...(artifact.verification !== undefined ? { verification: artifact.verification } : {}),
+    ...(artifact.version !== undefined ? { version: artifact.version } : {}),
+    artifact_url: artifact.artifact_url,
+    metadata: artifact.metadata,
   };
 }
 
@@ -714,6 +620,7 @@ export function buildWidgetProofHandoff(options: {
   initiativeId?: string | null;
   initiativeTitle?: string | null;
   proofCount?: number;
+  proofCountScope?: 'tracked_artifact' | 'available_artifact';
   visibleProofCount?: number;
   reviewCount?: number;
   visibleReviewCount?: number;
@@ -721,6 +628,8 @@ export function buildWidgetProofHandoff(options: {
   const liveUrl = options.initiativeId ? buildLiveUrl(options.initiativeId) : null;
   const initiativeName = options.initiativeTitle?.trim() || 'this OrgX initiative';
   const proofCount = options.proofCount ?? 0;
+  const proofCountScope = options.proofCountScope ?? 'tracked_artifact';
+  const countLabel = proofCountScope === 'available_artifact' ? 'available' : 'tracked';
   const visibleProofCount = options.visibleProofCount ?? proofCount;
   const reviewCount = options.reviewCount ?? 0;
   const visibleReviewCount = options.visibleReviewCount ?? reviewCount;
@@ -728,9 +637,11 @@ export function buildWidgetProofHandoff(options: {
     proofCount > visibleProofCount
       ? `${visibleProofCount} visible proof card${
           visibleProofCount === 1 ? '' : 's'
-        } from ${proofCount} tracked artifact${
+        } from ${proofCount} ${countLabel} artifact${
           proofCount === 1 ? '' : 's'
         }`
+      : proofCountScope === 'available_artifact'
+      ? `${visibleProofCount} visible proof card${visibleProofCount === 1 ? '' : 's'} from ${proofCount} available artifact${proofCount === 1 ? '' : 's'}`
       : `${proofCount} proof card${proofCount === 1 ? '' : 's'}`;
   const reviewPhrase =
     visibleReviewCount > 0
@@ -738,7 +649,7 @@ export function buildWidgetProofHandoff(options: {
           visibleReviewCount === 1 ? '' : 's'
         } marked for review.`
       : reviewCount > 0
-      ? `The summary shows ${reviewCount} tracked artifact${
+      ? `The summary shows ${reviewCount} ${countLabel} artifact${
           reviewCount === 1 ? '' : 's'
         } needing review; use the live link if the review card is not visible in this result.`
       : 'Start by inspecting the newest proof card and the live initiative link.';
@@ -749,6 +660,7 @@ export function buildWidgetProofHandoff(options: {
     preserve_tool_results: true,
     live_url: liveUrl,
     proof_count: proofCount,
+    proof_count_scope: proofCountScope,
     visible_proof_count: visibleProofCount,
     review_count: reviewCount,
     visible_review_count: visibleReviewCount,
@@ -820,20 +732,17 @@ export function enrichInitiativePulseWithArtifacts(
 ): Record<string, unknown> {
   const initiativeId =
     firstString(data, ['initiative_id', 'initiativeId', 'id']) ?? null;
-  const ownedEntityIds = collectInitiativeOwnedEntityIds(data, initiativeId);
-  const artifacts = artifactsInput
+  const artifacts = mergeInitiativeArtifactRecords(data, artifactsInput)
     .map(normalizeArtifactRecord)
-    .filter((item): item is NormalizedArtifact => Boolean(item))
-    .filter((artifact) =>
-      artifactBelongsToInitiative(artifact, initiativeId, ownedEntityIds)
-    );
+    .filter((item): item is NormalizedArtifact => Boolean(item));
   const linkedArtifacts = artifacts.map((artifact) =>
     attachArtifactLinks(artifact, initiativeId)
   );
   // Surface real, scored deliverables first — not whatever was created most
   // recently (which was reliably a blocker, a code review, or a mistyped image).
   const rankedArtifacts = [...linkedArtifacts].sort(compareArtifactsForProof);
-  const proofCards = rankedArtifacts.slice(0, 5).map(toWidgetProofCard);
+  const visibleArtifacts = rankedArtifacts.slice(0, 5);
+  const proofCards = visibleArtifacts.map(toWidgetProofCard);
   const artifactSummary = mergeArtifactSummary(
     data.artifact_summary,
     summarizeArtifacts(artifacts)
@@ -842,14 +751,16 @@ export function enrichInitiativePulseWithArtifacts(
   const reviewCount = countReviewableProofs(artifactSummary, proofCards);
   return {
     ...data,
-    recent_artifacts: rankedArtifacts.slice(0, 5),
+    recent_artifacts: [...linkedArtifacts].sort(compareArtifactsByRecency).slice(0, 5),
     proof_cards: proofCards,
     review_items: proofCards.filter((item) => item.needs_review).slice(0, 4),
     artifact_summary: artifactSummary,
+    visible_artifact_summary: { ...summarizeArtifacts(visibleArtifacts), unit: 'visible_proof_card' },
     proof_handoff: buildWidgetProofHandoff({
       initiativeId,
       initiativeTitle: firstString(data, ['name', 'title', 'initiative_title', 'initiativeTitle']),
-      proofCount: artifactSummary.total,
+      proofCount: typeof artifactSummary.total === 'number' ? artifactSummary.total : artifacts.length,
+      proofCountScope: asRecord(data.artifact_summary) ? 'tracked_artifact' : 'available_artifact',
       visibleProofCount: proofCards.length,
       reviewCount,
       visibleReviewCount,
