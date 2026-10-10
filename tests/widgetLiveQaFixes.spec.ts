@@ -162,7 +162,7 @@ describe('initiative pulse: health and progress read honestly (C4)', () => {
     expect(health.textContent).toBe('Health 0');
     const fill = document.querySelector('.pulse-progress-bar > span') as HTMLElement;
     expect(fill.getAttribute('style')).toContain('width:0%');
-    expect(document.querySelector('.pulse-progress-value')!.textContent).toBe('0%through');
+    expect(document.querySelector('.pulse-progress-value')!.textContent).toBe('0%progress');
     // One workstream reads as one, never "1 workstreams".
     const facts = document.querySelector('.pulse-facts')!.textContent!;
     expect(facts).toContain('1 workstream');
