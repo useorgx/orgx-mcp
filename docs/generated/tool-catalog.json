@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-11T16:46:43.909Z",
-  "sourceHash": "1f4d5db3c2a905df",
+  "generatedAt": "2026-10-11T17:48:34.895Z",
+  "sourceHash": "dab7426c21c75488",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -4105,7 +4105,8 @@
               "growth",
               "sales",
               "design",
-              "operations"
+              "operations",
+              "orchestrator"
             ],
             "description": "OrgX controller domain"
           }
@@ -6856,7 +6857,7 @@
     {
       "id": "orgx_expect",
       "title": "Register OrgX Expectation",
-      "description": "Register an OrgX prediction before acting. mode=task_prediction records the expected outcome, confidence, and met/unmet predictions for criteria in the task's current agreed expectation set; it requires the exact set ID/version and an idempotency_key. Checked receipt evidence resolves those predictions. mode=metric_coverage (default) registers the exact orgx.run_receipt_coverage.v1 observer before its window starts, with defaults of at least 95% within 60 seconds over at least 20 runs. USE WHEN: stating a task prediction before work starts or registering the supported delayed reliability result. NEXT: inspect the task and its agreed criteria; submit receipt evidence when work finishes. DO NOT USE WHEN: reporting completion — use orgx_submit_receipt; or registering an unsupported metric.",
+      "description": "Register an OrgX prediction before acting. mode=task_prediction records the expected outcome, confidence, and met/unmet predictions for criteria in the task's current agreed expectation set; it requires the exact set ID/version and an idempotency_key. Checked receipt evidence resolves those predictions. mode=metric_coverage (default) registers a versioned receipt coverage, agent success, or signup first success observer before its window starts; receipt coverage defaults to 95% over 20 runs, agent success to 90% over 40 runs. Signup cohorts mature after 72 hours and require 20 signups. USE WHEN: stating a task prediction before work starts or registering the supported delayed reliability result. NEXT: inspect the task and its agreed criteria; submit receipt evidence when work finishes. DO NOT USE WHEN: reporting completion — use orgx_submit_receipt; or registering an unsupported metric.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
@@ -6871,8 +6872,39 @@
           },
           "metric": {
             "type": "string",
-            "const": "orgx.run_receipt_coverage.v1",
+            "enum": [
+              "orgx.run_receipt_coverage.v1",
+              "orgx.agent_run_success.v1",
+              "orgx.signup_first_success.v1"
+            ],
             "description": "Required for metric_coverage: exact observer registry ID."
+          },
+          "agent_id": {
+            "type": "string",
+            "description": "Named domain agent required for agent_run_success."
+          },
+          "include_canaries": {
+            "type": "boolean",
+            "description": "Include operational planning canaries; defaults to true. QA runs are always excluded."
+          },
+          "project_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "PostHog project ID for signup_first_success; read access must be bound to this workspace."
+          },
+          "subject_type": {
+            "type": "string",
+            "enum": [
+              "workspace",
+              "initiative",
+              "goal"
+            ],
+            "description": "Metric subject; defaults to workspace. Receipt coverage requires workspace."
+          },
+          "subject_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Scoped subject UUID; defaults to workspace UUID."
           },
           "workspace_id": {
             "type": "string",
