@@ -401,12 +401,12 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       fixedArgs: { operation: 'create', type: 'workstream' }, annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
   operation('orgx_create_milestone', 'orgx_write', 'Create OrgX Milestone',
-    'Create a milestone under an existing workstream. Does not start or complete work.',
+    'Create a milestone under a workstream. Does not start or complete work.',
     project('orgx_write', [...commonCreateFields, 'initiative_id', 'workstream_id', 'due_date'], { ...createOverrides, workstream_id: id }), {
       fixedArgs: { operation: 'create', type: 'milestone' }, annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
   operation('orgx_create_task', 'orgx_write', 'Create OrgX Task',
-    'Create one task under an existing workstream. Supply a milestone when workspace backlog policy requires one. Does not dispatch the task.',
+    'Create one task under a workstream. Supply a milestone when workspace backlog policy requires one. Does not dispatch the task.',
     project('orgx_write', [...commonCreateFields, 'initiative_id', 'workstream_id', 'milestone_id', 'due_date'], { ...createOverrides, workstream_id: id }), {
       fixedArgs: { operation: 'create', type: 'task' }, annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
