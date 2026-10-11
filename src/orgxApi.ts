@@ -552,7 +552,7 @@ async function callOrgxApiRawImplementation(
 
     if (isFallbackAttempt && lastRetryableFailure) {
       console.warn(
-        `[orgx-api] Fallback succeeded for ${url.toString()} after ${lastRetryableFailure}`
+        '[orgx-api] fallback succeeded', currentApiReferences()
       );
     }
     responseOrigin.set(response, url.origin);
