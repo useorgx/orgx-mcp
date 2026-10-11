@@ -24,6 +24,23 @@ const text = () => dom.window.document.getElementById('content')!.textContent!;
 describe('search delivery through the real ChatGPT widget', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => { dom?.window.close(); vi.useRealTimers(); });
+  it('opens a project and a nested task result at their own records', async () => {
+    boot({ results: [
+      { id: 'p-1', type: 'project', title: 'Release project' },
+      { type: 'task', entity: { id: 't-1', title: 'Release task' } },
+      { id: 'memory-1', entity_type: 'decision', entity_id: 'd-1', title: 'Release decision' },
+    ] });
+    const openExternal = vi.fn();
+    (dom.window as any).openai.openExternal = openExternal;
+    await vi.advanceTimersByTimeAsync(250);
+    for (const path of ['/projects/p-1', '/tasks/t-1', '/decisions/d-1']) {
+      const anchor = dom.window.document.querySelector(`a[href="https://useorgx.com${path}"]`) as HTMLAnchorElement;
+      expect(anchor, path).not.toBeNull();
+      anchor.click();
+      expect(openExternal).toHaveBeenLastCalledWith({ url: `https://useorgx.com${path}` });
+    }
+    expect(openExternal).toHaveBeenCalledTimes(3);
+  });
   it.each([
     payload,
     { structuredContent: payload },

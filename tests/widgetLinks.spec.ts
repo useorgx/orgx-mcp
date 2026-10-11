@@ -57,6 +57,7 @@ const INI = '8a7baebd-2da5-4584-9e32-5b081b830d84';
 
 const CASES: Array<[string, string, string]> = [
   ['initiative', links.initiative(INI), '/initiatives/[id]'],
+  ['project', links.project(ID), '/projects/[id]'],
   ['initiatives index', links.initiative(''), '/initiatives'],
   ['live room', links.live(INI), '/live/[initiativeId]'],
   ['live room focused on a task', links.live(INI, { task: ID }), '/live/[initiativeId]'],
@@ -66,6 +67,8 @@ const CASES: Array<[string, string, string]> = [
   ['mission control', links.live(), '/runs'],
   ['mission control focused on a milestone', links.live(null, { milestone: ID }), '/milestones/[id]'],
   ['mission control focused on a run', links.live(null, { run: ID }), '/runs/[runId]'],
+  ['artifact without initiative', links.live(null, { artifact: ID }), '/artifacts/[artifactId]'],
+  ['decision without initiative', links.live(null, { decision: ID }), '/decisions/[id]'],
   ['workstream', links.workstream(ID), '/workstreams/[id]'],
   ['workstream in its initiative', links.workstream(ID, { initiativeId: INI }), '/live/[initiativeId]'],
   ['milestone', links.milestone(ID), '/milestones/[id]'],
@@ -87,6 +90,7 @@ const CASES: Array<[string, string, string]> = [
   ['command in a workspace', links.command({ center: ID }), '/command'],
   ['goal', links.goal(ID, { center: ID }), '/goals'],
   ['work ledger', links.workLedger(), '/work-ledger'],
+  ['scoped work ledger', links.workLedger({ center: ID, range: '7d' }), '/work-ledger'],
 ];
 
 describe('widget link builder', () => {
@@ -114,6 +118,7 @@ describe('widget link builder', () => {
       expect(resolveRoute(url).problem, `${type}: ${url}`).toBeUndefined();
     }
     expect(links.entity('Task', ID, { initiativeId: INI })).toBe(links.task(ID, { initiativeId: INI }));
+    expect(links.entity('project', ID)).toBe(links.project(ID));
   });
 
   it('encodes ids and skips empty query values', () => {
@@ -126,6 +131,14 @@ describe('widget link builder', () => {
     [`https://useorgx.com/settings/agents?agent=eli`, links.agent('eli')],
     [`https://useorgx.com/planning/sessions/${ID}`, links.planSession(ID)],
     ['https://useorgx.com/planning', links.live()],
+    [`https://useorgx.com/live?view=mission-control&task=${ID}`, links.task(ID)],
+    [`https://useorgx.com/live?initiative=${INI}&task=${ID}`, links.task(ID, { initiativeId: INI })],
+    [`https://useorgx.com/settings/goals?objective=${ID}`, links.goal(ID)],
+    [`https://useorgx.com/agents/sessions/${ID}`, links.live()],
+    [`https://useorgx.com/blockers/${ID}`, links.command()],
+    [`https://useorgx.com/workflows/${ID}`, links.command()],
+    [`https://useorgx.com/playbooks/${ID}`, links.command()],
+    ['https://useorgx.com/settings/skills', links.command()],
     [`https://useorgx.com/agents/runs/${ID}`, links.run(ID)],
     [`https://useorgx.com/initiatives/${INI}?focus=decisions&decision=${ID}`, links.decision(ID)],
     [`https://useorgx.com/live/${INI}?milestone=${ID}`, links.milestone(ID)],
@@ -137,7 +150,7 @@ describe('widget link builder', () => {
   });
 
   it('refuses anything that is not an OrgX (or GitHub) https URL', () => {
-    for (const bad of ['javascript:alert(1)', 'http://useorgx.com/command', '//evil.test/x', 'https://evil.test/command', 'not a url', '']) {
+    for (const bad of ['javascript:alert(1)', 'http://useorgx.com/command', '//evil.test/x', 'https://evil.test/command', 'not a url', '/planning/sessions/%ZZ', '']) {
       expect(links.normalize(bad)).toBe('');
     }
     expect(links.normalize('https://github.com/useorgx/orgx-mcp/pull/1')).toBe('https://github.com/useorgx/orgx-mcp/pull/1');
@@ -164,6 +177,27 @@ describe('widget link builder', () => {
     document.body.dispatchEvent(event);
     expect(openExternal).toHaveBeenCalledWith({ url: 'https://useorgx.com/command/agents/eli' });
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('routes an anchor inside a shadow root through the host once', () => {
+    const openExternal = vi.fn();
+    (window as any).openai = { openExternal };
+    document.body.innerHTML = '<div id="component"></div>';
+    const shadow = document.getElementById('component')!.attachShadow({ mode: 'open' });
+    shadow.innerHTML = `<a ${links.attrs(links.project(ID))}>Open</a>`;
+    shadow.querySelector('a')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, cancelable: true }));
+    expect(openExternal).toHaveBeenCalledExactlyOnceWith({ url: links.project(ID) });
+  });
+
+  it('opens a rewritten receipt URL when its native anchor still has the legacy URL', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const event = new CustomEvent('ox-open', {
+      detail: { href: '/live?view=mission-control&task=' + ID }, bubbles: true, cancelable: true,
+    });
+    document.body.dispatchEvent(event);
+    expect(open).toHaveBeenCalledExactlyOnceWith(links.task(ID), '_blank', 'noopener,noreferrer');
+    expect(event.defaultPrevented).toBe(true);
+    open.mockRestore();
   });
 });
 

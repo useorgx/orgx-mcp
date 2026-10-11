@@ -458,7 +458,6 @@
           .replace(new RegExp(highlightOpenToken, 'g'), '<span class="highlight">')
           .replace(new RegExp(highlightCloseToken, 'g'), '</span>');
       };
-      var serializeJsString = (value) => JSON.stringify(String(value || ''));
       var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       var formatRelativeDate = (value) => window.OrgXTime.relative(value);
       var coerceScore = (value) => {
@@ -497,11 +496,12 @@
           var explicitUrl = typeof explicitCandidates[i] === 'string' ? links.normalize(explicitCandidates[i]) : '';
           if (explicitUrl) return explicitUrl;
         }
-        var id = item && typeof item.id === 'string' ? item.id : '';
+        var related = item && [item.entity, item.record, item.data].find(value => value && typeof value === 'object' && !Array.isArray(value)) || {};
+        var id = item && [item.entity_id, item.id, related.id].find(value => typeof value === 'string' && value.trim()) || '';
         if (!id) return links.command();
-        return links.entity(item && item.type, id, {
-          initiativeId: item && typeof item.initiative_id === 'string' ? item.initiative_id : '',
-          center: item && typeof item.command_center_id === 'string' ? item.command_center_id : '',
+        return links.entity(item && (item.entity_type || item.type) || related.type, id, {
+          initiativeId: item && item.initiative_id || related.initiative_id || '',
+          center: item && item.command_center_id || related.command_center_id || '',
         });
       };
       var excerptText = (value) => decodeEscapedText(value)
@@ -1119,7 +1119,7 @@
     var rowHtml = (r, index, options) => {
       var need = options && options.need;
       return `
-        <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card" style="--i:${index}">
+        <a ${window.OrgXLinks.attrs(r.url)} class="result-card" style="--i:${index}">
           <span class="r-glyph"${need ? ' data-tone="amber"' : ''}>${window.OrgXIcons.icon(window.OrgXIcons.forEntity(r.type) || window.OrgXIcons.forEntity(glyphKind(r.type)) || 'artifact', 18)}</span>
           <span class="r-copy">
             <span class="r-title">${escapeHtml(r.title)}</span>

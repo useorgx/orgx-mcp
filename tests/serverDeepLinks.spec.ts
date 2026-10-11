@@ -103,6 +103,8 @@ const CASES: Array<[string, string, string]> = [
   ['live url', buildLiveUrl(INI), '/live/[initiativeId]'],
   ['live url, mission control', buildLiveUrl(), '/runs'],
   ['live url, session', buildLiveUrl(undefined, ID), '/runs'],
+  ['live url, artifact without initiative', buildLiveUrl(undefined, undefined, { artifact: ID }), '/artifacts/[artifactId]'],
+  ['live url, decision without initiative', buildLiveUrl(undefined, undefined, { decision: ID }), '/decisions/[id]'],
   // was /live?workspace= (the live view reads ?center=)
   ['live url, workspace', buildLiveUrl(undefined, undefined, { workspace: ID }), '/runs'],
   ['live url, initiative with session', buildLiveUrl(INI, ID), '/live/[initiativeId]'],

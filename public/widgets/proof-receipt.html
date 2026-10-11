@@ -523,10 +523,6 @@
     };
 
     // Raw anchors are not allowed in MCP widgets: every link goes through the host.
-    document.addEventListener('ox-open', function (event) {
-      event.preventDefault();
-      openLink(event.detail && event.detail.href);
-    });
     document.addEventListener('ox-action', function () { openLink(currentAnchorUrl); });
     document.getElementById('content').addEventListener('click', function (event) {
       var target = event.target && event.target.closest ? event.target.closest('[data-evidence]') : null;

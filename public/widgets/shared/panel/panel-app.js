@@ -2455,7 +2455,7 @@
       url = window.OrgXLinks.normalize(url);
       if (!url) return;
       if (isGallery) return;
-      R.openWidgetLink(url, event);
+      if (R.openWidgetLink(url, event) === true) window.open(url, '_blank', 'noopener,noreferrer');
     }
 
     function onClick(event) {
@@ -3155,6 +3155,7 @@
 
     R.initWidget({
       bridge: 'mcp-apps-sdk',
+      observeChatGPTGlobals: true,
       resultScope: function scope(data) {
         if (authFailure(data)) return 'disconnected';
         return data && data.schema === 'orgx.panel.v1' ? 'workspace:' + ((data.workspace && data.workspace.id) || '') : undefined;

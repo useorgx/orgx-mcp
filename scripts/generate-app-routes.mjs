@@ -37,10 +37,10 @@ const QUERY_PARAMS = {
     'live/components/execution-room/ExecutionRoomView.tsx': ['workstream', 'artifact'],
     'live/components/execution-room/states/TaskFocusPanel.tsx': ['task'],
     'live/components/execution-room/states/useInitiativeActiveView.ts': ['decision'],
-    'live/components/execution-room/ExecutionRoomLayout.tsx': ['tab', 'view', 'review'],
+    'live/components/execution-room/ExecutionRoomLayout.tsx': ['tab', 'review'],
   },
   '/initiatives/[id]': {
-    'initiatives/[id]/page.tsx': ['focus', 'milestone', 'task', 'center'],
+    'initiatives/[id]/page.tsx': ['center'],
   },
   '/decisions': {
     'decisions/page.tsx': ['center', 'status', 'priority', 'page', 'sort', 'dir', 'search'],
@@ -57,6 +57,7 @@ const QUERY_PARAMS = {
   },
   '/work-ledger': {
     'work-ledger/page.tsx': ['center'],
+    '../lib/workLedger/view.ts': ['range'],
   },
 };
 
@@ -103,7 +104,7 @@ for (const [route, files] of Object.entries(QUERY_PARAMS)) {
     }
     const text = readFileSync(path, 'utf8');
     for (const param of params) {
-      const reads = new RegExp(`get\\(\\s*['"]${param}['"]\\s*\\)|[Pp]arams\\??\\.${param}\\b|readFirst\\([^)]*\\.${param}\\)`).test(text);
+      const reads = new RegExp(`get\\(\\s*['"]${param}['"]\\s*\\)|[Pp]arams\\??\\.${param}\\b|readFirst\\([^)]*\\.${param}\\)|readParam\\(\\s*params\\s*,\\s*['"]${param}['"]\\s*\\)`).test(text);
       if (!reads) problems.push(`${route}: ${file} no longer reads ?${param}`);
       else query[route].push(param);
     }
