@@ -15,6 +15,17 @@ describe('search result delivery contract', () => {
     expect(observe.mock.calls[0][0]).toMatchObject({ failed: false, telemetry: { search_outcome: 'results', search_result_count: 1 } });
     expect(JSON.stringify(observe.mock.calls)).not.toMatch(/private/i);
   });
+  it('hands the same scoped empty-result recovery to the model and widget', () => {
+    const result = prepareSearchResult('orgx_search', {
+      content: [{ type: 'text', text: '0 results' }],
+      structuredContent: { results: [], search_mode: 'typed_collection' }, _meta: {},
+    }, undefined, { type: 'decision', query: 'recent approved', workspace_id: 'w', status: 'approved', created_from: '2026-10-01T00:00:00Z', cursor: 'old' });
+    const guidance = result._meta['orgx/searchPayload'].search_guidance;
+    expect(guidance.next_call.args).toEqual({ type: 'decision', workspace_id: 'w', status: 'approved', created_from: '2026-10-01T00:00:00Z' });
+    expect(result.content[1].text).toContain(guidance.message);
+    expect(result.content[1].text).toContain('not filters');
+  });
+
   it('records a malformed success as a contract failure, never an empty search', () => {
     const observe = vi.fn();
     const result = prepareSearchResult('orgx_search', { structuredContent: { query: 'launch' } }, observe);

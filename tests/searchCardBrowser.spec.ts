@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { installHostedWidgetFixtures } from './hostedWidgetFixtures';
 import { chromium } from 'playwright';
 import { describe, expect, it } from 'vitest';
 describe('search card browser flow', () => {
@@ -7,16 +7,7 @@ describe('search card browser flow', () => {
     try {
       const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
       page.setDefaultTimeout(5_000);
-      await page.route('**/*', route => route.abort());
-      await page.route('https://mcp.useorgx.test/**', async route => {
-        const pathname = new URL(route.request().url()).pathname;
-        if (pathname.includes('..')) return route.abort();
-        try {
-          const body = readFileSync('public' + pathname);
-          const contentType = pathname.endsWith('.js') ? 'application/javascript' : pathname.endsWith('.css') ? 'text/css' : 'text/html';
-          await route.fulfill({ body, contentType });
-        } catch { await route.fulfill({ status: 404, body: '' }); }
-      });
+      await installHostedWidgetFixtures(page);
       await page.route('https://unpkg.com/**', route => route.fulfill({ body: '', contentType: 'application/javascript' }));
       await page.addInitScript(() => {
         const host = window as unknown as { openai: unknown; requests: unknown[]; failSearch: boolean };
@@ -59,7 +50,9 @@ describe('search card browser flow', () => {
       await page.getByRole('alert').waitFor({ state: 'detached' });
       expect(await page.getByText('Filtered result', { exact: true }).count()).toBe(1);
       await page.getByRole('button', { name: 'How search works' }).click();
-      expect(await page.getByText(/Filters start a new search/).isVisible()).toBe(true);
+      await page.locator('#sr-help').waitFor({ state: 'visible' });
+      expect(await page.locator('#sr-help').textContent()).toContain('memory-backed records');
+      expect(await page.locator('#sr-help').textContent()).toContain('do not set filters');
     } finally { await browser.close(); }
   }, 30_000);
 });

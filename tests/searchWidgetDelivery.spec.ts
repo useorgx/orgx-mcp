@@ -24,6 +24,23 @@ const text = () => dom.window.document.getElementById('content')!.textContent!;
 describe('search delivery through the real ChatGPT widget', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => { dom?.window.close(); vi.useRealTimers(); });
+  it('opens a project and a nested task result at their own records', async () => {
+    boot({ results: [
+      { id: 'p-1', type: 'project', title: 'Release project' },
+      { type: 'task', entity: { id: 't-1', title: 'Release task' } },
+      { id: 'memory-1', entity_type: 'decision', entity_id: 'd-1', title: 'Release decision' },
+    ] });
+    const openExternal = vi.fn();
+    (dom.window as any).openai.openExternal = openExternal;
+    await vi.advanceTimersByTimeAsync(250);
+    for (const path of ['/projects/p-1', '/tasks/t-1', '/decisions/d-1']) {
+      const anchor = dom.window.document.querySelector(`a[href="https://useorgx.com${path}"]`) as HTMLAnchorElement;
+      expect(anchor, path).not.toBeNull();
+      anchor.click();
+      expect(openExternal).toHaveBeenLastCalledWith({ url: `https://useorgx.com${path}` });
+    }
+    expect(openExternal).toHaveBeenCalledTimes(3);
+  });
   it.each([
     payload,
     { structuredContent: payload },
@@ -123,6 +140,18 @@ describe('search delivery through the real ChatGPT widget', () => {
     expect(dom.window.document.querySelector('.sr-hd ox-glyph[kind="question"]')).toBeNull();
     expect(dom.window.document.querySelector('.sr-help-btn')!.getAttribute('aria-label')).toBe('How search works');
   });
+  it('offers scoped browsing from the same recovery data seen by the model', async () => {
+    const args = { type: 'task', status: 'approved', workspace_id: 'ws', initiative_id: 'init', created_from: '2026-10-01T00:00:00Z', limit: 10 };
+    const callTool = vi.fn().mockResolvedValue({ structuredContent: { results: [{ title: 'Scoped task', type: 'task' }] } });
+    boot(undefined, { 'orgx/searchPayload': { results: [], search_guidance: {
+      message: 'No records matched this page and its filters.', hint: 'Browse the same filters without query.', next_call: { tool: 'orgx_search', args },
+    } } }, callTool);
+    await vi.advanceTimersByTimeAsync(250);
+    expect(text()).toContain('Browse same filters');
+    await (dom.window as any).browseSearchScope();
+    expect(callTool).toHaveBeenCalledWith('orgx_search', args);
+    expect(text()).toContain('Scoped task');
+  });
   it('starts a new filtered search with inclusive ISO bounds and resets pagination', async () => {
     const callTool = vi.fn().mockResolvedValue({ structuredContent: { results: [{ title: 'Filtered task', type: 'task' }] } });
     boot({ results: [{ title: 'Old task', type: 'task' }] }, undefined, callTool);
@@ -169,7 +198,7 @@ describe('search delivery through the real ChatGPT widget', () => {
     boot({ query: 'launch' }, { 'orgx/widgetDiagnostics': { endpoint: 'https://mcp.useorgx.com/telemetry/search-widget', grant: 'scoped-grant' } });
     await vi.advanceTimersByTimeAsync(12_100);
     expect(text()).toContain('Search unavailable');
-    expect(text()).not.toContain('No results found');
+    expect(text()).not.toContain('No results on this page');
     const fetchMock = (dom.window as any).fetch;
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ grant: 'scoped-grant', code: 'incomplete_response', protocol: 'chatgpt' });
@@ -187,7 +216,7 @@ describe('search delivery through the real ChatGPT widget', () => {
   it('accepts empty search results and recommendation/history responses containing query', async () => {
     boot({ query: 'launch', results: [] });
     await vi.advanceTimersByTimeAsync(250);
-    expect(text()).toContain('No results found');
+    expect(text()).toContain('No results on this page');
     update({ query: 'launch', recommendations: [{ label: 'Approve launch', entityType: 'decision' }] });
     await vi.advanceTimersByTimeAsync(250);
     expect(text()).toContain('Approve launch');

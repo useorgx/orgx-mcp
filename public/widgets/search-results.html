@@ -458,7 +458,6 @@
           .replace(new RegExp(highlightOpenToken, 'g'), '<span class="highlight">')
           .replace(new RegExp(highlightCloseToken, 'g'), '</span>');
       };
-      var serializeJsString = (value) => JSON.stringify(String(value || ''));
       var titleCase = value => String(value || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       var formatRelativeDate = (value) => window.OrgXTime.relative(value);
       var coerceScore = (value) => {
@@ -497,11 +496,12 @@
           var explicitUrl = typeof explicitCandidates[i] === 'string' ? links.normalize(explicitCandidates[i]) : '';
           if (explicitUrl) return explicitUrl;
         }
-        var id = item && typeof item.id === 'string' ? item.id : '';
+        var related = item && [item.entity, item.record, item.data].find(value => value && typeof value === 'object' && !Array.isArray(value)) || {};
+        var id = item && [item.entity_id, item.id, related.id].find(value => typeof value === 'string' && value.trim()) || '';
         if (!id) return links.command();
-        return links.entity(item && item.type, id, {
-          initiativeId: item && typeof item.initiative_id === 'string' ? item.initiative_id : '',
-          center: item && typeof item.command_center_id === 'string' ? item.command_center_id : '',
+        return links.entity(item && (item.entity_type || item.type) || related.type, id, {
+          initiativeId: item && item.initiative_id || related.initiative_id || '',
+          center: item && item.command_center_id || related.command_center_id || '',
         });
       };
       var excerptText = (value) => decodeEscapedText(value)
@@ -981,12 +981,26 @@
       finally { retrying = false; render(); }
     };
 
+    window.browseSearchScope = async function() {
+      var next = data.search_guidance && data.search_guidance.next_call;
+      if (retrying || !next || next.tool !== 'orgx_search' || !next.args) return;
+      retrying = true; render();
+      try {
+        var result = await callTool('orgx_search', next.args);
+        var payload = window.OrgXWidgetRuntime.extractSearchWidgetData(result);
+        if (!payload || payload.error || result.isError || !Array.isArray(payload.results)) throw new Error('incomplete_response');
+        searchRequest = Object.assign({}, next.args); currentPage = 1;
+        applyBootPayload(payload);
+      } catch (_) { bootError = 'The records could not be loaded. Retry the search.'; }
+      finally { retrying = false; render(); }
+    };
+
     var filterResults = function(results) { return results; };
     var FILTER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6.5h16M7 12h10M10 17.5h4"/></svg>';
     var CHEVRON = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
     var HELP_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2-2.4 3.4"/><circle cx="12" cy="16.9" r="1" fill="currentColor" stroke="none"/></svg>';
     var RETRY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.8 4.2v4.5h-4.5"/></svg>';
-    var HELP_TEXT = 'A phrase searches your organization’s memory and returns the best matches first. Ask for a type, status, workspace or initiative to narrow it. Filters start a new search: type and creation date apply before ranking, in your time zone.';
+    var HELP_TEXT = 'A phrase searches memory-backed records and returns a limited relevance window. Choose a type to browse records; add status, workspace, initiative or creation dates to narrow that collection. Query matches text: words such as recent and approved do not set filters. Request logs, files and external systems are not searched here.';
     var helpButton = () => `<button type="button" class="sr-help-btn" aria-label="How search works" title="How search works" aria-expanded="${helpOpen}" aria-controls="sr-help" onclick="toggleDisclosure(this, 'help')">${HELP_ICON}</button>`;
     var helpPanel = () => `<div class="sr-help" id="sr-help"${helpOpen ? '' : ' hidden'}><p>${HELP_TEXT}</p></div>`;
     var searchTools = function(results) {
@@ -1105,7 +1119,7 @@
     var rowHtml = (r, index, options) => {
       var need = options && options.need;
       return `
-        <a href="${escapeHtml(r.url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${serializeJsString(r.url)}, event)' class="result-card" style="--i:${index}">
+        <a ${window.OrgXLinks.attrs(r.url)} class="result-card" style="--i:${index}">
           <span class="r-glyph"${need ? ' data-tone="amber"' : ''}>${window.OrgXIcons.icon(window.OrgXIcons.forEntity(r.type) || window.OrgXIcons.forEntity(glyphKind(r.type)) || 'artifact', 18)}</span>
           <span class="r-copy">
             <span class="r-title">${escapeHtml(r.title)}</span>
@@ -1237,8 +1251,8 @@
       window.OrgXWidgetRuntime.reportSearchWidgetEvent('rendered');
       if (!normalizedResults.length) {
         var hasFilters = !!(filters.type || (filters.range && filters.range !== 'any'));
-        var emptyCard = stateCard('Search', 'No results found', data.query ? 'Nothing in OrgX matches “' + data.query + '” closely. Try fewer or broader words' + (hasFilters ? ', or clear the filters.' : '.') : 'Try fewer or broader words, or a different scope.', 'mute', '',
-          hasFilters ? '<span class="sr-state-actions"><button class="sr-btn" type="button" onclick="clearSearchFilters()">Clear filters</button></span>' : '');
+        var emptyCard = stateCard('Search', 'No results on this page', data.search_guidance ? data.search_guidance.message + ' ' + data.search_guidance.hint : data.query ? 'Nothing in OrgX matches “' + data.query + '” closely. Try fewer or broader words' + (hasFilters ? ', or clear the filters.' : '.') : 'Try fewer or broader words, or a different scope.', 'mute', '',
+          data.search_guidance && data.search_guidance.next_call ? '<span class="sr-state-actions"><button class="sr-btn" type="button" onclick="browseSearchScope()"' + (retrying ? ' disabled' : '') + '>Browse same filters</button></span>' : hasFilters ? '<span class="sr-state-actions"><button class="sr-btn" type="button" onclick="clearSearchFilters()">Clear filters</button></span>' : '');
         // With filters on, keep them in reach so they can be changed or cleared.
         injectHtml(hasFilters ? emptyCard.replace('<div class="sr-state"', searchTools([]) + '<div class="sr-state"') : emptyCard);
         return;

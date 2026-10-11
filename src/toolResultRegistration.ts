@@ -108,7 +108,8 @@ export function installToolResultGuidanceWrapper(
           | undefined,
         allowedTools,
         profile ?? includeDirectoryMetadata
-      ), (observation) => onSearchResult?.(name, observation));
+      ), (observation) => onSearchResult?.(name, observation),
+      args[0] && typeof args[0] === 'object' ? args[0] as Record<string, unknown> : {});
       const result = prepared && typeof prepared === 'object' ? {
         ...prepared,
         _meta: {

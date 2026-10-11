@@ -1182,10 +1182,6 @@
       if (footer && footer.getAttribute && footer.getAttribute('state') === 'failed') refresh();
       else openLink(lastPayload ? ledgerUrlFor(lastPayload.chronicle || lastPayload) : LEDGER_URL);
     });
-    document.addEventListener('ox-open', function (event) {
-      event.preventDefault();
-      openLink(event.detail && event.detail.href);
-    });
 
     // Loading -> loaded: the arrived card cross-fades in (reduced motion: at once).
     render = (function (draw) {

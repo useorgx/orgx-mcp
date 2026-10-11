@@ -1162,23 +1162,69 @@
     return bridge && bridge.app && bridge.connected ? bridge.app : null;
   }
 
+  function linkRecovery(url) {
+    var notice = global.document.getElementById('ox-link-recovery');
+    if (!notice) {
+      notice = global.document.createElement('p');
+      notice.id = 'ox-link-recovery';
+      notice.setAttribute('role', 'alert');
+      global.document.body.appendChild(notice);
+    }
+    // A real anchor keeps recovery inside a user gesture, even when an async
+    // host refusal would make window.open subject to the popup blocker.
+    notice.textContent = 'If OrgX didn’t open, use this link: ';
+    var anchor = global.document.createElement('a');
+    anchor.href = url;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    anchor.textContent = 'Open in OrgX';
+    notice.appendChild(anchor);
+  }
+
   function openWidgetLink(url, event) {
     if (!url) return false;
+    if (event && event.__oxLinkHandled) return false;
     var activeProtocol = getProtocol();
     if (activeProtocol === 'standalone') return true;
-    if (event && event.preventDefault) event.preventDefault();
-    if (activeProtocol === 'chatgpt') {
-      if (global.openai && global.openai.openExternal) {
-        global.openai.openExternal({ url: url });
-      }
+
+    function browserFallback() {
+      // Leave native anchors (including a component's ox-open default) alone.
+      // Buttons and handlers that already canceled navigation open now, while
+      // the browser still considers this a user gesture.
+      if (event && !event.defaultPrevented &&
+          (event.type === 'ox-open' || linkAnchor(event))) return true;
+      if (event) { event.__oxLinkHandled = true; event.preventDefault(); }
+      try { global.open(url, '_blank', 'noopener,noreferrer'); }
+      catch (_) { linkRecovery(url); }
       return false;
     }
-    getBridge(activeProtocol === 'mcp-apps-sdk').openLink(url).catch(function openFallback() {
-      try {
-        global.open(url, '_blank', 'noopener,noreferrer');
-      } catch (_) {
-        // The host owns link recovery inside the sandbox.
+
+    var hostOpen;
+    // An SDK opted-in widget may render from ChatGPT globals before the SDK
+    // handshake finishes. Do not queue its clicks behind that handshake.
+    if (activeProtocol === 'chatgpt' || !bridge || !bridge.connected) {
+      if (global.openai && typeof global.openai.openExternal === 'function') {
+        hostOpen = function () { return global.openai.openExternal({ url: url }); };
+      } else if (activeProtocol === 'mcp-apps-sdk') {
+        return browserFallback();
       }
+    }
+    if (!hostOpen && activeProtocol === 'chatgpt') return browserFallback();
+    if (!hostOpen) hostOpen = function () {
+      return getBridge(activeProtocol === 'mcp-apps-sdk').openLink(url);
+    };
+
+    var result;
+    try { result = hostOpen(); }
+    catch (_) { return browserFallback(); }
+    if (event) { event.__oxLinkHandled = true; event.preventDefault(); }
+    var timer = global.setTimeout(function () { linkRecovery(url); }, 5000);
+    Promise.resolve(result).then(function (response) {
+      global.clearTimeout(timer);
+      if (response && (response.isError || response.error)) linkRecovery(url);
+    }, function () {
+      global.clearTimeout(timer);
+      linkRecovery(url);
     });
     return false;
   }
@@ -1500,6 +1546,9 @@
     initiative: function (id) {
       return cleanId(id) ? orgxUrl('/initiatives/' + seg(id)) : orgxUrl('/initiatives');
     },
+    project: function (id) {
+      return cleanId(id) ? orgxUrl('/projects/' + seg(id)) : links.command();
+    },
     /**
      * Live view. With an initiative: its execution room, optionally focused on
      * a workstream, task, decision or artifact. Without one there is no live
@@ -1522,6 +1571,8 @@
       if (cleanId(focus.run)) return orgxUrl('/runs/' + seg(focus.run));
       if (cleanId(focus.workstream)) return orgxUrl('/workstreams/' + seg(focus.workstream));
       if (cleanId(focus.milestone)) return orgxUrl('/milestones/' + seg(focus.milestone));
+      if (cleanId(focus.decision)) return links.decision(focus.decision);
+      if (cleanId(focus.artifact)) return links.artifact(focus.artifact);
       return orgxUrl('/runs');
     },
     /** In the initiative's live room when known, else the workstream page. */
@@ -1560,7 +1611,7 @@
     },
     /**
      * OrgX has no plan-session page. A plan with an initiative opens that
-     * initiative; otherwise mission control carries the session id.
+     * initiative; otherwise Runs is the available overview.
      */
     planSession: function (id, options) {
       if (options && cleanId(options.initiativeId)) return links.initiative(options.initiativeId);
@@ -1589,6 +1640,8 @@
       switch (kind) {
         case 'initiative':
           return links.initiative(id);
+        case 'project':
+          return links.project(id);
         case 'objective':
         case 'goal':
           return links.goal(id, options);
@@ -1660,10 +1713,20 @@
     var path = parsed.pathname.replace(/\/+$/, '') || '/';
     var q = parsed.searchParams;
     var match;
+    // URL accepts malformed percent escapes, but decoding old route ids does
+    // not. A bad payload link must not break the rest of the widget.
+    try { decodeURIComponent(path); } catch (_) { return ''; }
+    if (path === '/live') return links.live(q.get('initiative'), {
+      task: q.get('task'), run: q.get('run'), workstream: q.get('workstream'),
+      milestone: q.get('milestone'), decision: q.get('decision'), artifact: q.get('artifact'),
+    });
     if (path === '/settings/agents') return links.agent(q.get('agent'));
+    if (path === '/settings/goals') return links.goal(q.get('objective'), { center: q.get('center') });
     if ((match = path.match(/^\/planning\/sessions\/([^/]+)$/))) return links.planSession(decodeURIComponent(match[1]));
     if (path === '/planning') return links.live();
     if ((match = path.match(/^\/agents\/runs\/([^/]+)$/))) return links.run(decodeURIComponent(match[1]));
+    if (/^\/agents\/sessions\/[^/]+$/.test(path)) return links.live();
+    if (path === '/settings/skills' || /^\/(?:blockers|workflows|playbooks)\/[^/]+$/.test(path)) return links.command();
     if ((match = path.match(/^\/initiatives\/([^/]+)$/)) && q.get('decision')) return links.decision(q.get('decision'));
     if ((match = path.match(/^\/live\/([^/]+)$/))) {
       if (q.get('milestone')) return links.milestone(q.get('milestone'));
@@ -1679,12 +1742,20 @@
   function currentRuntime() {
     return global.OrgXWidgetRuntime || { links: links, openWidgetLink: openWidgetLink };
   }
+  function linkAnchor(event) {
+    var path = event.composedPath ? event.composedPath() : [event.target];
+    for (var i = 0; i < path.length; i += 1) {
+      var node = path[i];
+      if (node && node.matches && node.matches('a[href]')) return node;
+    }
+    return event.target && event.target.closest ? event.target.closest('a[href]') : null;
+  }
   if (global.document && !global.document.__oxLinks) {
     global.document.__oxLinks = 1;
     global.document.addEventListener('click', function onLinkClick(event) {
       if (event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey) return;
-      var anchor = event.target && event.target.closest ? event.target.closest('a[data-ox-link]') : null;
-      if (anchor) currentRuntime().links.open(anchor.getAttribute('href'), event);
+      var anchor = linkAnchor(event);
+      if (anchor && anchor.hasAttribute('data-ox-link')) currentRuntime().links.open(anchor.getAttribute('href'), event);
     });
     global.document.addEventListener('ox-open', function onCardOpen(event) {
       // A widget that routes ox-open itself (and cancels it) has handled it.
@@ -1698,6 +1769,13 @@
         return;
       }
       if (rt.openWidgetLink(target, event) === false) event.preventDefault();
+      else if (target !== href) {
+        // The component's native anchor still contains the old payload URL.
+        // Open the rewritten destination while this click is a user gesture.
+        event.preventDefault();
+        try { global.open(target, '_blank', 'noopener,noreferrer'); }
+        catch (_) { linkRecovery(target); }
+      }
     });
   }
 

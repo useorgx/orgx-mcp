@@ -1,6 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import type { ReportingSourceClient } from './cross-pollination';
+import { readSearchDelivery } from './searchResultDelivery';
+import type { SearchTelemetry } from './searchTelemetry';
 
 /**
  * Session Summary — best-effort session-end flush.
@@ -272,6 +274,7 @@ export interface SessionToolCompletion {
   errorCode: string | null;
   /** Allowlisted boolean outcome flags from the tool's structured result. */
   resultFlags: Record<string, boolean>;
+  searchTelemetry?: SearchTelemetry;
 }
 
 /**
@@ -342,7 +345,8 @@ export function installSessionToolObservationWrapper(
     startedAt: number,
     status: 'success' | 'error',
     errorCode: string | null,
-    resultFlags: Record<string, boolean> = {}
+    resultFlags: Record<string, boolean> = {},
+    searchTelemetry?: SearchTelemetry
   ) => {
     if (!complete) return;
     try {
@@ -355,6 +359,7 @@ export function installSessionToolObservationWrapper(
         mcpSessionId: sessionId,
         errorCode,
         resultFlags,
+        ...(searchTelemetry ? { searchTelemetry } : {}),
       });
     } catch (error) {
       console.warn('[mcp:session-summary] tool completion report failed', {
@@ -392,13 +397,16 @@ export function installSessionToolObservationWrapper(
             !!value &&
             typeof value === 'object' &&
             (value as { isError?: unknown }).isError === true;
+          const searchTelemetry = value && typeof value === 'object'
+            ? readSearchDelivery(name, value)?.observation.telemetry : undefined;
           report(
             name,
             args,
             startedAt,
             isError ? 'error' : 'success',
             isError ? 'tool_result_error' : null,
-            readResultFlags(value)
+            readResultFlags(value),
+            searchTelemetry
           );
           return value;
         },

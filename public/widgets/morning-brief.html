@@ -1276,11 +1276,6 @@
     }
     content.addEventListener('ox-action', openFooterLink);
 
-    // Receipt rows route through the host instead of navigating the sandbox.
-    content.addEventListener('ox-open', (event) => {
-      if (event.detail && event.detail.href) openWidgetLink(event.detail.href, event);
-    });
-
     function settleBrief(payload) {
       const commit = () => {
         state.brief = payload || state.brief;

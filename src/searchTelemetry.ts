@@ -10,9 +10,11 @@ const ENTITY_TYPES = new Set([
   'task',
   'workspace',
   'workstream',
+  'project',
 ]);
 
 const SEARCH_SCOPES = new Set([
+  ...ENTITY_TYPES,
   'all',
   'artifacts',
   'decisions',

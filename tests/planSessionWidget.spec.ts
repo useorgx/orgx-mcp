@@ -170,6 +170,7 @@ describe('plan session widget', () => {
     expect(doc.querySelector('[data-open-plan]')?.getAttribute('href')).toBe(
       'https://useorgx.com/runs'
     );
+    expect(doc.querySelector('[data-open-plan]')?.getAttribute('aria-label')).toBe('Open runs, opens OrgX');
     press();
     const input = doc.querySelector('[data-guidance-input]') as HTMLTextAreaElement;
     input.value = 'Name the reviewer.';

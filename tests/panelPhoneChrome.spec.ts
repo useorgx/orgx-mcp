@@ -1,5 +1,4 @@
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { installHostedWidgetFixtures, WIDGET_FIXTURE_ORIGIN } from './hostedWidgetFixtures';
 
 import { chromium, type Browser, type Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -29,7 +28,7 @@ const HOST_BAR = `<div id="host-bar" style="position:fixed;left:0;right:0;top:0;
 const HOST_COMPOSER = `<div id="host-composer" style="position:fixed;left:0;right:0;bottom:0;height:${COMPOSER}px;z-index:2147483647;background:rgba(10,12,16,.8);pointer-events:auto"></div>`;
 const CHROME = HOST_BAR + HOST_COMPOSER;
 
-const panelUrl = pathToFileURL(resolve('public/widgets/orgx-panel.html')).href;
+const panelUrl = `${WIDGET_FIXTURE_ORIGIN}/widgets/orgx-panel.html`;
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined;
 
 let browser: Browser;
@@ -43,7 +42,7 @@ async function open(host: Host) {
   const page = await ctx.newPage();
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.route(/^https?:/, (route) => route.abort());
+  await installHostedWidgetFixtures(page);
   // A queue long enough that the view scrolls, as a real one does.
   const base = snapshot();
   const data = snapshot({
@@ -96,7 +95,7 @@ describe('the harness itself', () => {
     // An inline view never gets the floor; with no insets reported the header lands at the top, under the bar.
     const ctx = await browser.newContext({ viewport: PHONE, isMobile: true, hasTouch: true });
     const page = await ctx.newPage();
-    await page.route(/^https?:/, (route) => route.abort());
+    await installHostedWidgetFixtures(page);
     await page.addInitScript(({ data, D1 }) => {
       try { localStorage.setItem('orgx.panel.tour.v1', 'done'); } catch (_) { /* fine */ }
       (window as unknown as Record<string, unknown>).openai = {

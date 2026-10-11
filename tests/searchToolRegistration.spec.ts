@@ -13,7 +13,10 @@ describe('search result registration', () => {
     server.registerTool('orgx_search', {}, async () => ({ structuredContent: { results: [] } }));
     const result = await wrapped!();
     expect(result.structuredContent).toEqual({ results: [] });
-    expect(result._meta['orgx/searchPayload']).toEqual({ results: [] });
+    expect(result._meta['orgx/searchPayload']).toEqual({ results: [], search_guidance: {
+      hint: expect.stringContaining('Request logs are not searchable'),
+      message: expect.stringContaining('memory-backed records'), next_call: null,
+    } });
     expect(result._meta['orgx/widgetDiagnostics']).toEqual({ grant: 'signed' });
     server.registerTool('orgx_inspect', {}, async () => ({ structuredContent: { entity: {} } }));
     const inspected = await wrapped!();

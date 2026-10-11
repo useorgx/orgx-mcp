@@ -943,13 +943,6 @@
       else if (panel) { panel.hidden = !modelOpen; toggle.setAttribute('aria-expanded', String(modelOpen)); }
     });
 
-    // Receipt rows are links; route them through the host instead of a raw navigation.
-    document.addEventListener('ox-open', function(event) {
-      var href = event.detail && event.detail.href;
-      if (!href || !window.openWidgetLink) return;
-      if (window.openWidgetLink(href, event) === false) event.preventDefault();
-    });
-
     if (isLoadingOverride) render();
     else if (isDemo) applyBootPayload();
     else initWidget({
