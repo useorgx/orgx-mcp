@@ -55,7 +55,7 @@ describe('interpretation search contract', () => {
   it('delivers grouped API interpretation matches through the real search handler and strict SDK', async () => {
     const { OrgXMcp } = await import('../src/index');
     const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
-    worker.sessionContext = {};
+    worker.sessionContext = { workspaceId: '55555555-5555-4555-8555-555555555555' };
     worker.env = { ORGX_API_URL: 'https://orgx.test' };
     worker.resolveUserId = vi.fn(() => 'session-user');
     worker.resolveUserEmail = vi.fn(() => 'member@example.test');
@@ -75,12 +75,15 @@ describe('interpretation search contract', () => {
     try {
       await server.connect(writer);
       await client.connect(reader);
+      const invalid = await client.callTool({ name: 'orgx_search', arguments: { query: 'ledger contract', status: 'approved' } });
+      expect(invalid.isError).toBe(true);
+      expect(callOrgxApiJson).not.toHaveBeenCalled();
       const result = await client.callTool({ name: 'orgx_search', arguments: { query: 'ledger contract' } });
       expect(result.isError).not.toBe(true);
       expect(result.structuredContent).toMatchObject({ type: 'all', search_mode: 'mixed_relevance', results: [INTERPRETATION_SEARCH_RESULT] });
       expect(result._meta).toMatchObject({ 'orgx/searchPayload': { results: [INTERPRETATION_SEARCH_RESULT] } });
       expect(callOrgxApiJson.mock.calls[0][1]).toBe('/api/tools/execute');
-      expect(JSON.parse(callOrgxApiJson.mock.calls[0][2].body)).toMatchObject({ tool_id: 'query_org_memory', args: { scope: 'all', query: 'ledger contract' } });
+      expect(JSON.parse(callOrgxApiJson.mock.calls[0][2].body)).toMatchObject({ tool_id: 'query_org_memory', args: { scope: 'all', query: 'ledger contract', workspace_id: worker.sessionContext.workspaceId } });
     } finally { await Promise.allSettled([client.close(), server.close()]); }
   });
 });

@@ -194,6 +194,32 @@ describe('sessionSummary', () => {
     }
   });
 
+  it('persists counts for grouped, empty, and malformed search results without search text', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    const server = { registerTool: (name: string, _config: unknown, handler: (...args: unknown[]) => unknown) => handlers.set(name, handler) };
+    const complete = vi.fn();
+    installSessionToolObservationWrapper(server as never, () => {}, complete);
+    let payload: unknown = { data: { results_by_type: { decisions: [] }, query: 'private search' } };
+    server.registerTool('orgx_search', {}, async () => ({ structuredContent: payload }));
+    await handlers.get('orgx_search')!({});
+    expect(complete.mock.calls[0][0].searchTelemetry).toMatchObject({ search_outcome: 'empty', search_result_count: 0 });
+    payload = { query: 'private search' };
+    await handlers.get('orgx_search')!({});
+    expect(complete.mock.calls[1][0].searchTelemetry).toMatchObject({ search_outcome: 'missing_results', search_result_count: null });
+    expect(JSON.stringify(complete.mock.calls)).not.toContain('private search');
+  });
+
+  it('keeps hydrated memory and ledger responses out of empty-search metrics', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    const server = { registerTool: (name: string, _config: unknown, handler: (...args: unknown[]) => unknown) => handlers.set(name, handler) };
+    const complete = vi.fn();
+    installSessionToolObservationWrapper(server as never, () => {}, complete);
+    server.registerTool('query_org_memory', {}, async () => ({ structuredContent: { entity: { title: 'Private title' } } }));
+    server.registerTool('orgx_search', {}, async () => ({ structuredContent: { scope: 'work_ledger', results: [] } }));
+    await handlers.get('query_org_memory')!({}); await handlers.get('orgx_search')!({});
+    expect(complete.mock.calls.every(([result]) => result.searchTelemetry === undefined)).toBe(true);
+  });
+
   describe('v1 ingest body', () => {
     const buildStats = () => {
       let stats = createEmptySessionToolStats();

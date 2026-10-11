@@ -42,6 +42,11 @@ describe('search telemetry summaries', () => {
     );
   });
 
+  it('keeps typed collection scope while bounding unknown labels', () => {
+    expect(summarizeSearchPayload({ results: [] }, 'task').search_scope).toBe('task');
+    expect(summarizeSearchPayload({ results: [] }, 'private scope').search_scope).toBe('other');
+  });
+
   it('reduces backend failures to stable diagnostic classes', () => {
     expect(classifySearchFailure('Active workspace context missing')).toBe('workspace_context_missing');
     expect(classifySearchFailure('OrgX could not identify an active workspace')).toBe(
