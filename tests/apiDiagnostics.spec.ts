@@ -14,7 +14,7 @@ const env = {
   ORGX_API_PRIMARY_TIMEOUT_MS: '10',
 };
 
-function wrapped(handler: (...args: unknown[]) => unknown) {
+function wrapped(handler: (...args: unknown[]) => unknown, onComplete?: () => void) {
   const completions: SessionToolCompletion[] = [];
   let run!: (...args: unknown[]) => unknown;
   const server = {
@@ -25,7 +25,7 @@ function wrapped(handler: (...args: unknown[]) => unknown) {
   installSessionToolObservationWrapper(
     server as never,
     () => {},
-    (result) => completions.push(result)
+    (result) => { completions.push(result); onComplete?.(); }
   );
   server.registerTool('orgx_search', {}, handler);
   return { run, completions };
@@ -92,7 +92,7 @@ describe('MCP API diagnostics', () => {
         structuredContent: { items: [] },
         _meta: { 'openai/outputTemplate': 'widget' },
       };
-    });
+    }, () => { void callOrgxApiJson(env, '/api/internal/mcp/tool-invocations'); });
     const result = (await tool.run({}, { requestId: 'widget' })) as any;
     expect(result._meta['openai/outputTemplate']).toBe('widget');
     expect(result._meta['orgx/diagnostics']).toEqual({
