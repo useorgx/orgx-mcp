@@ -209,6 +209,8 @@ function buildAutonomyMetric(args: JsonRecord, options: {workspaceId: string}): 
     threshold: args.threshold ?? (args.metric === 'orgx.agent_run_success.v1' ? .9 : .95),
     minimum_sample_size: args.minimum_sample_size ?? (args.metric === 'orgx.agent_run_success.v1' ? 40 : 20)}, options);
   if (!base.ok) return base;
+  const minimum = args.metric === 'orgx.agent_run_success.v1' ? 40 : 20;
+  if (base.body.minimum_sample_size < minimum) return fail('minimum_sample_size',`This observer requires at least ${minimum} samples`);
   const type = args.subject_type ?? 'workspace';
   const id = args.subject_id ?? options.workspaceId;
   if (!['workspace','initiative','goal'].includes(String(type)) || typeof id !== 'string' || !UUID_RE.test(id) ||
