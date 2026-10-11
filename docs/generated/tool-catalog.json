@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-10T08:32:11.673Z",
-  "sourceHash": "c27b9010ad056b32",
+  "generatedAt": "2026-10-11T07:41:14.104Z",
+  "sourceHash": "30dc9d60eefe5f89",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -13675,7 +13675,8 @@
               },
               "description": {
                 "type": "string",
-                "maxLength": 4000
+                "maxLength": 4000,
+                "description": "Task proof description. A cached client can send orgx:proof-revision:v1: followed by compact JSON with predecessor and an optional original description. OrgX validates the same exact revision witness; this grants no review or completion authority."
               },
               "artifact_type": {
                 "type": "string",
@@ -15027,7 +15028,7 @@
     {
       "id": "orgx_create_milestone",
       "title": "Create OrgX Milestone",
-      "description": "Create a milestone under an existing workstream. Does not start or complete work.",
+      "description": "Create a milestone under a workstream. Does not start or complete work.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -15143,7 +15144,7 @@
     {
       "id": "orgx_create_task",
       "title": "Create OrgX Task",
-      "description": "Create one task under an existing workstream. Supply a milestone when workspace backlog policy requires one. Does not dispatch the task.",
+      "description": "Create one task under a workstream. Supply a milestone when workspace backlog policy requires one. Does not dispatch the task.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",

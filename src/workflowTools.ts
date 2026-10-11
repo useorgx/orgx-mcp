@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { modalityProofInputSchema } from './modalityProofInput';
+import { ArtifactProofPredecessorSchema, isProofRevisionDescription, normalizeProofRevisionDescription } from './proofRevisionDescription';
 
 import {
   getKnownToolContract,
@@ -185,15 +186,15 @@ const proofArtifactFields = {
 const proofArtifactSchema = z.object(proofArtifactFields).strict().refine((value) => Boolean(value.artifact_url || value.external_url), 'A durable artifact_url or external_url is required.');
 const completionProofArtifactSchema = z.object({
   ...proofArtifactFields,
+  description: proofArtifactFields.description.describe('Task proof description. A cached client can send orgx:proof-revision:v1: followed by compact JSON with predecessor and an optional original description. OrgX validates the same exact revision witness; this grants no review or completion authority.'),
   artifact_hash: z.string().trim().min(1).max(240).optional(),
   atomic_unit_type: z.string().trim().min(1).max(120).optional(),
   modality_proof: modalityProofInputSchema.optional().describe('Versioned execution or render evidence for the new artifact. Does not assert an independent evaluation or human acceptance.'),
-  predecessor: z.object({
-    artifact_id: z.string().uuid(),
-    expected_version: z.number().int().positive().max(2_147_483_647),
-    expected_updated_at: z.string().datetime({ offset: true }),
-  }).strict().optional().describe('Exact prior proof artifact revision being replaced. OrgX validates its task, actor, type, version and timestamp before linking a new report; prior evidence and reviews remain intact.'),
-}).strict().refine((value) => Boolean(value.artifact_url || value.external_url), 'A durable artifact_url or external_url is required.');
+  predecessor: ArtifactProofPredecessorSchema.optional().describe('Exact prior proof artifact revision being replaced. OrgX validates its task, actor, type, version and timestamp before linking a new report; prior evidence and reviews remain intact.'),
+}).strict().superRefine((artifact, context) => {
+  try { normalizeProofRevisionDescription(artifact); }
+  catch (error) { context.addIssue({ code: 'custom', path: ['description'], message: error instanceof Error ? error.message : 'Invalid OrgX proof revision description.' }); }
+}).refine((value) => Boolean(value.artifact_url || value.external_url), 'A durable artifact_url or external_url is required.');
 
 const estimateFields = {
   expected_tokens: z.number().int().positive().max(1_000_000).optional(),
@@ -400,12 +401,12 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       fixedArgs: { operation: 'create', type: 'workstream' }, annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
   operation('orgx_create_milestone', 'orgx_write', 'Create OrgX Milestone',
-    'Create a milestone under an existing workstream. Does not start or complete work.',
+    'Create a milestone under a workstream. Does not start or complete work.',
     project('orgx_write', [...commonCreateFields, 'initiative_id', 'workstream_id', 'due_date'], { ...createOverrides, workstream_id: id }), {
       fixedArgs: { operation: 'create', type: 'milestone' }, annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
   operation('orgx_create_task', 'orgx_write', 'Create OrgX Task',
-    'Create one task under an existing workstream. Supply a milestone when workspace backlog policy requires one. Does not dispatch the task.',
+    'Create one task under a workstream. Supply a milestone when workspace backlog policy requires one. Does not dispatch the task.',
     project('orgx_write', [...commonCreateFields, 'initiative_id', 'workstream_id', 'milestone_id', 'due_date'], { ...createOverrides, workstream_id: id }), {
       fixedArgs: { operation: 'create', type: 'task' }, annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
@@ -483,7 +484,14 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       verification: z.array(z.string().trim().min(1).max(2000)).max(30).optional().describe('Verification notes. A client with a cached schema can encode one producer modality_proof as orgx:modality-proof:v1: followed by the same closed JSON envelope; OrgX validates it before recording.'),
       note: z.string().trim().max(4000).optional(),
     }), workspace_id: workspaceId }, {
-      fixedArgs: { action: 'complete_with_proof' }, annotations: { ...modifiesRecords, openWorldHint: true }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+      fixedArgs: { action: 'complete_with_proof' },
+      transformArgs: (args) => {
+        const artifact = args.artifact as { description?: string } | undefined;
+        if (args.type !== 'task' && isProofRevisionDescription(artifact?.description))
+          throw new Error('OrgX proof revision descriptions apply only to tasks.');
+        return args;
+      },
+      annotations: { ...modifiesRecords, openWorldHint: true }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
 ];
 
