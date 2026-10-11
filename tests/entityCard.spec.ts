@@ -49,7 +49,7 @@ describe('entity card for orgx_inspect', () => {
         status: 'completed',
         description: 'Ship pricing and checkout.',
         owner_name: 'Hope',
-        progress: 0.5,
+        progress: 50,
       },
       contextPack: {
         decisions: [{ title: 'Annual pricing' }, { title: 'Discount' }],
@@ -62,7 +62,8 @@ describe('entity card for orgx_inspect', () => {
     expect(card.url).toBe('https://useorgx.com/initiatives/i-1');
     expect(card.facts).toEqual([
       { label: 'Owner', value: 'Hope' },
-      { label: 'Progress', value: '50%' },
+      { label: 'Task completion', value: 'Not provided' },
+      { label: 'Recorded progress', value: '50%' },
     ]);
     expect(card.proof).toEqual({
       // An open blocker keeps completed work out of "accepted".
@@ -111,5 +112,104 @@ describe('orgx_inspect output schema', () => {
       card,
     });
     expect(result.success, JSON.stringify(result.error?.issues)).toBe(true);
+  });
+});
+
+describe('parent cards distinguish recorded progress from task completion', () => {
+  it('keeps the actual native 50% workstream reading separate from unknown task completion', () => {
+    const entity = { id: 'stream-1', initiative_id: 'initiative-1', name: 'Receipt integrity', status: 'active', progress: 50 };
+    const card = buildEntityCard({ type: 'workstream', id: entity.id, entity });
+    expect(card.facts).toEqual([
+      { label: 'Task completion', value: 'Not provided' },
+      { label: 'Recorded progress', value: '50%' },
+    ]);
+    expect(card.status).toBe('active');
+    expect(entity).toEqual({ id: 'stream-1', initiative_id: 'initiative-1', name: 'Receipt integrity', status: 'active', progress: 50 });
+  });
+
+  it.each([
+    ['workstream', 1, 8, 13],
+    ['initiative', 4, 36, 11],
+    ['workstream', 0, 8, 0],
+    ['initiative', 36, 36, 100],
+  ] as const)('reports %s task completion from its exact count pair', (type, completed, total, pct) => {
+    const card = buildEntityCard({ type, id: 'parent-1', entity: {
+      progress: 50, continuity: {
+        version: 'initiative-continuity.v1', source: 'workstream_tasks',
+        progress: { completed, total, pct: 87 },
+      },
+    }});
+    expect(card.facts).toEqual([
+      { label: 'Task completion', value: `${completed} of ${total} tasks done (${pct}%)` },
+      { label: 'Recorded progress', value: '50%' },
+    ]);
+  });
+
+  it.each([
+    { completed: null, total: null },
+    { completed: 0, total: 0 },
+    { completed: 2, total: 1 },
+    { completed: -1, total: 8 },
+    { completed: 0.5, total: 8 },
+    { completed: 1, total: 8.5 },
+    { completed: '1', total: 8 },
+    { completed: 1, total: Number.POSITIVE_INFINITY },
+  ])('does not turn invalid or unavailable counts into completed work: %j', (progress) => {
+    const card = buildEntityCard({ type: 'workstream', id: 'stream-1', entity: {
+      progress: 50, continuity: { version: 'initiative-continuity.v1', source: 'workstream_tasks', progress },
+    }});
+    expect(card.facts[0]).toEqual({ label: 'Task completion', value: 'Not provided' });
+    expect(card.facts.some((fact) => fact.value.includes('tasks done'))).toBe(false);
+  });
+
+  it('does not borrow an enclosing initiative tally or a partial task list for the inspected workstream', () => {
+    const card = buildEntityCard({ type: 'workstream', id: 'stream-1', entity: {
+      progress: 50, workstream_tasks: [{ id: 'one-task', status: 'done' }],
+    }, contextPack: {
+      continuity: { version: 'initiative-continuity.v1', source: 'workstream_tasks', progress: { completed: 4, total: 36, pct: 11 } },
+    }});
+    expect(card.facts[0]).toEqual({ label: 'Task completion', value: 'Not provided' });
+  });
+
+  it.each([
+    ['future-version', 'workstream_tasks'],
+    ['initiative-continuity.v1', 'initiative_rollup'],
+  ])('does not call %s / %s a canonical task tally', (version, source) => {
+    const card = buildEntityCard({ type: 'initiative', id: 'initiative-1', entity: {
+      progress: 50, continuity: { version, source, progress: { completed: 4, total: 36 } },
+    }});
+    expect(card.facts[0]).toEqual({ label: 'Task completion', value: 'Not provided' });
+  });
+
+  it.each([0, 1, 50, 100])('preserves the native workstream percentage unit for %s', (progress) => {
+    const card = buildEntityCard({ type: 'workstream', id: 'stream-1', entity: { progress } });
+    expect(card.facts[1]).toEqual({ label: 'Recorded progress', value: `${progress}%` });
+  });
+
+  it('rounds a fractional native parent percentage without treating it as a legacy fraction', () => {
+    const entity = { progress: 0.5 };
+    const card = buildEntityCard({ type: 'workstream', id: 'stream-1', entity });
+    expect(card.facts).toEqual([
+      { label: 'Task completion', value: 'Not provided' },
+      { label: 'Recorded progress', value: '1%' },
+    ]);
+    expect(entity.progress).toBe(0.5);
+  });
+
+  it('uses the native initiative progress_pct when present without changing its value', () => {
+    const entity = { progress_pct: 1, progress: 50 };
+    const card = buildEntityCard({ type: 'initiative', id: 'initiative-1', entity });
+    expect(card.facts[1]).toEqual({ label: 'Recorded progress', value: '1%' });
+    expect(entity).toEqual({ progress_pct: 1, progress: 50 });
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1, 101])('does not invent a valid recorded percentage from %s', (progress) => {
+    const card = buildEntityCard({ type: 'workstream', id: 'stream-1', entity: { progress } });
+    expect(card.facts).toEqual([{ label: 'Task completion', value: 'Not provided' }]);
+  });
+
+  it('preserves the existing non-parent progress convention', () => {
+    const card = buildEntityCard({ type: 'artifact', id: 'artifact-1', entity: { progress: 0.5 } });
+    expect(card.facts).toEqual([{ label: 'Progress', value: '50%' }]);
   });
 });
