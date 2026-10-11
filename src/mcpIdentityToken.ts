@@ -23,6 +23,7 @@ export interface McpIdentityTokenPayload {
   // or degraded, so the gateway must treat its absence as "resolve downstream
   // via sub (Clerk id) + email" exactly as before.
   orgx_user_id?: string;
+  analytics_journey?: { session_id?: string; signup_attempt_id?: string };
   state_key?: string;
   mcp_state?: string;
   iat: number;
@@ -154,3 +155,4 @@ export async function verifyMcpIdentityTokenDetailed(
     return { ok: false, reason: 'invalid' };
   }
 }
+

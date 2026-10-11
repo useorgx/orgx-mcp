@@ -43,6 +43,15 @@ const clients = ['openai-mcp (Codex)', 'openai-mcp', 'codex', 'chatgpt', 'openai
   'opencode', 'open-code', 'openclaw', 'openclaw-plugin', 'goose', 'api',
   'web', 'web-ui', 'webapp', 'mcp-probe', 'agent-scout', 'brick.blue'];
 const enumProperties: Record<string, readonly string[]> = {
+  oauth_client: ['chatgpt', 'codex', 'claude', 'cursor', 'vscode', 'gemini', 'unknown'],
+  client_identity_trust: ['verified_redirect', 'registered_metadata', 'local_callback', 'unverified'],
+  client_label_kind: ['chatgpt', 'codex', 'claude', 'cursor', 'vscode', 'github_copilot', 'windsurf', 'zed', 'cline', 'roo_code', 'continue', 'raycast', 'gemini', 'goose', 'openclaw', 'opencode', 'local', 'unverified'],
+  scope_source: ['server_read_default', 'client_request'],
+  consent_stage: ['configure', 'review'],
+  consent_preset: ['read', 'operate', 'custom', 'none'],
+  consent_resource: ['decisions', 'agents', 'initiatives', 'memory'],
+  consent_level: ['none', 'read', 'write'],
+  failure_category: ['grant_creation', 'session_expired', 'consent_submission'],
   status: ['success', 'error'],
   tool_family: ['chatgpt', 'stream', 'plan_session', 'client_integration', 'bootstrap',
     'scaffold', 'entity_write', 'activity', 'entity_action', 'agent_dispatch', 'decision', 'receipt', 'read', 'mcp_tool'],
@@ -101,6 +110,7 @@ const enumProperties: Record<string, readonly string[]> = {
   panel_source: ['decisions', 'artifacts', 'work', 'history', 'ledger', 'receipt', 'workspaces', 'live', 'other'],
 };
 const numericProperties = new Set([
+  'selected_scope_count',
   'latency_ms', 'http_status', 'argument_count', 'estimated_argument_bytes',
   'step_index', 'auth_ms', 'session_ms', 'request_normalization_ms', 'handler_ms',
   'response_headers_ms', 'response_shaping_ms', 'first_response_byte_ms',
@@ -113,6 +123,7 @@ const numericProperties = new Set([
   'degraded_count', 'event_count',
 ]);
 const booleanProperties = new Set([
+  'offline_access',
   'has_user_id', 'has_workspace_id', 'has_initiative_id', 'has_workstream_id',
   'has_task_id', 'has_conversation_id', 'has_working_directory',
   'followed_expected_next_tool', 'response_read_error', 'response_parse_truncated',
@@ -123,7 +134,7 @@ const booleanProperties = new Set([
   'cold', 'warm', 'agent_picked', 'has_workspace',
 ]);
 const uuidProperties = new Set(['workspace_id', 'initiative_id', 'request_uuid',
-  'attempt_id', 'connection_id', 'event_id']);
+  'attempt_id', 'connection_id', 'event_id', 'oauth_journey_id', 'signup_attempt_id', '$session_id']);
 const toolProperties = new Set(['tool_id', 'previous_tool_id', 'expected_next_tool_id',
   'previous_expected_next_tool_id', 'deprecated_tool_id', 'replacement_tool_id',
   'normalized_tool_id', 'executed_tool_id', 'registered_tool_id']);
@@ -155,6 +166,10 @@ export function sanitizeWorkerTelemetryProperties(
       if (typeof value === 'string') result[key] = toolIds.has(value) ? value : 'other';
     } else if (key === 'client_version') {
       if (typeof value === 'string' && VERSION.test(value)) result[key] = value;
+    } else if (key === '$anon_distinct_id' && typeof value === 'string' && /^mcp-journey:[0-9a-f-]{36}$/i.test(value)) {
+      result[key] = value;
+    } else if (key === 'selected_scopes' && Array.isArray(value)) {
+      result[key] = [...new Set(value.filter((scope) => typeof scope === 'string' && telemetryScopes.includes(scope)))];
     } else if (key === 'auth_scope') {
       if (typeof value === 'string') {
         const scopes = value.split(/\s+/).filter(Boolean);
