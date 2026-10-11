@@ -14,12 +14,12 @@
     "/admin/people-first-cohort/provision",
     "/admin/people-first-cohort/retrospective",
     "/admin/pipeline",
+    "/admin/receipts",
     "/admin/reports",
     "/admin/war-room",
     "/agent-work-receipts",
     "/agents",
     "/agents/runs/[runId]",
-    "/ai-agent-operating-system",
     "/amplify",
     "/amplify-100x",
     "/amplify/diagnostic",
@@ -54,6 +54,7 @@
     "/command/agents",
     "/command/agents/[agentId]",
     "/command/agents/[agentId]/chat",
+    "/command/agents/[agentId]/manage",
     "/command/agents/[agentId]/timeline",
     "/command/agents/setup",
     "/command/agents/setup/versions",
@@ -83,6 +84,7 @@
     "/design-system/onboarding-stage",
     "/design-system/shaders",
     "/design-system/workspace-hub",
+    "/dev/agent-avatars-preview",
     "/dev/agent-proposed-plan",
     "/dev/artifact-collection",
     "/dev/artifact-renderer-preview",
@@ -95,19 +97,25 @@
     "/dev/grade-badge-preview",
     "/dev/improvement-preview",
     "/dev/intent-hero",
+    "/dev/live-prod-shapes",
     "/dev/live-states-preview",
     "/dev/live-tabbar-preview",
     "/dev/modal-audit",
+    "/dev/model-control-preview",
+    "/dev/precedents-preview",
     "/dev/processing-surface-preview",
     "/dev/proof-demo",
     "/dev/provenance-preview",
+    "/dev/quality-born-preview",
     "/dev/quality-lab",
     "/dev/quality-review-preview",
     "/dev/quality-settings-preview",
     "/dev/quality-trust-preview",
     "/dev/quality-uplift-preview",
+    "/dev/receipt-proof-preview",
     "/dev/resource-table-preview",
     "/dev/return-state-chip",
+    "/dev/reviews-preview",
     "/dev/work-ledger-preview",
     "/docs",
     "/docs/[...slug]",
@@ -117,8 +125,9 @@
     "/features",
     "/for",
     "/for-agents",
+    "/for-teams",
+    "/for-teams/[role]",
     "/for/[industry]",
-    "/founder-operating-system",
     "/founding",
     "/founding/welcome",
     "/glossary",
@@ -143,10 +152,10 @@
     "/initiatives/new",
     "/install",
     "/integrations",
+    "/integrations/[client]",
     "/integrations/mcp",
     "/integrations/mcp/operators",
     "/integrations/openclaw",
-    "/landing",
     "/launch",
     "/learn",
     "/learn/playbooks/[id]",
@@ -159,6 +168,7 @@
     "/llm-discovery",
     "/llm-discovery/orgx-vs-alternatives",
     "/llm-discovery/when-to-recommend-orgx",
+    "/lp/[offer]",
     "/mcp",
     "/mcp/organizational-memory",
     "/milestones/[id]",
@@ -172,7 +182,10 @@
     "/people/[id]",
     "/performance",
     "/playground",
+    "/precedents",
+    "/precedents/[claimId]",
     "/pricing",
+    "/pricing/[plan]",
     "/privacy",
     "/product",
     "/product/[slug]",
@@ -182,6 +195,8 @@
     "/projects/[id]/accept",
     "/proof/[slug]",
     "/proof/demo",
+    "/proof/receipt/[receiptId]",
+    "/proof/review/[slug]",
     "/proof/shared/[token]",
     "/red-dot",
     "/red-dot/internal",
@@ -198,23 +213,28 @@
     "/runtime/compare/sequence/[sequenceId]",
     "/security",
     "/settings",
+    "/settings/admin",
+    "/settings/agent-defaults",
+    "/settings/ai-providers",
     "/settings/audit",
     "/settings/billing",
     "/settings/evaluation-preferences",
     "/settings/execution",
     "/settings/github-connected",
-    "/settings/goals",
+    "/settings/integrations",
     "/settings/integrations/openclaw",
     "/settings/notifications",
     "/settings/organization",
     "/settings/quality",
+    "/settings/quality/[bar]",
+    "/settings/quality/[bar]/calibrate",
     "/settings/quality/review",
+    "/settings/security",
+    "/settings/usage",
     "/settings/workspace",
     "/sign-in/[[...index]]",
     "/sign-up/[[...index]]",
     "/signin",
-    "/skip-the-hire",
-    "/skip-the-hire/[slug]",
     "/status",
     "/studio",
     "/studio/brand",
@@ -255,6 +275,7 @@
     "/work-ledger/exchange/[runId]",
     "/work-ledger/improvement",
     "/work-ledger/receipts",
+    "/work-ledger/receipts/[id]",
     "/work-ledger/strand/[type]/[id]",
     "/work-ledger/trail",
     "/work-ledger/trail/join/[token]",
@@ -265,6 +286,46 @@
     {
       "source": "/landing",
       "destination": "/"
+    },
+    {
+      "source": "/skip-the-hire",
+      "destination": "/pricing"
+    },
+    {
+      "source": "/skip-the-hire/:slug",
+      "destination": "/pricing"
+    },
+    {
+      "source": "/ai-agent-operating-system",
+      "destination": "/guides/prove-delegated-work-got-done"
+    },
+    {
+      "source": "/founder-operating-system",
+      "destination": "/guides/track-startup-initiatives-across-functions"
+    },
+    {
+      "source": "/use-cases/founder-operating-system",
+      "destination": "/guides/track-startup-initiatives-across-functions"
+    },
+    {
+      "source": "/product/initiatives",
+      "destination": "/product/goals"
+    },
+    {
+      "source": "/product/agent-trust",
+      "destination": "/product/agents"
+    },
+    {
+      "source": "/product/acceptance",
+      "destination": "/product/quality-bar"
+    },
+    {
+      "source": "/product/accepted-outcomes",
+      "destination": "/product/work-ledger"
+    },
+    {
+      "source": "/p/:receiptId",
+      "destination": "/proof/receipt/:receiptId"
     },
     {
       "source": "/blog/access-control-is-not-acceptance",
@@ -315,16 +376,16 @@
       "destination": "/command/agents/setup"
     },
     {
-      "source": "/settings/integrations",
-      "destination": "/settings/organization?tab=connectors"
-    },
-    {
       "source": "/artifacts",
       "destination": "/workspace-hub"
     },
     {
       "source": "/run/:runId",
       "destination": "/runs/:runId"
+    },
+    {
+      "source": "/settings/goals",
+      "destination": "/goals"
     },
     {
       "source": "/admin/reports/:reportId",
@@ -380,14 +441,10 @@
       "review",
       "tab",
       "task",
-      "view",
       "workstream"
     ],
     "/initiatives/[id]": [
-      "center",
-      "focus",
-      "milestone",
-      "task"
+      "center"
     ],
     "/decisions": [
       "center",
@@ -411,7 +468,8 @@
       "objective"
     ],
     "/work-ledger": [
-      "center"
+      "center",
+      "range"
     ]
   }
 }

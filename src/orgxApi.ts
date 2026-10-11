@@ -1,3 +1,5 @@
+import { ApiRequestObservation, currentApiReferences, observedApiFetch, recordApiBody, withResponseDiagnostics } from './apiDiagnostics';
+
 export interface OrgxApiEnv {
   ORGX_API_URL: string;
   ORGX_API_FALLBACK_URL?: string;
@@ -182,6 +184,7 @@ async function readResponseTextWithTimeout(
 ): Promise<string> {
   if (!response.body) return '';
 
+  const bodyStarted = performance.now();
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let body = '';
@@ -215,6 +218,7 @@ async function readResponseTextWithTimeout(
         .catch(() => undefined);
     }
     reader.releaseLock();
+    recordApiBody(response, Math.max(0, Math.round(performance.now() - bodyStarted)), timedOut);
   }
 }
 
@@ -253,6 +257,8 @@ function expectedResponseMediaType(accept: string | undefined): string | null {
 export class OrgXApiError extends Error {
   readonly internalDetails: string;
   readonly statusCode?: number;
+  readonly requestId?: string;
+  readonly traceId?: string;
 
   constructor(
     userMessage: string,
@@ -263,6 +269,9 @@ export class OrgXApiError extends Error {
     this.name = 'OrgXApiError';
     this.internalDetails = internalDetails;
     this.statusCode = statusCode;
+    const references = currentApiReferences();
+    this.requestId = references.request_id;
+    this.traceId = references.trace_id;
   }
 }
 
@@ -274,7 +283,7 @@ export function createApiError(
   internalDetails: string,
   statusCode?: number
 ): OrgXApiError {
-  console.error(`[orgx-api] ${internalDetails}`);
+  console.error(JSON.stringify({ event: 'orgx_api_error', ...currentApiReferences(), status: statusCode ?? 0 }));
   return new OrgXApiError(userMessage, internalDetails, statusCode);
 }
 
@@ -297,6 +306,22 @@ export async function callOrgxApiRaw(
      */
     allowFallback?: boolean;
   }
+) {
+  const headers = new Headers(init?.headers);
+  const observation = new ApiRequestObservation(headers);
+  return observation.run(async () => {
+    try {
+      return await callOrgxApiRawImplementation(env, path, { ...init, headers }, opts);
+    } catch (error) {
+      observation.failure(undefined, error instanceof OrgXApiError ? error.statusCode : undefined);
+      throw error;
+    }
+  });
+}
+
+async function callOrgxApiRawImplementation(
+  env: OrgxApiEnv, path: string, init: RequestInit,
+  opts: Parameters<typeof callOrgxApiRaw>[3]
 ) {
   if (
     looksLikeDefaultPlaceholder(env.ORGX_SERVICE_KEY) ||
@@ -370,13 +395,14 @@ export async function callOrgxApiRaw(
       controller.abort(`timeout after ${requestTimeoutMs}ms`);
     }, requestTimeoutMs);
     const upstreamSignal = init?.signal ?? null;
+    const forwardAbort = () => controller.abort(upstreamSignal?.reason);
     if (upstreamSignal) {
       if (upstreamSignal.aborted) {
         controller.abort(upstreamSignal.reason);
       } else {
         upstreamSignal.addEventListener(
           'abort',
-          () => controller.abort(upstreamSignal.reason),
+          forwardAbort,
           { once: true }
         );
       }
@@ -384,19 +410,19 @@ export async function callOrgxApiRaw(
 
     let response: Response;
     try {
-      response = await fetch(url.toString(), {
+      response = await observedApiFetch(url.toString(), {
         ...init,
         headers,
         redirect: 'manual',
         signal: controller.signal,
-      });
+      }, isFallbackAttempt);
     } catch (error) {
       clearTimeout(timeout);
       if (controller.signal.aborted) {
         if (timedOut) {
           lastRetryableFailure = `Request timed out after ${requestTimeoutMs}ms for ${url.toString()}`;
           if (hasFallbackRemaining) {
-            console.warn(`[orgx-api] ${lastRetryableFailure}; trying fallback`);
+            console.warn('[orgx-api] trying fallback', currentApiReferences());
             continue;
           }
           throw createApiError(
@@ -413,12 +439,13 @@ export async function callOrgxApiRaw(
         error instanceof Error ? error.message : String(error)
       }`;
       if (hasFallbackRemaining) {
-        console.warn(`[orgx-api] ${lastRetryableFailure}; trying fallback`);
+        console.warn('[orgx-api] trying fallback', currentApiReferences());
         continue;
       }
       throw error;
     } finally {
       clearTimeout(timeout);
+      upstreamSignal?.removeEventListener('abort', forwardAbort);
     }
 
     if (
@@ -427,7 +454,7 @@ export async function callOrgxApiRaw(
     ) {
       lastRetryableFailure = `API ${response.status} from ${url.toString()}`;
       lastRetryableStatus = response.status;
-      console.warn(`[orgx-api] ${lastRetryableFailure}; trying fallback`);
+      console.warn('[orgx-api] trying fallback', currentApiReferences());
       continue;
     }
 
@@ -525,7 +552,7 @@ export async function callOrgxApiRaw(
 
     if (isFallbackAttempt && lastRetryableFailure) {
       console.warn(
-        `[orgx-api] Fallback succeeded for ${url.toString()} after ${lastRetryableFailure}`
+        '[orgx-api] fallback succeeded', currentApiReferences()
       );
     }
     responseOrigin.set(response, url.origin);
@@ -564,11 +591,11 @@ export async function callOrgxApiJson(
     new URL(response.url || env.ORGX_API_URL).origin;
   const resolvedUrl = response.url || new URL(path, resolvedOrigin).toString();
   const contentType = response.headers.get('content-type') ?? '';
-  const responseBody = await readResponseTextWithTimeout(
+  const responseBody = await withResponseDiagnostics(response, () => readResponseTextWithTimeout(
     response,
     parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS),
     resolvedUrl
-  );
+  ));
   if (!contentType.includes('application/json')) {
     const text = truncateForErrorBody(responseBody);
     throw createApiError(

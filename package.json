@@ -53,6 +53,7 @@
     "verify:agentic-scale:python": "python3 scripts/verify_agentic_scale_proof.py",
     "test:agentic-scale": "vitest run tests/agenticScaleProof.spec.ts && pnpm verify:agentic-scale:js && pnpm verify:agentic-scale:python && node scripts/test-agentic-scale-verifiers.mjs && node scripts/benchmark-agentic-scale-proof.mjs /tmp/orgx-agentic-scale-proof.json",
     "audit:widgets": "node scripts/audit-widgets.mjs",
+    "audit:widget-links": "node scripts/audit-widget-links.mjs",
     "audit:widget-gallery": "node scripts/audit-widget-gallery.mjs",
     "audit:hollow-payloads": "node scripts/audit-hollow-payloads.mjs",
     "verify": "pnpm type-check && pnpm test:mcp-contract && pnpm test:living-work-memory-contract && pnpm test:agentic-scale && pnpm build",
@@ -80,6 +81,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260103.0",
     "@sentry/cli": "3.6.0",
+    "@types/node": "22.18.6",
     "jsdom": "^29.1.1",
     "playwright": "^1.61.1",
     "tsx": "^4.22.5",

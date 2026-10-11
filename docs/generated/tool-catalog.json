@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-11T16:18:09.773Z",
-  "sourceHash": "3220f70d450c0b56",
+  "generatedAt": "2026-10-11T17:48:34.895Z",
+  "sourceHash": "dab7426c21c75488",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -17443,7 +17443,7 @@
     {
       "id": "orgx_search",
       "title": "Search OrgX",
-      "description": "Search authorized OrgX work, decisions, artifacts, memory, and plan sessions using typed filters and optional text. Mixed relevance searches record metered MCP allowance usage without changing work records. Follow next_call for pagination. Full context is available through orgx_inspect, priorities through orgx_get_next_actions, and receipt ledger searches through orgx_list_work_receipts.",
+      "description": "Search authorized OrgX records. To list records, set type and omit query. Query is text, not a command: use status and created_from/created_to for filters. Typed search pages collections; mixed search covers a bounded memory relevance window. Request logs, source files, and external systems are not searched here. Mixed relevance searches record metered MCP allowance usage without changing work records. Follow next_call for pagination. Full context is available through orgx_inspect, priorities through orgx_get_next_actions, and receipt ledger searches through orgx_list_work_receipts.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -17458,7 +17458,7 @@
           },
           "query": {
             "type": "string",
-            "description": "Search query for memory or title/text matching"
+            "description": "Text keywords for memory or title/text matching. Omit to browse with type. Natural-language instructions and words such as recent are not filters."
           },
           "type": {
             "type": "string",
@@ -17488,7 +17488,7 @@
           },
           "status": {
             "type": "string",
-            "description": "Optional status filter"
+            "description": "Exact lifecycle status filter; requires type."
           },
           "initiative_id": {
             "type": "string",
@@ -17519,7 +17519,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Optional compact field list"
+            "description": "Compact field list for typed search; requires type."
           },
           "session_id": {
             "type": "string",

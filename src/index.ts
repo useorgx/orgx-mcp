@@ -274,6 +274,7 @@ import {
   filterEntitySearchRecords,
   normalizeEntitySearchPage,
   normalizeMemorySearchPayload,
+  searchProjectionFields,
   type EntitySearchPage,
 } from './orgxSearch';
 import {
@@ -1308,10 +1309,8 @@ export class OrgXMcp extends McpAgent<
   /**
    * Durable invocation telemetry from the tool handler. The transport layer
    * records only single top-level `tools/call` HTTP bodies, so calls over
-   * legacy SSE, WebSocket or batched requests were never recorded — including
-   * every call from the one returning external workspace (plan v3 Stage 1).
-   * The app merges this row with the transport row for the same
-   * (mcp_session_id, request_id, tool_id).
+   * legacy SSE, WebSocket or batched requests were never recorded.
+   * The app merges by (mcp_session_id, request_id, tool_id).
    */
   private recordHandlerToolInvocation(completion: SessionToolCompletion): void {
     // Same gates as the session counter (review profiles promise no
@@ -1327,16 +1326,18 @@ export class OrgXMcp extends McpAgent<
     const delivery = recordDurableMcpToolInvocation({
       env: this.env,
       toolId: completion.toolName,
+      runId: this.delegationClaims().runId,
       status: completion.status,
       latencyMs: completion.latencyMs,
       metadata: {
+        api_diagnostics: completion.apiDiagnostics,
         ...buildMcpCompatibilityMetadata({
           requestedToolId: completion.toolName, normalizedToolId: completion.toolName,
           executedToolId: completion.toolName, registeredToolId: completion.toolName,
           profile: this.props?.profile ?? 'read-only', contractVersion: this.props?.operationContractVersion,
           outcome: completion.status,
         }),
-        telemetry_source: 'mcp_handler', ...completion.resultFlags,
+        telemetry_source: 'mcp_handler', ...completion.resultFlags, ...completion.searchTelemetry,
       },
       userId,
       workspaceId: this.sessionContext.workspaceId ?? null,
@@ -2568,7 +2569,12 @@ export class OrgXMcp extends McpAgent<
         toolId,
         args,
         userId: this.props?.userId ?? this.sessionAuth.userId,
-        clientName: this.sessionContext.clientName,
+        // The same attribution ladder reporting uses: agent _context, the live
+        // initialize handshake, then the connection's own client (the ChatGPT
+        // directory app never stores a handshake name on the session).
+        clientName:
+          this.resolveSourceClient(args._context) ??
+          this.resolveClientNameLabel(args._context),
       }),
     };
   }
@@ -2777,6 +2783,7 @@ export class OrgXMcp extends McpAgent<
     limit: number;
     userId: string | null;
     dateRange?: SearchDateRange;
+    workspaceId?: string | null;
   }): Promise<Array<Record<string, unknown>>> {
     const response = await callOrgxApiJson(
       this.env,
@@ -2789,6 +2796,7 @@ export class OrgXMcp extends McpAgent<
             ...params.dateRange,
             query: params.query,
             scope: 'all',
+            workspace_id: params.workspaceId ?? undefined,
             limit: Math.min(params.limit, 20),
           },
           user_id: params.userId,
@@ -5848,6 +5856,11 @@ export class OrgXMcp extends McpAgent<
           }
 
           if (!explicitType) {
+            if (args.status || args.initiative_id || fields?.length) {
+              return this.toolError('Mixed search supports query, workspace, limit, and creation dates. Add type to apply status, initiative_id, or fields as collection filters.', {
+                code: 'invalid_input', status: 400,
+              });
+            }
             if (offset > 0 || cursor) {
               return this.toolError(
                 'Mixed relevance search is not exhaustive and cannot be paged. Add type for cursor/offset pagination.',
@@ -5870,6 +5883,7 @@ export class OrgXMcp extends McpAgent<
               query: query!,
               limit,
               userId: resolvedUserId,
+              workspaceId: typeof args.workspace_id === 'string' ? args.workspace_id : this.sessionContext?.workspaceId,
             });
             const payload = {
               _v2_tool: 'orgx_search',
@@ -5905,11 +5919,12 @@ export class OrgXMcp extends McpAgent<
                 : this.sessionContext?.workspaceId ?? null,
             status: typeof args.status === 'string' ? args.status : null,
             query,
-            fields,
+            fields: searchProjectionFields(fields),
           });
           const statusFilter = filterEntitySearchRecords(
             page.records,
-            typeof args.status === 'string' ? args.status : null
+            typeof args.status === 'string' ? args.status : null,
+            explicitType
           );
           if (statusFilter.dropped > 0) {
             console.warn('[mcp] orgx_search: dropped server-side status mismatches', {

@@ -317,7 +317,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       backendRequest: (args) => ({ method: 'GET', path: query('/api/v1/workflows/workspace-context', args) }),
     }),
   operation('orgx_search', 'orgx_search', 'Search OrgX',
-    'Search authorized OrgX work, decisions, artifacts, memory, and plan sessions using typed filters and optional text. Mixed relevance searches record metered MCP allowance usage without changing work records. Follow next_call for pagination. Full context is available through orgx_inspect, priorities through orgx_get_next_actions, and receipt ledger searches through orgx_list_work_receipts.',
+    'Search authorized OrgX records. To list records, set type and omit query. Query is text, not a command: use status and created_from/created_to for filters. Typed search pages collections; mixed search covers a bounded memory relevance window. Request logs, source files, and external systems are not searched here. Mixed relevance searches record metered MCP allowance usage without changing work records. Follow next_call for pagination. Full context is available through orgx_inspect, priorities through orgx_get_next_actions, and receipt ledger searches through orgx_list_work_receipts.',
     project('orgx_search', ['created_from', 'created_to', 'query', 'type', 'status', 'initiative_id', 'workspace_id', 'limit', 'offset', 'cursor', 'fields', 'session_id']),
     { fixedArgs: { scope: 'entities' } }),
   operation('orgx_inspect', 'orgx_inspect', 'Inspect OrgX Work',

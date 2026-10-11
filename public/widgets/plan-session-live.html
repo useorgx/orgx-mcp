@@ -672,9 +672,10 @@
 
       function renderFooter(plan) {
         var view = footerView(plan);
+        var destination = plan.initiativeId ? 'initiative' : 'runs';
         var action = view.action === 'cancel'
           ? '<button type="button" slot="action" class="ft-link" data-cancel-guidance>Cancel</button>'
-          : '<a slot="action" class="ft-link" data-open-plan href="' + escapeHtml(buildPlanUrl(plan)) + '" target="_blank" rel="noreferrer" aria-label="Open plan, opens OrgX"><span>Open</span><span class="ft-long"> plan</span>' + icon('ext', 12) + '</a>';
+          : '<a slot="action" class="ft-link" data-open-plan href="' + escapeHtml(buildPlanUrl(plan)) + '" target="_blank" rel="noopener noreferrer" aria-label="Open ' + destination + ', opens OrgX"><span>Open</span><span class="ft-long"> ' + destination + '</span>' + icon('ext', 12) + '</a>';
         return (
           '<ox-footer id="planFooter" variant="' + view.variant + '" state="' + view.state + '"' +
             ' heading="' + escapeHtml(view.heading) + '" detail="' + escapeHtml(view.detail || '') + '"' +

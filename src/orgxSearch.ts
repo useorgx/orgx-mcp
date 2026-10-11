@@ -1,5 +1,12 @@
 export type OrgxSearchArgs = Record<string, unknown>;
 
+/** Search returns summaries; inspect owns full bodies. Keep display and filter keys. */
+export function searchProjectionFields(fields: string[] | null): string[] {
+  return [...new Set(['id', 'title', 'name', 'status', 'risk_level', ...(fields ?? [
+    'summary', 'description', 'created_at', 'updated_at', 'workspace_id', 'initiative_id',
+  ])])];
+}
+
 /** The memory API also returns grouped matches; preserve their entity kinds. */
 export function normalizeMemorySearchPayload(payload: Record<string, unknown>): Record<string, unknown> {
   if (Array.isArray(payload.results)) return payload;
@@ -53,14 +60,19 @@ export type EntityStatusFilterResult = {
  */
 export function filterEntitySearchRecords(
   records: Array<Record<string, unknown>>,
-  requestedStatus?: string | null
+  requestedStatus?: string | null,
+  entityType?: string | null
 ): EntityStatusFilterResult {
-  const status = nonEmptyString(requestedStatus);
+  let status = nonEmptyString(requestedStatus);
+  if (status && entityType === 'decision') {
+    status = status.trim().toLowerCase().replace(/[\s-]+/g, '_');
+    status = status === 'rejected' ? 'declined' : status === 'accepted' ? 'approved' : status;
+  }
   if (!status) return { records, dropped: 0 };
 
   const filtered = records.filter((record) =>
     status === 'at_risk'
-      ? record.risk_level === 'at_risk'
+      ? record.risk_level === 'at_risk' || record.status === 'at_risk'
       : record.status === status
   );
   return {

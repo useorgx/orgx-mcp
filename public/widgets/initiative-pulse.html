@@ -314,11 +314,7 @@
             : "Browse initiatives in OrgX");
         return (
           '<div class="empty-actions">' +
-          '<a href="' +
-          escapeHtml(recoveryUrl) +
-          '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' +
-          JSON.stringify(recoveryUrl) +
-          ', event)\' class="deep-link">' +
+          '<a ' + window.OrgXLinks.attrs(recoveryUrl) + ' class="deep-link">' +
           icons.external(14) +
           escapeHtml(resolvedLabel) +
           "</a>" +
@@ -1326,8 +1322,7 @@
         return (
           '<div class="pulse-list-row' + (extraClass ? " " + extraClass : "") + '">' +
             '<span class="pulse-list-leading"' + (leadingTone ? ' data-tone="' + leadingTone + '"' : "") + ">" + leading + "</span>" +
-            '<a class="pulse-list-copy pulse-row-link" href="' + escapeHtml(href) + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' +
-              escapeHtml(JSON.stringify(href)).replace(/'/g, "&#39;") + ', event)\'>' +
+            '<a class="pulse-list-copy pulse-row-link" ' + window.OrgXLinks.attrs(href) + '>' +
               '<span class="pulse-list-title">' + escapeHtml(title) + "</span>" +
               (metaHtml ? '<span class="pulse-list-meta">' + metaHtml + "</span>" : "") +
             "</a>" +
@@ -1538,7 +1533,7 @@
           if (breadcrumb) meta += '<span class="pulse-artifact-breadcrumb">' + breadcrumb + '</span>';
           var tone = key === "changes_requested" ? "red" : key === "in_review" || artifact.needs_review ? "amber" : key === "approved" ? "teal" : "";
           var taskUrl = window.OrgXLinks.normalize(artifact.task_url);
-          var taskLink = taskUrl ? '<a class="pulse-artifact-task" href="' + escapeHtml(taskUrl) + '" target="_blank" rel="noreferrer" onclick=\'return openWidgetLink(' + escapeHtml(JSON.stringify(taskUrl)).replace(/'/g, "&#39;") + ', event)\'>Open task</a>' : '';
+          var taskLink = taskUrl ? '<a class="pulse-artifact-task" ' + window.OrgXLinks.attrs(taskUrl) + '>Open task</a>' : '';
           return linkRow(artifact.primary_url || artifact.live_url || dashboardUrl || '', icon("artifact"), tone,
             artifact.title, statusWord(artifact.status, 0, "artifact") + meta,
             chipFor(artifact.status, 0, "artifact") + taskLink,

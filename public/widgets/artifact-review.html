@@ -353,7 +353,9 @@
         if (!isAllowedArtifactLinkUrl(url)) return false;
         // OrgX app links go through the shared builder's normalizer (legacy
         // shapes rewritten to real routes); other allowed origins pass as is.
-        return window.OrgXWidgetRuntime.openWidgetLink(window.OrgXLinks.normalize(url) || url);
+        url = window.OrgXLinks.normalize(url) || url;
+        if (window.OrgXWidgetRuntime.openWidgetLink(url) === true) window.open(url, '_blank', 'noopener,noreferrer');
+        return false;
       }
 
       function reportSize() {

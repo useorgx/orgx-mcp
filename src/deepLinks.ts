@@ -92,6 +92,8 @@ function livePath(
   if (clean(focus.run)) return `/runs/${seg(focus.run!)}`;
   if (clean(focus.workstream)) return `/workstreams/${seg(focus.workstream!)}`;
   if (clean(focus.milestone)) return `/milestones/${seg(focus.milestone!)}`;
+  if (clean(focus.decision)) return `/decisions/${seg(focus.decision!)}`;
+  if (clean(focus.artifact)) return `/artifacts/${seg(focus.artifact!)}`;
   return '/runs';
 }
 
@@ -148,7 +150,7 @@ function getEntityPath(
       return id ? `/artifacts/${seg(id)}` : '/workspace-hub';
     case 'plan':
     case 'plan_session':
-      // OrgX has no plan-session page: the plan's initiative, else mission control with the session.
+      // OrgX has no plan-session page: the plan's initiative, else Runs.
       return initiativeId ? `/initiatives/${seg(initiativeId)}` : livePath(undefined, { session: id });
     case 'command_center':
     case 'workspace':

@@ -933,10 +933,6 @@
       if (footer && footer.getAttribute && footer.getAttribute('state') === 'waiting') checkRuling();
       else openInOrgx();
     });
-    document.addEventListener('ox-open', function (event) {
-      event.preventDefault();
-      openLink(event.detail && event.detail.href);
-    });
     document.addEventListener('click', function (event) {
       var button = event.target && event.target.closest ? event.target.closest('[data-action]') : null;
       if (!button || button.getAttribute('aria-disabled') === 'true') return;

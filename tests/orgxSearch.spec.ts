@@ -5,9 +5,15 @@ import {
   buildOrgxSearchNextCall,
   filterEntitySearchRecords,
   normalizeEntitySearchPage,
+  searchProjectionFields,
 } from '../src/orgxSearch';
 
 describe('orgx search pagination', () => {
+  it('preserves display and lifecycle filters in compact projections', () => {
+    expect(searchProjectionFields(['id', 'summary'])).toEqual(['id', 'title', 'name', 'status', 'risk_level', 'summary']);
+    expect(searchProjectionFields(null)).not.toContain('content');
+    expect(filterEntitySearchRecords([{ risk_level: 'at_risk' }], 'at_risk').records).toHaveLength(1);
+  });
   it('rejects malformed collection responses instead of manufacturing zero results', () => {
     expect(() => normalizeEntitySearchPage({ pagination: { total: 0 } }, {})).toThrow('incomplete search response');
   });
@@ -86,6 +92,13 @@ describe('orgx search pagination', () => {
     });
   });
 
+  it('retains lifecycle risk and canonical decision aliases', () => {
+    const risk = { id: 'milestone', status: 'at_risk' };
+    expect(filterEntitySearchRecords([risk], 'at_risk').records).toEqual([risk]);
+    const decision = { id: 'decision', status: 'declined' };
+    expect(filterEntitySearchRecords([decision], 'rejected', 'decision').records).toEqual([decision]);
+    expect(filterEntitySearchRecords([{ status: 'approved' }], 'Accepted', 'decision').records).toHaveLength(1);
+  });
   it('enforces the at-risk alias and exact lifecycle status filters', () => {
     const records = [
       { id: 'risk', status: 'blocked', risk_level: 'at_risk' },

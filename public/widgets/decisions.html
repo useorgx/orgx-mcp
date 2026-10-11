@@ -2322,12 +2322,6 @@
       if (st.phase === 'stale' && !st.refreshing) void refreshQueue(id);
     });
 
-    document.addEventListener('ox-open', (event) => {
-      const href = event.detail && event.detail.href;
-      if (!href) return;
-      if (window.openWidgetLink) openWidgetLink(href, event);
-    });
-
     document.addEventListener('ox-action', (event) => {
       const footer = event.target && event.target.closest ? event.target.closest('ox-footer[data-queue-retry]') : null;
       if (footer) location.reload();
@@ -2495,7 +2489,7 @@
     });
 
     /* ---------------------------------------------------------------- render -- */
-    var linkAttrs = (url) => window.OrgXLinks.attrs(url) || `href="${escapeHtml(url)}" target="_blank" rel="noreferrer" onclick='return openWidgetLink(${JSON.stringify(String(url || ''))}, event)'`;
+    var linkAttrs = (url) => window.OrgXLinks.attrs(url);
 
     // orgx_decide / approve_agent_work approve|reject from a model: nothing was settled and
     // a person decides in OrgX. Never render this as an empty (“All caught up”) queue.

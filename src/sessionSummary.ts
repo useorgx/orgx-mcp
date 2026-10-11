@@ -1,6 +1,9 @@
+import { attachDiagnosticReferences, withInvocationDiagnostics, invocationDiagnostics, type ApiDiagnostics } from './apiDiagnostics';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import type { ReportingSourceClient } from './cross-pollination';
+import { readSearchDelivery } from './searchResultDelivery';
+import type { SearchTelemetry } from './searchTelemetry';
 
 /**
  * Session Summary — best-effort session-end flush.
@@ -272,6 +275,8 @@ export interface SessionToolCompletion {
   errorCode: string | null;
   /** Allowlisted boolean outcome flags from the tool's structured result. */
   resultFlags: Record<string, boolean>;
+  searchTelemetry?: SearchTelemetry;
+  apiDiagnostics?: ApiDiagnostics;
 }
 
 /**
@@ -342,19 +347,22 @@ export function installSessionToolObservationWrapper(
     startedAt: number,
     status: 'success' | 'error',
     errorCode: string | null,
-    resultFlags: Record<string, boolean> = {}
+    resultFlags: Record<string, boolean> = {},
+    searchTelemetry?: SearchTelemetry
   ) => {
     if (!complete) return;
     try {
       const { requestId, sessionId } = readHandlerExtra(args);
       complete({
         toolName: name,
+        apiDiagnostics: invocationDiagnostics(),
         status,
         latencyMs: Math.max(0, Date.now() - startedAt),
         requestId,
         mcpSessionId: sessionId,
         errorCode,
         resultFlags,
+        ...(searchTelemetry ? { searchTelemetry } : {}),
       });
     } catch (error) {
       console.warn('[mcp:session-summary] tool completion report failed', {
@@ -369,7 +377,7 @@ export function installSessionToolObservationWrapper(
     config: Record<string, unknown>,
     handler: (...args: unknown[]) => unknown
   ) => {
-    const wrappedHandler = (...args: unknown[]) => {
+    const wrappedHandler = (...args: unknown[]) => withInvocationDiagnostics(args[args.length - 1], () => {
       try {
         observe(name);
       } catch (error) {
@@ -392,22 +400,27 @@ export function installSessionToolObservationWrapper(
             !!value &&
             typeof value === 'object' &&
             (value as { isError?: unknown }).isError === true;
+          const searchTelemetry = value && typeof value === 'object'
+            ? readSearchDelivery(name, value)?.observation.telemetry : undefined;
+          // Snapshot references before the completion reporter can send its own API request.
+          const delivered = attachDiagnosticReferences(value);
           report(
             name,
             args,
             startedAt,
             isError ? 'error' : 'success',
             isError ? 'tool_result_error' : null,
-            readResultFlags(value)
+            readResultFlags(value),
+            searchTelemetry
           );
-          return value;
+          return delivered;
         },
         (error) => {
           report(name, args, startedAt, 'error', 'handler_threw');
           throw error;
         }
       );
-    };
+    });
     return original(name, config, wrappedHandler);
   }) as typeof server.registerTool;
 }
