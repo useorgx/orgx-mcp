@@ -1309,10 +1309,8 @@ export class OrgXMcp extends McpAgent<
   /**
    * Durable invocation telemetry from the tool handler. The transport layer
    * records only single top-level `tools/call` HTTP bodies, so calls over
-   * legacy SSE, WebSocket or batched requests were never recorded — including
-   * every call from the one returning external workspace (plan v3 Stage 1).
-   * The app merges this row with the transport row for the same
-   * (mcp_session_id, request_id, tool_id).
+   * legacy SSE, WebSocket or batched requests were never recorded.
+   * The app merges by (mcp_session_id, request_id, tool_id).
    */
   private recordHandlerToolInvocation(completion: SessionToolCompletion): void {
     // Same gates as the session counter (review profiles promise no
@@ -1328,9 +1326,11 @@ export class OrgXMcp extends McpAgent<
     const delivery = recordDurableMcpToolInvocation({
       env: this.env,
       toolId: completion.toolName,
+      runId: this.delegationClaims().runId,
       status: completion.status,
       latencyMs: completion.latencyMs,
       metadata: {
+        api_diagnostics: completion.apiDiagnostics,
         ...buildMcpCompatibilityMetadata({
           requestedToolId: completion.toolName, normalizedToolId: completion.toolName,
           executedToolId: completion.toolName, registeredToolId: completion.toolName,

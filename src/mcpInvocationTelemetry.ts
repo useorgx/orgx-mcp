@@ -1,4 +1,4 @@
-import { callOrgxApiJson, type OrgxApiEnv } from './orgxApi';
+import { callOrgxApiJson, OrgXApiError, type OrgxApiEnv } from './orgxApi';
 import type { SourceClient } from './cross-pollination';
 
 export type ScaffoldStageName =
@@ -94,6 +94,8 @@ export function recordDurableMcpToolInvocation(params: {
   metadata: Record<string, unknown>;
   userId?: string | null;
   workspaceId?: string | null;
+  /** From the credential-bound session, never agent arguments. */
+  runId?: string | null;
   sourceClient?: SourceClient | null;
   context?: unknown;
   /**
@@ -145,6 +147,7 @@ export function recordDurableMcpToolInvocation(params: {
         conversation_id: clientInfo.conversationId,
         user_id: params.userId ?? undefined,
         workspace_id: params.workspaceId ?? undefined,
+        run_id: params.runId ?? undefined,
         metadata: params.metadata,
       }),
     },
@@ -154,7 +157,8 @@ export function recordDurableMcpToolInvocation(params: {
     .catch((error) => {
       console.warn('[mcp:telemetry] failed to persist tool invocation', {
         toolId: params.toolId,
-        error: error instanceof Error ? error.message : String(error),
+        error_code: 'persistence_failed',
+        ...(error instanceof OrgXApiError ? { status: error.statusCode, request_id: error.requestId, trace_id: error.traceId } : {}),
       });
     });
 }

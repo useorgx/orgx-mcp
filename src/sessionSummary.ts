@@ -1,3 +1,4 @@
+import { attachDiagnosticReferences, withInvocationDiagnostics, invocationDiagnostics, type ApiDiagnostics } from './apiDiagnostics';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import type { ReportingSourceClient } from './cross-pollination';
@@ -275,6 +276,7 @@ export interface SessionToolCompletion {
   /** Allowlisted boolean outcome flags from the tool's structured result. */
   resultFlags: Record<string, boolean>;
   searchTelemetry?: SearchTelemetry;
+  apiDiagnostics?: ApiDiagnostics;
 }
 
 /**
@@ -353,6 +355,7 @@ export function installSessionToolObservationWrapper(
       const { requestId, sessionId } = readHandlerExtra(args);
       complete({
         toolName: name,
+        apiDiagnostics: invocationDiagnostics(),
         status,
         latencyMs: Math.max(0, Date.now() - startedAt),
         requestId,
@@ -374,7 +377,7 @@ export function installSessionToolObservationWrapper(
     config: Record<string, unknown>,
     handler: (...args: unknown[]) => unknown
   ) => {
-    const wrappedHandler = (...args: unknown[]) => {
+    const wrappedHandler = (...args: unknown[]) => withInvocationDiagnostics(args[args.length - 1], () => {
       try {
         observe(name);
       } catch (error) {
@@ -399,6 +402,8 @@ export function installSessionToolObservationWrapper(
             (value as { isError?: unknown }).isError === true;
           const searchTelemetry = value && typeof value === 'object'
             ? readSearchDelivery(name, value)?.observation.telemetry : undefined;
+          // Snapshot references before the completion reporter can send its own API request.
+          const delivered = attachDiagnosticReferences(value);
           report(
             name,
             args,
@@ -408,14 +413,14 @@ export function installSessionToolObservationWrapper(
             readResultFlags(value),
             searchTelemetry
           );
-          return value;
+          return delivered;
         },
         (error) => {
           report(name, args, startedAt, 'error', 'handler_threw');
           throw error;
         }
       );
-    };
+    });
     return original(name, config, wrappedHandler);
   }) as typeof server.registerTool;
 }
