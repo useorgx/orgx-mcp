@@ -117,7 +117,36 @@ export function buildEntityCard(params: {
   if (owner) facts.push({ label: 'Owner', value: owner });
   const due = text(entity.due_date) ?? text(entity.target_date) ?? text(entity.due_at);
   if (due) facts.push({ label: 'Due', value: due.slice(0, 10) });
-  if (typeof entity.progress === 'number') {
+  if (params.type === 'initiative' || params.type === 'workstream') {
+    // A persisted partial-progress rollup can include active work or a manual
+    // update. It is not a completed-task tally. Native parent percentages use
+    // 0..100, so 1 means 1%, not a fraction representing 100%.
+    const continuity = record(entity.continuity);
+    const taskProgress = record(continuity?.progress);
+    const completed = taskProgress?.completed;
+    const total = taskProgress?.total;
+    const hasTaskTally =
+      continuity?.version === 'initiative-continuity.v1' &&
+      continuity.source === 'workstream_tasks' &&
+      typeof completed === 'number' && Number.isSafeInteger(completed) &&
+      typeof total === 'number' && Number.isSafeInteger(total) &&
+      total > 0 && completed >= 0 && completed <= total;
+    facts.push({
+      label: 'Task completion',
+      value: hasTaskTally
+        ? `${completed} of ${total} tasks done (${Math.round((completed / total) * 100)}%)`
+        : 'Not provided',
+    });
+    // Use only the inspected entity's admitted projection, never an enclosing
+    // initiative's context pack or a partial list of descendant tasks.
+    const storedProgress = params.type === 'initiative'
+      ? entity.progress_pct ?? entity.progress
+      : entity.progress;
+    if (typeof storedProgress === 'number' && Number.isFinite(storedProgress) &&
+        storedProgress >= 0 && storedProgress <= 100) {
+      facts.push({ label: 'Recorded progress', value: `${Math.round(storedProgress)}%` });
+    }
+  } else if (typeof entity.progress === 'number') {
     const pct = entity.progress <= 1 ? entity.progress * 100 : entity.progress;
     facts.push({ label: 'Progress', value: `${Math.round(pct)}%` });
   }

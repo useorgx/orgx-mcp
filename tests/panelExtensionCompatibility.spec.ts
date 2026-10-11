@@ -141,13 +141,26 @@ describe('ChatGPT extension workspace and receipt operation contract', () => {
   });
 
   it('blocks workspace selection when no compatible write contract was advertised', async () => {
-    const m = await mountPanel({}, {});
+    const idleCallbacks: Array<() => void> = [];
+    const m = await mountPanel({}, {}, (win) => {
+      Object.defineProperty(win, 'requestIdleCallback', {
+        configurable: true,
+        value: (callback: () => void) => idleCallbacks.push(callback),
+      });
+    });
     mounted.push(m);
     m.calls.callServerTool.mockResolvedValue({ structuredContent: snapshot({ workspaces: { status: 'ok', items: [
       { id: 'workspace-a', name: 'Acme', current: true }, { id: 'workspace-b', name: 'Workspace B', current: false },
     ] } }) });
     m.app().ontoolresult({ structuredContent: snapshot() });
     await m.flush();
+    // Finish the panel's scheduled tab reads before measuring the blocked write.
+    expect(idleCallbacks).toHaveLength(1);
+    idleCallbacks.shift()!();
+    await m.flush(); await m.flush();
+    expect(m.calls.callServerTool.mock.calls.map(([call]) => [call.name, call.arguments.view ?? null])).toEqual([
+      ['orgx_panel_snapshot', 'work'], ['orgx_list_work_receipts', null],
+    ]);
     click(m, '[data-action="workspaces"]');
     await m.flush(); await m.flush();
     const reads = m.calls.callServerTool.mock.calls.length;
