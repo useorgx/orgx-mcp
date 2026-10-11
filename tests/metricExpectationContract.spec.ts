@@ -118,3 +118,26 @@ describe('buildMetricExpectationRequest', () => {
     expect(built.field).toBe(field);
   });
 });
+
+describe('autonomy registry metrics', () => {
+  const workspaceId = WORKSPACE_ID;
+  const baseArgs = {window_starts_at:'2026-10-12T00:00:00Z',window_ends_at:'2026-10-19T00:00:00Z'};
+  it('builds an agent success bet for a scoped initiative before work', () => {
+    const result=buildMetricExpectationRequest({...baseArgs, metric:'orgx.agent_run_success.v1',
+      agent_id:'engineering-agent', subject_type:'initiative', subject_id:workspaceId}, {workspaceId});
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.message);
+    expect(result.body.metric_ref.parameters).toEqual({workspace_id:workspaceId,
+      agent_id:'engineering-agent',exclude_qa:true,include_canaries:true});
+    expect(result.body.minimum_sample_size).toBe(40);
+    expect(result.body.predicate.threshold).toBe(.9);
+  });
+  it('fixes the signup deadline and refuses an arbitrary metric or invalid project', () => {
+    const result=buildMetricExpectationRequest({...baseArgs,metric:'orgx.signup_first_success.v1',project_id:97794},{workspaceId});
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.message);
+    expect(result.body.metric_ref.parameters.success_deadline_hours).toBe(72);
+    expect(buildMetricExpectationRequest({...baseArgs,metric:'orgx.signup_first_success.v1',project_id:0},{workspaceId}).ok).toBe(false);
+    expect(buildMetricExpectationRequest({...baseArgs,metric:'arbitrary_sql'},{workspaceId}).ok).toBe(false);
+  });
+});

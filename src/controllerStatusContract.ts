@@ -9,6 +9,7 @@ export const ControllerDomainSchema = z.enum([
   'sales',
   'design',
   'operations',
+  'orchestrator',
 ]);
 
 export type ControllerDomain = z.infer<typeof ControllerDomainSchema>;

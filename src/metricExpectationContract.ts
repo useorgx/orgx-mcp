@@ -1,8 +1,8 @@
 /**
  * Request builder for the first exact delayed-outcome observer.
  *
- * The app route deliberately accepts one registry-backed metric only. Keep
- * the MCP surface equally narrow: callers can pre-register receipt coverage,
+ * The app route accepts a closed registry of versioned observers.
+ * Callers can pre-register a supported metric,
  * but cannot send SQL, natural-language matching rules, or causal claims.
  */
 
@@ -36,18 +36,13 @@ export type RegisterMetricExpectationRequest = {
   body: {
     workspace_id: string;
     subject_ref: {
-      type: 'workspace';
+      type: 'workspace' | 'initiative' | 'goal';
       id: string;
     };
     metric_ref: {
-      registry_id: typeof RUN_RECEIPT_COVERAGE_REGISTRY_ID;
+      registry_id: 'orgx.run_receipt_coverage.v1' | 'orgx.agent_run_success.v1' | 'orgx.signup_first_success.v1';
       query_version: typeof RUN_RECEIPT_COVERAGE_QUERY_VERSION;
-      parameters: {
-        workspace_id: string;
-        capture_path: typeof AUTOMATIC_SESSION_CAPTURE_PATH;
-        exclude_benchmark: true;
-        receipt_deadline_seconds: number;
-      };
+      parameters: { workspace_id: string } & Record<string, unknown>;
     };
     predicate: {
       operator: 'gte';
@@ -103,6 +98,9 @@ export function buildMetricExpectationRequest(
     return fail('workspace_id', 'workspace_id must be a UUID');
   }
 
+  if (args.metric === 'orgx.agent_run_success.v1' || args.metric === 'orgx.signup_first_success.v1') {
+    return buildAutonomyMetric(args, options);
+  }
   if (args.metric !== RUN_RECEIPT_COVERAGE_REGISTRY_ID) {
     return fail(
       'metric',
@@ -204,4 +202,26 @@ export function buildMetricExpectationRequest(
       evaluation_interval_seconds: evaluationIntervalSeconds.value,
     },
   };
+}
+
+function buildAutonomyMetric(args: JsonRecord, options: {workspaceId: string}): RegisterMetricExpectationRequest | MetricExpectationBuildError {
+  const base = buildMetricExpectationRequest({...args, metric: RUN_RECEIPT_COVERAGE_REGISTRY_ID,
+    threshold: args.threshold ?? (args.metric === 'orgx.agent_run_success.v1' ? .9 : .95),
+    minimum_sample_size: args.minimum_sample_size ?? (args.metric === 'orgx.agent_run_success.v1' ? 40 : 20)}, options);
+  if (!base.ok) return base;
+  const type = args.subject_type ?? 'workspace';
+  const id = args.subject_id ?? options.workspaceId;
+  if (!['workspace','initiative','goal'].includes(String(type)) || typeof id !== 'string' || !UUID_RE.test(id) ||
+      (type === 'workspace' && id !== options.workspaceId)) return fail('subject_id','Subject must match the admitted workspace or name a scoped initiative or goal');
+  let parameters: RegisterMetricExpectationRequest['body']['metric_ref']['parameters'];
+  if (args.metric === 'orgx.agent_run_success.v1') {
+    if (!['engineering','operations','product','marketing','sales','design','orchestrator'].some(domain=>args.agent_id === `${domain}-agent`)) return fail('agent_id','A named domain agent is required');
+    if (args.include_canaries !== undefined && typeof args.include_canaries !== 'boolean') return fail('include_canaries','include_canaries must be a boolean');
+    parameters = {workspace_id: options.workspaceId, agent_id: args.agent_id, exclude_qa:true, include_canaries:args.include_canaries ?? true};
+  } else {
+    if (!Number.isSafeInteger(args.project_id) || Number(args.project_id) <= 0) return fail('project_id','A positive PostHog project ID is required');
+    parameters = {workspace_id: options.workspaceId, project_id:args.project_id, exclude_qa:true, success_deadline_hours:72};
+  }
+  return {...base, body:{...base.body, subject_ref:{type:type as 'workspace'|'initiative'|'goal',id},
+    metric_ref:{registry_id:args.metric as 'orgx.agent_run_success.v1'|'orgx.signup_first_success.v1',query_version:'1',parameters}}};
 }
