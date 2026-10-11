@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-10T08:32:11.673Z",
-  "sourceHash": "c27b9010ad056b32",
+  "generatedAt": "2026-10-11T07:02:46.244Z",
+  "sourceHash": "c3a283d6a9532e88",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -13675,7 +13675,8 @@
               },
               "description": {
                 "type": "string",
-                "maxLength": 4000
+                "maxLength": 4000,
+                "description": "Task proof description. A cached client can send orgx:proof-revision:v1: followed by compact JSON with predecessor and an optional original description. OrgX validates the same exact revision witness; this grants no review or completion authority."
               },
               "artifact_type": {
                 "type": "string",

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { jsonValueSchema } from './openaiOutputSchemas/shared';
+import { normalizeProofRevisionDescription, type ArtifactProofPredecessor } from './proofRevisionDescription';
 
 const detail = z.record(jsonValueSchema);
 export const WORKFLOW_COMPLETION_OUTPUT_SCHEMA = z.object({
@@ -22,7 +23,8 @@ function canonicalJson(value: unknown): string {
 
 /** Stable retries bind the exact declared producer material, never authority. */
 export async function taskProofCompletionRequest(args: Record<string, unknown>) {
-  const artifact = args.artifact && typeof args.artifact === 'object' ? args.artifact as Record<string, unknown> : null;
+  const supplied = args.artifact && typeof args.artifact === 'object' ? args.artifact as Record<string, unknown> : null;
+  const artifact = supplied ? normalizeProofRevisionDescription(supplied as Record<string, unknown> & { description?: string; predecessor?: ArtifactProofPredecessor }) : null;
   const body = {
     ...(args.workspace_id ? { workspace_id: args.workspace_id } : {}),
     type: 'task', id: args.id,
