@@ -1,0 +1,309 @@
+[
+  {
+    "name": "empty checks",
+    "mode": "json",
+    "input": [],
+    "expected": {
+      "ok": true,
+      "material": "[]",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  {
+    "name": "null",
+    "mode": "json",
+    "input": null,
+    "expected": {
+      "ok": true,
+      "material": "null",
+      "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    }
+  },
+  {
+    "name": "string escaping",
+    "mode": "json",
+    "input": "quote\"\\\n\t",
+    "expected": {
+      "ok": true,
+      "material": "\"quote\\\"\\\\\\n\\t\"",
+      "sha256": "200a57f90f57bea9c4bb6b32a4bfbb5279466e4ec62ac1eca4d383263c94b48c"
+    }
+  },
+  {
+    "name": "boolean",
+    "mode": "json",
+    "input": true,
+    "expected": {
+      "ok": true,
+      "material": "true",
+      "sha256": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+    }
+  },
+  {
+    "name": "negative zero",
+    "mode": "json",
+    "input": 0,
+    "expected": {
+      "ok": true,
+      "material": "0",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    }
+  },
+  {
+    "name": "nested sorted",
+    "mode": "json",
+    "input": {
+      "b": 2,
+      "a": {
+        "z": 1,
+        "a": 2
+      }
+    },
+    "expected": {
+      "ok": true,
+      "material": "{\"a\":{\"a\":2,\"z\":1},\"b\":2}",
+      "sha256": "c948b5f9bc9d888a9d53527b640100305928de8e0fce757ad9856ab4201661e8"
+    }
+  },
+  {
+    "name": "numeric object keys",
+    "mode": "json",
+    "input": {
+      "2": "second",
+      "10": "tenth",
+      "02": "leading"
+    },
+    "expected": {
+      "ok": true,
+      "material": "{\"02\":\"leading\",\"10\":\"tenth\",\"2\":\"second\"}",
+      "sha256": "953cede3a90b76cf0ea9ed82f26a21e56e17bb3559e703b7f0fc9e61680ab6e0"
+    }
+  },
+  {
+    "name": "numeric nested keys",
+    "mode": "json",
+    "input": [
+      {
+        "id": "numeric",
+        "statement": "A fixture",
+        "verify": {
+          "kind": "http",
+          "headers": {
+            "2": "b",
+            "10": "a"
+          }
+        },
+        "must_fail_before": true
+      }
+    ],
+    "expected": {
+      "ok": true,
+      "material": "[{\"id\":\"numeric\",\"must_fail_before\":true,\"statement\":\"A fixture\",\"verify\":{\"headers\":{\"10\":\"a\",\"2\":\"b\"},\"kind\":\"http\"}}]",
+      "sha256": "cccb50596b1a894c2888ac52456a3d363585423e39b2c0143c588dc704cde33d"
+    }
+  },
+  {
+    "name": "Unicode keys",
+    "mode": "json",
+    "input": {
+      "é": "accent",
+      "😀": "emoji",
+      "Z": "upper",
+      "a": "lower"
+    },
+    "expected": {
+      "ok": true,
+      "material": "{\"Z\":\"upper\",\"a\":\"lower\",\"é\":\"accent\",\"😀\":\"emoji\"}",
+      "sha256": "bf71ed40b3a61efbf66c6970c967bd290af7f089d255609fa1a172813cfb420a"
+    }
+  },
+  {
+    "name": "array ordering",
+    "mode": "json",
+    "input": [
+      {
+        "b": 2,
+        "a": 1
+      },
+      null,
+      3
+    ],
+    "expected": {
+      "ok": true,
+      "material": "[{\"a\":1,\"b\":2},null,3]",
+      "sha256": "948a94b6b93596567a5ea70db6d4beeb1788b3cedf384ad34abd30f850165bb1"
+    }
+  },
+  {
+    "name": "empty object",
+    "mode": "json",
+    "input": {},
+    "expected": {
+      "ok": true,
+      "material": "{}",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    }
+  },
+  {
+    "name": "empty nested array",
+    "mode": "json",
+    "input": [
+      []
+    ],
+    "expected": {
+      "ok": true,
+      "material": "[[]]",
+      "sha256": "cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05"
+    }
+  },
+  {
+    "name": "manual check",
+    "mode": "json",
+    "input": [
+      {
+        "id": "manual",
+        "statement": "A reviewer checks this fixture",
+        "verify": {
+          "kind": "manual",
+          "note": "fixture"
+        },
+        "must_fail_before": false
+      }
+    ],
+    "expected": {
+      "ok": true,
+      "material": "[{\"id\":\"manual\",\"must_fail_before\":false,\"statement\":\"A reviewer checks this fixture\",\"verify\":{\"kind\":\"manual\",\"note\":\"fixture\"}}]",
+      "sha256": "ec61bec5b18e79c1137d35100236d4403acac69233c2115b98c500f0e31f5409"
+    }
+  },
+  {
+    "name": "command check",
+    "mode": "json",
+    "input": [
+      {
+        "id": "command",
+        "statement": "Fixture tests pass",
+        "verify": {
+          "kind": "command",
+          "command": "fixture-only",
+          "cwd": "fixture",
+          "timeout_s": 120
+        },
+        "must_fail_before": true
+      }
+    ],
+    "expected": {
+      "ok": true,
+      "material": "[{\"id\":\"command\",\"must_fail_before\":true,\"statement\":\"Fixture tests pass\",\"verify\":{\"command\":\"fixture-only\",\"cwd\":\"fixture\",\"kind\":\"command\",\"timeout_s\":120}}]",
+      "sha256": "b0e15cbf99f48e65606a90b1f7ad3cca49b84363a3b7b3458fcd24c3d845f261"
+    }
+  },
+  {
+    "name": "http check",
+    "mode": "json",
+    "input": [
+      {
+        "id": "http",
+        "statement": "Fixture response matches",
+        "verify": {
+          "kind": "http",
+          "url": "https://example.invalid/fixture",
+          "expect_status": 200
+        },
+        "must_fail_before": true
+      }
+    ],
+    "expected": {
+      "ok": true,
+      "material": "[{\"id\":\"http\",\"must_fail_before\":true,\"statement\":\"Fixture response matches\",\"verify\":{\"expect_status\":200,\"kind\":\"http\",\"url\":\"https://example.invalid/fixture\"}}]",
+      "sha256": "9b13beda6ac814e53c254cb89f6513dd76e05b58b3214d0ca8bacc7c67e5a17a"
+    }
+  },
+  {
+    "name": "undefinedRoot",
+    "mode": "recipe",
+    "recipe": "undefinedRoot",
+    "expected": {
+      "ok": true,
+      "absent": true
+    }
+  },
+  {
+    "name": "undefinedObject",
+    "mode": "recipe",
+    "recipe": "undefinedObject",
+    "expected": {
+      "ok": true,
+      "material": "{\"a\":1}",
+      "sha256": "015abd7f5cc57a2dd94b7590f04ad8084273905ee33ec5cebeae62276a97f862"
+    }
+  },
+  {
+    "name": "undefinedArray",
+    "mode": "recipe",
+    "recipe": "undefinedArray",
+    "expected": {
+      "ok": true,
+      "material": "[,1]",
+      "sha256": "2b3646f1ef5cf8b30a71b9e140e89b77da7eb4354ddc1f346f57ffc66ad68cd0"
+    }
+  },
+  {
+    "name": "nan",
+    "mode": "recipe",
+    "recipe": "nan",
+    "expected": {
+      "ok": true,
+      "material": "null",
+      "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    }
+  },
+  {
+    "name": "infinity",
+    "mode": "recipe",
+    "recipe": "infinity",
+    "expected": {
+      "ok": true,
+      "material": "null",
+      "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    }
+  },
+  {
+    "name": "bigint",
+    "mode": "recipe",
+    "recipe": "bigint",
+    "expected": {
+      "ok": false,
+      "name": "TypeError"
+    }
+  },
+  {
+    "name": "function",
+    "mode": "recipe",
+    "recipe": "function",
+    "expected": {
+      "ok": true,
+      "material": "{\"a\":undefined}",
+      "sha256": "6a52fa367b4e61b31d75eb0b0f4a5265bedfd76bc748585f4ef62fa674370a02"
+    }
+  },
+  {
+    "name": "cycle",
+    "mode": "recipe",
+    "recipe": "cycle",
+    "expected": {
+      "ok": false,
+      "name": "RangeError"
+    }
+  },
+  {
+    "name": "shared",
+    "mode": "recipe",
+    "recipe": "shared",
+    "expected": {
+      "ok": true,
+      "material": "[{\"a\":1},{\"a\":1}]",
+      "sha256": "dd65a2478e63520253ec34e3f19549dcd74b27a96fcc78656ef22de22da2a929"
+    }
+  }
+]
