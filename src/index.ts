@@ -1,3 +1,4 @@
+import { LegacyBatchCapabilityCache, runCompatibleLegacyBatch } from './legacyBatchCutover';
 import { artifactProofScope } from './artifactProofScope';
 import { parseSearchDateRange, type SearchDateRange } from './searchDateRange';
 import { McpAgent } from 'agents/mcp';
@@ -131,7 +132,6 @@ import {
 import { mapMorningBriefApiError } from './morningBriefError';
 import { fetchContextPreparation, fetchContextPack } from './contextPack';
 import {
-  batchCreateEntities as runBatchCreateEntities,
   validateEntityCreatePayloadContract,
 } from './batchCreate';
 import {
@@ -730,6 +730,12 @@ export class OrgXMcp extends McpAgent<
 
   // Session context for workspace scoping plus the MCP initialize handshake
   // identity (clientInfo) used for server-side attribution.
+  private legacyBatchCapabilities?: LegacyBatchCapabilityCache;
+
+  private getLegacyBatchCapabilities(): LegacyBatchCapabilityCache {
+    return this.legacyBatchCapabilities ??= new LegacyBatchCapabilityCache();
+  }
+
   sessionContext: {
     workspaceId?: string;
     workspaceName?: string;
@@ -2211,7 +2217,9 @@ export class OrgXMcp extends McpAgent<
         { userId: userId ?? undefined, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(userId ?? undefined) }
       );
       if (!response.ok) return null;
-      return (await response.json()) as T;
+      const payload = (await response.json()) as T;
+      if (path === '/api/client/bootstrap?source_client=mcp') this.getLegacyBatchCapabilities().observe(payload, userId);
+      return payload;
     } catch (error) {
       console.warn('[mcp:orgx] Failed to fetch JSON payload', {
         path,
@@ -5637,6 +5645,7 @@ export class OrgXMcp extends McpAgent<
                 this.sessionContext.initiativeId ?? undefined
               )
             : null;
+          this.getLegacyBatchCapabilities().observe({ data: { workspace: { id: this.sessionContext.workspaceId }, workflow_contracts: preparation?.workflow_contracts } }, resolvedUserId);
           const context_pack = preparation?.context_pack ?? null;
           const payload = {
             ...this.buildBootstrapPayload(allowedTools ?? null),
@@ -10830,18 +10839,19 @@ export class OrgXMcp extends McpAgent<
             : entities;
 
           const actorUserId = resolvedUserId ?? null;
-          const result = await runBatchCreateEntities({
+          const result = await runCompatibleLegacyBatch({
+            actorUserId, workspaceId: effectiveWorkspaceId, capabilityCache: this.getLegacyBatchCapabilities(),
             env: this.env,
             // Ignore the runner's per-entity userId: the acting identity is the
             // authenticated session, not the payload owner.
             callApi: ({ env, path, init }) =>
-              callOrgxApiJson(env, path, init, { userId: actorUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(actorUserId) }),
-            findExistingEntity: ({ body }) =>
+              callOrgxApiJson(env, path, init, { ...(path === '/api/v1/workflows/legacy-scaffold-batch' ? { allowFallback: false } : {}), userId: actorUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(actorUserId) }),
+            findExistingEntity: patchedEntities.some(entity => readEntityIdempotencyKey(entity)) ? ({ body }) =>
               this.findExistingEntityByIdempotencyKey({
                 body,
                 idempotencyKey: readEntityIdempotencyKey(body),
                 userId: actorUserId,
-              }),
+              }) : undefined,
             entities: patchedEntities,
             ownerId,
             continueOnError,
@@ -10962,11 +10972,11 @@ export class OrgXMcp extends McpAgent<
           objective_ids: z
             .array(z.string())
             .optional()
-            .describe('Preferred objective UUIDs; alias of goal_ids.'),
+            .describe('Legacy alias for goal_ids. Pass goal UUIDs; this does not convert objective records to goals.'),
           goal_ids: z
             .array(z.string())
             .optional()
-            .describe('Objective UUIDs for API compatibility.'),
+            .describe('Goal UUIDs. Goals and objectives are distinct entities.'),
           idempotency_key: z
             .string()
             .min(8)
@@ -11123,20 +11133,23 @@ export class OrgXMcp extends McpAgent<
               lowerError.includes('goal invariant') ||
               lowerError.includes('goal_ids') ||
               lowerError.includes('objective');
-            const nextSteps = needsWorkspace
+            const requiresReconciliation = lowerError.includes('requires reconciliation');
+            const nextSteps = requiresReconciliation
+              ? ['Inspect existing entities in this workspace and reconcile the partial outcome before making any further writes', 'Do not retry this batch or fall back to per-entity creation']
+              : needsWorkspace
               ? [
                   'Resolve a workspace first with list_entities type=command_center or get_org_snapshot',
                   'Retry scaffold_initiative with workspace_id set to that command center UUID',
-                  'If you also see a primary-goal invariant, resolve objectives with list_entities type=objective and pass the chosen objective UUID in goal_ids',
+                  'If you also see a primary-goal invariant, choose an existing goal in the OrgX workspace and pass its UUID in goal_ids',
                 ]
               : needsObjective
               ? [
-                  'Resolve objectives with list_entities type=objective',
-                  'Retry scaffold_initiative with goal_ids set to one of those objective UUIDs; goal_ids is the API field name for objective IDs',
+                  'Choose an existing goal in the OrgX workspace; objectives are distinct',
+                  'Retry scaffold_initiative with goal_ids set to a goal UUID; objective UUIDs are not goal UUIDs',
                   'Keep the same workspace_id/command_center_id on the retry',
                 ]
               : [
-                  'Re-run the same prompt (transient failures happen)',
+                  'Inspect existing entities before retrying; creation may have partially completed',
                   'Set launch_after_create=false, then say "start agents"',
                   'Reduce concurrency (e.g. concurrency=2)',
                   'If this is an auth issue, reconnect and try again',
@@ -11429,7 +11442,7 @@ export class OrgXMcp extends McpAgent<
               '',
               'Suggested next calls:',
               '- orgx_search with type="workspace" to pick the workspace',
-              '- orgx_search with type="objective" and workspace_id to pick objective UUIDs for goal_ids when the workspace requires a primary objective',
+              '- If the workspace requires a primary goal, choose an existing goal in OrgX and pass its UUID in goal_ids',
               '- scaffold_initiative again with workspace_id and, when available, goal_ids',
             ].join('\n');
             recordScaffoldTelemetry({
@@ -11463,7 +11476,7 @@ export class OrgXMcp extends McpAgent<
                       workspace_id: '<workspace_id>',
                     },
                     purpose:
-                      'Find objective UUIDs to pass as goal_ids when required.',
+                      'Inspect objectives separately; use goal UUIDs from OrgX for goal_ids.',
                   },
                 ],
               },
@@ -11613,12 +11626,14 @@ export class OrgXMcp extends McpAgent<
             };
           }
 
-          const result = await runBatchCreateEntities({
+          const result = await runCompatibleLegacyBatch({
+            actorUserId: this.props?.authSource === 'run_token' ? null : scaffoldActorUserId, capabilityActorUserId: resolvedUserId ?? null, workspaceId: effectiveCommandCenterId, capabilityCache: this.getLegacyBatchCapabilities(),
             env: this.env,
             // Ignore the runner's per-entity userId: the acting identity is the
             // authenticated session, not the payload owner.
             callApi: ({ env, path, init }) =>
               callOrgxApiJson(env, path, init, {
+                ...(path === '/api/v1/workflows/legacy-scaffold-batch' ? { allowFallback: false } : {}),
                 userId: scaffoldActorUserId ?? undefined,
                 userEmail: this.resolveUserEmail() ?? undefined,
                 orgxUserId: this.resolveOrgxUserId(scaffoldActorUserId),

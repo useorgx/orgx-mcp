@@ -2,12 +2,9 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 type TextContent = Extract<CallToolResult['content'][number], { type: 'text' }>;
 
-export type PayloadNormalizationWarning = {
-  path: string;
-  from: string;
-  to: string;
-  reason: string;
-};
+import type { PayloadNormalizationWarning } from './generated/legacyEntityBatchWire';
+export type { PayloadNormalizationWarning } from './generated/legacyEntityBatchWire';
+export { normalizeEntityCreatePayloadForAgents } from './generated/legacyEntityBatchPreparation';
 
 export type FailureDiagnostic = {
   code: string;
@@ -103,49 +100,6 @@ export function buildClientAwareContentBlocks(params: {
     return [{ type: 'text', text: params.summary }];
   }
   return buildJsonFirstContentBlocks(params);
-}
-
-export function normalizeEntityCreatePayloadForAgents(
-  entity: Record<string, unknown>,
-  pathPrefix: string
-): { entity: Record<string, unknown>; warnings: PayloadNormalizationWarning[] } {
-  const next: Record<string, unknown> = { ...entity };
-  const warnings: PayloadNormalizationWarning[] = [];
-  const type = compactString(next.type);
-
-  const rewrite = (
-    key: string,
-    from: string,
-    to: string,
-    reason: string
-  ) => {
-    if (next[key] !== from) return;
-    next[key] = to;
-    warnings.push({ path: `${pathPrefix}.${key}`, from, to, reason });
-  };
-
-  if (type === 'task') {
-    rewrite('priority', 'urgent', 'high', 'OrgX task priority accepts low|medium|high; high is the urgent-equivalent.');
-    rewrite('status', 'active', 'in_progress', 'OrgX task status uses in_progress for active execution.');
-  }
-
-  if (type === 'milestone') {
-    rewrite('status', 'active', 'in_progress', 'OrgX milestone status uses in_progress, not active.');
-  }
-
-  if (type === 'decision') {
-    rewrite('status', 'active', 'pending', 'OrgX decision status uses pending for unresolved decisions.');
-  }
-
-  if (type === 'blocker') {
-    rewrite('status', 'active', 'open', 'OrgX blocker status uses open for active blockers.');
-  }
-
-  if (type === 'artifact') {
-    rewrite('status', 'active', 'draft', 'OrgX artifact status uses draft for newly attached artifacts.');
-  }
-
-  return { entity: next, warnings };
 }
 
 export function normalizeRecordQualityScoreArgs(

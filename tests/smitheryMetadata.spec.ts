@@ -216,7 +216,7 @@ describe('Smithery metadata coverage', () => {
         'goal_ids: z',
         // Keep alias and workspace guidance explicit without expanding the
         // public descriptor beyond the ChatGPT ingestion budget.
-        'Preferred objective UUIDs; alias of goal_ids.',
+        'Legacy alias for goal_ids. Pass goal UUIDs; this does not convert objective records to goals.',
         'Workspace UUID; resolved from session context when omitted.',
       ],
       get_relevant_learnings: [

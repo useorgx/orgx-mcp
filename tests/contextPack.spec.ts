@@ -117,10 +117,11 @@ describe('context delivery propagation', () => {
     const delivery = { schema_version: 'orgx.context-delivery/v1', base_verified: false };
     apiMocks.callOrgxApiJson.mockResolvedValue(Response.json({ data: {
       context_capsule: { schema_version: 'orgx.context-capsule/v1', capsule_id: 'capsule_x' },
-      context_delivery: delivery, frame: { anchor: { id: 'initiative-1' } },
+      context_delivery: delivery, frame: { anchor: { id: 'initiative-1' } }, workflow_contracts: { legacy_scaffold_batch: { version: 'legacy_entity_batch_v1' } },
     } }));
     const result = await fetchContextPreparation({} as never, 'user-1', 'workspace-1', 'initiative-1');
     expect(result?.context_delivery).toEqual(delivery);
+    expect(result?.workflow_contracts).toEqual({ legacy_scaffold_batch: { version: 'legacy_entity_batch_v1' } });
     expect(result?.context_pack?.frame).toEqual({ anchor: { id: 'initiative-1' } });
     expect(apiMocks.callOrgxApiJson).toHaveBeenCalledTimes(1);
     expect(JSON.parse(apiMocks.callOrgxApiJson.mock.calls[0][2].body)).toEqual({

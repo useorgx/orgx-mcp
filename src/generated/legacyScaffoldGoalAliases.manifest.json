@@ -1,0 +1,7 @@
+{
+  "contract": "legacy_scaffold_goal_alias_v1",
+  "repository": "hopeatina/orgx",
+  "source": "orgx/packages/contracts/src/legacyScaffoldGoalAliases.ts",
+  "source_sha256": "f1b248ee804ad0665378bfc5eecabf3f51684c9d37135544096abf62f31f283b",
+  "fixture_sha256": "bf710948793d132316781f2e92d32c1f9ced311cfa897ad2515ba29951dbf043"
+}

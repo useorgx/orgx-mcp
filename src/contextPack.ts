@@ -98,7 +98,7 @@ export async function fetchContextPreparation(
   userId: string | null | undefined,
   workspaceId: string,
   initiativeId?: string
-): Promise<{ context_capsule: Record<string, unknown> | null; context_delivery: Record<string, unknown> | null; context_pack: Record<string, unknown> | null } | null> {
+): Promise<{ context_capsule: Record<string, unknown> | null; context_delivery: Record<string, unknown> | null; context_pack: Record<string, unknown> | null; workflow_contracts?: Record<string, unknown> | null } | null> {
   const normalizedWorkspaceId = workspaceId.trim();
   if (!normalizedWorkspaceId) return null;
 
@@ -150,6 +150,7 @@ export async function fetchContextPreparation(
     return {
       context_capsule: capsule?.schema_version === CONTEXT_CAPSULE_SCHEMA_VERSION ? capsule : null,
       context_delivery: asRecord(data.context_delivery),
+      workflow_contracts: asRecord(data.workflow_contracts),
       context_pack: initiativeId ? data : null,
     };
   } catch {

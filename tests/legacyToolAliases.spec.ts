@@ -1,3 +1,5 @@
+// Load the mocked worker before tests; cold module compilation is harness setup.
+import { OrgXMcp } from '../src/index';
 import { createHash } from 'node:crypto';
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -114,7 +116,6 @@ type HarnessOptions = {
 };
 
 async function createHarness(options: HarnessOptions) {
-  const { OrgXMcp } = await import('../src/index');
   const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
   const userId = options.userId === undefined ? USER_ID : options.userId;
   worker.props = {
