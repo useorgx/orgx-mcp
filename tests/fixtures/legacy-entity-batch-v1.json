@@ -1,0 +1,843 @@
+[
+  {
+    "name": "continue after partial failure",
+    "entities": [
+      {
+        "type": "initiative",
+        "title": "Root",
+        "ref": "root",
+        "workspace_id": "workspace-fixture",
+        "metadata": {
+          "idempotency_key": "offline-retry"
+        }
+      },
+      {
+        "type": "workstream",
+        "title": "Fail",
+        "ref": "failed-stream",
+        "initiative_ref": "root"
+      },
+      {
+        "type": "task",
+        "title": "Dependent",
+        "ref": "dependent",
+        "initiative_ref": "root",
+        "workstream_ref": "failed-stream"
+      },
+      {
+        "type": "workstream",
+        "title": "Independent",
+        "ref": "independent-stream",
+        "initiative_ref": "root"
+      },
+      {
+        "type": "task",
+        "title": "Independent child",
+        "ref": "independent-child",
+        "initiative_ref": "root",
+        "workstream_ref": "independent-stream",
+        "metadata": {
+          "offline": true
+        }
+      }
+    ],
+    "failTitle": "Fail",
+    "continueOnError": true,
+    "expected": {
+      "summary": "Created 3/5 entities (2 failed).",
+      "total": 5,
+      "created_count": 3,
+      "failed_count": 2,
+      "results": [
+        {
+          "index": 0,
+          "success": true,
+          "type": "initiative",
+          "ref": "root",
+          "id": "initiative-1",
+          "title": "Root",
+          "data": {
+            "id": "initiative-1",
+            "title": "Root",
+            "metadata": {
+              "idempotency_key": "offline-retry",
+              "ref": "root"
+            }
+          }
+        },
+        {
+          "index": 1,
+          "success": false,
+          "type": "workstream",
+          "ref": "failed-stream",
+          "error": "HTTP 422: sanitized fixture failure"
+        },
+        {
+          "index": 2,
+          "success": false,
+          "type": "task",
+          "ref": "dependent",
+          "error": "Dependency failed: failed-stream"
+        },
+        {
+          "index": 3,
+          "success": true,
+          "type": "workstream",
+          "ref": "independent-stream",
+          "id": "workstream-3",
+          "title": "Independent",
+          "data": {
+            "id": "workstream-3",
+            "title": "Independent",
+            "metadata": {
+              "ref": "independent-stream"
+            }
+          }
+        },
+        {
+          "index": 4,
+          "success": true,
+          "type": "task",
+          "ref": "independent-child",
+          "id": "task-4",
+          "title": "Independent child",
+          "data": {
+            "id": "task-4",
+            "title": "Independent child",
+            "metadata": {
+              "offline": true,
+              "ref": "independent-child"
+            }
+          }
+        }
+      ],
+      "created": [
+        {
+          "index": 0,
+          "type": "initiative",
+          "id": "initiative-1",
+          "title": "Root",
+          "ref": "root"
+        },
+        {
+          "index": 3,
+          "type": "workstream",
+          "id": "workstream-3",
+          "title": "Independent",
+          "ref": "independent-stream"
+        },
+        {
+          "index": 4,
+          "type": "task",
+          "id": "task-4",
+          "title": "Independent child",
+          "ref": "independent-child"
+        }
+      ],
+      "failed": [
+        {
+          "index": 1,
+          "type": "workstream",
+          "ref": "failed-stream",
+          "error": "HTTP 422: sanitized fixture failure"
+        },
+        {
+          "index": 2,
+          "type": "task",
+          "ref": "dependent",
+          "error": "Dependency failed: failed-stream"
+        }
+      ],
+      "warnings": [],
+      "ref_map": {
+        "root": "initiative-1",
+        "independent-stream": "workstream-3",
+        "independent-child": "task-4"
+      }
+    },
+    "calls": [
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "initiative",
+          "title": "Root",
+          "workspace_id": "workspace-fixture",
+          "metadata": {
+            "idempotency_key": "offline-retry",
+            "ref": "root"
+          },
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      },
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "workstream",
+          "title": "Fail",
+          "initiative_id": "initiative-1",
+          "metadata": {
+            "ref": "failed-stream"
+          },
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      },
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "workstream",
+          "title": "Independent",
+          "initiative_id": "initiative-1",
+          "metadata": {
+            "ref": "independent-stream"
+          },
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      },
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "task",
+          "title": "Independent child",
+          "metadata": {
+            "offline": true,
+            "ref": "independent-child"
+          },
+          "initiative_id": "initiative-1",
+          "workstream_id": "workstream-3",
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      }
+    ]
+  },
+  {
+    "name": "stop after partial failure",
+    "entities": [
+      {
+        "type": "initiative",
+        "title": "Root",
+        "ref": "root",
+        "workspace_id": "workspace-fixture",
+        "metadata": {
+          "idempotency_key": "offline-retry"
+        }
+      },
+      {
+        "type": "workstream",
+        "title": "Fail",
+        "ref": "failed-stream",
+        "initiative_ref": "root"
+      },
+      {
+        "type": "task",
+        "title": "Dependent",
+        "ref": "dependent",
+        "initiative_ref": "root",
+        "workstream_ref": "failed-stream"
+      },
+      {
+        "type": "workstream",
+        "title": "Independent",
+        "ref": "independent-stream",
+        "initiative_ref": "root"
+      },
+      {
+        "type": "task",
+        "title": "Independent child",
+        "ref": "independent-child",
+        "initiative_ref": "root",
+        "workstream_ref": "independent-stream",
+        "metadata": {
+          "offline": true
+        }
+      }
+    ],
+    "failTitle": "Fail",
+    "continueOnError": false,
+    "expected": {
+      "summary": "Created 1/5 entities (4 failed).",
+      "total": 5,
+      "created_count": 1,
+      "failed_count": 4,
+      "results": [
+        {
+          "index": 0,
+          "success": true,
+          "type": "initiative",
+          "ref": "root",
+          "id": "initiative-1",
+          "title": "Root",
+          "data": {
+            "id": "initiative-1",
+            "title": "Root",
+            "metadata": {
+              "idempotency_key": "offline-retry",
+              "ref": "root"
+            }
+          }
+        },
+        {
+          "index": 1,
+          "success": false,
+          "type": "workstream",
+          "ref": "failed-stream",
+          "error": "HTTP 422: sanitized fixture failure"
+        },
+        {
+          "index": 2,
+          "success": false,
+          "type": "task",
+          "ref": "dependent",
+          "error": "Skipped (continue_on_error=false)",
+          "skipped": true
+        },
+        {
+          "index": 3,
+          "success": false,
+          "type": "workstream",
+          "ref": "independent-stream",
+          "error": "Skipped (continue_on_error=false)",
+          "skipped": true
+        },
+        {
+          "index": 4,
+          "success": false,
+          "type": "task",
+          "ref": "independent-child",
+          "error": "Skipped (continue_on_error=false)",
+          "skipped": true
+        }
+      ],
+      "created": [
+        {
+          "index": 0,
+          "type": "initiative",
+          "id": "initiative-1",
+          "title": "Root",
+          "ref": "root"
+        }
+      ],
+      "failed": [
+        {
+          "index": 1,
+          "type": "workstream",
+          "ref": "failed-stream",
+          "error": "HTTP 422: sanitized fixture failure"
+        },
+        {
+          "index": 2,
+          "type": "task",
+          "ref": "dependent",
+          "error": "Skipped (continue_on_error=false)"
+        },
+        {
+          "index": 3,
+          "type": "workstream",
+          "ref": "independent-stream",
+          "error": "Skipped (continue_on_error=false)"
+        },
+        {
+          "index": 4,
+          "type": "task",
+          "ref": "independent-child",
+          "error": "Skipped (continue_on_error=false)"
+        }
+      ],
+      "warnings": [],
+      "ref_map": {
+        "root": "initiative-1"
+      }
+    },
+    "calls": [
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "initiative",
+          "title": "Root",
+          "workspace_id": "workspace-fixture",
+          "metadata": {
+            "idempotency_key": "offline-retry",
+            "ref": "root"
+          },
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      },
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "workstream",
+          "title": "Fail",
+          "initiative_id": "initiative-1",
+          "metadata": {
+            "ref": "failed-stream"
+          },
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      }
+    ]
+  },
+  {
+    "name": "replayed root retains children",
+    "entities": [
+      {
+        "type": "initiative",
+        "title": "Root",
+        "ref": "root",
+        "workspace_id": "workspace-fixture",
+        "metadata": {
+          "idempotency_key": "offline-retry"
+        }
+      },
+      {
+        "type": "workstream",
+        "title": "Fail",
+        "ref": "failed-stream",
+        "initiative_ref": "root"
+      },
+      {
+        "type": "task",
+        "title": "Dependent",
+        "ref": "dependent",
+        "initiative_ref": "root",
+        "workstream_ref": "failed-stream"
+      },
+      {
+        "type": "workstream",
+        "title": "Independent",
+        "ref": "independent-stream",
+        "initiative_ref": "root"
+      },
+      {
+        "type": "task",
+        "title": "Independent child",
+        "ref": "independent-child",
+        "initiative_ref": "root",
+        "workstream_ref": "independent-stream",
+        "metadata": {
+          "offline": true
+        }
+      }
+    ],
+    "existingRef": "root",
+    "continueOnError": true,
+    "expected": {
+      "summary": "Created 5/5 entities.",
+      "total": 5,
+      "created_count": 5,
+      "failed_count": 0,
+      "results": [
+        {
+          "index": 0,
+          "success": true,
+          "type": "initiative",
+          "ref": "root",
+          "id": "replayed-root",
+          "title": "Root",
+          "data": {
+            "id": "replayed-root",
+            "title": "Root"
+          },
+          "skipped": true
+        },
+        {
+          "index": 1,
+          "success": true,
+          "type": "workstream",
+          "ref": "failed-stream",
+          "id": "workstream-1",
+          "title": "Fail",
+          "data": {
+            "id": "workstream-1",
+            "title": "Fail",
+            "metadata": {
+              "ref": "failed-stream"
+            }
+          }
+        },
+        {
+          "index": 2,
+          "success": true,
+          "type": "task",
+          "ref": "dependent",
+          "id": "task-3",
+          "title": "Dependent",
+          "data": {
+            "id": "task-3",
+            "title": "Dependent",
+            "metadata": {
+              "ref": "dependent"
+            }
+          }
+        },
+        {
+          "index": 3,
+          "success": true,
+          "type": "workstream",
+          "ref": "independent-stream",
+          "id": "workstream-2",
+          "title": "Independent",
+          "data": {
+            "id": "workstream-2",
+            "title": "Independent",
+            "metadata": {
+              "ref": "independent-stream"
+            }
+          }
+        },
+        {
+          "index": 4,
+          "success": true,
+          "type": "task",
+          "ref": "independent-child",
+          "id": "task-4",
+          "title": "Independent child",
+          "data": {
+            "id": "task-4",
+            "title": "Independent child",
+            "metadata": {
+              "offline": true,
+              "ref": "independent-child"
+            }
+          }
+        }
+      ],
+      "created": [
+        {
+          "index": 0,
+          "type": "initiative",
+          "id": "replayed-root",
+          "title": "Root",
+          "ref": "root"
+        },
+        {
+          "index": 1,
+          "type": "workstream",
+          "id": "workstream-1",
+          "title": "Fail",
+          "ref": "failed-stream"
+        },
+        {
+          "index": 2,
+          "type": "task",
+          "id": "task-3",
+          "title": "Dependent",
+          "ref": "dependent"
+        },
+        {
+          "index": 3,
+          "type": "workstream",
+          "id": "workstream-2",
+          "title": "Independent",
+          "ref": "independent-stream"
+        },
+        {
+          "index": 4,
+          "type": "task",
+          "id": "task-4",
+          "title": "Independent child",
+          "ref": "independent-child"
+        }
+      ],
+      "failed": [],
+      "warnings": [],
+      "ref_map": {
+        "root": "replayed-root",
+        "failed-stream": "workstream-1",
+        "independent-stream": "workstream-2",
+        "dependent": "task-3",
+        "independent-child": "task-4"
+      }
+    },
+    "calls": [
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "workstream",
+          "title": "Fail",
+          "initiative_id": "replayed-root",
+          "metadata": {
+            "ref": "failed-stream"
+          },
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      },
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "workstream",
+          "title": "Independent",
+          "initiative_id": "replayed-root",
+          "metadata": {
+            "ref": "independent-stream"
+          },
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      },
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "task",
+          "title": "Dependent",
+          "initiative_id": "replayed-root",
+          "workstream_id": "workstream-1",
+          "metadata": {
+            "ref": "dependent"
+          },
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      },
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "task",
+          "title": "Independent child",
+          "metadata": {
+            "offline": true,
+            "ref": "independent-child"
+          },
+          "initiative_id": "replayed-root",
+          "workstream_id": "workstream-2",
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      }
+    ]
+  },
+  {
+    "name": "missing reference",
+    "entities": [
+      {
+        "type": "task",
+        "title": "Missing",
+        "workstream_ref": "missing"
+      }
+    ],
+    "continueOnError": true,
+    "expected": {
+      "summary": "Created 0/1 entities (1 failed).",
+      "total": 1,
+      "created_count": 0,
+      "failed_count": 1,
+      "results": [
+        {
+          "index": 0,
+          "success": false,
+          "type": "task",
+          "error": "Unknown ref(s): missing"
+        }
+      ],
+      "created": [],
+      "failed": [
+        {
+          "index": 0,
+          "type": "task",
+          "error": "Unknown ref(s): missing"
+        }
+      ],
+      "warnings": [],
+      "ref_map": {}
+    },
+    "calls": []
+  },
+  {
+    "name": "cycle rejects without writes",
+    "entities": [
+      {
+        "type": "workstream",
+        "title": "A",
+        "ref": "a",
+        "initiative_ref": "b"
+      },
+      {
+        "type": "initiative",
+        "title": "B",
+        "ref": "b",
+        "workstream_ref": "a"
+      }
+    ],
+    "continueOnError": true,
+    "expected": {
+      "summary": "Created 0/2 entities (2 failed).",
+      "total": 2,
+      "created_count": 0,
+      "failed_count": 2,
+      "results": [
+        {
+          "index": 0,
+          "success": false,
+          "type": "workstream",
+          "ref": "a",
+          "error": "Unresolved ref dependency chain: b"
+        },
+        {
+          "index": 1,
+          "success": false,
+          "type": "initiative",
+          "ref": "b",
+          "error": "Unresolved ref dependency chain: a"
+        }
+      ],
+      "created": [],
+      "failed": [
+        {
+          "index": 0,
+          "type": "workstream",
+          "ref": "a",
+          "error": "Unresolved ref dependency chain: b"
+        },
+        {
+          "index": 1,
+          "type": "initiative",
+          "ref": "b",
+          "error": "Unresolved ref dependency chain: a"
+        }
+      ],
+      "warnings": [],
+      "ref_map": {}
+    },
+    "calls": []
+  },
+  {
+    "name": "duplicate sibling ref alias",
+    "entities": [
+      {
+        "type": "workstream",
+        "title": "Same",
+        "ref": "a",
+        "initiative_id": "existing-root"
+      },
+      {
+        "type": "workstream",
+        "title": "Same",
+        "ref": "b",
+        "initiative_id": "existing-root"
+      },
+      {
+        "type": "task",
+        "title": "Child",
+        "workstream_ref": "b"
+      }
+    ],
+    "continueOnError": true,
+    "expected": {
+      "summary": "Created 2/3 entities.",
+      "total": 3,
+      "created_count": 2,
+      "failed_count": 0,
+      "results": [
+        {
+          "index": 0,
+          "success": true,
+          "type": "workstream",
+          "ref": "a",
+          "id": "workstream-1",
+          "title": "Same",
+          "data": {
+            "id": "workstream-1",
+            "title": "Same",
+            "metadata": {
+              "ref": "a"
+            }
+          }
+        },
+        {
+          "index": 1,
+          "success": true,
+          "type": "workstream",
+          "ref": "b",
+          "title": "Same",
+          "skipped": true
+        },
+        {
+          "index": 2,
+          "success": true,
+          "type": "task",
+          "id": "task-2",
+          "title": "Child",
+          "data": {
+            "id": "task-2",
+            "title": "Child"
+          }
+        }
+      ],
+      "created": [
+        {
+          "index": 0,
+          "type": "workstream",
+          "id": "workstream-1",
+          "title": "Same",
+          "ref": "a"
+        },
+        {
+          "index": 2,
+          "type": "task",
+          "id": "task-2",
+          "title": "Child"
+        }
+      ],
+      "failed": [],
+      "warnings": [],
+      "ref_map": {
+        "a": "workstream-1",
+        "b": "workstream-1"
+      }
+    },
+    "calls": [
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "workstream",
+          "title": "Same",
+          "initiative_id": "existing-root",
+          "metadata": {
+            "ref": "a"
+          },
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      },
+      {
+        "path": "/api/entities",
+        "method": "POST",
+        "userId": "payload-owner-fixture",
+        "body": {
+          "type": "task",
+          "title": "Child",
+          "workstream_id": "workstream-1",
+          "owner_id": "payload-owner-fixture",
+          "user_id": "payload-owner-fixture"
+        }
+      }
+    ]
+  }
+]

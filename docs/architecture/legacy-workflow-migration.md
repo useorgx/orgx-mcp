@@ -14,3 +14,27 @@ The existing atomic `scaffold_workflow_v1` contract and the richer legacy scaffo
 The transcripts use sanitized injected responses and never call HTTP, a database, a sync provider or a runtime. Their `userId` values describe the batch runner's transport proposal, not authenticated identity: production handlers replace that proposal with session identity. Suggested checks and economics metadata remain producer input; these tests do not authorize work, accept checks or qualify grants.
 
 No new table, credential, network setting or runtime activation is proposed. The next implementation dependency is the compatible server command and its trusted entity-creation boundary; the existing atomic command must remain strict. Owner coordination is also needed for the MCP entrypoint integration. This characterization is a prerequisite, not completion of the server migration.
+
+## Canonical runner and additive server stage
+
+`batchCreate.ts` now supplies transport only; the finite OrgX generator owns
+`legacyEntityBatchPreparation`, `legacyEntityBatchExecution` and the wire shapes.
+The optional replay finder and authenticated caller binding retain their current
+client behavior. Six frozen original transcripts and forty diagnostic-normalizer
+cases cover the canonical runner/facade without editing reserved diagnostics.
+
+OrgX adds the opt-in versioned `/api/v1/workflows/legacy-scaffold-batch` route.
+It admits identity/delegation/workspace, batches persisted parent scope reads,
+checks actual returned entity scope, and uses the complete entity POST adapter
+in-process. Its finite profile requires explicit hierarchy parents and supports
+machine credentials plus hierarchy/project/objective/goal references. Implicit
+backlog, other entity/context profiles and legacy objective/goal alias semantics
+are not represented as complete parity. Existing handler launch, mirror, draft
+and fast-ack behavior remains until an owner-coordinated consumer cutover.
+
+The contract workflow's old grep counted only a local workspace extension after
+canonical vocabulary extraction. Its compiled catalog validator preserves the
+minimum fifteen, checks all twenty canonical/runtime/tool-enum values, and
+refuses missing or restrictive generated entity-tool inputs. No live workflow
+rerun is needed to establish this offline source-text diagnosis; browser/observer
+qualification remains separate.
