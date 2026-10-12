@@ -1,0 +1,7 @@
+{
+  "contract": "entity_vocabulary_v1",
+  "repository": "hopeatina/orgx",
+  "source": "orgx/packages/contracts/src/entityVocabulary.ts",
+  "source_sha256": "31b4f37cdf4b9e41598d946e98bbe10dd806435de6f40dba60702080b3538c92",
+  "fixture_sha256": "f87f2334d47ba269ae43bf95106f7d3a88fa3b4ac42a8645776f0e03198e34d1"
+}

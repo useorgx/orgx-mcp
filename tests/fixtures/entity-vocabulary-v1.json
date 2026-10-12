@@ -1,0 +1,594 @@
+[
+  {
+    "name": "entity vocabulary case 1",
+    "input": "workspace",
+    "normalized": "workspace",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 2",
+    "input": " WORKSPACE ",
+    "normalized": "workspace",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 3",
+    "input": "workspace",
+    "normalized": "workspace",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 4",
+    "input": "project",
+    "normalized": "project",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 5",
+    "input": " PROJECT ",
+    "normalized": "project",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 6",
+    "input": "project",
+    "normalized": "project",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 7",
+    "input": "initiative",
+    "normalized": "initiative",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 8",
+    "input": " INITIATIVE ",
+    "normalized": "initiative",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 9",
+    "input": "initiative",
+    "normalized": "initiative",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 10",
+    "input": "milestone",
+    "normalized": "milestone",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 11",
+    "input": " MILESTONE ",
+    "normalized": "milestone",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 12",
+    "input": "milestone",
+    "normalized": "milestone",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 13",
+    "input": "workstream",
+    "normalized": "workstream",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 14",
+    "input": " WORKSTREAM ",
+    "normalized": "workstream",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 15",
+    "input": "workstream",
+    "normalized": "workstream",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 16",
+    "input": "task",
+    "normalized": "task",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 17",
+    "input": " TASK ",
+    "normalized": "task",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 18",
+    "input": "task",
+    "normalized": "task",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 19",
+    "input": "objective",
+    "normalized": "objective",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 20",
+    "input": " OBJECTIVE ",
+    "normalized": "objective",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 21",
+    "input": "objective",
+    "normalized": "objective",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 22",
+    "input": "playbook",
+    "normalized": "playbook",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 23",
+    "input": " PLAYBOOK ",
+    "normalized": "playbook",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 24",
+    "input": "playbook",
+    "normalized": "playbook",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 25",
+    "input": "decision",
+    "normalized": "decision",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 26",
+    "input": " DECISION ",
+    "normalized": "decision",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 27",
+    "input": "decision",
+    "normalized": "decision",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 28",
+    "input": "artifact",
+    "normalized": "artifact",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 29",
+    "input": " ARTIFACT ",
+    "normalized": "artifact",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 30",
+    "input": "artifact",
+    "normalized": "artifact",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 31",
+    "input": "run",
+    "normalized": "run",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 32",
+    "input": " RUN ",
+    "normalized": "run",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 33",
+    "input": "run",
+    "normalized": "run",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 34",
+    "input": "blocker",
+    "normalized": "blocker",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 35",
+    "input": " BLOCKER ",
+    "normalized": "blocker",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 36",
+    "input": "blocker",
+    "normalized": "blocker",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 37",
+    "input": "workflow",
+    "normalized": "workflow",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 38",
+    "input": " WORKFLOW ",
+    "normalized": "workflow",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 39",
+    "input": "workflow",
+    "normalized": "workflow",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 40",
+    "input": "agent",
+    "normalized": "agent",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 41",
+    "input": " AGENT ",
+    "normalized": "agent",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 42",
+    "input": "agent",
+    "normalized": "agent",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 43",
+    "input": "skill",
+    "normalized": "skill",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 44",
+    "input": " SKILL ",
+    "normalized": "skill",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 45",
+    "input": "skill",
+    "normalized": "skill",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 46",
+    "input": "plan_session",
+    "normalized": "plan_session",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 47",
+    "input": " PLAN_SESSION ",
+    "normalized": "plan_session",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 48",
+    "input": "plan-session",
+    "normalized": "plan_session",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 49",
+    "input": "stream",
+    "normalized": "stream",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 50",
+    "input": " STREAM ",
+    "normalized": "stream",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 51",
+    "input": "stream",
+    "normalized": "stream",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 52",
+    "input": "studio_brand",
+    "normalized": "studio_brand",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 53",
+    "input": " STUDIO_BRAND ",
+    "normalized": "studio_brand",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 54",
+    "input": "studio-brand",
+    "normalized": "studio_brand",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 55",
+    "input": "studio_content",
+    "normalized": "studio_content",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 56",
+    "input": " STUDIO_CONTENT ",
+    "normalized": "studio_content",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 57",
+    "input": "studio-content",
+    "normalized": "studio_content",
+    "entity": true,
+    "domainLifecycle": true,
+    "mcpLifecycle": true
+  },
+  {
+    "name": "entity vocabulary case 58",
+    "input": "video_template",
+    "normalized": "video_template",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 59",
+    "input": " VIDEO_TEMPLATE ",
+    "normalized": "video_template",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 60",
+    "input": "video-template",
+    "normalized": "video_template",
+    "entity": true,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 61",
+    "input": null,
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 62",
+    "input": false,
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 63",
+    "input": true,
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 64",
+    "input": 0,
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 65",
+    "input": 42,
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 66",
+    "input": [],
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 67",
+    "input": {},
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 68",
+    "input": "",
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 69",
+    "input": " ",
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 70",
+    "input": "projects",
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 71",
+    "input": "work space",
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 72",
+    "input": "work_stream",
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 73",
+    "input": "unknown",
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  },
+  {
+    "name": "entity vocabulary case 74",
+    "input": "task-id",
+    "normalized": null,
+    "entity": false,
+    "domainLifecycle": false,
+    "mcpLifecycle": false
+  }
+]

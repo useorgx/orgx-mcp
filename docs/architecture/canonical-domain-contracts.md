@@ -1,6 +1,9 @@
 # Canonical domain contracts
 
 OrgX owns claimed delegation evidence and the atomic scaffold wire contract.
+The entity vocabulary also comes from OrgX. The MCP facade retains workspace
+in its lifecycle route list; OrgX's domain lifecycle list excludes it. Neither
+list grants permission to perform an operation.
 MCP consumes the pinned generated modules in `src/generated/`; protocol
 envelopes, operation descriptions and host rendering remain in the Worker.
 Claim waiting and all resource, token, review and execution admission checks

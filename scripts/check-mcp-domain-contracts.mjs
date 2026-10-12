@@ -11,6 +11,7 @@ const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const contracts = [
   { name: 'durableDelegation', version: 'durable_delegation_v2', fixture: 'durable-delegation-v2' },
   { name: 'scaffoldWorkflow', version: 'scaffold_workflow_v1', fixture: 'scaffold-workflow-v1' },
+  { name: 'entityVocabulary', version: 'entity_vocabulary_v1', fixture: 'entity-vocabulary-v1' },
 ];
 for (const contract of contracts) {
   const generated = readFileSync(resolve(root, `src/generated/${contract.name}.ts`), 'utf8');
