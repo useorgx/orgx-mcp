@@ -1,0 +1,7 @@
+{
+  "contract": "artifact_proof_input_v1",
+  "repository": "hopeatina/orgx",
+  "source": "orgx/packages/contracts/src/artifactProofInput.ts",
+  "source_sha256": "9a0bb49c348575edb108e00955d96944f113fba717947611422857feb47c9650",
+  "fixture_sha256": "360cb38da6b57db5d2100759f6bdeeb0cbbfe3f1ff4d403725cf18a858dd6392"
+}

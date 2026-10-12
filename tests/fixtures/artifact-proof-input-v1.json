@@ -1,0 +1,1527 @@
+[
+  {
+    "name": "ordinary description remains untouched",
+    "mode": "revision",
+    "input": {
+      "description": "Ordinary report",
+      "title": "Proof"
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "description": "Ordinary report",
+        "title": "Proof"
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "description": "Ordinary report",
+        "title": "Proof"
+      }
+    }
+  },
+  {
+    "name": "absent description remains untouched",
+    "mode": "revision",
+    "input": {
+      "title": "Proof"
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "title": "Proof"
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "title": "Proof"
+      }
+    }
+  },
+  {
+    "name": "null description remains untouched",
+    "mode": "revision",
+    "input": {
+      "description": null
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "description": null
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "description": null
+      }
+    }
+  },
+  {
+    "name": "versioned predecessor and text",
+    "mode": "revision",
+    "input": {
+      "description": "orgx:proof-revision:v1:{\"predecessor\":{\"artifact_id\":\"11111111-1111-4111-8111-111111111111\",\"expected_version\":1,\"expected_updated_at\":\"2026-10-12T00:00:00Z\"},\"description\":\" Revised report \"}",
+      "title": "Proof",
+      "metadata": {
+        "producer_claim": true
+      }
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "title": "Proof",
+        "metadata": {
+          "producer_claim": true
+        },
+        "description": "Revised report",
+        "predecessor": {
+          "artifact_id": "11111111-1111-4111-8111-111111111111",
+          "expected_version": 1,
+          "expected_updated_at": "2026-10-12T00:00:00Z"
+        }
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "title": "Proof",
+        "metadata": {
+          "producer_claim": true
+        },
+        "description": "Revised report",
+        "predecessor": {
+          "artifact_id": "11111111-1111-4111-8111-111111111111",
+          "expected_version": 1,
+          "expected_updated_at": "2026-10-12T00:00:00Z"
+        }
+      }
+    }
+  },
+  {
+    "name": "versioned predecessor without text",
+    "mode": "revision",
+    "input": {
+      "description": "orgx:proof-revision:v1:{\"predecessor\":{\"artifact_id\":\"11111111-1111-4111-8111-111111111111\",\"expected_version\":1,\"expected_updated_at\":\"2026-10-12T00:00:00Z\"}}"
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "predecessor": {
+          "artifact_id": "11111111-1111-4111-8111-111111111111",
+          "expected_version": 1,
+          "expected_updated_at": "2026-10-12T00:00:00Z"
+        }
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "predecessor": {
+          "artifact_id": "11111111-1111-4111-8111-111111111111",
+          "expected_version": 1,
+          "expected_updated_at": "2026-10-12T00:00:00Z"
+        }
+      }
+    }
+  },
+  {
+    "name": "envelope surrounding whitespace",
+    "mode": "revision",
+    "input": {
+      "description": " orgx:proof-revision:v1:{\"predecessor\":{\"artifact_id\":\"11111111-1111-4111-8111-111111111111\",\"expected_version\":1,\"expected_updated_at\":\"2026-10-12T00:00:00Z\"}} "
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "predecessor": {
+          "artifact_id": "11111111-1111-4111-8111-111111111111",
+          "expected_version": 1,
+          "expected_updated_at": "2026-10-12T00:00:00Z"
+        }
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "predecessor": {
+          "artifact_id": "11111111-1111-4111-8111-111111111111",
+          "expected_version": 1,
+          "expected_updated_at": "2026-10-12T00:00:00Z"
+        }
+      }
+    }
+  },
+  {
+    "name": "matching typed and encoded witness",
+    "mode": "revision",
+    "input": {
+      "predecessor": {
+        "artifact_id": "11111111-1111-4111-8111-111111111111",
+        "expected_version": 1,
+        "expected_updated_at": "2026-10-12T00:00:00Z"
+      },
+      "description": "orgx:proof-revision:v1:{\"predecessor\":{\"artifact_id\":\"11111111-1111-4111-8111-111111111111\",\"expected_version\":1,\"expected_updated_at\":\"2026-10-12T00:00:00Z\"}}"
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "predecessor": {
+          "artifact_id": "11111111-1111-4111-8111-111111111111",
+          "expected_version": 1,
+          "expected_updated_at": "2026-10-12T00:00:00Z"
+        }
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "predecessor": {
+          "artifact_id": "11111111-1111-4111-8111-111111111111",
+          "expected_version": 1,
+          "expected_updated_at": "2026-10-12T00:00:00Z"
+        }
+      }
+    }
+  },
+  {
+    "name": "mismatched typed and encoded witness",
+    "mode": "revision",
+    "input": {
+      "predecessor": {
+        "artifact_id": "11111111-1111-4111-8111-111111111111",
+        "expected_version": 2,
+        "expected_updated_at": "2026-10-12T00:00:00Z"
+      },
+      "description": "orgx:proof-revision:v1:{\"predecessor\":{\"artifact_id\":\"11111111-1111-4111-8111-111111111111\",\"expected_version\":1,\"expected_updated_at\":\"2026-10-12T00:00:00Z\"}}"
+    },
+    "core": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX typed and encoded proof predecessor must agree."
+    },
+    "mcp": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX typed and encoded proof predecessor must agree."
+    }
+  },
+  {
+    "name": "unsupported envelope version",
+    "mode": "revision",
+    "input": {
+      "description": "orgx:proof-revision:v2:{}"
+    },
+    "core": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision description version is unsupported."
+    },
+    "mcp": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision description version is unsupported."
+    }
+  },
+  {
+    "name": "invalid envelope JSON",
+    "mode": "revision",
+    "input": {
+      "description": "orgx:proof-revision:v1:{bad"
+    },
+    "core": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision description must contain valid JSON."
+    },
+    "mcp": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision description must contain valid JSON."
+    }
+  },
+  {
+    "name": "noncompact envelope JSON",
+    "mode": "revision",
+    "input": {
+      "description": "orgx:proof-revision:v1:{\n  \"predecessor\": {\n    \"artifact_id\": \"11111111-1111-4111-8111-111111111111\",\n    \"expected_version\": 1,\n    \"expected_updated_at\": \"2026-10-12T00:00:00Z\"\n  }\n}"
+    },
+    "core": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision description must use compact JSON without duplicate members."
+    },
+    "mcp": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision description must use compact JSON without duplicate members."
+    }
+  },
+  {
+    "name": "duplicate envelope members",
+    "mode": "revision",
+    "input": {
+      "description": "orgx:proof-revision:v1:{\"predecessor\":{\"artifact_id\":\"11111111-1111-4111-8111-111111111111\",\"expected_version\":1,\"expected_updated_at\":\"2026-10-12T00:00:00Z\"},\"predecessor\":{\"artifact_id\":\"11111111-1111-4111-8111-111111111111\",\"expected_version\":1,\"expected_updated_at\":\"2026-10-12T00:00:00Z\"}}"
+    },
+    "core": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision description must use compact JSON without duplicate members."
+    },
+    "mcp": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision description must use compact JSON without duplicate members."
+    }
+  },
+  {
+    "name": "recursive envelope",
+    "mode": "revision",
+    "input": {
+      "description": "orgx:proof-revision:v1:{\"predecessor\":{\"artifact_id\":\"11111111-1111-4111-8111-111111111111\",\"expected_version\":1,\"expected_updated_at\":\"2026-10-12T00:00:00Z\"},\"description\":\"orgx:proof-revision:v1:{}\"}"
+    },
+    "core": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision descriptions cannot contain another revision envelope."
+    },
+    "mcp": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision descriptions cannot contain another revision envelope."
+    }
+  },
+  {
+    "name": "oversized envelope",
+    "mode": "revision",
+    "input": {
+      "description": "orgx:proof-revision:v1:{\"predecessor\":{\"artifact_id\":\"11111111-1111-4111-8111-111111111111\",\"expected_version\":1,\"expected_updated_at\":\"2026-10-12T00:00:00Z\"},\"description\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}"
+    },
+    "core": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision description exceeds 4000 characters."
+    },
+    "mcp": {
+      "ok": false,
+      "name": "Error",
+      "message": "OrgX proof revision description exceeds 4000 characters."
+    }
+  },
+  {
+    "name": "unknown envelope authority field",
+    "mode": "revision",
+    "input": {
+      "description": "orgx:proof-revision:v1:{\"predecessor\":{\"artifact_id\":\"11111111-1111-4111-8111-111111111111\",\"expected_version\":1,\"expected_updated_at\":\"2026-10-12T00:00:00Z\"},\"accepted\":true}"
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key: \\\"accepted\\\"\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key(s) in object: 'accepted'\"\n  }\n]"
+    }
+  },
+  {
+    "name": "predecessor valid",
+    "mode": "predecessor",
+    "input": {
+      "artifact_id": "11111111-1111-4111-8111-111111111111",
+      "expected_version": 1,
+      "expected_updated_at": "2026-10-12T00:00:00Z"
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "artifact_id": "11111111-1111-4111-8111-111111111111",
+        "expected_version": 1,
+        "expected_updated_at": "2026-10-12T00:00:00Z"
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "artifact_id": "11111111-1111-4111-8111-111111111111",
+        "expected_version": 1,
+        "expected_updated_at": "2026-10-12T00:00:00Z"
+      }
+    }
+  },
+  {
+    "name": "predecessor zero_version",
+    "mode": "predecessor",
+    "input": {
+      "artifact_id": "11111111-1111-4111-8111-111111111111",
+      "expected_version": 0,
+      "expected_updated_at": "2026-10-12T00:00:00Z"
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"origin\": \"number\",\n    \"code\": \"too_small\",\n    \"minimum\": 0,\n    \"inclusive\": false,\n    \"path\": [\n      \"expected_version\"\n    ],\n    \"message\": \"Too small: expected number to be >0\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"too_small\",\n    \"minimum\": 0,\n    \"type\": \"number\",\n    \"inclusive\": false,\n    \"exact\": false,\n    \"message\": \"Number must be greater than 0\",\n    \"path\": [\n      \"expected_version\"\n    ]\n  }\n]"
+    }
+  },
+  {
+    "name": "predecessor large_version",
+    "mode": "predecessor",
+    "input": {
+      "artifact_id": "11111111-1111-4111-8111-111111111111",
+      "expected_version": 2147483648,
+      "expected_updated_at": "2026-10-12T00:00:00Z"
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"origin\": \"number\",\n    \"code\": \"too_big\",\n    \"maximum\": 2147483647,\n    \"inclusive\": true,\n    \"path\": [\n      \"expected_version\"\n    ],\n    \"message\": \"Too big: expected number to be <=2147483647\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"too_big\",\n    \"maximum\": 2147483647,\n    \"type\": \"number\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"Number must be less than or equal to 2147483647\",\n    \"path\": [\n      \"expected_version\"\n    ]\n  }\n]"
+    }
+  },
+  {
+    "name": "predecessor fractional_version",
+    "mode": "predecessor",
+    "input": {
+      "artifact_id": "11111111-1111-4111-8111-111111111111",
+      "expected_version": 1.5,
+      "expected_updated_at": "2026-10-12T00:00:00Z"
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"expected\": \"int\",\n    \"format\": \"safeint\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"expected_version\"\n    ],\n    \"message\": \"Invalid input: expected int, received number\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"integer\",\n    \"received\": \"float\",\n    \"message\": \"Expected integer, received float\",\n    \"path\": [\n      \"expected_version\"\n    ]\n  }\n]"
+    }
+  },
+  {
+    "name": "predecessor invalid_uuid",
+    "mode": "predecessor",
+    "input": {
+      "artifact_id": "not-a-uuid",
+      "expected_version": 1,
+      "expected_updated_at": "2026-10-12T00:00:00Z"
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"uuid\",\n    \"pattern\": \"/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/\",\n    \"path\": [\n      \"artifact_id\"\n    ],\n    \"message\": \"Invalid UUID\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"validation\": \"uuid\",\n    \"code\": \"invalid_string\",\n    \"message\": \"Invalid uuid\",\n    \"path\": [\n      \"artifact_id\"\n    ]\n  }\n]"
+    }
+  },
+  {
+    "name": "predecessor uuid_version_zero",
+    "mode": "predecessor",
+    "input": {
+      "artifact_id": "11111111-1111-0111-8111-111111111111",
+      "expected_version": 1,
+      "expected_updated_at": "2026-10-12T00:00:00Z"
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"uuid\",\n    \"pattern\": \"/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/\",\n    \"path\": [\n      \"artifact_id\"\n    ],\n    \"message\": \"Invalid UUID\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "artifact_id": "11111111-1111-0111-8111-111111111111",
+        "expected_version": 1,
+        "expected_updated_at": "2026-10-12T00:00:00Z"
+      }
+    }
+  },
+  {
+    "name": "predecessor invalid_time",
+    "mode": "predecessor",
+    "input": {
+      "artifact_id": "11111111-1111-4111-8111-111111111111",
+      "expected_version": 1,
+      "expected_updated_at": "yesterday"
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"datetime\",\n    \"pattern\": \"/^(?:(?:\\\\d\\\\d[2468][048]|\\\\d\\\\d[13579][26]|\\\\d\\\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\\\d|30)|(?:02)-(?:0[1-9]|1\\\\d|2[0-8])))T(?:(?:[01]\\\\d|2[0-3]):[0-5]\\\\d(?::[0-5]\\\\d(?:\\\\.\\\\d+)?)?(?:Z|([+-](?:[01]\\\\d|2[0-3]):[0-5]\\\\d)))$/\",\n    \"path\": [\n      \"expected_updated_at\"\n    ],\n    \"message\": \"Invalid ISO datetime\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"invalid_string\",\n    \"validation\": \"datetime\",\n    \"message\": \"Invalid datetime\",\n    \"path\": [\n      \"expected_updated_at\"\n    ]\n  }\n]"
+    }
+  },
+  {
+    "name": "predecessor missing_offset",
+    "mode": "predecessor",
+    "input": {
+      "artifact_id": "11111111-1111-4111-8111-111111111111",
+      "expected_version": 1,
+      "expected_updated_at": "2026-10-12T00:00:00"
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"datetime\",\n    \"pattern\": \"/^(?:(?:\\\\d\\\\d[2468][048]|\\\\d\\\\d[13579][26]|\\\\d\\\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\\\d|30)|(?:02)-(?:0[1-9]|1\\\\d|2[0-8])))T(?:(?:[01]\\\\d|2[0-3]):[0-5]\\\\d(?::[0-5]\\\\d(?:\\\\.\\\\d+)?)?(?:Z|([+-](?:[01]\\\\d|2[0-3]):[0-5]\\\\d)))$/\",\n    \"path\": [\n      \"expected_updated_at\"\n    ],\n    \"message\": \"Invalid ISO datetime\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"invalid_string\",\n    \"validation\": \"datetime\",\n    \"message\": \"Invalid datetime\",\n    \"path\": [\n      \"expected_updated_at\"\n    ]\n  }\n]"
+    }
+  },
+  {
+    "name": "predecessor unknown_authority",
+    "mode": "predecessor",
+    "input": {
+      "artifact_id": "11111111-1111-4111-8111-111111111111",
+      "expected_version": 1,
+      "expected_updated_at": "2026-10-12T00:00:00Z",
+      "review_eligible": true
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"review_eligible\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key: \\\"review_eligible\\\"\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"review_eligible\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key(s) in object: 'review_eligible'\"\n  }\n]"
+    }
+  },
+  {
+    "name": "modality kind playback",
+    "mode": "modality",
+    "input": {
+      "kind": "playback",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "playback",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "kind": "playback",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "modality kind execution",
+    "mode": "modality",
+    "input": {
+      "kind": "execution",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "execution",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "kind": "execution",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "modality kind schema",
+    "mode": "modality",
+    "input": {
+      "kind": "schema",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "schema",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "kind": "schema",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "modality kind render",
+    "mode": "modality",
+    "input": {
+      "kind": "render",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "render",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "kind": "render",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "modality kind runtime",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "modality kind mixed",
+    "mode": "modality",
+    "input": {
+      "kind": "mixed",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "mixed",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "kind": "mixed",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "modality status passed",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "modality status failed",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "failed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "failed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "failed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "modality status blocked",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "blocked",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "blocked",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "blocked",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "modality status not_run",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "not_run",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "not_run",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "not_run",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "modality invalid_kind",
+    "mode": "modality",
+    "input": {
+      "kind": "approval",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"playback\",\n      \"execution\",\n      \"schema\",\n      \"render\",\n      \"runtime\",\n      \"mixed\"\n    ],\n    \"path\": [\n      \"kind\"\n    ],\n    \"message\": \"Invalid option: expected one of \\\"playback\\\"|\\\"execution\\\"|\\\"schema\\\"|\\\"render\\\"|\\\"runtime\\\"|\\\"mixed\\\"\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"received\": \"approval\",\n    \"code\": \"invalid_enum_value\",\n    \"options\": [\n      \"playback\",\n      \"execution\",\n      \"schema\",\n      \"render\",\n      \"runtime\",\n      \"mixed\"\n    ],\n    \"path\": [\n      \"kind\"\n    ],\n    \"message\": \"Invalid enum value. Expected 'playback' | 'execution' | 'schema' | 'render' | 'runtime' | 'mixed', received 'approval'\"\n  }\n]"
+    }
+  },
+  {
+    "name": "modality invalid_status",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "accepted",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"passed\",\n      \"failed\",\n      \"blocked\",\n      \"not_run\"\n    ],\n    \"path\": [\n      \"status\"\n    ],\n    \"message\": \"Invalid option: expected one of \\\"passed\\\"|\\\"failed\\\"|\\\"blocked\\\"|\\\"not_run\\\"\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"received\": \"accepted\",\n    \"code\": \"invalid_enum_value\",\n    \"options\": [\n      \"passed\",\n      \"failed\",\n      \"blocked\",\n      \"not_run\"\n    ],\n    \"path\": [\n      \"status\"\n    ],\n    \"message\": \"Invalid enum value. Expected 'passed' | 'failed' | 'blocked' | 'not_run', received 'accepted'\"\n  }\n]"
+    }
+  },
+  {
+    "name": "modality wrong_artifact_version",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "passed",
+      "artifact_version": 2,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      1\n    ],\n    \"path\": [\n      \"artifact_version\"\n    ],\n    \"message\": \"Invalid input: expected 1\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"received\": 2,\n    \"code\": \"invalid_literal\",\n    \"expected\": 1,\n    \"path\": [\n      \"artifact_version\"\n    ],\n    \"message\": \"Invalid literal value, expected 1\"\n  }\n]"
+    }
+  },
+  {
+    "name": "modality invalid_time",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "yesterday",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"datetime\",\n    \"pattern\": \"/^(?:(?:\\\\d\\\\d[2468][048]|\\\\d\\\\d[13579][26]|\\\\d\\\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\\\d|30)|(?:02)-(?:0[1-9]|1\\\\d|2[0-8])))T(?:(?:[01]\\\\d|2[0-3]):[0-5]\\\\d(?::[0-5]\\\\d(?:\\\\.\\\\d+)?)?(?:Z|([+-](?:[01]\\\\d|2[0-3]):[0-5]\\\\d)))$/\",\n    \"path\": [\n      \"checked_at\"\n    ],\n    \"message\": \"Invalid ISO datetime\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"invalid_string\",\n    \"validation\": \"datetime\",\n    \"message\": \"Invalid datetime\",\n    \"path\": [\n      \"checked_at\"\n    ]\n  }\n]"
+    }
+  },
+  {
+    "name": "modality no_evidence",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": []
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"origin\": \"array\",\n    \"code\": \"too_small\",\n    \"minimum\": 1,\n    \"inclusive\": true,\n    \"path\": [\n      \"evidence_refs\"\n    ],\n    \"message\": \"Too small: expected array to have >=1 items\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"too_small\",\n    \"minimum\": 1,\n    \"type\": \"array\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"Array must contain at least 1 element(s)\",\n    \"path\": [\n      \"evidence_refs\"\n    ]\n  }\n]"
+    }
+  },
+  {
+    "name": "modality too_many_refs",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        },
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"origin\": \"array\",\n    \"code\": \"too_big\",\n    \"maximum\": 30,\n    \"inclusive\": true,\n    \"path\": [\n      \"evidence_refs\"\n    ],\n    \"message\": \"Too big: expected array to have <=30 items\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"too_big\",\n    \"maximum\": 30,\n    \"type\": \"array\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"Array must contain at most 30 element(s)\",\n    \"path\": [\n      \"evidence_refs\"\n    ]\n  }\n]"
+    }
+  },
+  {
+    "name": "modality blank_hash",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test",
+          "hash": " "
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"too_small\",\n    \"minimum\": 1,\n    \"inclusive\": true,\n    \"path\": [\n      \"evidence_refs\",\n      0,\n      \"hash\"\n    ],\n    \"message\": \"Too small: expected string to have >=1 characters\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"too_small\",\n    \"minimum\": 1,\n    \"type\": \"string\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"String must contain at least 1 character(s)\",\n    \"path\": [\n      \"evidence_refs\",\n      0,\n      \"hash\"\n    ]\n  }\n]"
+    }
+  },
+  {
+    "name": "modality unknown_ref_authority",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test",
+          "accepted": true
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [\n      \"evidence_refs\",\n      0\n    ],\n    \"message\": \"Unrecognized key: \\\"accepted\\\"\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [\n      \"evidence_refs\",\n      0\n    ],\n    \"message\": \"Unrecognized key(s) in object: 'accepted'\"\n  }\n]"
+    }
+  },
+  {
+    "name": "modality invalid_url",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "not-a-url"
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"invalid_format\",\n    \"format\": \"url\",\n    \"path\": [\n      \"evidence_refs\",\n      0,\n      \"url\"\n    ],\n    \"message\": \"Invalid URL\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"validation\": \"url\",\n    \"code\": \"invalid_string\",\n    \"message\": \"Invalid url\",\n    \"path\": [\n      \"evidence_refs\",\n      0,\n      \"url\"\n    ]\n  }\n]"
+    }
+  },
+  {
+    "name": "modality whitespace_url",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": " https://fixture.example.test/proof "
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof"
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": " https://fixture.example.test/proof "
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "modality unknown_authority",
+    "mode": "modality",
+    "input": {
+      "kind": "runtime",
+      "status": "passed",
+      "artifact_version": 1,
+      "checked_at": "2026-10-12T00:00:00Z",
+      "evidence_refs": [
+        {
+          "url": "https://fixture.example.test/proof",
+          "hash": " sha256:fixture ",
+          "description": " observed result "
+        }
+      ],
+      "accepted": true
+    },
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key: \\\"accepted\\\"\"\n  }\n]"
+    },
+    "mcp": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key(s) in object: 'accepted'\"\n  }\n]"
+    }
+  },
+  {
+    "name": "ordinary verification strings",
+    "mode": "verification",
+    "input": [
+      "unit tests pass"
+    ],
+    "core": {
+      "ok": true,
+      "absent": true
+    }
+  },
+  {
+    "name": "versioned modality verification",
+    "mode": "verification",
+    "input": [
+      "unit tests pass",
+      "orgx:modality-proof:v1:{\"kind\":\"runtime\",\"status\":\"passed\",\"artifact_version\":1,\"checked_at\":\"2026-10-12T00:00:00Z\",\"evidence_refs\":[{\"url\":\"https://fixture.example.test/proof\",\"hash\":\" sha256:fixture \",\"description\":\" observed result \"}]}"
+    ],
+    "core": {
+      "ok": true,
+      "data": {
+        "kind": "runtime",
+        "status": "passed",
+        "artifact_version": 1,
+        "checked_at": "2026-10-12T00:00:00Z",
+        "evidence_refs": [
+          {
+            "url": "https://fixture.example.test/proof",
+            "hash": "sha256:fixture",
+            "description": "observed result"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "duplicate modality verification",
+    "mode": "verification",
+    "input": [
+      "orgx:modality-proof:v1:{\"kind\":\"runtime\",\"status\":\"passed\",\"artifact_version\":1,\"checked_at\":\"2026-10-12T00:00:00Z\",\"evidence_refs\":[{\"url\":\"https://fixture.example.test/proof\",\"hash\":\" sha256:fixture \",\"description\":\" observed result \"}]}",
+      "orgx:modality-proof:v1:{\"kind\":\"runtime\",\"status\":\"passed\",\"artifact_version\":1,\"checked_at\":\"2026-10-12T00:00:00Z\",\"evidence_refs\":[{\"url\":\"https://fixture.example.test/proof\",\"hash\":\" sha256:fixture \",\"description\":\" observed result \"}]}"
+    ],
+    "core": {
+      "ok": false,
+      "name": "Error",
+      "message": "Send only one versioned modality proof in verification."
+    }
+  },
+  {
+    "name": "invalid modality JSON",
+    "mode": "verification",
+    "input": [
+      "orgx:modality-proof:v1:{bad"
+    ],
+    "core": {
+      "ok": false,
+      "name": "Error",
+      "message": "Versioned modality proof must contain valid JSON."
+    }
+  },
+  {
+    "name": "malformed encoded modality",
+    "mode": "verification",
+    "input": [
+      "orgx:modality-proof:v1:{}"
+    ],
+    "core": {
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"playback\",\n      \"execution\",\n      \"schema\",\n      \"render\",\n      \"runtime\",\n      \"mixed\"\n    ],\n    \"path\": [\n      \"kind\"\n    ],\n    \"message\": \"Invalid option: expected one of \\\"playback\\\"|\\\"execution\\\"|\\\"schema\\\"|\\\"render\\\"|\\\"runtime\\\"|\\\"mixed\\\"\"\n  },\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"passed\",\n      \"failed\",\n      \"blocked\",\n      \"not_run\"\n    ],\n    \"path\": [\n      \"status\"\n    ],\n    \"message\": \"Invalid option: expected one of \\\"passed\\\"|\\\"failed\\\"|\\\"blocked\\\"|\\\"not_run\\\"\"\n  },\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      1\n    ],\n    \"path\": [\n      \"artifact_version\"\n    ],\n    \"message\": \"Invalid input: expected 1\"\n  },\n  {\n    \"expected\": \"string\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"checked_at\"\n    ],\n    \"message\": \"Invalid input: expected string, received undefined\"\n  },\n  {\n    \"expected\": \"array\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"evidence_refs\"\n    ],\n    \"message\": \"Invalid input: expected array, received undefined\"\n  }\n]"
+    }
+  }
+]
