@@ -21,18 +21,25 @@ export function safeCorrelation(value: unknown, kind: 'uuid' | 'trace' | 'span')
     ? value.toLowerCase() : undefined;
 }
 /** PII is allowed only at this dedicated PostHog person boundary. */
-export function posthogProfile(properties: Record<string, unknown> = {}): Record<string, unknown> {
+export type PosthogProfileOptions = {
+  clearProperties?: readonly ('email' | 'name' | 'username' | 'plan' | 'subscription_status' | 'telemetry_audience')[];
+};
+export function posthogProfile(properties: Record<string, unknown> = {}, options: PosthogProfileOptions = {}): Record<string, unknown> {
   const result: Record<string, unknown> = {};
-  for (const key of ['email', 'name', 'plan', 'subscription_status']) {
+  for (const key of ['email', 'name', 'username', 'plan', 'subscription_status']) {
     const value = properties[key];
-    if (value === null || (typeof value === 'string' && value.length <= 320)) result[key] = value;
+    if (typeof value === 'string' && value.trim() && value.length <= 320) result[key] = value;
   }
   const clerkId = properties.clerk_user_id;
   if (typeof clerkId === 'string' && /^user_[a-zA-Z0-9]{1,100}$/.test(clerkId)) result.clerk_user_id = clerkId;
   for (const key of ['demo_mode', 'has_subscription', 'github_connected', 'linear_connected']) {
     if (typeof properties[key] === 'boolean') result[key] = properties[key];
   }
-  result.telemetry_audience = telemetryAudience(properties.telemetry_audience);
+  const audience = telemetryAudience(properties.telemetry_audience);
+  if (audience !== 'unknown') result.telemetry_audience = audience;
+  for (const key of options.clearProperties ?? []) {
+    if (['email', 'name', 'username', 'plan', 'subscription_status', 'telemetry_audience'].includes(key)) result[key] = null;
+  }
   result.identity_namespace = 'orgx_account';
   return result;
 }

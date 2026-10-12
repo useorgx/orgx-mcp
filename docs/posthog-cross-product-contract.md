@@ -14,7 +14,7 @@ credential, person backfill, identity merge, or account setting.
 | Diagnostics | `telemetry/diagnostics.ts`, `posthogDiagnostics.ts` | Opt-in OTLP, fixed message codes, 4 concurrent sends, 50 records/minute/isolate, 2-second abort, zero retries |
 
 The pure contract is mirrored as app `lib/telemetry/sharedContract.ts` and MCP
-`src/telemetryContract.ts`. Its SHA-256 is `63a1531cee3fd252e444773419ad0341c6850a10749de2a1b1ed0415d6b188b1`.
+`src/telemetryContract.ts`. Its SHA-256 is `74b01755ec87e9ab202245149de26893e4d224c853e83ad514489a528d0ea9cd`.
 Update both copies together. Runtime-specific sanitizers and existing catalogs
 remain their owners. No second analytics client or MCP SDK wrapper is installed.
 The current [TypeScript MCP adapter](https://posthog.com/docs/mcp-analytics/installation/typescript)
@@ -29,7 +29,11 @@ allowlist are retained.
    provisioning. An unresolved mapping produces a personless service event.
 3. `/api/profile` returns the request-authenticated `clerk_user_id` alongside
    its verified profile UUID. The browser waits for that mapping to match the
-   current session, refreshes late name/email, and resets before account changes.
+   current session, refreshes late name/email, and resets before known-account
+   changes. The initial anonymous-to-known transition preserves the anonymous ID.
+   Already-loaded Clerk pairing data can enrich username without another lookup.
+   Omitted/null loading properties and unknown audience never erase prior values;
+   intentional clears require the profile helper clearProperties option.
 4. Profile caches are partitioned by authenticated account, so account switches
    refetch their own mapping. Browser identify links the current anonymous SDK session to its known account.
    It never aliases two known historical people. Unknown MCP calls get opaque
@@ -46,6 +50,8 @@ allowlist are retained.
    exists; never interpret unknown as external. The existing accepted-outcome
    cohort classifier now also requires explicit persisted cohort markers or
    an admitted internal UUID list; email domains no longer guess eligibility.
+   The proposed read-only cohort query likewise requires audited external UUIDs
+   and exclusions before interpretation; its synthetic fixture declares them.
 
 The browser uses its existing authorized bootstrap workspace, only when the
 requested route workspace agrees, and clears stale groups when it does not.
@@ -77,6 +83,7 @@ success per account, not an additional event on every retry.
 Pairing and onboarding persistence schedule delivery with Next.js `after()`.
 Existing `AndFlush` compatibility callers still await delivery, bounded by the
 SDK deadline. Do not infer that every legacy route has migrated to `after()`.
+Profile mutations reuse the current-user SWR tuple, including Linear disconnect.
 The Node batch helper uses `capture()` plus the installed SDK's pending-preparation
 flush barrier; it caps an input batch at 50. A tested 20-event batch sends one
 HTTP request, instead of 20 immediate requests.
@@ -89,7 +96,10 @@ request/trace/span correlation when supplied. Arbitrary JSON-RPC conversation
 and request strings remain excluded; only UUID requests and nonzero hex trace
 (32) and span (16) IDs pass. No raw validation paths, custom error messages,
 argument keys or values pass. Validation diagnostics support bounded issue
-counts and declared Zod issue codes, never dynamic field names.
+counts and declared Zod issue codes, never dynamic field names. The canonical
+invocation observer emits those summaries from declared structured error issue
+arrays. Text-only errors stay coarse; it does not infer issue details from prose.
+Inspection is capped at 20 issues and 10 unique codes, with a truncation flag.
 
 Worker events are capped at 128 inspected properties and 16 KiB serialized
 payloads, with 100 in-flight captures per lifecycle owner. Oversize/overflow
@@ -101,7 +111,8 @@ observations, not durable delivery guarantees. There is no durable queue.
 
 The optional logs use genuine `/i/v1/logs`, not an analytics event called `log`.
 They link `posthogDistinctId` to the canonical UUID and attach a valid session,
-request, trace and span only when available. Bodies are fixed diagnostic codes.
+request, trace and span only when available. OTLP session correlation uses the
+PostHog default attribute `sessionId`, alongside `posthogDistinctId`. Bodies are fixed diagnostic codes.
 They never intercept global console output or copy arbitrary Error messages.
 Browser diagnostics reuse `posthog.logger` and the existing SDK consent path.
 Pairing and persisted onboarding respect request DNT. MCP request DNT propagates
@@ -158,7 +169,7 @@ Before rollout, require exact-head CI and independent review. Deployment and
 existing-log access must then establish runtime release, canonical person
 properties, groups, observed semantic failures, consent behavior and ingestion
 warnings in project 97794. Code alone does not establish deployed visibility.
-Local evidence: app 126 focused tests, MCP 53 focused tests, MCP typecheck,
+Local evidence: app 130 focused tests, MCP 56 focused tests, MCP typecheck,
 app scoped typecheck/lint, and any/file-size/env-manifest guards. The full local
 40-check invariant runner found six unrelated cache/macOS-path failures after
 telemetry-specific any/env-manifest repairs; full pinned-dependency CI remains

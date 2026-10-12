@@ -1,3 +1,4 @@
+import { VALIDATION_ISSUE_CODES } from './mcpValidationTelemetry';
 import { safeCorrelation, TELEMETRY_LIMITS } from './telemetryContract';
 import {
   CHATGPT_TOOL_DEFINITIONS, PLAN_SESSION_TOOLS,
@@ -115,6 +116,7 @@ const numericProperties = new Set([
   'degraded_count', 'event_count',
 ]);
 const booleanProperties = new Set([
+  'validation_issues_truncated',
   'has_user_id', 'has_workspace_id', 'has_initiative_id', 'has_workstream_id',
   'has_task_id', 'has_conversation_id', 'has_working_directory',
   'followed_expected_next_tool', 'response_read_error', 'response_parse_truncated',
@@ -175,7 +177,7 @@ export function sanitizeWorkerTelemetryProperties(
       }
       result[key] = counts;
     } else if (key === 'validation_issue_codes' && Array.isArray(value)) {
-      result[key] = [...new Set(value.filter((code) => typeof code === 'string' && ['invalid_type', 'invalid_literal', 'unrecognized_keys', 'invalid_union', 'invalid_enum_value', 'invalid_string', 'too_small', 'too_big', 'custom'].includes(code)))].slice(0, 10);
+      result[key] = [...new Set(value.filter((code) => typeof code === 'string' && (VALIDATION_ISSUE_CODES as readonly string[]).includes(code)))].slice(0, 10);
     } else if (enumProperties[key] && typeof value === 'string') {
       result[key] = enumProperties[key].includes(value) ? value : 'other';
       // JSON-RPC and HTTP numeric errors have a closed, non-free-text format.

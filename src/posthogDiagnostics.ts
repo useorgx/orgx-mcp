@@ -27,7 +27,7 @@ export function exportPosthogDiagnostic(env: DiagnosticEnv, code: DiagnosticCode
   const attributes = [attr('telemetry_schema_version', TELEMETRY_SCHEMA_VERSION),
     attr('telemetry_audience', telemetryAudience(env.audience)),
     ...(userId ? [attr('posthogDistinctId', userId)] : []),
-    ...(sessionId ? [attr('posthogSessionId', sessionId)] : []),
+    ...(sessionId ? [attr('sessionId', sessionId)] : []),
     ...(requestId ? [attr('request_id', requestId)] : [])];
   const body = { resourceLogs: [{ resource: { attributes: [attr('service.name', env.service),
     attr('deployment.environment', ['production', 'preview', 'development', 'test'].includes(env.environment ?? '') ? env.environment! : 'unknown'),

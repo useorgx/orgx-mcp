@@ -1,3 +1,4 @@
+import { summarizeValidationIssues, type ValidationTelemetrySummary } from './mcpValidationTelemetry';
 import {
   MCP_COMPATIBILITY_RETIREMENT_POLICY,
   resolveDeprecatedToolCall,
@@ -86,7 +87,7 @@ type McpJourneyTimings = {
   sessionPresent: boolean;
 };
 
-type McpLogicalResult = {
+type McpLogicalResult = ValidationTelemetrySummary & {
   isError: boolean;
   errorCode?: string;
   errorKind?: string;
@@ -492,6 +493,7 @@ function logicalResultFromRecord(value: unknown): McpLogicalResult {
 
   return {
     isError: true,
+    ...summarizeValidationIssues(jsonRpcErrorData.issues ?? asRecord(jsonRpcErrorData.details).issues ?? structuredError.issues ?? asRecord(structuredError.details).issues),
     errorCode: errorCode ?? (isJsonRpcError ? 'jsonrpc_error' : 'mcp_tool_error'),
     errorKind: errorKind ?? (isJsonRpcError ? 'jsonrpc_error' : 'mcp_tool_error'),
   };
@@ -788,6 +790,9 @@ async function captureMcpToolCallVisibility<Env>(
     response_read_error: observation.responseReadError,
     response_parse_truncated: observation.responseParseTruncated,
     mcp_logical_error: observation.isError,
+    validation_issue_count: observation.validationIssueCount,
+    validation_issue_codes: observation.validationIssueCodes,
+    validation_issues_truncated: observation.validationIssuesTruncated,
     mcp_response_observed: observation.logicalResultObserved ?? false,
     error_kind: resolvedErrorKind,
     session_present: journey.sessionPresent,
