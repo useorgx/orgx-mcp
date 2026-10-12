@@ -2,33 +2,19 @@ import { z } from 'zod';
 
 import { jsonValueSchema } from './openaiOutputSchemas/shared';
 import type { MetricExpectationBuildError } from './metricExpectationContract';
+import { TaskPredictionInputShape, TaskPredictionRecordShape, duplicateCriterionPredictionIndexes } from './generated/taskPrediction';
 
 export const TASK_PREDICTIONS_V1_PATH = '/api/v1/expectations/tasks';
 
-export const criterionPredictionSchema = z.object({
-  criterion_id: z.string().trim().min(1).max(200),
-  predicted: z.enum(['met', 'unmet']),
-  confidence: z.number().finite().min(0).max(1),
-}).strict();
+export { CriterionPredictionSchema as criterionPredictionSchema } from './generated/taskPrediction';
 
 export const taskPredictionInputShape = {
-  task_id: z.string().uuid(),
-  expectation_set_id: z.string().uuid(),
-  expectation_set_version: z.number().int().positive(),
-  expected_outcome: z.string().trim().min(1).max(500),
-  confidence: z.number().finite().min(0).max(1),
-  criteria_predictions: z.array(criterionPredictionSchema).min(1).max(50)
-    .superRefine((predictions, context) => {
-      const seen = new Set<string>();
-      predictions.forEach((prediction, index) => {
-        if (seen.has(prediction.criterion_id)) context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [index, 'criterion_id'],
-          message: 'Each criterion_id must occur once',
-        });
-        seen.add(prediction.criterion_id);
-      });
-    }),
+  ...TaskPredictionInputShape,
+  criteria_predictions: TaskPredictionInputShape.criteria_predictions.superRefine((predictions, context) => {
+    for (const index of duplicateCriterionPredictionIndexes(predictions)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: [index, 'criterion_id'], message: 'Each criterion_id must occur once' });
+    }
+  }),
 };
 
 const requestSchema = z.object({
@@ -40,12 +26,7 @@ const requestSchema = z.object({
 // pending prediction on both registration and idempotent replay.
 export const taskPredictionOutputSchema = z.object({
   ...requestSchema.shape,
-  id: z.string().uuid(),
-  owner_id: z.string().uuid(),
-  initiative_id: z.string().uuid(),
-  contract_hash: z.string().regex(/^[0-9a-f]{64}$/),
-  registered_at: z.string().datetime({ offset: true }),
-  state: z.literal('pending'),
+  ...TaskPredictionRecordShape,
 }).catchall(jsonValueSchema);
 
 export type RegisterTaskPredictionRequest = {

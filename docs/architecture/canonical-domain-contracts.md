@@ -33,3 +33,5 @@ The extraction targets existing server capabilities;
 rolling back either client preserves the server's admission rules. Reuse a
 retry key only with identical declared material. A missing claimed receipt
 does not permit replaying paid work.
+
+Task prediction input and pending record shapes are generated from OrgX `packages/contracts/src/taskPrediction.ts` (`task_prediction_v1`). The canonical duplicate-index rule is shared, while MCP preserves its original per-index error paths and additive JSON output parsing. OrgX retains strict server parsing and all prediction scoring, registration and authority logic. Shared fixtures pin each installed Zod version's existing UUID and diagnostic behavior; they do not assert universal cross-version parser equivalence.

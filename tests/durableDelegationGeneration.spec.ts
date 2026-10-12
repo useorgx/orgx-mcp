@@ -11,7 +11,7 @@ describe('pinned OrgX delegation source', () => {
     expect(() => execFileSync(process.execPath, [resolve(process.cwd(), 'scripts/check-mcp-domain-contracts.mjs')], { stdio: 'pipe' })).not.toThrow();
     const temp = mkdtempSync(resolve(tmpdir(), 'mcp-delegation-generator-'));
     try {
-      for (const path of ['scripts/check-mcp-domain-contracts.mjs', 'src/generated/durableDelegation.ts', 'src/generated/durableDelegation.manifest.json', 'tests/fixtures/durable-delegation-v2.json', 'src/generated/scaffoldWorkflow.ts', 'src/generated/scaffoldWorkflow.manifest.json', 'tests/fixtures/scaffold-workflow-v1.json', 'src/generated/entityVocabulary.ts', 'src/generated/entityVocabulary.manifest.json', 'tests/fixtures/entity-vocabulary-v1.json', 'src/generated/artifactProofInput.ts', 'src/generated/artifactProofInput.manifest.json', 'tests/fixtures/artifact-proof-input-v1.json']) {
+      for (const path of ['scripts/check-mcp-domain-contracts.mjs', 'src/generated/durableDelegation.ts', 'src/generated/durableDelegation.manifest.json', 'tests/fixtures/durable-delegation-v2.json', 'src/generated/scaffoldWorkflow.ts', 'src/generated/scaffoldWorkflow.manifest.json', 'tests/fixtures/scaffold-workflow-v1.json', 'src/generated/entityVocabulary.ts', 'src/generated/entityVocabulary.manifest.json', 'tests/fixtures/entity-vocabulary-v1.json', 'src/generated/artifactProofInput.ts', 'src/generated/artifactProofInput.manifest.json', 'tests/fixtures/artifact-proof-input-v1.json', 'src/generated/taskPrediction.ts', 'src/generated/taskPrediction.manifest.json', 'tests/fixtures/task-prediction-v1.json']) {
         mkdirSync(dirname(resolve(temp, path)), { recursive: true });
         copyFileSync(resolve(process.cwd(), path), resolve(temp, path));
       }
@@ -32,6 +32,11 @@ describe('pinned OrgX delegation source', () => {
       writeFileSync(proof, proofSource.replace('expected_version: z.number().int().positive()', 'expected_version: z.number().int().nonnegative()'));
       expect(() => run()).toThrow(/artifact_proof_input_v1 generated contract drift/);
       writeFileSync(proof, proofSource);
+      const prediction = resolve(temp, 'src/generated/taskPrediction.ts');
+      const predictionSource = readFileSync(prediction, 'utf8');
+      writeFileSync(prediction, predictionSource.replace('.min(1).max(50)', '.min(0).max(50)'));
+      expect(() => run()).toThrow(/task_prediction_v1 generated contract drift/);
+      writeFileSync(prediction, predictionSource);
       const proofFixture = resolve(temp, 'tests/fixtures/artifact-proof-input-v1.json');
       const fixtureSource = readFileSync(proofFixture, 'utf8');
       const manifestFile = resolve(temp, 'src/generated/artifactProofInput.manifest.json');

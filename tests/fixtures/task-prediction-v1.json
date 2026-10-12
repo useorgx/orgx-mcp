@@ -1,0 +1,3317 @@
+[
+  {
+    "name": "request accepted",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "response accepted",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": "pending"
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ],
+        "id": "11111111-1111-4111-8111-111111111111",
+        "owner_id": "11111111-1111-4111-8111-111111111111",
+        "initiative_id": "11111111-1111-4111-8111-111111111111",
+        "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "registered_at": "2026-10-12T00:00:00Z",
+        "state": "pending"
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ],
+        "id": "11111111-1111-4111-8111-111111111111",
+        "owner_id": "11111111-1111-4111-8111-111111111111",
+        "initiative_id": "11111111-1111-4111-8111-111111111111",
+        "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "registered_at": "2026-10-12T00:00:00Z",
+        "state": "pending"
+      }
+    }
+  },
+  {
+    "name": "workspace_id boundary 0",
+    "mode": "request",
+    "input": {
+      "workspace_id": "",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "workspace_id"
+          ],
+          "message": "Invalid UUID"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_string",
+          "path": [
+            "workspace_id"
+          ],
+          "message": "Invalid uuid"
+        }
+      ]
+    }
+  },
+  {
+    "name": "workspace_id boundary 1",
+    "mode": "request",
+    "input": {
+      "workspace_id": null,
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "workspace_id"
+          ],
+          "message": "Invalid input: expected string, received null"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "workspace_id"
+          ],
+          "message": "Expected string, received null"
+        }
+      ]
+    }
+  },
+  {
+    "name": "workspace_id boundary 2",
+    "mode": "request",
+    "input": {
+      "workspace_id": "invalid",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "workspace_id"
+          ],
+          "message": "Invalid UUID"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_string",
+          "path": [
+            "workspace_id"
+          ],
+          "message": "Invalid uuid"
+        }
+      ]
+    }
+  },
+  {
+    "name": "workspace_id boundary 3",
+    "mode": "request",
+    "input": {
+      "workspace_id": "00000000-0000-0000-0000-000000000000",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "workspace_id": "00000000-0000-0000-0000-000000000000",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "00000000-0000-0000-0000-000000000000",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "task_id boundary 0",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-0111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "task_id"
+          ],
+          "message": "Invalid UUID"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-0111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "task_id boundary 1",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-8111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-8111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-8111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "expectation_set_id boundary 0",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": null,
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "expectation_set_id"
+          ],
+          "message": "Invalid input: expected string, received null"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "expectation_set_id"
+          ],
+          "message": "Expected string, received null"
+        }
+      ]
+    }
+  },
+  {
+    "name": "expectation_set_version boundary 0",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 0,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "expectation_set_version"
+          ],
+          "message": "Too small: expected number to be >0"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "expectation_set_version"
+          ],
+          "message": "Number must be greater than 0"
+        }
+      ]
+    }
+  },
+  {
+    "name": "expectation_set_version boundary 1",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": -1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "expectation_set_version"
+          ],
+          "message": "Too small: expected number to be >0"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "expectation_set_version"
+          ],
+          "message": "Number must be greater than 0"
+        }
+      ]
+    }
+  },
+  {
+    "name": "expectation_set_version boundary 2",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 0.5,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "expectation_set_version"
+          ],
+          "message": "Invalid input: expected int, received number"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "expectation_set_version"
+          ],
+          "message": "Expected integer, received float"
+        }
+      ]
+    }
+  },
+  {
+    "name": "expectation_set_version boundary 3",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": "1",
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "expectation_set_version"
+          ],
+          "message": "Invalid input: expected number, received string"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "expectation_set_version"
+          ],
+          "message": "Expected number, received string"
+        }
+      ]
+    }
+  },
+  {
+    "name": "expected_outcome boundary 0",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "expected_outcome"
+          ],
+          "message": "Too small: expected string to have >=1 characters"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "expected_outcome"
+          ],
+          "message": "String must contain at least 1 character(s)"
+        }
+      ]
+    }
+  },
+  {
+    "name": "expected_outcome boundary 1",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": " ",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "expected_outcome"
+          ],
+          "message": "Too small: expected string to have >=1 characters"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "expected_outcome"
+          ],
+          "message": "String must contain at least 1 character(s)"
+        }
+      ]
+    }
+  },
+  {
+    "name": "expected_outcome boundary 2",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": " x ",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "x",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "x",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "expected_outcome boundary 3",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "expected_outcome boundary 4",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "expected_outcome"
+          ],
+          "message": "Too big: expected string to have <=500 characters"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "expected_outcome"
+          ],
+          "message": "String must contain at most 500 character(s)"
+        }
+      ]
+    }
+  },
+  {
+    "name": "confidence boundary 0",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": -1,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "confidence"
+          ],
+          "message": "Too small: expected number to be >=0"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "confidence"
+          ],
+          "message": "Number must be greater than or equal to 0"
+        }
+      ]
+    }
+  },
+  {
+    "name": "confidence boundary 1",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "confidence boundary 2",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 1,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 1,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 1,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "confidence boundary 3",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 1.1,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "confidence"
+          ],
+          "message": "Too big: expected number to be <=1"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "confidence"
+          ],
+          "message": "Number must be less than or equal to 1"
+        }
+      ]
+    }
+  },
+  {
+    "name": "confidence boundary 4",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": null,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "confidence"
+          ],
+          "message": "Invalid input: expected number, received null"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_type",
+          "path": [
+            "confidence"
+          ],
+          "message": "Expected number, received null"
+        }
+      ]
+    }
+  },
+  {
+    "name": "criteria_predictions boundary 0",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": []
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "criteria_predictions"
+          ],
+          "message": "Too small: expected array to have >=1 items"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "criteria_predictions"
+          ],
+          "message": "Array must contain at least 1 element(s)"
+        }
+      ]
+    }
+  },
+  {
+    "name": "criteria_predictions boundary 1",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "c0",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c1",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c2",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c3",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c4",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c5",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c6",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c7",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c8",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c9",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c10",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c11",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c12",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c13",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c14",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c15",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c16",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c17",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c18",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c19",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c20",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c21",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c22",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c23",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c24",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c25",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c26",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c27",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c28",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c29",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c30",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c31",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c32",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c33",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c34",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c35",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c36",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c37",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c38",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c39",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c40",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c41",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c42",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c43",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c44",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c45",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c46",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c47",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c48",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c49",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "c0",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c1",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c2",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c3",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c4",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c5",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c6",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c7",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c8",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c9",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c10",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c11",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c12",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c13",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c14",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c15",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c16",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c17",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c18",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c19",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c20",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c21",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c22",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c23",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c24",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c25",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c26",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c27",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c28",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c29",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c30",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c31",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c32",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c33",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c34",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c35",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c36",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c37",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c38",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c39",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c40",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c41",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c42",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c43",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c44",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c45",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c46",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c47",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c48",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c49",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "c0",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c1",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c2",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c3",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c4",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c5",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c6",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c7",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c8",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c9",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c10",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c11",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c12",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c13",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c14",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c15",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c16",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c17",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c18",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c19",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c20",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c21",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c22",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c23",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c24",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c25",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c26",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c27",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c28",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c29",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c30",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c31",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c32",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c33",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c34",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c35",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c36",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c37",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c38",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c39",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c40",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c41",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c42",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c43",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c44",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c45",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c46",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c47",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c48",
+            "predicted": "met",
+            "confidence": 0.9
+          },
+          {
+            "criterion_id": "c49",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "criteria_predictions boundary 2",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "c0",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c1",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c2",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c3",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c4",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c5",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c6",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c7",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c8",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c9",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c10",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c11",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c12",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c13",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c14",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c15",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c16",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c17",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c18",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c19",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c20",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c21",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c22",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c23",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c24",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c25",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c26",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c27",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c28",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c29",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c30",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c31",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c32",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c33",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c34",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c35",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c36",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c37",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c38",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c39",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c40",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c41",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c42",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c43",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c44",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c45",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c46",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c47",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c48",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c49",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c50",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "criteria_predictions"
+          ],
+          "message": "Too big: expected array to have <=50 items"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "criteria_predictions"
+          ],
+          "message": "Array must contain at most 50 element(s)"
+        }
+      ]
+    }
+  },
+  {
+    "name": "criteria_predictions boundary 3",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": " tests ",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "criteria_predictions"
+          ],
+          "message": "Criterion predictions must be unique"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "criteria_predictions",
+            1,
+            "criterion_id"
+          ],
+          "message": "Each criterion_id must occur once"
+        }
+      ]
+    }
+  },
+  {
+    "name": "criteria_predictions boundary 4",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "criteria_predictions",
+            0,
+            "criterion_id"
+          ],
+          "message": "Too small: expected string to have >=1 characters"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_small",
+          "path": [
+            "criteria_predictions",
+            0,
+            "criterion_id"
+          ],
+          "message": "String must contain at least 1 character(s)"
+        }
+      ]
+    }
+  },
+  {
+    "name": "criteria_predictions boundary 5",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "criteria_predictions",
+            0,
+            "criterion_id"
+          ],
+          "message": "Too big: expected string to have <=200 characters"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "criteria_predictions",
+            0,
+            "criterion_id"
+          ],
+          "message": "String must contain at most 200 character(s)"
+        }
+      ]
+    }
+  },
+  {
+    "name": "criteria_predictions boundary 6",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "approved",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "criteria_predictions",
+            0,
+            "predicted"
+          ],
+          "message": "Invalid option: expected one of \"met\"|\"unmet\""
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_enum_value",
+          "path": [
+            "criteria_predictions",
+            0,
+            "predicted"
+          ],
+          "message": "Invalid enum value. Expected 'met' | 'unmet', received 'approved'"
+        }
+      ]
+    }
+  },
+  {
+    "name": "criteria_predictions boundary 7",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 1.1
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "criteria_predictions",
+            0,
+            "confidence"
+          ],
+          "message": "Too big: expected number to be <=1"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "criteria_predictions",
+            0,
+            "confidence"
+          ],
+          "message": "Number must be less than or equal to 1"
+        }
+      ]
+    }
+  },
+  {
+    "name": "criteria_predictions boundary 8",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9,
+          "approved": true
+        }
+      ]
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [
+            "criteria_predictions",
+            0
+          ],
+          "message": "Unrecognized key: \"approved\""
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [
+            "criteria_predictions",
+            0
+          ],
+          "message": "Unrecognized key(s) in object: 'approved'"
+        }
+      ]
+    }
+  },
+  {
+    "name": "unknown request authority field",
+    "mode": "request",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "approved": true
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"approved\""
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key(s) in object: 'approved'"
+        }
+      ]
+    }
+  },
+  {
+    "name": "registered_at response boundary 0",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00",
+      "state": "pending"
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "registered_at"
+          ],
+          "message": "Invalid ISO datetime"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_string",
+          "path": [
+            "registered_at"
+          ],
+          "message": "Invalid datetime"
+        }
+      ]
+    }
+  },
+  {
+    "name": "registered_at response boundary 1",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T01:00:00+01:00",
+      "state": "pending"
+    },
+    "core": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ],
+        "id": "11111111-1111-4111-8111-111111111111",
+        "owner_id": "11111111-1111-4111-8111-111111111111",
+        "initiative_id": "11111111-1111-4111-8111-111111111111",
+        "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "registered_at": "2026-10-12T01:00:00+01:00",
+        "state": "pending"
+      }
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ],
+        "id": "11111111-1111-4111-8111-111111111111",
+        "owner_id": "11111111-1111-4111-8111-111111111111",
+        "initiative_id": "11111111-1111-4111-8111-111111111111",
+        "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "registered_at": "2026-10-12T01:00:00+01:00",
+        "state": "pending"
+      }
+    }
+  },
+  {
+    "name": "registered_at response boundary 2",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "invalid",
+      "state": "pending"
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "registered_at"
+          ],
+          "message": "Invalid ISO datetime"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_string",
+          "path": [
+            "registered_at"
+          ],
+          "message": "Invalid datetime"
+        }
+      ]
+    }
+  },
+  {
+    "name": "state response boundary 0",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": "resolved"
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "state"
+          ],
+          "message": "Invalid input: expected \"pending\""
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_literal",
+          "path": [
+            "state"
+          ],
+          "message": "Invalid literal value, expected \"pending\""
+        }
+      ]
+    }
+  },
+  {
+    "name": "state response boundary 1",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": "verified"
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "state"
+          ],
+          "message": "Invalid input: expected \"pending\""
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_literal",
+          "path": [
+            "state"
+          ],
+          "message": "Invalid literal value, expected \"pending\""
+        }
+      ]
+    }
+  },
+  {
+    "name": "state response boundary 2",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": null
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_value",
+          "path": [
+            "state"
+          ],
+          "message": "Invalid input: expected \"pending\""
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_literal",
+          "path": [
+            "state"
+          ],
+          "message": "Invalid literal value, expected \"pending\""
+        }
+      ]
+    }
+  },
+  {
+    "name": "contract_hash response boundary 0",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": "pending"
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "contract_hash"
+          ],
+          "message": "Invalid string: must match pattern /^[0-9a-f]{64}$/"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_string",
+          "path": [
+            "contract_hash"
+          ],
+          "message": "Invalid"
+        }
+      ]
+    }
+  },
+  {
+    "name": "contract_hash response boundary 1",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": "pending"
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "contract_hash"
+          ],
+          "message": "Invalid string: must match pattern /^[0-9a-f]{64}$/"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_string",
+          "path": [
+            "contract_hash"
+          ],
+          "message": "Invalid"
+        }
+      ]
+    }
+  },
+  {
+    "name": "contract_hash response boundary 2",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": "pending"
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "contract_hash"
+          ],
+          "message": "Invalid string: must match pattern /^[0-9a-f]{64}$/"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_string",
+          "path": [
+            "contract_hash"
+          ],
+          "message": "Invalid"
+        }
+      ]
+    }
+  },
+  {
+    "name": "owner_id response boundary 0",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "invalid",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": "pending"
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "owner_id"
+          ],
+          "message": "Invalid UUID"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_string",
+          "path": [
+            "owner_id"
+          ],
+          "message": "Invalid uuid"
+        }
+      ]
+    }
+  },
+  {
+    "name": "confidence response boundary 0",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 2,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": "pending"
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "confidence"
+          ],
+          "message": "Too big: expected number to be <=1"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "too_big",
+          "path": [
+            "confidence"
+          ],
+          "message": "Number must be less than or equal to 1"
+        }
+      ]
+    }
+  },
+  {
+    "name": "additive response JSON",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": "pending",
+      "extension": {
+        "safe": true,
+        "values": [
+          1,
+          null
+        ]
+      }
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "unrecognized_keys",
+          "path": [],
+          "message": "Unrecognized key: \"extension\""
+        }
+      ]
+    },
+    "mcp": {
+      "ok": true,
+      "data": {
+        "workspace_id": "11111111-1111-4111-8111-111111111111",
+        "task_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+        "expectation_set_version": 1,
+        "expected_outcome": "Tests pass",
+        "confidence": 0.9,
+        "criteria_predictions": [
+          {
+            "criterion_id": "tests",
+            "predicted": "met",
+            "confidence": 0.9
+          }
+        ],
+        "id": "11111111-1111-4111-8111-111111111111",
+        "owner_id": "11111111-1111-4111-8111-111111111111",
+        "initiative_id": "11111111-1111-4111-8111-111111111111",
+        "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "registered_at": "2026-10-12T00:00:00Z",
+        "state": "pending",
+        "extension": {
+          "safe": true,
+          "values": [
+            1,
+            null
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "duplicate response criteria",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": "pending"
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "criteria_predictions"
+          ],
+          "message": "Criterion predictions must be unique"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "criteria_predictions",
+            1,
+            "criterion_id"
+          ],
+          "message": "Each criterion_id must occur once"
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate response criteria three",
+    "mode": "response",
+    "input": {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "task_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_id": "11111111-1111-4111-8111-111111111111",
+      "expectation_set_version": 1,
+      "expected_outcome": "Tests pass",
+      "confidence": 0.9,
+      "criteria_predictions": [
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "tests",
+          "predicted": "met",
+          "confidence": 0.9
+        }
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "owner_id": "11111111-1111-4111-8111-111111111111",
+      "initiative_id": "11111111-1111-4111-8111-111111111111",
+      "contract_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "registered_at": "2026-10-12T00:00:00Z",
+      "state": "pending"
+    },
+    "core": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "criteria_predictions"
+          ],
+          "message": "Criterion predictions must be unique"
+        }
+      ]
+    },
+    "mcp": {
+      "ok": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "criteria_predictions",
+            1,
+            "criterion_id"
+          ],
+          "message": "Each criterion_id must occur once"
+        },
+        {
+          "code": "custom",
+          "path": [
+            "criteria_predictions",
+            2,
+            "criterion_id"
+          ],
+          "message": "Each criterion_id must occur once"
+        }
+      ]
+    }
+  }
+]
