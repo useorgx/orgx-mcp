@@ -35,6 +35,7 @@ describe('tool catalog freshness', () => {
       'src/generated/entityVocabulary.ts',
       'src/generated/artifactProofInput.ts',
       'src/generated/taskPrediction.ts',
+      'src/generated/metricObserverRegistrationPolicy.ts',
       'src/receiptOperationTools.ts',
       'src/portableReceiptInput.ts',
       'src/widgetOperations.ts',

@@ -1,3 +1,4 @@
+import { METRIC_REGISTRY_IDS } from './generated/metricObserverRegistrationPolicy';
 type EntityRow = Record<string, unknown>;
 
 export interface ContextPackSummaryOptions {
@@ -276,7 +277,7 @@ export function formatContextPackSummary(
 
     const expectations = recordArray(frame.expectations).filter(
       (expectation) =>
-        ['orgx.run_receipt_coverage.v1','orgx.agent_run_success.v1','orgx.signup_first_success.v1'].includes(String(expectation.metricRegistryId)) &&
+        METRIC_REGISTRY_IDS.includes(String(expectation.metricRegistryId) as (typeof METRIC_REGISTRY_IDS)[number]) &&
         (expectation.state === 'pending' ||
           expectation.state === 'met' ||
           expectation.state === 'not_met' ||

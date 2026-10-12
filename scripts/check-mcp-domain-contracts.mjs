@@ -14,6 +14,9 @@ const contracts = [
   { name: 'entityVocabulary', version: 'entity_vocabulary_v1', fixture: 'entity-vocabulary-v1' },
   { name: 'artifactProofInput', version: 'artifact_proof_input_v1', fixture: 'artifact-proof-input-v1' },
   { name: 'taskPrediction', version: 'task_prediction_v1', fixture: 'task-prediction-v1' },
+  { name: 'metricObserverRegistrationPolicy', version: 'metric_registration_policy_v1', fixture: 'metric-registration-v1' },
+  { name: 'metricObserverRegistry', version: 'metric_observer_registry_v1', fixture: 'metric-registration-v1' },
+  { name: 'metricExpectationInput', version: 'metric_registration_input_v1', fixture: 'metric-registration-v1' },
 ];
 for (const contract of contracts) {
   const generated = readFileSync(resolve(root, `src/generated/${contract.name}.ts`), 'utf8');
