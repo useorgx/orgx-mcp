@@ -20,7 +20,7 @@ export const workerTelemetryHealth = { delivered: 0, failed: 0, dropped: 0 };
 
 
 type WaitUntilLike = {
-  props?: { telemetryOptOut?: unknown };
+  props?: unknown;
   waitUntil?: (promise: Promise<unknown>) => unknown;
 };
 
@@ -47,7 +47,7 @@ export function captureWorkerPosthogEvent(params: {
 }): void {
   try {
     const apiKey = params.env.POSTHOG_KEY;
-    if (params.optOut || params.ctx?.props?.telemetryOptOut === true || !apiKey || apiKey === 'test-posthog-key' || params.env.ORGX_TELEMETRY_DISABLED === '1') return;
+    if (params.optOut || (params.ctx?.props as { telemetryOptOut?: unknown } | undefined)?.telemetryOptOut === true || !apiKey || apiKey === 'test-posthog-key' || params.env.ORGX_TELEMETRY_DISABLED === '1') return;
     if (!/^[a-z][a-z0-9_]{1,100}$/.test(params.event)) return;
     const owner = params.ctx ?? params.env;
     const count = pending.get(owner) ?? 0;
