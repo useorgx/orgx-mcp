@@ -455,6 +455,10 @@ export const artifactContextSchema = z.object({
 }).strict();
 
 export const artifactSchema = resourceSchema.extend({
+  // Authenticated API presentation fields; never infer these from producer metadata.
+  purpose: nullableString.optional(),
+  reviewRequired: nullableBoolean.optional(),
+  superseded_by: nullableString.optional(),
   metadata: z.object({
     idempotency_key: z.string().optional(), source_client: z.string().optional(),
     created_by_type: z.string().optional(), created_by_id: z.string().optional(),
@@ -492,6 +496,7 @@ export const proofHandoffSchema = z.object({
   proof_count_scope: z.enum(['tracked_artifact', 'available_artifact']).optional(),
   visible_proof_count: z.number(),
   review_count: z.number(),
+  review_count_scope: z.enum(['tracked_artifact', 'available_artifact', 'visible_proof_card']).optional(),
   visible_review_count: z.number(),
   primary_prompt: z.string(),
   surface_prompts: z.array(

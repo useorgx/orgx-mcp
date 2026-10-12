@@ -756,9 +756,9 @@
         var keys = ["updated_at", "updatedAt", "created_at", "createdAt"];
         for (var i = 0; i < keys.length; i += 1) {
           var stamp = readString(artifact, [keys[i]]) || "", time = Date.parse(stamp);
-          if (Number.isFinite(time)) return { milliseconds: time, fraction: Number(((stamp.match(/\.(\d{1,9})(?:Z|[+-]\d{2}(?::?\d{2})?)$/i) || [])[1] || "").padEnd(9, "0")) };
+          if (Number.isFinite(time)) return { milliseconds: time, fraction: Number(((stamp.match(/\.(\d{1,9})(?:Z|[+-]\d{2}(?::?\d{2})?)$/i) || [])[1] || "").padEnd(9, "0")), known: true };
         }
-        return { milliseconds: 0, fraction: 0 };
+        return { milliseconds: 0, fraction: 0, known: false };
       };
       var compareArtifactTimestamps = function (a, b) {
         var left = artifactTimestamp(a), right = artifactTimestamp(b);
@@ -770,6 +770,7 @@
         return Boolean(left && left === right && Number.isFinite(Date.parse(left)) && !(av !== null && bv !== null && av !== bv));
       };
       var isNewerArtifact = function (a, b) {
+        if (!artifactTimestamp(a).known || !artifactTimestamp(b).known) return false;
         var delta = compareArtifactTimestamps(a, b), av = artifactVersion(a), bv = artifactVersion(b);
         return delta > 0 || delta === 0 && av !== null && bv !== null && Number.isFinite(Number(av)) && Number.isFinite(Number(bv)) && Number(av) > Number(bv);
       };
@@ -1000,9 +1001,27 @@
 
       // "Needs you" is only what waits on a person: blockers, decisions, reviews.
       // Next steps are team work and live under Next.
+      var artifactIsSuperseded = function (artifact) {
+        return toStatusKey(artifact.status) === "superseded" || typeof artifact.superseded_by === "string" && Boolean(artifact.superseded_by.trim());
+      };
+      var artifactReviewEligible = function (artifact, legacy) {
+        if (artifactIsSuperseded(artifact) || toStatusKey(artifact.status) === "archived" || artifact.reviewRequired === false) return false;
+        if (["in_review", "review", "draft", "changes_requested"].indexOf(toStatusKey(artifact.status)) < 0) return false;
+        if (artifact.reviewRequired === true) return true;
+        return legacy;
+      };
+      var artifactIsAccepted = function (artifact) {
+        // This MCP projection has no exact-version durable acceptance ledger.
+        // A stored lifecycle or producer metadata cannot supply that authority.
+        return false;
+      };
+      var artifactRecordLabel = function (artifact) {
+        return typeof artifact.purpose === "string" && artifact.purpose !== "deliverable" && artifact.purpose !== "other"
+          ? titleCase(artifact.purpose) : "Recorded";
+      };
       var awaitsReview = function (artifact) {
         var key = toStatusKey(artifact.status);
-        return key === "in_review" || key === "needs_review" || key === "review" || Boolean(artifact.needs_review);
+        return artifactReviewEligible(artifact, key === "in_review" || key === "needs_review" || key === "review" || Boolean(artifact.needs_review));
       };
 
       var countNeedsYou = function (pulseData) {
@@ -1200,6 +1219,28 @@
           '<ox-state-chip state="' + spec.state + '"' + (spec.label ? ' label="' + escapeHtml(spec.label) + '"' : "") +
           ' reserve="' + reserve + '">' + escapeHtml(spec.label || titleCase(status || "")) + "</ox-state-chip>"
         );
+      };
+      // Canonical artifact flags affect presentation only; retain the stored status.
+      var artifactChipSpec = function (artifact) {
+        if (artifactIsSuperseded(artifact)) return { state: "superseded", label: "Superseded" };
+        if (artifactIsAccepted(artifact)) return { state: "succeeded", label: "Accepted" };
+        var key = toStatusKey(artifact.status);
+        if (key === "approved" && artifact.purpose === "deliverable") return { state: "view_only", label: "Approved" };
+        if (key === "eval_passed") return { state: "view_only", label: "Eval passed" };
+        if (["eval_failed", "changes_requested", "archived", "superseded"].indexOf(key) >= 0) return chipSpec(artifact.status, 0, "artifact");
+        if (artifact.reviewRequired === false || (!awaitsReview(artifact) && typeof artifact.purpose === "string" && artifact.purpose !== "deliverable"))
+          return { state: "view_only", label: artifactRecordLabel(artifact) };
+        if (["approved", "accepted", "completed", "done"].indexOf(key) >= 0) return { state: "view_only", label: artifactRecordLabel(artifact) };
+        return chipSpec(artifact.status, 0, "artifact");
+      };
+      var artifactStatusWord = function (artifact) {
+        var spec = artifactChipSpec(artifact);
+        var tone = spec.state === "failed_step" ? "danger" : spec.state === "needs_you" ? "warning" : spec.state === "succeeded" ? "good" : "";
+        return '<span class="pulse-meta-status"' + (tone ? ' data-tone="' + tone + '"' : "") + ">" + escapeHtml(spec.label || titleCase(artifact.status)) + '<span class="pulse-meta-separator">·</span></span>';
+      };
+      var artifactChip = function (artifact) {
+        var spec = artifactChipSpec(artifact);
+        return '<ox-state-chip state="' + spec.state + '"' + (spec.label ? ' label="' + escapeHtml(spec.label) + '"' : "") + ' reserve="' + CHIP_RESERVE + ' needs_you">' + escapeHtml(spec.label || titleCase(artifact.status)) + '</ox-state-chip>';
       };
 
       var renderProgressBar = function (progress, tone) {
@@ -1500,23 +1541,29 @@
         var visible = pulseData.recent_artifacts.slice().sort(function (a, b) {
           return compareArtifactTimestamps(b, a) || a.id.localeCompare(b.id);
         }).slice(0, 6);
-        var counts = { fail: 0, you: 0, unv: 0, met: 0 };
+        var counts = { fail: 0, you: 0, unv: 0, met: 0, recorded: 0, history: 0, archived: 0 };
         visible.forEach(function (artifact) {
           var key = toStatusKey(artifact.status);
-          if (key === "changes_requested") counts.fail += 1;
-          else if (key === "in_review" || artifact.needs_review) counts.you += 1;
-          else if (key === "approved" || key === "completed") counts.met += 1;
+          if (artifactIsSuperseded(artifact)) counts.history += 1;
+          else if (key === "archived") counts.archived += 1;
+          else if (key === "changes_requested") counts.fail += 1;
+          else if (awaitsReview(artifact)) counts.you += 1;
+          else if (artifactIsAccepted(artifact)) counts.met += 1;
+          else if (artifact.reviewRequired === false || (typeof artifact.purpose === "string" && artifact.purpose !== "deliverable")) counts.recorded += 1;
           else counts.unv += 1;
         });
         var strip = '<div class="pulse-quality"><div class="pulse-quality-strip" aria-hidden="true">' +
           (counts.fail ? '<i class="q-fail" style="flex:' + counts.fail + ' 0 0"></i>' : "") +
           (counts.you ? '<i class="q-you" style="flex:' + counts.you + ' 0 0"></i>' : "") +
-          (counts.unv ? '<i class="q-unv" style="flex:' + counts.unv + ' 0 0"></i>' : "") +
+          (counts.unv + counts.recorded + counts.history + counts.archived ? '<i class="q-unv" style="flex:' + (counts.unv + counts.recorded + counts.history + counts.archived) + ' 0 0"></i>' : "") +
           (counts.met ? '<i class="q-met" style="flex:' + counts.met + ' 0 0"></i>' : "") +
           '</div><div class="pulse-facts"><span>' + visible.length + ' shown' +
           (typeof summary.total === "number" ? ' · ' + summary.total + (summary.unit === "available_artifact" ? ' available' : ' tracked in OrgX') : '') + '</span>' +
           (counts.fail ? '<span class="f-blocked"><i></i>' + counts.fail + ' changes requested</span>' : '') +
           (counts.you ? '<span class="f-review"><i></i>' + counts.you + ' waiting for your review</span>' : '') +
+          (counts.recorded ? '<span class="f-planned"><i></i>' + counts.recorded + ' recorded</span>' : '') +
+          (counts.history ? '<span class="f-planned"><i></i>' + counts.history + ' superseded</span>' : '') +
+          (counts.archived ? '<span class="f-planned"><i></i>' + counts.archived + ' archived</span>' : '') +
           (counts.unv ? '<span class="f-planned"><i></i>' + counts.unv + ' not accepted</span>' : '') +
           (counts.met ? '<span class="f-done"><i></i>' + counts.met + ' accepted</span>' : '') + '</div></div>';
         return strip + '<div class="pulse-list">' + visible.map(function (artifact) {
@@ -1531,13 +1578,13 @@
             artifact.created_by_name ? '<b>' + escapeHtml(artifact.created_by_name) + '</b>' : '',
             age ? escapeHtml((updatedAge ? 'Updated ' : 'Created ') + age) : '']);
           if (breadcrumb) meta += '<span class="pulse-artifact-breadcrumb">' + breadcrumb + '</span>';
-          var tone = key === "changes_requested" ? "red" : key === "in_review" || artifact.needs_review ? "amber" : key === "approved" ? "teal" : "";
+          var tone = artifactIsSuperseded(artifact) ? "" : key === "changes_requested" ? "red" : awaitsReview(artifact) ? "amber" : artifactIsAccepted(artifact) ? "teal" : "";
           var taskUrl = window.OrgXLinks.normalize(artifact.task_url);
           var taskLink = taskUrl ? '<a class="pulse-artifact-task" ' + window.OrgXLinks.attrs(taskUrl) + '>Open task</a>' : '';
           return linkRow(artifact.primary_url || artifact.live_url || dashboardUrl || '', icon("artifact"), tone,
-            artifact.title, statusWord(artifact.status, 0, "artifact") + meta,
-            chipFor(artifact.status, 0, "artifact") + taskLink,
-            "has-chip pulse-artifact-row" + (key === "in_review" || key === "draft" ? " is-review" : ""));
+            artifact.title, artifactStatusWord(artifact) + meta,
+            artifactChip(artifact) + taskLink,
+            "has-chip pulse-artifact-row" + (artifactReviewEligible(artifact, key === "in_review" || key === "draft") ? " is-review" : ""));
         }).join('') + '</div>';
       };
 
@@ -1736,7 +1783,7 @@
         var dashboardUrl = window.OrgXLinks.normalize(pulse.live_url) || window.OrgXLinks.live(pulse.id);
 
         var reviewCount = (pulse.recent_artifacts || []).filter(function (artifact) {
-          return ["in_review", "draft", "changes_requested"].indexOf(toStatusKey(artifact.status)) >= 0;
+          return artifactReviewEligible(artifact, ["in_review", "draft", "changes_requested"].indexOf(toStatusKey(artifact.status)) >= 0);
         }).length;
 
         var attentionItems = buildAttentionItems(pulse, dashboardUrl);
