@@ -182,7 +182,7 @@ describe('panel experience lifetime and recovery', () => {
     expect(m.dom.window.document.querySelector('.error-line')!.textContent).not.toContain('Nothing changed');
     recovery.click(); await m.flush();
     expect(m.calls.callServerTool.mock.calls.filter(([p]) => p.name === 'orgx_widget_decide')).toHaveLength(1);
-    expect(m.calls.callServerTool.mock.calls.filter(([p]) => p.name === 'orgx_panel_snapshot')).toHaveLength(2);
+    expect(m.calls.callServerTool.mock.calls.filter(([p]) => p.name === 'orgx_panel_snapshot' && !p.arguments?.view)).toHaveLength(2);
   });
   it('ends exhausted polling in an unconfirmed receipt with no spinner', async () => {
     const m = await open();

@@ -15,9 +15,12 @@ The audit covered every widget HTML surface in the current manifest: 14 producti
 | Error presentation and recovery | 132 browser cases across desktop/tablet/mobile and both themes | Passed |
 | Gallery | Four viewport/theme/motion cases; all 15 catalog entries; desktop search and keyboard navigation, mobile native picker | Passed |
 | Focused regression and contract tests | 176 tests, including the scoped-link fix, widget registration, host negotiation and decision read races | Passed |
+| Full suite and affected-file rechecks | Full two-worker run: 4,064 passed, one stale call-count assertion failed, two skipped; the assertion was corrected and all 62 tests in the four affected files passed | Verified after targeted rechecks |
 | Type checking and widget build | TypeScript; regenerated inline runtime, manifest and build version | Passed |
 
 The initial control runs exposed runner problems rather than additional confirmed product defects. The gallery flag deliberately disables host handoff, so host tests now use actual host payloads and assert the detected protocol. Menus are closed with Escape before clicking controls underneath them. A delayed first-use tutorial covered three mobile MCP panel cases; those cases were rechecked successfully with the returning-user tutorial state. The initial failing traces remain in local evidence alongside the successful rechecks.
+
+The default-concurrency full test run passed 4,061 tests and failed four timing/async checks. A two-worker run passed 4,064 and exposed one stale snapshot call-count assertion. The panel fixtures now count the relevant focus, recovery, receipt, or workspace calls rather than unrelated tab-warming reads. All four affected test files subsequently passed (62 tests). GitHub validation passed on the first PR revision; follow-up fixture and report changes receive their own validation run.
 
 Eleven real read operations succeeded: workspace context, initiative progress, agent status, pending decisions, operator brief, receipt list, receipt detail, artifact review opener, decision review opener, entity inspection, and typed search. The real-result replays covered Initiative Pulse, Agent Status, Decisions, Artifact Review, Entity Card, Search Results, Work Ledger, and Workspace Map.
 
