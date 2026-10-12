@@ -140,7 +140,7 @@ describe('initiative pulse current proof rendering', () => {
   });
 
   it.each([
-    ['eval_passed', 'Eval passed', 'needs_you', 'amber'],
+    ['eval_passed', 'Eval passed', 'view_only', 'mute'],
     ['eval_failed', 'Eval failed', 'failed_step', 'red'],
     ['archived', 'Archived', 'view_only', 'mute'],
     ['superseded', 'Superseded', 'superseded', 'mute'],

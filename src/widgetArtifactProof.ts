@@ -124,6 +124,9 @@ export type NormalizedArtifact = {
   id: string | null;
   title: string;
   status: string;
+  purpose?: string | null;
+  reviewRequired?: boolean | null;
+  superseded_by?: string | null;
   artifact_type: string | null;
   eval_score: number | null;
   preview_markdown: string | null;
@@ -165,6 +168,9 @@ export type WidgetProofCard = {
   id: string | null;
   title: string;
   status: string;
+  purpose?: string | null;
+  reviewRequired?: boolean | null;
+  superseded_by?: string | null;
   artifact_type: string | null;
   eval_score: number | null;
   summary: string | null;
@@ -211,6 +217,7 @@ export type WidgetProofHandoff = {
   proof_count_scope: 'tracked_artifact' | 'available_artifact';
   visible_proof_count: number;
   review_count: number;
+  review_count_scope: 'tracked_artifact' | 'available_artifact' | 'visible_proof_card';
   visible_review_count: number;
   primary_prompt: string;
   surface_prompts: WidgetContinuationPrompt[];
@@ -261,6 +268,14 @@ function isReviewableStatus(status: string | null): boolean {
   return ['in_review', 'review', 'draft', 'changes_requested'].includes(
     toSlug(status)
   );
+}
+
+// These top-level fields are projected by the authenticated API. Producer
+// metadata, task completion and evaluation scores do not establish review intent.
+function needsArtifactReview(artifact: NormalizedArtifact): boolean {
+  return artifact.reviewRequired !== false
+    && !asNonEmptyString(artifact.superseded_by)
+    && isReviewableStatus(artifact.status);
 }
 
 // The independently-judged quality score (work_artifacts.verification.eval.score),
@@ -316,6 +331,7 @@ function isMetaOrProcessArtifact(artifact: NormalizedArtifact): boolean {
 function proofRank(artifact: NormalizedArtifact): number {
   let rank = 0;
   if (toSlug(artifact.status) === 'archived') rank -= 100;
+  if (asNonEmptyString(artifact.superseded_by) || toSlug(artifact.status) === 'superseded') rank -= 100;
   if (isMetaOrProcessArtifact(artifact)) rank -= 50;
   if (typeof artifact.eval_score === 'number') rank += 20;
   return rank;
@@ -357,6 +373,12 @@ export function normalizeArtifactRecord(input: unknown): NormalizedArtifact | nu
       firstString(record, ['status', 'state']) ??
       firstString(metadata, ['status', 'state']) ??
       'draft',
+    ...(typeof record.purpose === 'string' || record.purpose === null
+      ? { purpose: record.purpose } : {}),
+    ...(typeof record.reviewRequired === 'boolean' || record.reviewRequired === null
+      ? { reviewRequired: record.reviewRequired } : {}),
+    ...(typeof record.superseded_by === 'string' || record.superseded_by === null
+      ? { superseded_by: record.superseded_by } : {}),
     artifact_type:
       firstString(record, ['artifact_type', 'artifactType']) ??
       firstString(metadata, ['artifact_type', 'artifactType']),
@@ -367,9 +389,7 @@ export function normalizeArtifactRecord(input: unknown): NormalizedArtifact | nu
     summary:
       firstString(record, ['description', 'summary']) ??
       firstString(metadata, ['description', 'summary']),
-    created_at:
-      firstString(record, ['created_at', 'createdAt']) ??
-      firstString(metadata, ['created_at', 'createdAt']),
+    created_at: firstString(record, ['created_at', 'createdAt']),
     updated_at: firstString(record, ['updated_at', 'updatedAt']),
     created_by_type: creator.type,
     created_by_id: creator.id,
@@ -505,6 +525,9 @@ function attachArtifactLinks(
 
   let primaryUrl: string | null = artifact.primary_url ?? null;
   let primaryLabel: string | null = artifact.primary_label ?? null;
+  if (!needsArtifactReview(artifact) && toSlug(primaryLabel) === 'review in orgx') {
+    primaryLabel = 'Open in OrgX';
+  }
 
   if (primaryUrl) {
     primaryLabel = primaryLabel ?? 'Open artifact';
@@ -542,7 +565,7 @@ function summarizeArtifacts(artifacts: NormalizedArtifact[]) {
     total: artifacts.length,
     approved,
     in_review: inReview,
-    needs_review: artifacts.filter((item) => isReviewableStatus(item.status))
+    needs_review: artifacts.filter(needsArtifactReview)
       .length,
   };
 }
@@ -556,22 +579,14 @@ function mergeArtifactSummary(
   return asRecord(upstreamSummary) ?? { ...displaySummary, unit: 'available_artifact' };
 }
 
-function countReviewableProofs(
-  summary: Record<string, unknown>,
-  proofCards: WidgetProofCard[]
-): number {
-  return Math.max(
-    proofCards.filter((item) => item.needs_review).length,
-    typeof summary.needs_review === 'number' ? summary.needs_review : 0,
-    typeof summary.in_review === 'number' ? summary.in_review : 0
-  );
-}
-
 function toWidgetProofCard(artifact: NormalizedArtifact): WidgetProofCard {
   return {
     id: artifact.id,
     title: artifact.title,
     status: artifact.status,
+    ...(artifact.purpose !== undefined ? { purpose: artifact.purpose } : {}),
+    ...(artifact.reviewRequired !== undefined ? { reviewRequired: artifact.reviewRequired } : {}),
+    ...(artifact.superseded_by !== undefined ? { superseded_by: artifact.superseded_by } : {}),
     artifact_type: artifact.artifact_type,
     eval_score: artifact.eval_score ?? null,
     summary: artifact.summary ?? artifact.preview_markdown,
@@ -584,7 +599,7 @@ function toWidgetProofCard(artifact: NormalizedArtifact): WidgetProofCard {
     primary_label: artifact.primary_label ?? null,
     task_url: artifact.task_url ?? null,
     live_url: artifact.live_url ?? null,
-    needs_review: isReviewableStatus(artifact.status),
+    needs_review: needsArtifactReview(artifact),
     entity_id: artifact.entity_id,
     entity_type: artifact.entity_type,
     initiative_id: artifact.initiative_id,
@@ -623,6 +638,7 @@ export function buildWidgetProofHandoff(options: {
   proofCountScope?: 'tracked_artifact' | 'available_artifact';
   visibleProofCount?: number;
   reviewCount?: number;
+  reviewCountScope?: 'tracked_artifact' | 'available_artifact' | 'visible_proof_card';
   visibleReviewCount?: number;
 }): WidgetProofHandoff {
   const liveUrl = options.initiativeId ? buildLiveUrl(options.initiativeId) : null;
@@ -632,6 +648,9 @@ export function buildWidgetProofHandoff(options: {
   const countLabel = proofCountScope === 'available_artifact' ? 'available' : 'tracked';
   const visibleProofCount = options.visibleProofCount ?? proofCount;
   const reviewCount = options.reviewCount ?? 0;
+  const reviewCountScope = options.reviewCountScope ?? 'tracked_artifact';
+  const reviewCountLabel = reviewCountScope === 'visible_proof_card'
+    ? 'visible proof card' : reviewCountScope === 'available_artifact' ? 'available artifact' : 'tracked artifact';
   const visibleReviewCount = options.visibleReviewCount ?? reviewCount;
   const proofPhrase =
     proofCount > visibleProofCount
@@ -649,9 +668,11 @@ export function buildWidgetProofHandoff(options: {
           visibleReviewCount === 1 ? '' : 's'
         } marked for review.`
       : reviewCount > 0
-      ? `The summary shows ${reviewCount} ${countLabel} artifact${
+      ? `The summary shows ${reviewCount} ${reviewCountLabel}${
           reviewCount === 1 ? '' : 's'
         } needing review; use the live link if the review card is not visible in this result.`
+      : reviewCountScope === 'visible_proof_card'
+      ? 'This review count covers visible proof cards only. Inspect the scoped decisions separately.'
       : 'Start by inspecting the newest proof card and the live initiative link.';
   const basePrompt = `Continue ${initiativeName} from this OrgX handoff. Use the ${proofPhrase}, preserve the tool result links, cite the artifact or task link you used, then propose the next concrete action. ${reviewPhrase}${liveUrl ? ` Live view: ${liveUrl}` : ''}`;
 
@@ -663,6 +684,7 @@ export function buildWidgetProofHandoff(options: {
     proof_count_scope: proofCountScope,
     visible_proof_count: visibleProofCount,
     review_count: reviewCount,
+    review_count_scope: reviewCountScope,
     visible_review_count: visibleReviewCount,
     primary_prompt: basePrompt,
     surface_prompts: SUPPORTED_WIDGET_SURFACES.map((surface) => ({
@@ -711,6 +733,7 @@ export function enrichAgentStatusWithArtifacts(
         initiativeTitle: firstString(agent, ['initiative_title', 'initiativeTitle']),
         proofCount: matchedArtifacts.length,
         reviewCount: proofCards.filter((item) => item.needs_review).length,
+        reviewCountScope: 'visible_proof_card',
       }),
       workload: {
         tasks_in_progress: totalTasks,
@@ -748,7 +771,9 @@ export function enrichInitiativePulseWithArtifacts(
     summarizeArtifacts(artifacts)
   );
   const visibleReviewCount = proofCards.filter((item) => item.needs_review).length;
-  const reviewCount = countReviewableProofs(artifactSummary, proofCards);
+  // The full-scope in_review histogram is retained below, but does not prove
+  // pending human review. This count covers only the canonical visible cards.
+  const reviewCount = visibleReviewCount;
   return {
     ...data,
     recent_artifacts: [...linkedArtifacts].sort(compareArtifactsByRecency).slice(0, 5),
@@ -763,6 +788,7 @@ export function enrichInitiativePulseWithArtifacts(
       proofCountScope: asRecord(data.artifact_summary) ? 'tracked_artifact' : 'available_artifact',
       visibleProofCount: proofCards.length,
       reviewCount,
+      reviewCountScope: 'visible_proof_card',
       visibleReviewCount,
     }),
     widget_state_contract: WIDGET_PROOF_STATE_CONTRACT,
@@ -782,29 +808,24 @@ export function enrichMorningBriefWithArtifacts(
     attachArtifactLinks(artifact, initiativeId)
   );
   const proofCards = linkedArtifacts.slice(0, 6).map(toWidgetProofCard);
-  const reviewItems = linkedArtifacts.filter((artifact) =>
-    isReviewableStatus(artifact.status)
-  );
-  const approvedItems = artifacts.filter(
-    (artifact) => toSlug(artifact.status) === 'approved'
-  );
+  const reviewItems = linkedArtifacts.filter(needsArtifactReview);
+  const artifactSummary = mergeArtifactSummary(data.artifact_summary, summarizeArtifacts(artifacts));
 
   return {
     ...data,
     artifacts_produced: linkedArtifacts.slice(0, 6),
     review_items: reviewItems.slice(0, 4),
     proof_cards: proofCards,
-    artifact_summary: {
-      total: artifacts.length,
-      approved: approvedItems.length,
-      in_review: artifacts.filter((artifact) => toSlug(artifact.status) === 'in_review').length,
-      needs_review: reviewItems.length,
-    },
+    artifact_summary: artifactSummary,
     proof_handoff: buildWidgetProofHandoff({
       initiativeId,
       initiativeTitle: firstString(data, ['name', 'title', 'initiative_title', 'initiativeTitle']),
-      proofCount: artifacts.length,
+      proofCount: typeof artifactSummary.total === 'number' ? artifactSummary.total : artifacts.length,
+      proofCountScope: asRecord(data.artifact_summary) ? 'tracked_artifact' : 'available_artifact',
+      visibleProofCount: proofCards.length,
       reviewCount: reviewItems.length,
+      reviewCountScope: 'available_artifact',
+      visibleReviewCount: proofCards.filter((item) => item.needs_review).length,
     }),
     widget_state_contract: WIDGET_PROOF_STATE_CONTRACT,
   };

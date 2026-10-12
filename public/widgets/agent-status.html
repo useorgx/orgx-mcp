@@ -443,8 +443,8 @@
         accentRgb: (profile && profile.accentRgb) || '20, 184, 166'
       };
     }
-    /* "Open live": the agent's run in the live view when there is one, else the
-       agent's desk. Built by the shared link builder (real app routes only). */
+
+
     function buildAgentUrl(nameOrKey, runId) {
       return runId ? window.OrgXLinks.live(null, { run: runId }) : window.OrgXLinks.agent(nameOrKey);
     }
@@ -470,11 +470,19 @@
 
     function normalizeArtifact(artifact, index) {
       if (!artifact || typeof artifact !== 'object') return null;
+      var storedStatus = firstString([artifact.status, artifact.review_status, artifact.state]);
       return {
         id: firstString([artifact.id, artifact.ref]) || 'artifact-' + index,
         title: firstString([artifact.title, artifact.name, artifact.summary]) || 'Artifact ' + (index + 1),
         type: firstString([artifact.type, artifact.kind, artifact.artifact_type]) || 'artifact',
-        status: normalizeStatus(firstString([artifact.status, artifact.review_status, artifact.state])) || 'approved',
+        status: normalizeStatus(storedStatus) || 'approved',
+        storedStatus: storedStatus,
+        purpose: typeof artifact.purpose === 'string' ? artifact.purpose : null,
+        reviewRequired: typeof artifact.reviewRequired === 'boolean' ? artifact.reviewRequired : null,
+        superseded_by: typeof artifact.superseded_by === 'string' ? artifact.superseded_by : null,
+        updated_at: firstString([artifact.updated_at, artifact.updatedAt]) || null,
+        created_at: firstString([artifact.created_at, artifact.createdAt]) || null,
+        version: artifact.version,
         detail: firstString([artifact.detail, artifact.description, artifact.summary]),
         url:
           firstString([
@@ -485,6 +493,68 @@
             artifact.live_url
           ]) || null
       };
+    }
+    function artifactIsSuperseded(artifact) {
+      return String(artifact.storedStatus || artifact.status || '').toLowerCase() === 'superseded' || typeof artifact.superseded_by === 'string' && Boolean(artifact.superseded_by.trim());
+    }
+    function artifactNeedsReview(artifact) {
+      if (artifactIsSuperseded(artifact) || String(artifact.storedStatus || artifact.status || '').toLowerCase() === 'archived' || artifact.reviewRequired === false) return false;
+      if (artifact.reviewRequired === true) return ['in_review', 'review', 'draft', 'changes_requested'].indexOf(String(artifact.storedStatus || '').toLowerCase()) !== -1;
+      return artifact.status === 'review';
+    }
+    function artifactRecordLabel(artifact) {
+      return artifact.purpose && artifact.purpose !== 'deliverable' && artifact.purpose !== 'other' ? titleCase(artifact.purpose) : 'Recorded';
+    }
+    function artifactChipHtml(artifact) {
+      var stored = String(artifact.storedStatus || '').toLowerCase();
+      if (artifactIsSuperseded(artifact)) return '<ox-state-chip state="superseded" label="Superseded"></ox-state-chip>';
+      if (artifactNeedsReview(artifact)) return taskChipHtml('review');
+      if (stored === 'archived') return '<ox-state-chip state="view_only" label="Archived"></ox-state-chip>';
+      if (stored === 'eval_passed') return '<ox-state-chip state="view_only" label="Eval passed"></ox-state-chip>';
+      if (typeof artifact.reviewRequired === 'boolean') {
+        if (stored === 'eval_failed' || stored === 'changes_requested') return '<ox-state-chip state="failed_step" label="' + (stored === 'eval_failed' ? 'Eval failed' : 'Changes requested') + '"></ox-state-chip>';
+      }
+      // MCP supplies no exact-version acceptance ledger for these artifact rows.
+      if (artifact.purpose === 'deliverable' && stored === 'approved') return '<ox-state-chip state="view_only" label="Approved"></ox-state-chip>';
+      if (['approved', 'accepted', 'done', 'complete', 'completed', 'shipped'].indexOf(stored) !== -1)
+        return '<ox-state-chip state="view_only" label="' + escapeHtml(artifactRecordLabel(artifact)) + '"></ox-state-chip>';
+      if (artifact.reviewRequired === false || (artifact.purpose && artifact.purpose !== 'deliverable'))
+        return '<ox-state-chip state="view_only" label="' + escapeHtml(artifactRecordLabel(artifact)) + '"></ox-state-chip>';
+      return taskChipHtml(artifact.status === 'done' ? 'approved' : artifact.status);
+    }
+    function artifactRevisionTime(row) {
+      for (var i = 0, keys = ['updated_at', 'updatedAt', 'created_at', 'createdAt']; i < keys.length; i++) {
+        var stamp = typeof row[keys[i]] === 'string' ? row[keys[i]] : '', milliseconds = Date.parse(stamp);
+        if (Number.isFinite(milliseconds)) {
+          var fraction = (stamp.match(/\.(\d{1,9})(?:Z|[+-]\d{2}(?::?\d{2})?)$/i) || [])[1] || '';
+          return { milliseconds: milliseconds, fraction: Number(fraction.padEnd(9, '0')), known: true };
+        }
+      }
+      return { milliseconds: 0, fraction: 0, known: false };
+    }
+    function artifactVersion(row) {
+      return typeof row.version === 'number' && Number.isFinite(row.version) ? String(row.version)
+        : typeof row.version === 'string' && row.version.trim() ? row.version.trim() : null;
+    }
+    function mergeArtifactItems(primary, supplemental) {
+      var rows = [], seen = new Map();
+      asArray(primary).concat(asArray(supplemental)).forEach(function (item) {
+        if (!item || typeof item !== 'object') return;
+        var key = firstString([item.id, item.artifact_id, item.artifactId, item.ref]);
+        if (!key) { rows.push(item); return; }
+        if (!seen.has(key)) { seen.set(key, rows.length); rows.push(item); return; }
+        var previous = rows[seen.get(key)], left = artifactRevisionTime(item), right = artifactRevisionTime(previous);
+        var timesKnown = left.known && right.known;
+        var delta = timesKnown ? left.milliseconds - right.milliseconds || left.fraction - right.fraction : 0;
+        var version = artifactVersion(item), previousVersion = artifactVersion(previous);
+        var versionsKnown = version !== null && previousVersion !== null;
+        var newer = delta > 0 || (timesKnown && delta === 0 && versionsKnown && Number.isFinite(Number(version)) && Number.isFinite(Number(previousVersion)) && Number(version) > Number(previousVersion));
+        var preferred = newer ? item : previous, other = newer ? previous : item;
+        var update = preferred.updated_at || preferred.updatedAt, otherUpdate = other.updated_at || other.updatedAt;
+        var sameRevision = typeof update === 'string' && update === otherUpdate && Number.isFinite(Date.parse(update)) && (!versionsKnown || version === previousVersion);
+        rows[seen.get(key)] = sameRevision ? Object.assign({}, other, preferred) : preferred;
+      });
+      return rows;
     }
 
     function normalizeStream(stream, index) {
@@ -512,8 +582,8 @@
         allTasks.filter(function (task) { return task.status === 'done'; })
       );
       var tasks = allTasks.filter(function (task) { return task.status !== 'done'; });
-      var artifacts = mergeUniqueItems(
-        mergeUniqueItems(asArray(raw.proof_cards), asArray(raw.artifacts)),
+      var artifacts = mergeArtifactItems(
+        mergeArtifactItems(asArray(raw.artifacts), asArray(raw.proof_cards)),
         asArray(raw.outputs || raw.session_output)
       )
         .map(normalizeArtifact)
@@ -536,8 +606,9 @@
       else if (stateMeta.state === 'starting') status = 'queued';
       else if (stateMeta.state === 'in_progress') status = 'running';
       else if (stateMeta.state === 'completed' && !tasks.length && !blockers.length) status = 'done';
+      var baseStatus = status;
       if (blockers.length > 0) status = 'blocked';
-      else if (artifacts.some(function (artifact) { return artifact.status === 'review'; })) status = 'review';
+      else if (artifacts.some(artifactNeedsReview)) status = 'review';
       if (status === 'done' && !tasks.length) currentTask = 'No active task right now';
       if (status === 'stalled' && !tasks.length) currentTask = 'Last execution needs a refresh';
 
@@ -552,6 +623,8 @@
         role: firstString([raw.role, profile.role]) || 'Agent',
         accentRgb: profile.accentRgb,
         status: status,
+        baseStatus: baseStatus,
+        reviewFromArtifacts: status === 'review' && baseStatus !== 'review',
         tone: getStatusTone(status),
         statusLabel: getStatusLabel(status),
         currentTask: currentTask || (status === 'idle' || status === 'done' ? 'No active task right now' : stateMeta.state === 'stale' ? 'Last execution needs a refresh' : 'Tracking background execution'),
@@ -565,7 +638,7 @@
         taskCount: tasks.length || (currentTask && status !== 'idle' && status !== 'done' ? 1 : 0),
         completedCount: completedTasks.length,
         blockedCount: blockers.length || tasks.filter(function (task) { return task.status === 'blocked'; }).length,
-        reviewCount: artifacts.filter(function (artifact) { return artifact.status === 'review'; }).length,
+        reviewCount: artifacts.filter(artifactNeedsReview).length,
         openUrl: window.OrgXLinks.normalize(firstString([raw.url, raw.agent_url])) || buildAgentUrl(firstString([raw.agent_id, profile.name, raw.agent_name, profile.role]), firstString([raw.run_id, raw.runId])),
         updatedAt: firstString([raw.updated_at, raw.last_heartbeat_at, raw.lastHeartbeatAt]) || null,
         // Stalled-run metadata from getAgentStatus (2026-04-21).
@@ -593,26 +666,36 @@
           return;
         }
         var keepIncoming = (statusWeight[agent.status] || 0) > (statusWeight[existing.status] || 0);
+        var selected = keepIncoming ? agent : existing;
+        var artifacts = mergeArtifactItems(existing.artifacts, agent.artifacts);
+        var blockers = mergeUniqueItems(existing.blockers, agent.blockers);
+        var reviewCount = artifacts.filter(artifactNeedsReview).length;
+        var status = selected.status;
+        if (status === 'review' && selected.reviewFromArtifacts && reviewCount === 0) status = selected.baseStatus;
+        if (blockers.length > 0) status = 'blocked';
+        else if (status !== 'blocked' && reviewCount > 0) status = 'review';
         merged[key] = {
           id: existing.id || agent.id,
           name: existing.name || agent.name,
           role: existing.role || agent.role,
-          status: keepIncoming ? agent.status : existing.status,
-          tone: keepIncoming ? agent.tone : existing.tone,
-          statusLabel: keepIncoming ? agent.statusLabel : existing.statusLabel,
+          status: status,
+          baseStatus: selected.baseStatus,
+          reviewFromArtifacts: status === 'review' && selected.baseStatus !== 'review',
+          tone: getStatusTone(status),
+          statusLabel: getStatusLabel(status),
           currentTask: keepIncoming ? (agent.currentTask || existing.currentTask) : (existing.currentTask || agent.currentTask),
           currentMeta: existing.currentMeta || agent.currentMeta,
           accentRgb: existing.accentRgb || agent.accentRgb,
           progress: Math.max(existing.progress || 0, agent.progress || 0),
-          blockers: mergeUniqueItems(existing.blockers, agent.blockers),
+          blockers: blockers,
           tasks: mergeUniqueItems(existing.tasks, agent.tasks),
           completedTasks: mergeUniqueItems(existing.completedTasks, agent.completedTasks),
-          artifacts: mergeUniqueItems(existing.artifacts, agent.artifacts),
+          artifacts: artifacts,
           streams: mergeUniqueItems(existing.streams, agent.streams),
           taskCount: Math.max(existing.taskCount || 0, agent.taskCount || 0),
           completedCount: Math.max(existing.completedCount || 0, agent.completedCount || 0),
-          blockedCount: Math.max(existing.blockedCount || 0, agent.blockedCount || 0),
-          reviewCount: Math.max(existing.reviewCount || 0, agent.reviewCount || 0),
+          blockedCount: Math.max(existing.blockedCount || 0, agent.blockedCount || 0, blockers.length),
+          reviewCount: reviewCount,
           openUrl: existing.openUrl || agent.openUrl,
           runId: keepIncoming ? (agent.runId || existing.runId) : (existing.runId || agent.runId),
           stalledMinutes: keepIncoming
@@ -675,10 +758,10 @@
       return '<ox-state-chip state="' + state + '"' + (label ? ' label="' + escapeHtml(label) + '"' : '') + ' reserve="' + CHIP_RESERVE + '">' + escapeHtml(label || agent.statusLabel) + '</ox-state-chip>';
     }
 
-    /* The original headshot (kit photo mode); the OrgX mark or initials when
-       the owner is not one of the seven agents. Never an empty circle. */
-    /* Every known agent is their headshot as a hover card (name, role, state,
-       current task, Open in OrgX); anyone else gets initials, OrgX its mark. */
+
+
+
+
     function renderAgentCard(agent, size) {
       var identity = window.OrgXAgentIdentity;
       var who = identity.profile(agent.name, agent.role);
@@ -728,7 +811,7 @@
       } else if (isBlocked) {
         body = String(agent.blockers[0] || 'A decision is holding this work.');
       } else {
-        body = String((agent.artifacts.find(function (artifact) { return artifact.status === 'review'; }) || {}).title || 'An artifact is ready for review.');
+        body = String((agent.artifacts.find(artifactNeedsReview) || {}).title || 'An artifact is ready for review.');
       }
       var title = isBlocked ? 'Waiting on you' : isStalled ? 'Stalled' : 'Ready for your review';
       return (
@@ -839,7 +922,7 @@
       });
       var artifactRows = agent.artifacts.map(function (artifact) {
         var status = artifact.status === 'done' ? 'approved' : artifact.status;
-        return { title: artifact.title, status: status, chip: taskChipHtml(status) };
+        return { title: artifact.title, status: artifact.storedStatus || status, chip: artifactChipHtml(artifact) };
       });
       var streamRows = agent.streams.map(function (stream) {
         return {
@@ -1294,10 +1377,10 @@
     }
 
     if (demoParams.get('loading') !== 'true' && demoState !== 'loading') initWidget({
-      /* Live control flow. The board is a point-in-time snapshot; this
-         subscribes so agents that start, finish, or block after the message was
-         sent show up instead of going unseen. Additive — a payload with no
-         'live' grant renders exactly as before. */
+
+
+
+
       live: {
         anchor: '.board',
         widget: 'agent-status',

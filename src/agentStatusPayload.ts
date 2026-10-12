@@ -1,4 +1,5 @@
 import { projectAgentStatusTasks } from './agentStatusTaskProjection';
+import { compareArtifactTimestamps } from './widgetArtifactHierarchy';
 
 function asNonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0
@@ -456,6 +457,12 @@ function evidenceSnapshot(
     id: recordString(record, ['id', 'artifact_id', 'artifactId']),
     title: recordString(record, ['title', 'name', 'label']),
     status: recordString(record, ['status', 'state']),
+    ...(typeof record.purpose === 'string' || record.purpose === null
+      ? { purpose: record.purpose } : {}),
+    ...(typeof record.reviewRequired === 'boolean' || record.reviewRequired === null
+      ? { reviewRequired: record.reviewRequired } : {}),
+    ...(typeof record.superseded_by === 'string' || record.superseded_by === null
+      ? { superseded_by: record.superseded_by } : {}),
     task_id: artifactTaskId(record),
     run_id: recordString(record, ['run_id', 'runId', 'source_run_id', 'sourceRunId']),
     job_id: recordString(record, ['job_id', 'jobId']),
@@ -469,7 +476,11 @@ function evidenceSnapshot(
     artifact_type: recordString(record, ['artifact_type', 'artifactType']),
     entity_id: recordString(record, ['entity_id', 'entityId']),
     entity_type: recordString(record, ['entity_type', 'entityType']),
-    created_at: recordString(record, ['created_at', 'createdAt', 'updated_at', 'updatedAt']),
+    // Artifact revision witnesses come from native fields, not producer metadata.
+    created_at: firstString(record, ['created_at', 'createdAt', 'updated_at', 'updatedAt']),
+    updated_at: firstString(record, ['updated_at', 'updatedAt']),
+    ...(typeof record.version === 'string' || typeof record.version === 'number' || record.version === null
+      ? { version: record.version } : {}),
   };
 }
 
@@ -649,7 +660,8 @@ export function enrichAgentStatusWithDurableEvidence(
 
       const focusTask =
         newest(activeTasks) ?? newest(queuedTasks) ?? newest(terminalTasks);
-      const latestArtifact = newest(matchedArtifacts);
+      const latestArtifact = [...matchedArtifacts]
+        .sort((left, right) => compareArtifactTimestamps(right, left))[0] ?? null;
       const heartbeat =
         (focusTask ? recordTimestamp(focusTask) : null) ??
         recordString(agent, ['last_heartbeat_at', 'lastHeartbeatAt']);
@@ -785,7 +797,7 @@ export function normalizeAgentStatusPayload(
       // Status is an index into evidence, not an unbounded artifact download.
       // Retain IDs and links so orgx_inspect can retrieve the full records.
       artifacts: [...artifacts]
-        .sort((a, b) => timestampMillis(b) - timestampMillis(a))
+        .sort((a, b) => compareArtifactTimestamps(b, a))
         .slice(0, 6)
         .map(evidenceSnapshot),
       artifact_count: Math.max(Number(agent.artifact_count) || 0, artifacts.length),
