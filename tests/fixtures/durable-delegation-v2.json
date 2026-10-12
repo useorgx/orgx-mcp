@@ -1,0 +1,851 @@
+[
+  {
+    "name": "inline_claimed running",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running"
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "inline_claimed queued",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "queued"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "inline_claimed completed",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "completed"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "inline_claimed None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": null
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "cloud_claimed running",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "cloud_claimed",
+        "jobStatus": "running"
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "cloud_claimed queued",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "cloud_claimed",
+        "jobStatus": "queued"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "cloud_claimed completed",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "cloud_claimed",
+        "jobStatus": "completed"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "cloud_claimed None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "cloud_claimed",
+        "jobStatus": null
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "session_orchestrator running",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "session_orchestrator",
+        "jobStatus": "running"
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "session_orchestrator queued",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "session_orchestrator",
+        "jobStatus": "queued"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "session_orchestrator completed",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "session_orchestrator",
+        "jobStatus": "completed"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "session_orchestrator None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "session_orchestrator",
+        "jobStatus": null
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "cloud_enqueued running",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "cloud_enqueued",
+        "jobStatus": "running"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "cloud_enqueued queued",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "cloud_enqueued",
+        "jobStatus": "queued"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "cloud_enqueued completed",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "cloud_enqueued",
+        "jobStatus": "completed"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "cloud_enqueued None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "cloud_enqueued",
+        "jobStatus": null
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "inline_queued_unclaimed running",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_queued_unclaimed",
+        "jobStatus": "running"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "inline_queued_unclaimed queued",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_queued_unclaimed",
+        "jobStatus": "queued"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "inline_queued_unclaimed completed",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_queued_unclaimed",
+        "jobStatus": "completed"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "inline_queued_unclaimed None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_queued_unclaimed",
+        "jobStatus": null
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "local_pending running",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "local_pending",
+        "jobStatus": "running"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "local_pending queued",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "local_pending",
+        "jobStatus": "queued"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "local_pending completed",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "local_pending",
+        "jobStatus": "completed"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "local_pending None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "local_pending",
+        "jobStatus": null
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "dispatch_rejected running",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "dispatch_rejected",
+        "jobStatus": "running"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "dispatch_rejected queued",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "dispatch_rejected",
+        "jobStatus": "queued"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "dispatch_rejected completed",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "dispatch_rejected",
+        "jobStatus": "completed"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "dispatch_rejected None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "dispatch_rejected",
+        "jobStatus": null
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "unknown running",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "unknown",
+        "jobStatus": "running"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "unknown queued",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "unknown",
+        "jobStatus": "queued"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "unknown completed",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "unknown",
+        "jobStatus": "completed"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "unknown None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "unknown",
+        "jobStatus": null
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "run_id None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": null,
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "run_id ",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "run_id  ",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": " ",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "run_id 42",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": 42,
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "run_id api-synthetic",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "api-synthetic",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "job_id None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": null,
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "job_id ",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "job_id  ",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": " ",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "job_id 42",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": 42,
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "job_id api-synthetic",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "api-synthetic",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "optional task None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": null,
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "optional task ",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "optional task  ",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": " ",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "optional task  task-2 ",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": " task-2 ",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "optional task 42",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": 42,
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "invalid task run-1",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "run-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid task api-synthetic",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "api-synthetic",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "opaque trimmed IDs",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": " run-2 ",
+      "job_id": " job-2 ",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "run job alias is legacy accepted",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "run-1",
+      "dispatch_receipt": {
+        "dispatch": "inline_claimed",
+        "jobStatus": "running",
+        "acceptedAt": "fixture",
+        "future_field": {
+          "retained": true
+        }
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "invalid receipt None",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": null
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid receipt []",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": []
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid receipt {}",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": {}
+    },
+    "valid": false
+  },
+  {
+    "name": "invalid receipt claim",
+    "payload": {
+      "delegation_contract": "durable_delegation_v2",
+      "task_id": "task-1",
+      "run_id": "run-1",
+      "job_id": "job-1",
+      "dispatch_receipt": "claim"
+    },
+    "valid": false
+  },
+  {
+    "name": "null",
+    "payload": null,
+    "valid": false
+  },
+  {
+    "name": "array",
+    "payload": [],
+    "valid": false
+  },
+  {
+    "name": "primitive",
+    "payload": "claim",
+    "valid": false
+  }
+]

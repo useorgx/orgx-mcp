@@ -31,6 +31,7 @@ describe('tool catalog freshness', () => {
       'src/contractTools.ts',
       'src/claudeDirectoryTools.ts',
       'src/workflowTools.ts',
+      'src/generated/scaffoldWorkflow.ts',
       'src/receiptOperationTools.ts',
       'src/portableReceiptInput.ts',
       'src/widgetOperations.ts',
