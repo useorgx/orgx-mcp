@@ -1,3 +1,4 @@
+import { METRIC_REGISTRY_IDS } from './generated/metricObserverRegistrationPolicy';
 import { z } from 'zod';
 import { taskPredictionInputShape } from './taskPredictionContract';
 
@@ -472,7 +473,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       'Register an OrgX prediction before acting. mode=task_prediction records the expected outcome, confidence, and met/unmet predictions for criteria in the task\'s current agreed expectation set; it requires the exact set ID/version and an idempotency_key. Checked receipt evidence resolves those predictions. mode=metric_coverage (default) registers a versioned receipt coverage, agent success, or signup first success observer before its window starts; receipt coverage defaults to 95% over 20 runs, agent success to 90% over 40 runs. Signup cohorts mature after 72 hours and require 20 signups. USE WHEN: stating a task prediction before work starts or registering the supported delayed reliability result. NEXT: inspect the task and its agreed criteria; submit receipt evidence when work finishes. DO NOT USE WHEN: reporting completion — use orgx_submit_receipt; or registering an unsupported metric.',
     inputSchema: {
       mode: z.enum(['metric_coverage', 'task_prediction']).optional().describe('metric_coverage (default) registers the supported delayed observer; task_prediction records expected task results before acting.'),
-      metric: z.enum(['orgx.run_receipt_coverage.v1','orgx.agent_run_success.v1','orgx.signup_first_success.v1']).optional().describe('Required for metric_coverage: exact observer registry ID.'),
+      metric: z.enum(METRIC_REGISTRY_IDS).optional().describe('Required for metric_coverage: exact observer registry ID.'),
       agent_id: z.string().optional().describe('Named domain agent required for agent_run_success.'),
       include_canaries: z.boolean().optional().describe('Include operational planning canaries; defaults to true. QA runs are always excluded.'),
       project_id: z.number().int().positive().optional().describe('PostHog project ID for signup_first_success; read access must be bound to this workspace.'),

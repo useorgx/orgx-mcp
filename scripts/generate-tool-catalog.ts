@@ -899,6 +899,7 @@ function computeSourceHash(): string {
     path.join(rootDir, 'src/generated/entityVocabulary.ts'),
     path.join(rootDir, 'src/generated/artifactProofInput.ts'),
     path.join(rootDir, 'src/generated/taskPrediction.ts'),
+    path.join(rootDir, 'src/generated/metricObserverRegistrationPolicy.ts'),
     path.join(rootDir, 'src/receiptOperationTools.ts'),
     path.join(rootDir, 'src/portableReceiptInput.ts'),
     path.join(rootDir, 'src/widgetOperations.ts'),

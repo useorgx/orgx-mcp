@@ -11,7 +11,7 @@ describe('pinned OrgX delegation source', () => {
     expect(() => execFileSync(process.execPath, [resolve(process.cwd(), 'scripts/check-mcp-domain-contracts.mjs')], { stdio: 'pipe' })).not.toThrow();
     const temp = mkdtempSync(resolve(tmpdir(), 'mcp-delegation-generator-'));
     try {
-      for (const path of ['scripts/check-mcp-domain-contracts.mjs', 'src/generated/durableDelegation.ts', 'src/generated/durableDelegation.manifest.json', 'tests/fixtures/durable-delegation-v2.json', 'src/generated/scaffoldWorkflow.ts', 'src/generated/scaffoldWorkflow.manifest.json', 'tests/fixtures/scaffold-workflow-v1.json', 'src/generated/entityVocabulary.ts', 'src/generated/entityVocabulary.manifest.json', 'tests/fixtures/entity-vocabulary-v1.json', 'src/generated/artifactProofInput.ts', 'src/generated/artifactProofInput.manifest.json', 'tests/fixtures/artifact-proof-input-v1.json', 'src/generated/taskPrediction.ts', 'src/generated/taskPrediction.manifest.json', 'tests/fixtures/task-prediction-v1.json']) {
+      for (const path of ['scripts/check-mcp-domain-contracts.mjs', 'src/generated/durableDelegation.ts', 'src/generated/durableDelegation.manifest.json', 'tests/fixtures/durable-delegation-v2.json', 'src/generated/scaffoldWorkflow.ts', 'src/generated/scaffoldWorkflow.manifest.json', 'tests/fixtures/scaffold-workflow-v1.json', 'src/generated/entityVocabulary.ts', 'src/generated/entityVocabulary.manifest.json', 'tests/fixtures/entity-vocabulary-v1.json', 'src/generated/artifactProofInput.ts', 'src/generated/artifactProofInput.manifest.json', 'tests/fixtures/artifact-proof-input-v1.json', 'src/generated/taskPrediction.ts', 'src/generated/taskPrediction.manifest.json', 'tests/fixtures/task-prediction-v1.json', 'src/generated/metricObserverRegistrationPolicy.ts', 'src/generated/metricObserverRegistrationPolicy.manifest.json', 'src/generated/metricObserverRegistry.ts', 'src/generated/metricObserverRegistry.manifest.json', 'src/generated/metricExpectationInput.ts', 'src/generated/metricExpectationInput.manifest.json', 'tests/fixtures/metric-registration-v1.json']) {
         mkdirSync(dirname(resolve(temp, path)), { recursive: true });
         copyFileSync(resolve(process.cwd(), path), resolve(temp, path));
       }
@@ -37,6 +37,11 @@ describe('pinned OrgX delegation source', () => {
       writeFileSync(prediction, predictionSource.replace('.min(1).max(50)', '.min(0).max(50)'));
       expect(() => run()).toThrow(/task_prediction_v1 generated contract drift/);
       writeFileSync(prediction, predictionSource);
+      const metricPolicy = resolve(temp, 'src/generated/metricObserverRegistrationPolicy.ts');
+      const metricPolicySource = readFileSync(metricPolicy, 'utf8');
+      writeFileSync(metricPolicy, metricPolicySource.replace('requiredMinimumSampleSize: 40', 'requiredMinimumSampleSize: 1'));
+      expect(() => run()).toThrow(/metric_registration_policy_v1 generated contract drift/);
+      writeFileSync(metricPolicy, metricPolicySource);
       const proofFixture = resolve(temp, 'tests/fixtures/artifact-proof-input-v1.json');
       const fixtureSource = readFileSync(proofFixture, 'utf8');
       const manifestFile = resolve(temp, 'src/generated/artifactProofInput.manifest.json');
@@ -51,5 +56,5 @@ describe('pinned OrgX delegation source', () => {
       writeFileSync(resolve(temp, 'tests/fixtures/durable-delegation-v2.json'), '[]');
       expect(() => run()).toThrow(/generated contract drift/);
     } finally { rmSync(temp, { recursive: true, force: true }); }
-  });
+  }, 20_000); // CLI mutation checks spawn multiple processes across the expanded contract matrix.
 });

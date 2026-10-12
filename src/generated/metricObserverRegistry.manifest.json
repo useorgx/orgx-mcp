@@ -1,0 +1,7 @@
+{
+  "contract": "metric_observer_registry_v1",
+  "repository": "hopeatina/orgx",
+  "source": "orgx/packages/contracts/src/metricObserverRegistry.ts",
+  "source_sha256": "6d68d3503e3c9b6ed9f7d51aaafb456b0013a71fcc42d299b366ac1c12e4a3ee",
+  "fixture_sha256": "3f9fdfde733c8f8341cd46f44e3c102ff4b119330e7aa1070a39ad5e1b9ee831"
+}

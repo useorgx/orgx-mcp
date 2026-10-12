@@ -1,3 +1,6 @@
+import { RUN_RECEIPT_COVERAGE_REGISTRY_ID, AGENT_RUN_SUCCESS_REGISTRY_ID, SIGNUP_FIRST_SUCCESS_REGISTRY_ID, RUN_RECEIPT_COVERAGE_QUERY_VERSION, AUTOMATIC_SESSION_CAPTURE_PATH, METRIC_OBSERVER_AGENT_IDS, METRIC_REGISTRATION_LIMITS, METRIC_REGISTRATION_DEFAULTS, METRIC_DEFAULT_RECEIPT_DEADLINE_SECONDS, METRIC_DEFAULT_EVALUATION_INTERVAL_SECONDS, METRIC_SIGNUP_SUCCESS_DEADLINE_HOURS } from './generated/metricObserverRegistrationPolicy';
+import type { RegisterMetricExpectation } from './generated/metricExpectationInput';
+
 /**
  * Request builder for the first exact delayed-outcome observer.
  *
@@ -7,18 +10,14 @@
  */
 
 export const METRIC_EXPECTATIONS_V1_PATH = '/api/v1/expectations';
-export const RUN_RECEIPT_COVERAGE_REGISTRY_ID =
-  'orgx.run_receipt_coverage.v1' as const;
-export const RUN_RECEIPT_COVERAGE_QUERY_VERSION = '1' as const;
-export const AUTOMATIC_SESSION_CAPTURE_PATH =
-  'automatic_session_summary' as const;
+export { RUN_RECEIPT_COVERAGE_REGISTRY_ID, RUN_RECEIPT_COVERAGE_QUERY_VERSION, AUTOMATIC_SESSION_CAPTURE_PATH } from './generated/metricObserverRegistrationPolicy';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATETIME_WITH_OFFSET_RE =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 const MAX_IDEMPOTENCY_KEY_LENGTH = 200;
-const MAX_WINDOW_MS = 31 * 24 * 60 * 60 * 1000;
+const MAX_WINDOW_MS = METRIC_REGISTRATION_LIMITS.maximumWindowMs;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -33,27 +32,11 @@ export type RegisterMetricExpectationRequest = {
   path: typeof METRIC_EXPECTATIONS_V1_PATH;
   idempotencyKey: string;
   idempotencyKeyGenerated: boolean;
-  body: {
-    workspace_id: string;
-    subject_ref: {
-      type: 'workspace' | 'initiative' | 'goal';
-      id: string;
+  body: Omit<RegisterMetricExpectation, 'metric_ref' | 'predicate'> & {
+    metric_ref: Pick<RegisterMetricExpectation['metric_ref'], 'registry_id' | 'query_version'> & {
+      parameters: Pick<RegisterMetricExpectation['metric_ref']['parameters'], 'workspace_id'> & Record<string, unknown>;
     };
-    metric_ref: {
-      registry_id: 'orgx.run_receipt_coverage.v1' | 'orgx.agent_run_success.v1' | 'orgx.signup_first_success.v1';
-      query_version: typeof RUN_RECEIPT_COVERAGE_QUERY_VERSION;
-      parameters: { workspace_id: string } & Record<string, unknown>;
-    };
-    predicate: {
-      operator: 'gte';
-      threshold: number;
-    };
-    window: {
-      starts_at: string;
-      ends_at: string;
-    };
-    minimum_sample_size: number;
-    evaluation_interval_seconds: number;
+    predicate: { operator: 'gte'; threshold: RegisterMetricExpectation['predicate']['threshold'] };
   };
 };
 
@@ -98,7 +81,7 @@ export function buildMetricExpectationRequest(
     return fail('workspace_id', 'workspace_id must be a UUID');
   }
 
-  if (args.metric === 'orgx.agent_run_success.v1' || args.metric === 'orgx.signup_first_success.v1') {
+  if (args.metric === AGENT_RUN_SUCCESS_REGISTRY_ID || args.metric === SIGNUP_FIRST_SUCCESS_REGISTRY_ID) {
     return buildAutonomyMetric(args, options);
   }
   if (args.metric !== RUN_RECEIPT_COVERAGE_REGISTRY_ID) {
@@ -137,7 +120,7 @@ export function buildMetricExpectationRequest(
     );
   }
 
-  const threshold = args.threshold ?? 0.95;
+  const threshold = args.threshold ?? METRIC_REGISTRATION_DEFAULTS[RUN_RECEIPT_COVERAGE_REGISTRY_ID].threshold;
   if (
     typeof threshold !== 'number' ||
     !Number.isFinite(threshold) ||
@@ -153,19 +136,19 @@ export function buildMetricExpectationRequest(
   const minimumSampleSize = boundedInteger(
     args.minimum_sample_size,
     'minimum_sample_size',
-    { value: 20, min: 1, max: 100_000 }
+    { value: METRIC_REGISTRATION_DEFAULTS[RUN_RECEIPT_COVERAGE_REGISTRY_ID].minimumSampleSize, min: METRIC_REGISTRATION_DEFAULTS[RUN_RECEIPT_COVERAGE_REGISTRY_ID].requiredMinimumSampleSize, max: METRIC_REGISTRATION_LIMITS.maximumSampleSize }
   );
   if ('ok' in minimumSampleSize) return minimumSampleSize;
   const receiptDeadlineSeconds = boundedInteger(
     args.receipt_deadline_seconds,
     'receipt_deadline_seconds',
-    { value: 60, min: 1, max: 3600 }
+    { value: METRIC_DEFAULT_RECEIPT_DEADLINE_SECONDS, min: METRIC_REGISTRATION_LIMITS.minimumReceiptDeadlineSeconds, max: METRIC_REGISTRATION_LIMITS.maximumReceiptDeadlineSeconds }
   );
   if ('ok' in receiptDeadlineSeconds) return receiptDeadlineSeconds;
   const evaluationIntervalSeconds = boundedInteger(
     args.evaluation_interval_seconds,
     'evaluation_interval_seconds',
-    { value: 300, min: 60, max: 86_400 }
+    { value: METRIC_DEFAULT_EVALUATION_INTERVAL_SECONDS, min: METRIC_REGISTRATION_LIMITS.minimumEvaluationIntervalSeconds, max: METRIC_REGISTRATION_LIMITS.maximumEvaluationIntervalSeconds }
   );
   if ('ok' in evaluationIntervalSeconds) return evaluationIntervalSeconds;
 
@@ -206,24 +189,24 @@ export function buildMetricExpectationRequest(
 
 function buildAutonomyMetric(args: JsonRecord, options: {workspaceId: string}): RegisterMetricExpectationRequest | MetricExpectationBuildError {
   const base = buildMetricExpectationRequest({...args, metric: RUN_RECEIPT_COVERAGE_REGISTRY_ID,
-    threshold: args.threshold ?? (args.metric === 'orgx.agent_run_success.v1' ? .9 : .95),
-    minimum_sample_size: args.minimum_sample_size ?? (args.metric === 'orgx.agent_run_success.v1' ? 40 : 20)}, options);
+    threshold: args.threshold ?? METRIC_REGISTRATION_DEFAULTS[args.metric as typeof AGENT_RUN_SUCCESS_REGISTRY_ID | typeof SIGNUP_FIRST_SUCCESS_REGISTRY_ID].threshold,
+    minimum_sample_size: args.minimum_sample_size ?? METRIC_REGISTRATION_DEFAULTS[args.metric as typeof AGENT_RUN_SUCCESS_REGISTRY_ID | typeof SIGNUP_FIRST_SUCCESS_REGISTRY_ID].minimumSampleSize}, options);
   if (!base.ok) return base;
-  const minimum = args.metric === 'orgx.agent_run_success.v1' ? 40 : 20;
+  const minimum = METRIC_REGISTRATION_DEFAULTS[args.metric as typeof AGENT_RUN_SUCCESS_REGISTRY_ID | typeof SIGNUP_FIRST_SUCCESS_REGISTRY_ID].requiredMinimumSampleSize;
   if (base.body.minimum_sample_size < minimum) return fail('minimum_sample_size',`This observer requires at least ${minimum} samples`);
   const type = args.subject_type ?? 'workspace';
   const id = args.subject_id ?? options.workspaceId;
   if (!['workspace','initiative','goal'].includes(String(type)) || typeof id !== 'string' || !UUID_RE.test(id) ||
       (type === 'workspace' && id !== options.workspaceId)) return fail('subject_id','Subject must match the admitted workspace or name a scoped initiative or goal');
   let parameters: RegisterMetricExpectationRequest['body']['metric_ref']['parameters'];
-  if (args.metric === 'orgx.agent_run_success.v1') {
-    if (!['engineering','operations','product','marketing','sales','design','orchestrator'].some(domain=>args.agent_id === `${domain}-agent`)) return fail('agent_id','A named domain agent is required');
+  if (args.metric === AGENT_RUN_SUCCESS_REGISTRY_ID) {
+    if (!METRIC_OBSERVER_AGENT_IDS.some(agentId=>args.agent_id === agentId)) return fail('agent_id','A named domain agent is required');
     if (args.include_canaries !== undefined && typeof args.include_canaries !== 'boolean') return fail('include_canaries','include_canaries must be a boolean');
     parameters = {workspace_id: options.workspaceId, agent_id: args.agent_id, exclude_qa:true, include_canaries:args.include_canaries ?? true};
   } else {
     if (!Number.isSafeInteger(args.project_id) || Number(args.project_id) <= 0) return fail('project_id','A positive PostHog project ID is required');
-    parameters = {workspace_id: options.workspaceId, project_id:args.project_id, exclude_qa:true, success_deadline_hours:72};
+    parameters = {workspace_id: options.workspaceId, project_id:args.project_id, exclude_qa:true, success_deadline_hours:METRIC_SIGNUP_SUCCESS_DEADLINE_HOURS};
   }
   return {...base, body:{...base.body, subject_ref:{type:type as 'workspace'|'initiative'|'goal',id},
-    metric_ref:{registry_id:args.metric as 'orgx.agent_run_success.v1'|'orgx.signup_first_success.v1',query_version:'1',parameters}}};
+    metric_ref:{registry_id:args.metric as typeof AGENT_RUN_SUCCESS_REGISTRY_ID | typeof SIGNUP_FIRST_SUCCESS_REGISTRY_ID,query_version:RUN_RECEIPT_COVERAGE_QUERY_VERSION,parameters}}};
 }
