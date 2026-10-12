@@ -13,6 +13,7 @@ const contracts = [
   { name: 'scaffoldWorkflow', version: 'scaffold_workflow_v1', fixture: 'scaffold-workflow-v1' },
   { name: 'entityVocabulary', version: 'entity_vocabulary_v1', fixture: 'entity-vocabulary-v1' },
   { name: 'artifactProofInput', version: 'artifact_proof_input_v1', fixture: 'artifact-proof-input-v1' },
+  { name: 'taskPrediction', version: 'task_prediction_v1', fixture: 'task-prediction-v1' },
 ];
 for (const contract of contracts) {
   const generated = readFileSync(resolve(root, `src/generated/${contract.name}.ts`), 'utf8');

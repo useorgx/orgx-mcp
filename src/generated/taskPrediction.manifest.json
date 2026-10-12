@@ -1,0 +1,7 @@
+{
+  "contract": "task_prediction_v1",
+  "repository": "hopeatina/orgx",
+  "source": "orgx/packages/contracts/src/taskPrediction.ts",
+  "source_sha256": "fa297d4f92f5b1933cfa247ebc9e03dfee401b36d964276d57beec28436376ae",
+  "fixture_sha256": "0587ed29ed8f6c3633676cb650420fb9f2f5b71cb6c015e952aa0fefe020d153"
+}
