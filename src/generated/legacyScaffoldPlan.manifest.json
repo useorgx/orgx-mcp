@@ -1,0 +1,7 @@
+{
+  "contract": "legacy_scaffold_plan_v1",
+  "repository": "hopeatina/orgx",
+  "source": "orgx/packages/contracts/src/legacyScaffoldPlan.ts",
+  "source_sha256": "d8118038acebc8554e32184b0be9c3f385eb7453d80bcae99460b71daf0cb572",
+  "fixture_sha256": "19f556e592da7e9ab1018f2143d88d2dd00324fc5739dd07bc96ca04b37a6b1a"
+}
