@@ -1,0 +1,3477 @@
+{
+  "baseline": "0da2c425bb28f2cafb9ea510b2a878020252c2c8",
+  "scope": "Pure preparation and injected response transcripts only; no actual HTTP, authorization, database, activation or external sync.",
+  "plans": [
+    {
+      "name": "baseline",
+      "input": {
+        "title": "Offline initiative",
+        "workspace_id": "workspace-fixture",
+        "idempotency_key": "offline-retry",
+        "workstreams": [
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "milestones": [
+              {
+                "title": "Delivery",
+                "ref": "delivery",
+                "tasks": [
+                  {
+                    "title": "Implement fixture",
+                    "ref": "implement",
+                    "task_type": "implement"
+                  },
+                  {
+                    "title": "Review fixture",
+                    "ref": "review",
+                    "depends_on": [
+                      "implement"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "batch": [
+          {
+            "title": "Offline initiative",
+            "workspace_id": "workspace-fixture",
+            "idempotency_key": "offline-retry",
+            "sequence": 1,
+            "auto_plan": false,
+            "metadata": {
+              "model_tier": "standard",
+              "live": {
+                "visibility": "public"
+              },
+              "scaffold": {
+                "idempotency_key": "offline-retry"
+              }
+            },
+            "type": "initiative",
+            "ref": "initiative"
+          },
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "sequence": 1,
+            "expected_tokens": 18000,
+            "expected_duration_hours": 2.8,
+            "expected_budget_usd": 0.216,
+            "persona": "engineering",
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "ref": "engineering",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 1,
+                "task_count": 2
+              },
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "workstream",
+            "initiative_ref": "initiative"
+          },
+          {
+            "title": "Delivery",
+            "ref": "delivery",
+            "sequence": 1,
+            "expected_tokens": 9000,
+            "expected_duration_hours": 1.4,
+            "expected_budget_usd": 0.108,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "milestone",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering"
+          },
+          {
+            "title": "Implement fixture",
+            "ref": "implement",
+            "sequence": 1,
+            "expected_tokens": 26000,
+            "expected_duration_hours": 4,
+            "expected_budget_usd": 0.312,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "task_type": "implement",
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "task",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "delivery"
+          },
+          {
+            "title": "Review fixture",
+            "ref": "review",
+            "depends_on": [
+              "implement"
+            ],
+            "sequence": 2,
+            "expected_tokens": 16250,
+            "expected_duration_hours": 2.5,
+            "expected_budget_usd": 0.195,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "task",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "delivery"
+          }
+        ],
+        "initiativeRef": "initiative",
+        "wsRefs": [
+          "engineering"
+        ],
+        "msRefs": [
+          [
+            "delivery"
+          ]
+        ],
+        "taskRefs": [
+          [
+            [
+              "implement",
+              "review"
+            ]
+          ]
+        ],
+        "materializedDependencies": [
+          {
+            "type": "task",
+            "name": "implement -> review",
+            "from_ref": "implement",
+            "to_ref": "review"
+          }
+        ],
+        "coordinationDependency": null,
+        "warnings": []
+      },
+      "aliases": {
+        "args": {
+          "title": "Offline initiative",
+          "workspace_id": "workspace-fixture",
+          "idempotency_key": "offline-retry",
+          "workstreams": [
+            {
+              "title": "Engineering",
+              "ref": "engineering",
+              "domain": "engineering",
+              "milestones": [
+                {
+                  "title": "Delivery",
+                  "ref": "delivery",
+                  "tasks": [
+                    {
+                      "title": "Implement fixture",
+                      "ref": "implement",
+                      "task_type": "implement"
+                    },
+                    {
+                      "title": "Review fixture",
+                      "ref": "review",
+                      "depends_on": [
+                        "implement"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "warnings": []
+      },
+      "sync": null
+    },
+    {
+      "name": "metadata at every node",
+      "input": {
+        "title": "Offline initiative",
+        "workspace_id": "workspace-fixture",
+        "idempotency_key": "offline-retry",
+        "workstreams": [
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "milestones": [
+              {
+                "title": "Delivery",
+                "ref": "delivery",
+                "tasks": [
+                  {
+                    "title": "A",
+                    "metadata": {
+                      "custom": [
+                        "a",
+                        "b"
+                      ]
+                    },
+                    "suggested_checks": [
+                      {
+                        "statement": "Offline check passes",
+                        "required": true,
+                        "verify": "command"
+                      }
+                    ]
+                  }
+                ],
+                "metadata": {
+                  "stage": "review"
+                }
+              }
+            ],
+            "metadata": {
+              "lane": "offline"
+            }
+          }
+        ],
+        "metadata": {
+          "customer_fixture": "sanitized",
+          "model_tier": "standard"
+        }
+      },
+      "expected": {
+        "batch": [
+          {
+            "title": "Offline initiative",
+            "workspace_id": "workspace-fixture",
+            "idempotency_key": "offline-retry",
+            "metadata": {
+              "customer_fixture": "sanitized",
+              "model_tier": "standard",
+              "live": {
+                "visibility": "public"
+              },
+              "scaffold": {
+                "idempotency_key": "offline-retry"
+              }
+            },
+            "sequence": 1,
+            "auto_plan": false,
+            "type": "initiative",
+            "ref": "initiative"
+          },
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "metadata": {
+              "lane": "offline",
+              "ref": "engineering",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 1,
+                "task_count": 1
+              },
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "sequence": 1,
+            "expected_tokens": 18000,
+            "expected_duration_hours": 2.8,
+            "expected_budget_usd": 0.216,
+            "persona": "engineering",
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "type": "workstream",
+            "initiative_ref": "initiative"
+          },
+          {
+            "title": "Delivery",
+            "ref": "delivery",
+            "metadata": {
+              "stage": "review",
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "sequence": 1,
+            "expected_tokens": 8000,
+            "expected_duration_hours": 1.2,
+            "expected_budget_usd": 0.096,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "type": "milestone",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering"
+          },
+          {
+            "title": "A",
+            "metadata": {
+              "custom": [
+                "a",
+                "b"
+              ],
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ],
+              "suggested_checks": [
+                {
+                  "statement": "Offline check passes",
+                  "verify": "command",
+                  "required": true
+                }
+              ]
+            },
+            "sequence": 1,
+            "expected_tokens": 16250,
+            "expected_duration_hours": 2.5,
+            "expected_budget_usd": 0.195,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "type": "task",
+            "ref": "task-1-1-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "delivery"
+          }
+        ],
+        "initiativeRef": "initiative",
+        "wsRefs": [
+          "engineering"
+        ],
+        "msRefs": [
+          [
+            "delivery"
+          ]
+        ],
+        "taskRefs": [
+          [
+            [
+              "task-1-1-1"
+            ]
+          ]
+        ],
+        "materializedDependencies": [],
+        "coordinationDependency": null,
+        "warnings": []
+      },
+      "aliases": {
+        "args": {
+          "title": "Offline initiative",
+          "workspace_id": "workspace-fixture",
+          "idempotency_key": "offline-retry",
+          "workstreams": [
+            {
+              "title": "Engineering",
+              "ref": "engineering",
+              "domain": "engineering",
+              "milestones": [
+                {
+                  "title": "Delivery",
+                  "ref": "delivery",
+                  "tasks": [
+                    {
+                      "title": "A",
+                      "metadata": {
+                        "custom": [
+                          "a",
+                          "b"
+                        ]
+                      },
+                      "suggested_checks": [
+                        {
+                          "statement": "Offline check passes",
+                          "required": true,
+                          "verify": "command"
+                        }
+                      ]
+                    }
+                  ],
+                  "metadata": {
+                    "stage": "review"
+                  }
+                }
+              ],
+              "metadata": {
+                "lane": "offline"
+              }
+            }
+          ],
+          "metadata": {
+            "customer_fixture": "sanitized",
+            "model_tier": "standard"
+          }
+        },
+        "warnings": []
+      },
+      "sync": null
+    },
+    {
+      "name": "objective aliases and assignments",
+      "input": {
+        "title": "Offline initiative",
+        "workspace_id": "workspace-fixture",
+        "idempotency_key": "offline-retry",
+        "workstreams": [
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "milestones": [
+              {
+                "title": "M",
+                "objective_ids": [
+                  "goal-milestone"
+                ],
+                "ownerAgent": "operations",
+                "tasks": [
+                  {
+                    "title": "T",
+                    "objective_ids": [
+                      "goal-task"
+                    ],
+                    "primaryAgent": "engineering",
+                    "assigned_agent_names": [
+                      "Eli"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "objective_ids": [
+              "goal-stream"
+            ],
+            "primaryAgent": "design",
+            "assigned_agent_ids": [
+              "design-agent"
+            ]
+          }
+        ],
+        "objective_ids": [
+          "goal-root"
+        ]
+      },
+      "expected": {
+        "batch": [
+          {
+            "title": "Offline initiative",
+            "workspace_id": "workspace-fixture",
+            "idempotency_key": "offline-retry",
+            "goal_ids": [
+              "goal-root"
+            ],
+            "sequence": 1,
+            "auto_plan": false,
+            "metadata": {
+              "model_tier": "standard",
+              "live": {
+                "visibility": "public"
+              },
+              "scaffold": {
+                "idempotency_key": "offline-retry"
+              }
+            },
+            "type": "initiative",
+            "ref": "initiative"
+          },
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "assigned_agent_ids": [
+              "design-agent"
+            ],
+            "goal_ids": [
+              "goal-stream"
+            ],
+            "sequence": 1,
+            "expected_tokens": 18000,
+            "expected_duration_hours": 2.8,
+            "expected_budget_usd": 0.216,
+            "persona": "design",
+            "assigned_agent_names": [
+              "Dana"
+            ],
+            "metadata": {
+              "ref": "engineering",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 1,
+                "task_count": 1
+              },
+              "domain": "design",
+              "agent_domain": "design",
+              "assigned_agent_ids": [
+                "design-agent"
+              ],
+              "assigned_agent_names": [
+                "Dana"
+              ]
+            },
+            "type": "workstream",
+            "initiative_ref": "initiative"
+          },
+          {
+            "title": "M",
+            "goal_ids": [
+              "goal-milestone"
+            ],
+            "sequence": 1,
+            "expected_tokens": 8000,
+            "expected_duration_hours": 1.2,
+            "expected_budget_usd": 0.096,
+            "assigned_agent_ids": [
+              "operations-agent"
+            ],
+            "assigned_agent_names": [
+              "Dana"
+            ],
+            "metadata": {
+              "domain": "operations",
+              "agent_domain": "operations",
+              "assigned_agent_ids": [
+                "operations-agent"
+              ],
+              "assigned_agent_names": [
+                "Dana"
+              ]
+            },
+            "type": "milestone",
+            "ref": "ms-1-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering"
+          },
+          {
+            "title": "T",
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "goal_ids": [
+              "goal-task"
+            ],
+            "sequence": 1,
+            "expected_tokens": 16250,
+            "expected_duration_hours": 2.5,
+            "expected_budget_usd": 0.195,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "metadata": {
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "task",
+            "ref": "task-1-1-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "ms-1-1"
+          }
+        ],
+        "initiativeRef": "initiative",
+        "wsRefs": [
+          "engineering"
+        ],
+        "msRefs": [
+          [
+            "ms-1-1"
+          ]
+        ],
+        "taskRefs": [
+          [
+            [
+              "task-1-1-1"
+            ]
+          ]
+        ],
+        "materializedDependencies": [],
+        "coordinationDependency": null,
+        "warnings": []
+      },
+      "aliases": {
+        "args": {
+          "title": "Offline initiative",
+          "workspace_id": "workspace-fixture",
+          "idempotency_key": "offline-retry",
+          "workstreams": [
+            {
+              "title": "Engineering",
+              "ref": "engineering",
+              "domain": "engineering",
+              "milestones": [
+                {
+                  "title": "M",
+                  "ownerAgent": "operations",
+                  "tasks": [
+                    {
+                      "title": "T",
+                      "primaryAgent": "engineering",
+                      "assigned_agent_names": [
+                        "Eli"
+                      ],
+                      "goal_ids": [
+                        "goal-task"
+                      ]
+                    }
+                  ],
+                  "goal_ids": [
+                    "goal-milestone"
+                  ]
+                }
+              ],
+              "primaryAgent": "design",
+              "assigned_agent_ids": [
+                "design-agent"
+              ],
+              "goal_ids": [
+                "goal-stream"
+              ]
+            }
+          ],
+          "goal_ids": [
+            "goal-root"
+          ]
+        },
+        "warnings": []
+      },
+      "sync": null
+    },
+    {
+      "name": "goal and objective conflict",
+      "input": {
+        "title": "Offline initiative",
+        "workspace_id": "workspace-fixture",
+        "idempotency_key": "offline-retry",
+        "workstreams": [
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "milestones": [
+              {
+                "title": "Delivery",
+                "ref": "delivery",
+                "tasks": [
+                  {
+                    "title": "Implement fixture",
+                    "ref": "implement",
+                    "task_type": "implement"
+                  },
+                  {
+                    "title": "Review fixture",
+                    "ref": "review",
+                    "depends_on": [
+                      "implement"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "objective_ids": [
+          "old-goal"
+        ],
+        "goal_ids": [
+          "kept-goal"
+        ]
+      },
+      "expected": {
+        "batch": [
+          {
+            "title": "Offline initiative",
+            "workspace_id": "workspace-fixture",
+            "idempotency_key": "offline-retry",
+            "goal_ids": [
+              "kept-goal"
+            ],
+            "sequence": 1,
+            "auto_plan": false,
+            "metadata": {
+              "model_tier": "standard",
+              "live": {
+                "visibility": "public"
+              },
+              "scaffold": {
+                "idempotency_key": "offline-retry"
+              }
+            },
+            "type": "initiative",
+            "ref": "initiative"
+          },
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "sequence": 1,
+            "expected_tokens": 18000,
+            "expected_duration_hours": 2.8,
+            "expected_budget_usd": 0.216,
+            "persona": "engineering",
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "ref": "engineering",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 1,
+                "task_count": 2
+              },
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "workstream",
+            "initiative_ref": "initiative"
+          },
+          {
+            "title": "Delivery",
+            "ref": "delivery",
+            "sequence": 1,
+            "expected_tokens": 9000,
+            "expected_duration_hours": 1.4,
+            "expected_budget_usd": 0.108,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "milestone",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering"
+          },
+          {
+            "title": "Implement fixture",
+            "ref": "implement",
+            "sequence": 1,
+            "expected_tokens": 26000,
+            "expected_duration_hours": 4,
+            "expected_budget_usd": 0.312,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "task_type": "implement",
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "task",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "delivery"
+          },
+          {
+            "title": "Review fixture",
+            "ref": "review",
+            "depends_on": [
+              "implement"
+            ],
+            "sequence": 2,
+            "expected_tokens": 16250,
+            "expected_duration_hours": 2.5,
+            "expected_budget_usd": 0.195,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "task",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "delivery"
+          }
+        ],
+        "initiativeRef": "initiative",
+        "wsRefs": [
+          "engineering"
+        ],
+        "msRefs": [
+          [
+            "delivery"
+          ]
+        ],
+        "taskRefs": [
+          [
+            [
+              "implement",
+              "review"
+            ]
+          ]
+        ],
+        "materializedDependencies": [
+          {
+            "type": "task",
+            "name": "implement -> review",
+            "from_ref": "implement",
+            "to_ref": "review"
+          }
+        ],
+        "coordinationDependency": null,
+        "warnings": []
+      },
+      "aliases": {
+        "args": {
+          "title": "Offline initiative",
+          "workspace_id": "workspace-fixture",
+          "idempotency_key": "offline-retry",
+          "workstreams": [
+            {
+              "title": "Engineering",
+              "ref": "engineering",
+              "domain": "engineering",
+              "milestones": [
+                {
+                  "title": "Delivery",
+                  "ref": "delivery",
+                  "tasks": [
+                    {
+                      "title": "Implement fixture",
+                      "ref": "implement",
+                      "task_type": "implement"
+                    },
+                    {
+                      "title": "Review fixture",
+                      "ref": "review",
+                      "depends_on": [
+                        "implement"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "goal_ids": [
+            "kept-goal"
+          ]
+        },
+        "warnings": [
+          {
+            "code": "objective_ids_goal_ids_conflict",
+            "message": "scaffold_initiative.goal_ids was kept because it differs from objective_ids."
+          }
+        ]
+      },
+      "sync": null
+    },
+    {
+      "name": "economics and tiny explicit estimate",
+      "input": {
+        "title": "Offline initiative",
+        "workspace_id": "workspace-fixture",
+        "idempotency_key": "offline-retry",
+        "workstreams": [
+          {
+            "title": "Tiny",
+            "milestones": [
+              {
+                "title": "M",
+                "tasks": [
+                  {
+                    "title": "T",
+                    "estimated_hours": 0.01,
+                    "estimated_spend_usd": 0.001,
+                    "task_type": "research",
+                    "human_equivalent_hourly_rate_usd": 140
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "estimated_hours": 99,
+        "daily_limit_usd": 5
+      },
+      "expected": {
+        "batch": [
+          {
+            "title": "Offline initiative",
+            "workspace_id": "workspace-fixture",
+            "idempotency_key": "offline-retry",
+            "sequence": 1,
+            "auto_plan": false,
+            "metadata": {
+              "model_tier": "standard",
+              "live": {
+                "visibility": "public"
+              },
+              "scaffold": {
+                "idempotency_key": "offline-retry"
+              },
+              "execution_policy": {
+                "profile": "custom",
+                "slice_scope_preference": "task",
+                "max_slice_tasks": 1,
+                "target_slice_minutes": 5,
+                "max_slice_minutes": 10,
+                "max_parallel_agents": 1,
+                "dependency_mode": "strict",
+                "include_in_progress": false
+              },
+              "cost_control": {
+                "source": "mcp_scaffold_tiny_budget",
+                "demo_safe": true
+              }
+            },
+            "type": "initiative",
+            "ref": "initiative"
+          },
+          {
+            "title": "Tiny",
+            "sequence": 1,
+            "expected_tokens": 18000,
+            "expected_duration_hours": 2.8,
+            "expected_budget_usd": 0.216,
+            "metadata": {
+              "ref": "ws-1",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 1,
+                "task_count": 1
+              },
+              "domain": null,
+              "agent_domain": null
+            },
+            "type": "workstream",
+            "ref": "ws-1",
+            "initiative_ref": "initiative"
+          },
+          {
+            "title": "M",
+            "sequence": 1,
+            "expected_tokens": 8000,
+            "expected_duration_hours": 1.2,
+            "expected_budget_usd": 0.096,
+            "metadata": {
+              "domain": null,
+              "agent_domain": null
+            },
+            "type": "milestone",
+            "ref": "ms-1-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-1"
+          },
+          {
+            "title": "T",
+            "sequence": 1,
+            "expected_tokens": 13000,
+            "expected_duration_hours": 2,
+            "expected_budget_usd": 0.156,
+            "metadata": {
+              "task_type": "research",
+              "domain": null,
+              "agent_domain": null
+            },
+            "type": "task",
+            "ref": "task-1-1-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-1",
+            "milestone_ref": "ms-1-1"
+          }
+        ],
+        "initiativeRef": "initiative",
+        "wsRefs": [
+          "ws-1"
+        ],
+        "msRefs": [
+          [
+            "ms-1-1"
+          ]
+        ],
+        "taskRefs": [
+          [
+            [
+              "task-1-1-1"
+            ]
+          ]
+        ],
+        "materializedDependencies": [],
+        "coordinationDependency": null,
+        "warnings": []
+      },
+      "aliases": {
+        "args": {
+          "title": "Offline initiative",
+          "workspace_id": "workspace-fixture",
+          "idempotency_key": "offline-retry",
+          "workstreams": [
+            {
+              "title": "Tiny",
+              "milestones": [
+                {
+                  "title": "M",
+                  "tasks": [
+                    {
+                      "title": "T",
+                      "estimated_hours": 0.01,
+                      "estimated_spend_usd": 0.001,
+                      "task_type": "research",
+                      "human_equivalent_hourly_rate_usd": 140
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "estimated_hours": 99,
+          "daily_limit_usd": 5
+        },
+        "warnings": []
+      },
+      "sync": null
+    },
+    {
+      "name": "missing hierarchy defaults",
+      "input": {
+        "title": "Offline empty",
+        "workspace_id": "workspace-fixture",
+        "workstreams": [
+          {
+            "title": "Product",
+            "domain": "product",
+            "milestones": []
+          }
+        ]
+      },
+      "expected": {
+        "batch": [
+          {
+            "title": "Offline empty",
+            "workspace_id": "workspace-fixture",
+            "sequence": 1,
+            "auto_plan": false,
+            "metadata": {
+              "model_tier": "standard",
+              "live": {
+                "visibility": "public"
+              }
+            },
+            "type": "initiative",
+            "ref": "initiative"
+          },
+          {
+            "title": "Product",
+            "domain": "product",
+            "sequence": 1,
+            "expected_tokens": 18000,
+            "expected_duration_hours": 2.8,
+            "expected_budget_usd": 0.216,
+            "persona": "product",
+            "assigned_agent_ids": [
+              "product-agent"
+            ],
+            "assigned_agent_names": [
+              "Pace"
+            ],
+            "metadata": {
+              "ref": "ws-1",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 0,
+                "task_count": 0
+              },
+              "domain": "product",
+              "agent_domain": "product",
+              "assigned_agent_ids": [
+                "product-agent"
+              ],
+              "assigned_agent_names": [
+                "Pace"
+              ]
+            },
+            "type": "workstream",
+            "ref": "ws-1",
+            "initiative_ref": "initiative"
+          }
+        ],
+        "initiativeRef": "initiative",
+        "wsRefs": [
+          "ws-1"
+        ],
+        "msRefs": [
+          []
+        ],
+        "taskRefs": [
+          []
+        ],
+        "materializedDependencies": [],
+        "coordinationDependency": null,
+        "warnings": []
+      },
+      "aliases": {
+        "args": {
+          "title": "Offline empty",
+          "workspace_id": "workspace-fixture",
+          "workstreams": [
+            {
+              "title": "Product",
+              "domain": "product",
+              "milestones": []
+            }
+          ]
+        },
+        "warnings": []
+      },
+      "sync": null
+    },
+    {
+      "name": "invalid node and domain",
+      "input": {
+        "title": "Offline initiative",
+        "workspace_id": "workspace-fixture",
+        "idempotency_key": "offline-retry",
+        "workstreams": [
+          null,
+          {
+            "title": "Odd",
+            "domain": "unknown",
+            "primaryAgent": "unknown",
+            "milestones": [
+              null,
+              {
+                "title": "M",
+                "tasks": [
+                  null,
+                  {
+                    "title": "T",
+                    "depends_on": [
+                      "missing"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "batch": [
+          {
+            "title": "Offline initiative",
+            "workspace_id": "workspace-fixture",
+            "idempotency_key": "offline-retry",
+            "sequence": 1,
+            "auto_plan": false,
+            "metadata": {
+              "model_tier": "standard",
+              "live": {
+                "visibility": "public"
+              },
+              "scaffold": {
+                "idempotency_key": "offline-retry"
+              }
+            },
+            "type": "initiative",
+            "ref": "initiative"
+          },
+          {
+            "sequence": 1,
+            "expected_tokens": 18000,
+            "expected_duration_hours": 2.8,
+            "expected_budget_usd": 0.216,
+            "metadata": {
+              "ref": "ws-1",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 1,
+                "task_count": 3
+              },
+              "domain": null,
+              "agent_domain": null
+            },
+            "type": "workstream",
+            "ref": "ws-1",
+            "initiative_ref": "initiative"
+          },
+          {
+            "title": "Workstream 1: plan, execute, and validate",
+            "description": "Create the first executable checkpoint for Workstream 1.",
+            "sequence": 1,
+            "expected_tokens": 13500,
+            "expected_duration_hours": 2.1,
+            "expected_budget_usd": 0.162,
+            "metadata": {
+              "domain": null,
+              "agent_domain": null
+            },
+            "type": "milestone",
+            "ref": "ms-1-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-1"
+          },
+          {
+            "title": "Workstream 1: discovery",
+            "description": "Gather requirements and unblock dependencies for Workstream 1.",
+            "type": "task",
+            "sequence": 1,
+            "expected_tokens": 13000,
+            "expected_duration_hours": 2,
+            "expected_budget_usd": 0.156,
+            "metadata": {
+              "task_type": "research",
+              "domain": null,
+              "agent_domain": null
+            },
+            "ref": "task-1-1-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-1",
+            "milestone_ref": "ms-1-1"
+          },
+          {
+            "title": "Workstream 1: implementation",
+            "description": "Execute core work for Workstream 1.",
+            "type": "task",
+            "sequence": 2,
+            "expected_tokens": 26000,
+            "expected_duration_hours": 4,
+            "expected_budget_usd": 0.312,
+            "depends_on": [
+              "task-1-1-1"
+            ],
+            "metadata": {
+              "task_type": "implement",
+              "domain": null,
+              "agent_domain": null
+            },
+            "ref": "task-1-1-2",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-1",
+            "milestone_ref": "ms-1-1"
+          },
+          {
+            "title": "Workstream 1: validation",
+            "description": "Validate outputs and handoff for Workstream 1.",
+            "type": "task",
+            "sequence": 3,
+            "expected_tokens": 9750,
+            "expected_duration_hours": 1.5,
+            "expected_budget_usd": 0.117,
+            "depends_on": [
+              "task-1-1-2"
+            ],
+            "metadata": {
+              "task_type": "review",
+              "domain": null,
+              "agent_domain": null
+            },
+            "ref": "task-1-1-3",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-1",
+            "milestone_ref": "ms-1-1"
+          },
+          {
+            "title": "Odd",
+            "domain": "unknown",
+            "sequence": 2,
+            "expected_tokens": 24000,
+            "expected_duration_hours": 3.7,
+            "expected_budget_usd": 0.288,
+            "assigned_agent_ids": [
+              "unknown"
+            ],
+            "assigned_agent_names": [
+              "Unknown"
+            ],
+            "metadata": {
+              "ref": "ws-2",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 2,
+                "task_count": 3
+              },
+              "domain": null,
+              "agent_domain": null,
+              "assigned_agent_ids": [
+                "unknown"
+              ],
+              "assigned_agent_names": [
+                "Unknown"
+              ]
+            },
+            "type": "workstream",
+            "ref": "ws-2",
+            "initiative_ref": "initiative"
+          },
+          {
+            "sequence": 1,
+            "expected_tokens": 13500,
+            "expected_duration_hours": 2.1,
+            "expected_budget_usd": 0.162,
+            "assigned_agent_ids": [
+              "unknown"
+            ],
+            "assigned_agent_names": [
+              "Unknown"
+            ],
+            "metadata": {
+              "domain": null,
+              "agent_domain": null,
+              "assigned_agent_ids": [
+                "unknown"
+              ],
+              "assigned_agent_names": [
+                "Unknown"
+              ]
+            },
+            "type": "milestone",
+            "ref": "ms-2-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-2"
+          },
+          {
+            "title": "Milestone 1: discovery",
+            "description": "Gather requirements and unblock dependencies for Milestone 1.",
+            "type": "task",
+            "sequence": 1,
+            "expected_tokens": 13000,
+            "expected_duration_hours": 2,
+            "expected_budget_usd": 0.156,
+            "assigned_agent_ids": [
+              "unknown"
+            ],
+            "assigned_agent_names": [
+              "Unknown"
+            ],
+            "metadata": {
+              "task_type": "research",
+              "domain": null,
+              "agent_domain": null,
+              "assigned_agent_ids": [
+                "unknown"
+              ],
+              "assigned_agent_names": [
+                "Unknown"
+              ]
+            },
+            "ref": "task-2-1-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-2",
+            "milestone_ref": "ms-2-1"
+          },
+          {
+            "title": "Milestone 1: implementation",
+            "description": "Execute core work for Milestone 1.",
+            "type": "task",
+            "sequence": 2,
+            "expected_tokens": 26000,
+            "expected_duration_hours": 4,
+            "expected_budget_usd": 0.312,
+            "depends_on": [
+              "task-2-1-1"
+            ],
+            "assigned_agent_ids": [
+              "unknown"
+            ],
+            "assigned_agent_names": [
+              "Unknown"
+            ],
+            "metadata": {
+              "task_type": "implement",
+              "domain": null,
+              "agent_domain": null,
+              "assigned_agent_ids": [
+                "unknown"
+              ],
+              "assigned_agent_names": [
+                "Unknown"
+              ]
+            },
+            "ref": "task-2-1-2",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-2",
+            "milestone_ref": "ms-2-1"
+          },
+          {
+            "title": "Milestone 1: validation",
+            "description": "Validate outputs and handoff for Milestone 1.",
+            "type": "task",
+            "sequence": 3,
+            "expected_tokens": 9750,
+            "expected_duration_hours": 1.5,
+            "expected_budget_usd": 0.117,
+            "depends_on": [
+              "task-2-1-2"
+            ],
+            "assigned_agent_ids": [
+              "unknown"
+            ],
+            "assigned_agent_names": [
+              "Unknown"
+            ],
+            "metadata": {
+              "task_type": "review",
+              "domain": null,
+              "agent_domain": null,
+              "assigned_agent_ids": [
+                "unknown"
+              ],
+              "assigned_agent_names": [
+                "Unknown"
+              ]
+            },
+            "ref": "task-2-1-3",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-2",
+            "milestone_ref": "ms-2-1"
+          },
+          {
+            "title": "M",
+            "sequence": 2,
+            "expected_tokens": 9000,
+            "expected_duration_hours": 1.4,
+            "expected_budget_usd": 0.108,
+            "depends_on": [
+              "ms-2-1"
+            ],
+            "assigned_agent_ids": [
+              "unknown"
+            ],
+            "assigned_agent_names": [
+              "Unknown"
+            ],
+            "metadata": {
+              "domain": null,
+              "agent_domain": null,
+              "assigned_agent_ids": [
+                "unknown"
+              ],
+              "assigned_agent_names": [
+                "Unknown"
+              ]
+            },
+            "type": "milestone",
+            "ref": "ms-2-2",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-2"
+          },
+          {
+            "sequence": 1,
+            "expected_tokens": 16250,
+            "expected_duration_hours": 2.5,
+            "expected_budget_usd": 0.195,
+            "assigned_agent_ids": [
+              "unknown"
+            ],
+            "assigned_agent_names": [
+              "Unknown"
+            ],
+            "metadata": {
+              "domain": null,
+              "agent_domain": null,
+              "assigned_agent_ids": [
+                "unknown"
+              ],
+              "assigned_agent_names": [
+                "Unknown"
+              ]
+            },
+            "type": "task",
+            "ref": "task-2-2-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-2",
+            "milestone_ref": "ms-2-2"
+          },
+          {
+            "title": "T",
+            "depends_on": [
+              "missing"
+            ],
+            "sequence": 2,
+            "expected_tokens": 16250,
+            "expected_duration_hours": 2.5,
+            "expected_budget_usd": 0.195,
+            "assigned_agent_ids": [
+              "unknown"
+            ],
+            "assigned_agent_names": [
+              "Unknown"
+            ],
+            "metadata": {
+              "domain": null,
+              "agent_domain": null,
+              "assigned_agent_ids": [
+                "unknown"
+              ],
+              "assigned_agent_names": [
+                "Unknown"
+              ]
+            },
+            "type": "task",
+            "ref": "task-2-2-2",
+            "initiative_ref": "initiative",
+            "workstream_ref": "ws-2",
+            "milestone_ref": "ms-2-2"
+          }
+        ],
+        "initiativeRef": "initiative",
+        "wsRefs": [
+          "ws-1",
+          "ws-2"
+        ],
+        "msRefs": [
+          [
+            "ms-1-1"
+          ],
+          [
+            "ms-2-1",
+            "ms-2-2"
+          ]
+        ],
+        "taskRefs": [
+          [
+            [
+              "task-1-1-1",
+              "task-1-1-2",
+              "task-1-1-3"
+            ]
+          ],
+          [
+            [
+              "task-2-1-1",
+              "task-2-1-2",
+              "task-2-1-3"
+            ],
+            [
+              "task-2-2-1",
+              "task-2-2-2"
+            ]
+          ]
+        ],
+        "materializedDependencies": [
+          {
+            "type": "task",
+            "name": "task-1-1-1 -> task-1-1-2",
+            "from_ref": "task-1-1-1",
+            "to_ref": "task-1-1-2"
+          },
+          {
+            "type": "task",
+            "name": "task-1-1-2 -> task-1-1-3",
+            "from_ref": "task-1-1-2",
+            "to_ref": "task-1-1-3"
+          },
+          {
+            "type": "task",
+            "name": "task-2-1-1 -> task-2-1-2",
+            "from_ref": "task-2-1-1",
+            "to_ref": "task-2-1-2"
+          },
+          {
+            "type": "task",
+            "name": "task-2-1-2 -> task-2-1-3",
+            "from_ref": "task-2-1-2",
+            "to_ref": "task-2-1-3"
+          },
+          {
+            "type": "milestone",
+            "name": "ms-2-1 -> ms-2-2",
+            "from_ref": "ms-2-1",
+            "to_ref": "ms-2-2"
+          },
+          {
+            "type": "task",
+            "name": "missing -> task-2-2-2",
+            "from_ref": "missing",
+            "to_ref": "task-2-2-2"
+          }
+        ],
+        "coordinationDependency": null,
+        "warnings": []
+      },
+      "aliases": {
+        "args": {
+          "title": "Offline initiative",
+          "workspace_id": "workspace-fixture",
+          "idempotency_key": "offline-retry",
+          "workstreams": [
+            null,
+            {
+              "title": "Odd",
+              "domain": "unknown",
+              "primaryAgent": "unknown",
+              "milestones": [
+                null,
+                {
+                  "title": "M",
+                  "tasks": [
+                    null,
+                    {
+                      "title": "T",
+                      "depends_on": [
+                        "missing"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "warnings": []
+      },
+      "sync": null
+    },
+    {
+      "name": "external sync stays separate",
+      "input": {
+        "title": "Offline initiative",
+        "workspace_id": "workspace-fixture",
+        "idempotency_key": "offline-retry",
+        "workstreams": [
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "milestones": [
+              {
+                "title": "Delivery",
+                "ref": "delivery",
+                "tasks": [
+                  {
+                    "title": "Implement fixture",
+                    "ref": "implement",
+                    "task_type": "implement"
+                  },
+                  {
+                    "title": "Review fixture",
+                    "ref": "review",
+                    "depends_on": [
+                      "implement"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "external_sync": {
+          "targets": [
+            "linear",
+            "jira",
+            "linear",
+            "unknown"
+          ],
+          "mode": "tasks_only",
+          "linearProjectId": " fixture-project "
+        }
+      },
+      "expected": {
+        "batch": [
+          {
+            "title": "Offline initiative",
+            "workspace_id": "workspace-fixture",
+            "idempotency_key": "offline-retry",
+            "sequence": 1,
+            "auto_plan": false,
+            "metadata": {
+              "model_tier": "standard",
+              "live": {
+                "visibility": "public"
+              },
+              "scaffold": {
+                "idempotency_key": "offline-retry"
+              }
+            },
+            "type": "initiative",
+            "ref": "initiative"
+          },
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "sequence": 1,
+            "expected_tokens": 18000,
+            "expected_duration_hours": 2.8,
+            "expected_budget_usd": 0.216,
+            "persona": "engineering",
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "ref": "engineering",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 1,
+                "task_count": 2
+              },
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "workstream",
+            "initiative_ref": "initiative"
+          },
+          {
+            "title": "Delivery",
+            "ref": "delivery",
+            "sequence": 1,
+            "expected_tokens": 9000,
+            "expected_duration_hours": 1.4,
+            "expected_budget_usd": 0.108,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "milestone",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering"
+          },
+          {
+            "title": "Implement fixture",
+            "ref": "implement",
+            "sequence": 1,
+            "expected_tokens": 26000,
+            "expected_duration_hours": 4,
+            "expected_budget_usd": 0.312,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "task_type": "implement",
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "task",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "delivery"
+          },
+          {
+            "title": "Review fixture",
+            "ref": "review",
+            "depends_on": [
+              "implement"
+            ],
+            "sequence": 2,
+            "expected_tokens": 16250,
+            "expected_duration_hours": 2.5,
+            "expected_budget_usd": 0.195,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "task",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "delivery"
+          }
+        ],
+        "initiativeRef": "initiative",
+        "wsRefs": [
+          "engineering"
+        ],
+        "msRefs": [
+          [
+            "delivery"
+          ]
+        ],
+        "taskRefs": [
+          [
+            [
+              "implement",
+              "review"
+            ]
+          ]
+        ],
+        "materializedDependencies": [
+          {
+            "type": "task",
+            "name": "implement -> review",
+            "from_ref": "implement",
+            "to_ref": "review"
+          }
+        ],
+        "coordinationDependency": null,
+        "warnings": []
+      },
+      "aliases": {
+        "args": {
+          "title": "Offline initiative",
+          "workspace_id": "workspace-fixture",
+          "idempotency_key": "offline-retry",
+          "workstreams": [
+            {
+              "title": "Engineering",
+              "ref": "engineering",
+              "domain": "engineering",
+              "milestones": [
+                {
+                  "title": "Delivery",
+                  "ref": "delivery",
+                  "tasks": [
+                    {
+                      "title": "Implement fixture",
+                      "ref": "implement",
+                      "task_type": "implement"
+                    },
+                    {
+                      "title": "Review fixture",
+                      "ref": "review",
+                      "depends_on": [
+                        "implement"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "external_sync": {
+            "targets": [
+              "linear",
+              "jira",
+              "linear",
+              "unknown"
+            ],
+            "mode": "tasks_only",
+            "linearProjectId": " fixture-project "
+          }
+        },
+        "warnings": []
+      },
+      "sync": {
+        "targets": [
+          "linear",
+          "jira"
+        ],
+        "mode": "tasks_only",
+        "linear_project_id": "fixture-project"
+      }
+    },
+    {
+      "name": "cross workstream edges",
+      "input": {
+        "title": "Offline initiative",
+        "workspace_id": "workspace-fixture",
+        "idempotency_key": "offline-retry",
+        "workstreams": [
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "milestones": [
+              {
+                "title": "Delivery",
+                "ref": "delivery",
+                "tasks": [
+                  {
+                    "title": "Implement fixture",
+                    "ref": "implement",
+                    "task_type": "implement"
+                  },
+                  {
+                    "title": "Review fixture",
+                    "ref": "review",
+                    "depends_on": [
+                      "implement"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "title": "Operations",
+            "ref": "operations",
+            "depends_on": [
+              "engineering"
+            ],
+            "milestones": [
+              {
+                "title": "Verify",
+                "tasks": [
+                  {
+                    "title": "Probe fixture",
+                    "depends_on": [
+                      "implement"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "batch": [
+          {
+            "title": "Offline initiative",
+            "workspace_id": "workspace-fixture",
+            "idempotency_key": "offline-retry",
+            "sequence": 1,
+            "auto_plan": false,
+            "metadata": {
+              "model_tier": "standard",
+              "live": {
+                "visibility": "public"
+              },
+              "scaffold": {
+                "idempotency_key": "offline-retry"
+              }
+            },
+            "type": "initiative",
+            "ref": "initiative"
+          },
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "sequence": 1,
+            "expected_tokens": 18000,
+            "expected_duration_hours": 2.8,
+            "expected_budget_usd": 0.216,
+            "persona": "engineering",
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "ref": "engineering",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 1,
+                "task_count": 2
+              },
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "workstream",
+            "initiative_ref": "initiative"
+          },
+          {
+            "title": "Delivery",
+            "ref": "delivery",
+            "sequence": 1,
+            "expected_tokens": 9000,
+            "expected_duration_hours": 1.4,
+            "expected_budget_usd": 0.108,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "milestone",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering"
+          },
+          {
+            "title": "Implement fixture",
+            "ref": "implement",
+            "sequence": 1,
+            "expected_tokens": 26000,
+            "expected_duration_hours": 4,
+            "expected_budget_usd": 0.312,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "task_type": "implement",
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "task",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "delivery"
+          },
+          {
+            "title": "Review fixture",
+            "ref": "review",
+            "depends_on": [
+              "implement"
+            ],
+            "sequence": 2,
+            "expected_tokens": 16250,
+            "expected_duration_hours": 2.5,
+            "expected_budget_usd": 0.195,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "task",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "delivery"
+          },
+          {
+            "title": "Operations",
+            "ref": "operations",
+            "depends_on": [
+              "engineering"
+            ],
+            "sequence": 2,
+            "expected_tokens": 18000,
+            "expected_duration_hours": 2.8,
+            "expected_budget_usd": 0.216,
+            "metadata": {
+              "ref": "operations",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 1,
+                "task_count": 1
+              },
+              "domain": null,
+              "agent_domain": null
+            },
+            "type": "workstream",
+            "initiative_ref": "initiative"
+          },
+          {
+            "title": "Verify",
+            "sequence": 1,
+            "expected_tokens": 8000,
+            "expected_duration_hours": 1.2,
+            "expected_budget_usd": 0.096,
+            "metadata": {
+              "domain": null,
+              "agent_domain": null
+            },
+            "type": "milestone",
+            "ref": "ms-2-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "operations"
+          },
+          {
+            "title": "Probe fixture",
+            "depends_on": [
+              "implement"
+            ],
+            "sequence": 1,
+            "expected_tokens": 16250,
+            "expected_duration_hours": 2.5,
+            "expected_budget_usd": 0.195,
+            "metadata": {
+              "domain": null,
+              "agent_domain": null
+            },
+            "type": "task",
+            "ref": "task-2-1-1",
+            "initiative_ref": "initiative",
+            "workstream_ref": "operations",
+            "milestone_ref": "ms-2-1"
+          }
+        ],
+        "initiativeRef": "initiative",
+        "wsRefs": [
+          "engineering",
+          "operations"
+        ],
+        "msRefs": [
+          [
+            "delivery"
+          ],
+          [
+            "ms-2-1"
+          ]
+        ],
+        "taskRefs": [
+          [
+            [
+              "implement",
+              "review"
+            ]
+          ],
+          [
+            [
+              "task-2-1-1"
+            ]
+          ]
+        ],
+        "materializedDependencies": [
+          {
+            "type": "task",
+            "name": "implement -> review",
+            "from_ref": "implement",
+            "to_ref": "review"
+          },
+          {
+            "type": "workstream",
+            "name": "engineering -> operations",
+            "from_ref": "engineering",
+            "to_ref": "operations"
+          },
+          {
+            "type": "task",
+            "name": "implement -> task-2-1-1",
+            "from_ref": "implement",
+            "to_ref": "task-2-1-1"
+          }
+        ],
+        "coordinationDependency": null,
+        "warnings": []
+      },
+      "aliases": {
+        "args": {
+          "title": "Offline initiative",
+          "workspace_id": "workspace-fixture",
+          "idempotency_key": "offline-retry",
+          "workstreams": [
+            {
+              "title": "Engineering",
+              "ref": "engineering",
+              "domain": "engineering",
+              "milestones": [
+                {
+                  "title": "Delivery",
+                  "ref": "delivery",
+                  "tasks": [
+                    {
+                      "title": "Implement fixture",
+                      "ref": "implement",
+                      "task_type": "implement"
+                    },
+                    {
+                      "title": "Review fixture",
+                      "ref": "review",
+                      "depends_on": [
+                        "implement"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "Operations",
+              "ref": "operations",
+              "depends_on": [
+                "engineering"
+              ],
+              "milestones": [
+                {
+                  "title": "Verify",
+                  "tasks": [
+                    {
+                      "title": "Probe fixture",
+                      "depends_on": [
+                        "implement"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "warnings": []
+      },
+      "sync": null
+    },
+    {
+      "name": "coordination dependency",
+      "input": {
+        "title": "Offline initiative",
+        "workspace_id": "workspace-fixture",
+        "idempotency_key": "offline-retry",
+        "workstreams": [
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "milestones": [
+              {
+                "title": "Delivery",
+                "ref": "delivery",
+                "tasks": [
+                  {
+                    "title": "Implement fixture",
+                    "ref": "implement",
+                    "task_type": "implement"
+                  },
+                  {
+                    "title": "Review fixture",
+                    "ref": "review",
+                    "depends_on": [
+                      "implement"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "coordination_dependency": {
+          "mode": "strict",
+          "rationale": "Sanitized dependency fixture",
+          "dependencies": [
+            "offline-source"
+          ]
+        }
+      },
+      "expected": {
+        "batch": [
+          {
+            "title": "Offline initiative",
+            "workspace_id": "workspace-fixture",
+            "idempotency_key": "offline-retry",
+            "sequence": 1,
+            "auto_plan": false,
+            "metadata": {
+              "model_tier": "standard",
+              "live": {
+                "visibility": "public"
+              },
+              "scaffold": {
+                "idempotency_key": "offline-retry"
+              }
+            },
+            "type": "initiative",
+            "ref": "initiative"
+          },
+          {
+            "title": "Engineering",
+            "ref": "engineering",
+            "domain": "engineering",
+            "sequence": 1,
+            "expected_tokens": 18000,
+            "expected_duration_hours": 2.8,
+            "expected_budget_usd": 0.216,
+            "persona": "engineering",
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "ref": "engineering",
+              "hierarchy_contract": {
+                "mode": "canonical",
+                "source": "scaffold_initiative",
+                "milestone_count": 1,
+                "task_count": 2
+              },
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "workstream",
+            "initiative_ref": "initiative"
+          },
+          {
+            "title": "Delivery",
+            "ref": "delivery",
+            "sequence": 1,
+            "expected_tokens": 9000,
+            "expected_duration_hours": 1.4,
+            "expected_budget_usd": 0.108,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "milestone",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering"
+          },
+          {
+            "title": "Implement fixture",
+            "ref": "implement",
+            "sequence": 1,
+            "expected_tokens": 26000,
+            "expected_duration_hours": 4,
+            "expected_budget_usd": 0.312,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "task_type": "implement",
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "task",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "delivery"
+          },
+          {
+            "title": "Review fixture",
+            "ref": "review",
+            "depends_on": [
+              "implement"
+            ],
+            "sequence": 2,
+            "expected_tokens": 16250,
+            "expected_duration_hours": 2.5,
+            "expected_budget_usd": 0.195,
+            "assigned_agent_ids": [
+              "engineering-agent"
+            ],
+            "assigned_agent_names": [
+              "Eli"
+            ],
+            "metadata": {
+              "domain": "engineering",
+              "agent_domain": "engineering",
+              "assigned_agent_ids": [
+                "engineering-agent"
+              ],
+              "assigned_agent_names": [
+                "Eli"
+              ]
+            },
+            "type": "task",
+            "initiative_ref": "initiative",
+            "workstream_ref": "engineering",
+            "milestone_ref": "delivery"
+          }
+        ],
+        "initiativeRef": "initiative",
+        "wsRefs": [
+          "engineering"
+        ],
+        "msRefs": [
+          [
+            "delivery"
+          ]
+        ],
+        "taskRefs": [
+          [
+            [
+              "implement",
+              "review"
+            ]
+          ]
+        ],
+        "materializedDependencies": [
+          {
+            "type": "task",
+            "name": "implement -> review",
+            "from_ref": "implement",
+            "to_ref": "review"
+          }
+        ],
+        "coordinationDependency": null,
+        "warnings": []
+      },
+      "aliases": {
+        "args": {
+          "title": "Offline initiative",
+          "workspace_id": "workspace-fixture",
+          "idempotency_key": "offline-retry",
+          "workstreams": [
+            {
+              "title": "Engineering",
+              "ref": "engineering",
+              "domain": "engineering",
+              "milestones": [
+                {
+                  "title": "Delivery",
+                  "ref": "delivery",
+                  "tasks": [
+                    {
+                      "title": "Implement fixture",
+                      "ref": "implement",
+                      "task_type": "implement"
+                    },
+                    {
+                      "title": "Review fixture",
+                      "ref": "review",
+                      "depends_on": [
+                        "implement"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "coordination_dependency": {
+            "mode": "strict",
+            "rationale": "Sanitized dependency fixture",
+            "dependencies": [
+              "offline-source"
+            ]
+          }
+        },
+        "warnings": []
+      },
+      "sync": null
+    }
+  ],
+  "batches": [
+    {
+      "name": "continue after partial failure",
+      "entities": [
+        {
+          "type": "initiative",
+          "title": "Root",
+          "ref": "root",
+          "workspace_id": "workspace-fixture",
+          "metadata": {
+            "idempotency_key": "offline-retry"
+          }
+        },
+        {
+          "type": "workstream",
+          "title": "Fail",
+          "ref": "failed-stream",
+          "initiative_ref": "root"
+        },
+        {
+          "type": "task",
+          "title": "Dependent",
+          "ref": "dependent",
+          "initiative_ref": "root",
+          "workstream_ref": "failed-stream"
+        },
+        {
+          "type": "workstream",
+          "title": "Independent",
+          "ref": "independent-stream",
+          "initiative_ref": "root"
+        },
+        {
+          "type": "task",
+          "title": "Independent child",
+          "ref": "independent-child",
+          "initiative_ref": "root",
+          "workstream_ref": "independent-stream",
+          "metadata": {
+            "offline": true
+          }
+        }
+      ],
+      "failTitle": "Fail",
+      "continueOnError": true,
+      "expected": {
+        "summary": "Created 3/5 entities (2 failed).",
+        "total": 5,
+        "created_count": 3,
+        "failed_count": 2,
+        "results": [
+          {
+            "index": 0,
+            "success": true,
+            "type": "initiative",
+            "ref": "root",
+            "id": "initiative-1",
+            "title": "Root",
+            "data": {
+              "id": "initiative-1",
+              "title": "Root",
+              "metadata": {
+                "idempotency_key": "offline-retry",
+                "ref": "root"
+              }
+            }
+          },
+          {
+            "index": 1,
+            "success": false,
+            "type": "workstream",
+            "ref": "failed-stream",
+            "error": "HTTP 422: sanitized fixture failure"
+          },
+          {
+            "index": 2,
+            "success": false,
+            "type": "task",
+            "ref": "dependent",
+            "error": "Dependency failed: failed-stream"
+          },
+          {
+            "index": 3,
+            "success": true,
+            "type": "workstream",
+            "ref": "independent-stream",
+            "id": "workstream-3",
+            "title": "Independent",
+            "data": {
+              "id": "workstream-3",
+              "title": "Independent",
+              "metadata": {
+                "ref": "independent-stream"
+              }
+            }
+          },
+          {
+            "index": 4,
+            "success": true,
+            "type": "task",
+            "ref": "independent-child",
+            "id": "task-4",
+            "title": "Independent child",
+            "data": {
+              "id": "task-4",
+              "title": "Independent child",
+              "metadata": {
+                "offline": true,
+                "ref": "independent-child"
+              }
+            }
+          }
+        ],
+        "created": [
+          {
+            "index": 0,
+            "type": "initiative",
+            "id": "initiative-1",
+            "title": "Root",
+            "ref": "root"
+          },
+          {
+            "index": 3,
+            "type": "workstream",
+            "id": "workstream-3",
+            "title": "Independent",
+            "ref": "independent-stream"
+          },
+          {
+            "index": 4,
+            "type": "task",
+            "id": "task-4",
+            "title": "Independent child",
+            "ref": "independent-child"
+          }
+        ],
+        "failed": [
+          {
+            "index": 1,
+            "type": "workstream",
+            "ref": "failed-stream",
+            "error": "HTTP 422: sanitized fixture failure"
+          },
+          {
+            "index": 2,
+            "type": "task",
+            "ref": "dependent",
+            "error": "Dependency failed: failed-stream"
+          }
+        ],
+        "warnings": [],
+        "ref_map": {
+          "root": "initiative-1",
+          "independent-stream": "workstream-3",
+          "independent-child": "task-4"
+        }
+      },
+      "calls": [
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "initiative",
+            "title": "Root",
+            "workspace_id": "workspace-fixture",
+            "metadata": {
+              "idempotency_key": "offline-retry",
+              "ref": "root"
+            },
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        },
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "workstream",
+            "title": "Fail",
+            "initiative_id": "initiative-1",
+            "metadata": {
+              "ref": "failed-stream"
+            },
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        },
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "workstream",
+            "title": "Independent",
+            "initiative_id": "initiative-1",
+            "metadata": {
+              "ref": "independent-stream"
+            },
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        },
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "task",
+            "title": "Independent child",
+            "metadata": {
+              "offline": true,
+              "ref": "independent-child"
+            },
+            "initiative_id": "initiative-1",
+            "workstream_id": "workstream-3",
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        }
+      ]
+    },
+    {
+      "name": "stop after partial failure",
+      "entities": [
+        {
+          "type": "initiative",
+          "title": "Root",
+          "ref": "root",
+          "workspace_id": "workspace-fixture",
+          "metadata": {
+            "idempotency_key": "offline-retry"
+          }
+        },
+        {
+          "type": "workstream",
+          "title": "Fail",
+          "ref": "failed-stream",
+          "initiative_ref": "root"
+        },
+        {
+          "type": "task",
+          "title": "Dependent",
+          "ref": "dependent",
+          "initiative_ref": "root",
+          "workstream_ref": "failed-stream"
+        },
+        {
+          "type": "workstream",
+          "title": "Independent",
+          "ref": "independent-stream",
+          "initiative_ref": "root"
+        },
+        {
+          "type": "task",
+          "title": "Independent child",
+          "ref": "independent-child",
+          "initiative_ref": "root",
+          "workstream_ref": "independent-stream",
+          "metadata": {
+            "offline": true
+          }
+        }
+      ],
+      "failTitle": "Fail",
+      "continueOnError": false,
+      "expected": {
+        "summary": "Created 1/5 entities (4 failed).",
+        "total": 5,
+        "created_count": 1,
+        "failed_count": 4,
+        "results": [
+          {
+            "index": 0,
+            "success": true,
+            "type": "initiative",
+            "ref": "root",
+            "id": "initiative-1",
+            "title": "Root",
+            "data": {
+              "id": "initiative-1",
+              "title": "Root",
+              "metadata": {
+                "idempotency_key": "offline-retry",
+                "ref": "root"
+              }
+            }
+          },
+          {
+            "index": 1,
+            "success": false,
+            "type": "workstream",
+            "ref": "failed-stream",
+            "error": "HTTP 422: sanitized fixture failure"
+          },
+          {
+            "index": 2,
+            "success": false,
+            "type": "task",
+            "ref": "dependent",
+            "error": "Skipped (continue_on_error=false)",
+            "skipped": true
+          },
+          {
+            "index": 3,
+            "success": false,
+            "type": "workstream",
+            "ref": "independent-stream",
+            "error": "Skipped (continue_on_error=false)",
+            "skipped": true
+          },
+          {
+            "index": 4,
+            "success": false,
+            "type": "task",
+            "ref": "independent-child",
+            "error": "Skipped (continue_on_error=false)",
+            "skipped": true
+          }
+        ],
+        "created": [
+          {
+            "index": 0,
+            "type": "initiative",
+            "id": "initiative-1",
+            "title": "Root",
+            "ref": "root"
+          }
+        ],
+        "failed": [
+          {
+            "index": 1,
+            "type": "workstream",
+            "ref": "failed-stream",
+            "error": "HTTP 422: sanitized fixture failure"
+          },
+          {
+            "index": 2,
+            "type": "task",
+            "ref": "dependent",
+            "error": "Skipped (continue_on_error=false)"
+          },
+          {
+            "index": 3,
+            "type": "workstream",
+            "ref": "independent-stream",
+            "error": "Skipped (continue_on_error=false)"
+          },
+          {
+            "index": 4,
+            "type": "task",
+            "ref": "independent-child",
+            "error": "Skipped (continue_on_error=false)"
+          }
+        ],
+        "warnings": [],
+        "ref_map": {
+          "root": "initiative-1"
+        }
+      },
+      "calls": [
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "initiative",
+            "title": "Root",
+            "workspace_id": "workspace-fixture",
+            "metadata": {
+              "idempotency_key": "offline-retry",
+              "ref": "root"
+            },
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        },
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "workstream",
+            "title": "Fail",
+            "initiative_id": "initiative-1",
+            "metadata": {
+              "ref": "failed-stream"
+            },
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        }
+      ]
+    },
+    {
+      "name": "replayed root retains children",
+      "entities": [
+        {
+          "type": "initiative",
+          "title": "Root",
+          "ref": "root",
+          "workspace_id": "workspace-fixture",
+          "metadata": {
+            "idempotency_key": "offline-retry"
+          }
+        },
+        {
+          "type": "workstream",
+          "title": "Fail",
+          "ref": "failed-stream",
+          "initiative_ref": "root"
+        },
+        {
+          "type": "task",
+          "title": "Dependent",
+          "ref": "dependent",
+          "initiative_ref": "root",
+          "workstream_ref": "failed-stream"
+        },
+        {
+          "type": "workstream",
+          "title": "Independent",
+          "ref": "independent-stream",
+          "initiative_ref": "root"
+        },
+        {
+          "type": "task",
+          "title": "Independent child",
+          "ref": "independent-child",
+          "initiative_ref": "root",
+          "workstream_ref": "independent-stream",
+          "metadata": {
+            "offline": true
+          }
+        }
+      ],
+      "existingRef": "root",
+      "continueOnError": true,
+      "expected": {
+        "summary": "Created 5/5 entities.",
+        "total": 5,
+        "created_count": 5,
+        "failed_count": 0,
+        "results": [
+          {
+            "index": 0,
+            "success": true,
+            "type": "initiative",
+            "ref": "root",
+            "id": "replayed-root",
+            "title": "Root",
+            "data": {
+              "id": "replayed-root",
+              "title": "Root"
+            },
+            "skipped": true
+          },
+          {
+            "index": 1,
+            "success": true,
+            "type": "workstream",
+            "ref": "failed-stream",
+            "id": "workstream-1",
+            "title": "Fail",
+            "data": {
+              "id": "workstream-1",
+              "title": "Fail",
+              "metadata": {
+                "ref": "failed-stream"
+              }
+            }
+          },
+          {
+            "index": 2,
+            "success": true,
+            "type": "task",
+            "ref": "dependent",
+            "id": "task-3",
+            "title": "Dependent",
+            "data": {
+              "id": "task-3",
+              "title": "Dependent",
+              "metadata": {
+                "ref": "dependent"
+              }
+            }
+          },
+          {
+            "index": 3,
+            "success": true,
+            "type": "workstream",
+            "ref": "independent-stream",
+            "id": "workstream-2",
+            "title": "Independent",
+            "data": {
+              "id": "workstream-2",
+              "title": "Independent",
+              "metadata": {
+                "ref": "independent-stream"
+              }
+            }
+          },
+          {
+            "index": 4,
+            "success": true,
+            "type": "task",
+            "ref": "independent-child",
+            "id": "task-4",
+            "title": "Independent child",
+            "data": {
+              "id": "task-4",
+              "title": "Independent child",
+              "metadata": {
+                "offline": true,
+                "ref": "independent-child"
+              }
+            }
+          }
+        ],
+        "created": [
+          {
+            "index": 0,
+            "type": "initiative",
+            "id": "replayed-root",
+            "title": "Root",
+            "ref": "root"
+          },
+          {
+            "index": 1,
+            "type": "workstream",
+            "id": "workstream-1",
+            "title": "Fail",
+            "ref": "failed-stream"
+          },
+          {
+            "index": 2,
+            "type": "task",
+            "id": "task-3",
+            "title": "Dependent",
+            "ref": "dependent"
+          },
+          {
+            "index": 3,
+            "type": "workstream",
+            "id": "workstream-2",
+            "title": "Independent",
+            "ref": "independent-stream"
+          },
+          {
+            "index": 4,
+            "type": "task",
+            "id": "task-4",
+            "title": "Independent child",
+            "ref": "independent-child"
+          }
+        ],
+        "failed": [],
+        "warnings": [],
+        "ref_map": {
+          "root": "replayed-root",
+          "failed-stream": "workstream-1",
+          "independent-stream": "workstream-2",
+          "dependent": "task-3",
+          "independent-child": "task-4"
+        }
+      },
+      "calls": [
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "workstream",
+            "title": "Fail",
+            "initiative_id": "replayed-root",
+            "metadata": {
+              "ref": "failed-stream"
+            },
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        },
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "workstream",
+            "title": "Independent",
+            "initiative_id": "replayed-root",
+            "metadata": {
+              "ref": "independent-stream"
+            },
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        },
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "task",
+            "title": "Dependent",
+            "initiative_id": "replayed-root",
+            "workstream_id": "workstream-1",
+            "metadata": {
+              "ref": "dependent"
+            },
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        },
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "task",
+            "title": "Independent child",
+            "metadata": {
+              "offline": true,
+              "ref": "independent-child"
+            },
+            "initiative_id": "replayed-root",
+            "workstream_id": "workstream-2",
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        }
+      ]
+    },
+    {
+      "name": "missing reference",
+      "entities": [
+        {
+          "type": "task",
+          "title": "Missing",
+          "workstream_ref": "missing"
+        }
+      ],
+      "continueOnError": true,
+      "expected": {
+        "summary": "Created 0/1 entities (1 failed).",
+        "total": 1,
+        "created_count": 0,
+        "failed_count": 1,
+        "results": [
+          {
+            "index": 0,
+            "success": false,
+            "type": "task",
+            "error": "Unknown ref(s): missing"
+          }
+        ],
+        "created": [],
+        "failed": [
+          {
+            "index": 0,
+            "type": "task",
+            "error": "Unknown ref(s): missing"
+          }
+        ],
+        "warnings": [],
+        "ref_map": {}
+      },
+      "calls": []
+    },
+    {
+      "name": "cycle rejects without writes",
+      "entities": [
+        {
+          "type": "workstream",
+          "title": "A",
+          "ref": "a",
+          "initiative_ref": "b"
+        },
+        {
+          "type": "initiative",
+          "title": "B",
+          "ref": "b",
+          "workstream_ref": "a"
+        }
+      ],
+      "continueOnError": true,
+      "expected": {
+        "summary": "Created 0/2 entities (2 failed).",
+        "total": 2,
+        "created_count": 0,
+        "failed_count": 2,
+        "results": [
+          {
+            "index": 0,
+            "success": false,
+            "type": "workstream",
+            "ref": "a",
+            "error": "Unresolved ref dependency chain: b"
+          },
+          {
+            "index": 1,
+            "success": false,
+            "type": "initiative",
+            "ref": "b",
+            "error": "Unresolved ref dependency chain: a"
+          }
+        ],
+        "created": [],
+        "failed": [
+          {
+            "index": 0,
+            "type": "workstream",
+            "ref": "a",
+            "error": "Unresolved ref dependency chain: b"
+          },
+          {
+            "index": 1,
+            "type": "initiative",
+            "ref": "b",
+            "error": "Unresolved ref dependency chain: a"
+          }
+        ],
+        "warnings": [],
+        "ref_map": {}
+      },
+      "calls": []
+    },
+    {
+      "name": "duplicate sibling ref alias",
+      "entities": [
+        {
+          "type": "workstream",
+          "title": "Same",
+          "ref": "a",
+          "initiative_id": "existing-root"
+        },
+        {
+          "type": "workstream",
+          "title": "Same",
+          "ref": "b",
+          "initiative_id": "existing-root"
+        },
+        {
+          "type": "task",
+          "title": "Child",
+          "workstream_ref": "b"
+        }
+      ],
+      "continueOnError": true,
+      "expected": {
+        "summary": "Created 2/3 entities.",
+        "total": 3,
+        "created_count": 2,
+        "failed_count": 0,
+        "results": [
+          {
+            "index": 0,
+            "success": true,
+            "type": "workstream",
+            "ref": "a",
+            "id": "workstream-1",
+            "title": "Same",
+            "data": {
+              "id": "workstream-1",
+              "title": "Same",
+              "metadata": {
+                "ref": "a"
+              }
+            }
+          },
+          {
+            "index": 1,
+            "success": true,
+            "type": "workstream",
+            "ref": "b",
+            "title": "Same",
+            "skipped": true
+          },
+          {
+            "index": 2,
+            "success": true,
+            "type": "task",
+            "id": "task-2",
+            "title": "Child",
+            "data": {
+              "id": "task-2",
+              "title": "Child"
+            }
+          }
+        ],
+        "created": [
+          {
+            "index": 0,
+            "type": "workstream",
+            "id": "workstream-1",
+            "title": "Same",
+            "ref": "a"
+          },
+          {
+            "index": 2,
+            "type": "task",
+            "id": "task-2",
+            "title": "Child"
+          }
+        ],
+        "failed": [],
+        "warnings": [],
+        "ref_map": {
+          "a": "workstream-1",
+          "b": "workstream-1"
+        }
+      },
+      "calls": [
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "workstream",
+            "title": "Same",
+            "initiative_id": "existing-root",
+            "metadata": {
+              "ref": "a"
+            },
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        },
+        {
+          "path": "/api/entities",
+          "method": "POST",
+          "userId": "payload-owner-fixture",
+          "body": {
+            "type": "task",
+            "title": "Child",
+            "workstream_id": "workstream-1",
+            "owner_id": "payload-owner-fixture",
+            "user_id": "payload-owner-fixture"
+          }
+        }
+      ]
+    }
+  ]
+}

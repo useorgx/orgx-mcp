@@ -1,0 +1,16 @@
+# Legacy workflow cutover prerequisites
+
+The existing atomic `scaffold_workflow_v1` contract and the richer legacy scaffold are distinct APIs. Replacing the legacy handler with v1 would reject or lose metadata, objective aliases, assignment arrays, external sync and partial-create behavior. `legacyRichWorkflowCharacterization.spec.ts` pins ten original plans and six injected batch transcripts, plus negative cases showing that v1 rejects unsupported fields instead of silently dropping them.
+
+| Surface | Current owner and behavior | Required before cutover |
+| --- | --- | --- |
+| Plan preparation | `src/scaffoldInitiative.ts:buildScaffoldInitiativeBatch` preserves metadata, normalizes objectives/assignments, computes estimates and materializes dependency references | A versioned canonical planner must match all captured plans, including defaults and warnings |
+| Batch writes | `src/batchCreate.ts:batchCreateEntities` retains ordered results, reference maps, sibling dedupe, replayed parents and separate stop/continue behavior | A server command must preserve these outcomes and uncertain-write handling through the existing authoritative entity service |
+| Entity admission | OrgX `lib/server/entities/createHandler.ts:postHandler` authenticates service/API credentials, resolves owner/workspace/parents and enforces entity-specific guards; `/api/entities` also has its route authorization adapter | An in-process caller needs an explicit trusted context boundary or the complete existing route adapter, with per-node admission tests; bypassing request-only guards is not an extraction |
+| External sync | `src/index.ts` normalizes intent and queues `/api/integrations/work-graph/mirror` after a created initiative; sync failure does not undo entity writes | Preserve queue semantics, actor context, partial outcomes and the distinction between queued intent and completed sync |
+| Draft and followups | `src/index.ts` keeps no-write draft preparation, session context, expectation drafting, launch followups and fast acknowledgements | Preserve both response modes and client rendering; coordinate changes to the separately owned entrypoint/telemetry wrappers |
+| Deployment skew | Legacy calls remain supported by deployed OrgX; atomic v1 has strict bounded fields and sibling-label dependencies | Advertise the new complete capability through an existing request/response, retain a legacy fallback before any writes, and never retry uncertain writes through another path |
+
+The transcripts use sanitized injected responses and never call HTTP, a database, a sync provider or a runtime. Their `userId` values describe the batch runner's transport proposal, not authenticated identity: production handlers replace that proposal with session identity. Suggested checks and economics metadata remain producer input; these tests do not authorize work, accept checks or qualify grants.
+
+No new table, credential, network setting or runtime activation is proposed. The next implementation dependency is the compatible server command and its trusted entity-creation boundary; the existing atomic command must remain strict. Owner coordination is also needed for the MCP entrypoint integration. This characterization is a prerequisite, not completion of the server migration.
