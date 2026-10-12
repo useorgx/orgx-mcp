@@ -18,6 +18,8 @@ const contracts = [
   { name: 'metricObserverRegistry', version: 'metric_observer_registry_v1', fixture: 'metric-registration-v1' },
   { name: 'metricExpectationInput', version: 'metric_registration_input_v1', fixture: 'metric-registration-v1' },
   { name: 'dispatchAcceptanceSerialization', version: 'dispatch_acceptance_serialization_v1', fixture: 'dispatch-acceptance-serialization-v1' },
+  { name: 'legacyScaffoldPlanPreparation', version: 'legacy_scaffold_preparation_v1', fixture: 'legacy-scaffold-plan-v1' },
+  { name: 'legacyScaffoldPlan', version: 'legacy_scaffold_plan_v1', fixture: 'legacy-scaffold-plan-v1' },
 ];
 for (const contract of contracts) {
   const generated = readFileSync(resolve(root, `src/generated/${contract.name}.ts`), 'utf8');
