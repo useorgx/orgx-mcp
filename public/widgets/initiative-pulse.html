@@ -355,11 +355,11 @@
       };
 
       var params = new URLSearchParams(window.location.search);
-      // Gallery previews (?gallery=true&state=…) read the same fixtures as ?demo=true.
+
       var isDemo = params.get("demo") === "true" || params.get("gallery") === "true";
       var isLoadingOverride = params.get("loading") === "true" || params.get("state") === "loading";
-      // Previews served next to the widgets read avatars from the same origin;
-      // host sandboxes use the kit default (mcp.useorgx.com).
+
+
       if (window.OrgXElements && window.OrgXWidgetRuntime && window.OrgXWidgetRuntime.detectProtocol() === "standalone") {
         window.OrgXElements.avatarConfig.baseUrl = new URL("shared/avatars", window.location.href).toString();
       }
@@ -371,10 +371,10 @@
       var currentSections = [];
       var panelTransitionToken = 0;
       var panelHydrated = false;
-      // Source of truth for domain accent palette lives in
-      // shared/components/domain-accent.js (window.OrgxDomain). Fall back
-      // to the inline dictionary when the shared module hasn't loaded yet
-      // (gallery, tests, or first paint).
+
+
+
+
       var DOMAIN_ACCENTS =
         (typeof window !== 'undefined' && window.OrgxDomain && window.OrgxDomain.DOMAIN_ACCENTS) || {
           product: "22, 163, 74",
@@ -508,9 +508,9 @@
           }
         : null;
 
-      // The gallery passes an explicit lifecycle state so the fixture is
-      // honest about what the operator should see. Keep the base payload
-      // intact for populated, then derive lightweight state variants.
+
+
+
       var demoState = params.get("state") || "populated";
       if (isDemo && demoState !== "populated") {
         if (demoState === "empty") {
@@ -668,7 +668,7 @@
         return (percent > 0 ? "+" : "") + percent + "%";
       };
 
-      // Shared formatter: "2m ago", "yesterday", then the date in the viewer's locale.
+
       var formatRelative = function (value) {
         return window.OrgXTime.relative(value, { inline: true }) || null;
       };
@@ -803,9 +803,9 @@
         }).sort(function (a, b) { return compareArtifactTimestamps(b, a) || a.id.localeCompare(b.id); });
       };
 
-      // Hosts do not always hand us the flat pulse record. Descend through the
-      // common envelopes so a wrapped payload renders its real data instead of
-      // silently falling through to defaults.
+
+
+
       var unwrapPulseRecord = function (payload) {
         var record = asObject(payload);
         if (!record) return null;
@@ -823,10 +823,10 @@
         return record;
       };
 
-      // Does this record carry any real pulse evidence? Used to decide between
-      // rendering a card and admitting we have nothing. Deliberately excludes
-      // fields the widget defaults (health/status), because those are exactly
-      // the ones that would manufacture false confidence.
+
+
+
+
       var hasPulseSignal = function (record) {
         if (!record) return false;
         if (readString(record, ["name", "title"])) return true;
@@ -863,8 +863,8 @@
           .filter(Boolean);
       };
 
-      // Task counts are facts from the continuity projection, never estimates
-      // from weighted initiative progress or workstream status populations.
+
+
       var normalizeTaskProgress = function (record) {
         var continuity = asObject(record && record.continuity);
         var progress = asObject(continuity && continuity.progress) || asObject(record && record.task_progress);
@@ -915,7 +915,7 @@
               : asObject(record.pending_decisions_scope) && typeof record.pending_decisions_scope.total === "number"
               ? record.pending_decisions_scope.total
               : 0,
-          // Optional: what the decision count covers ("in this initiative").
+
           pending_decisions_scope: asObject(record.pending_decisions_scope),
           active_workstreams:
             typeof record.active_workstreams === "number"
@@ -980,7 +980,7 @@
           .replace(TOOL_TAIL, "")
           .replace(TOOL_LEAD, function (_, tool) { return "Check " + toolWords(tool); })
           .replace(TOOL_ID, toolWords);
-        // Raw ids are not words: "initiative 0f6c…" reads "this initiative".
+
         var uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
         text = text
           .replace(new RegExp("\\b(initiative|workstream|task|milestone|decision|artifact|run)\\s+" + uuid + "\\b", "gi"), function (_, type) { return "this " + type.toLowerCase(); })
@@ -988,7 +988,7 @@
         return text.replace(/\s{2,}/g, " ").replace(/\s+([.,;:!?])/g, "$1").trim();
       };
 
-      // Test surface (mirrors OrgXPlanWidgetModel in plan-session-live.html).
+
       window.OrgXPulseWidgetModel = {
         normalizePulse: normalizePulse,
         hasPulseSignal: hasPulseSignal,
@@ -999,8 +999,8 @@
         decisionCountIsExact: function (pulseData) { return decisionCountIsExact(pulseData); },
       };
 
-      // "Needs you" is only what waits on a person: blockers, decisions, reviews.
-      // Next steps are team work and live under Next.
+
+
       var artifactIsSuperseded = function (artifact) {
         return toStatusKey(artifact.status) === "superseded" || typeof artifact.superseded_by === "string" && Boolean(artifact.superseded_by.trim());
       };
@@ -1032,8 +1032,8 @@
         );
       };
 
-      // "3 decisions in this initiative": the count says what it covers when the
-      // app sends pending_decisions_scope; without it the plain count stands.
+
+
       var plural = function (count, word, many) {
         return count + " " + (count === 1 ? word : many || word + "s");
       };
@@ -1043,9 +1043,9 @@
         if (level === "workspace") return "across the workspace";
         return "";
       };
-      // Only a review_packet count (or no scope, from older apps) is exact. A fallback scope
-      // (unit "decision_record": raw rows that may include duplicates and system items) is
-      // said approximately, never with the capped "+".
+
+
+
       var decisionCountIsExact = function (pulseData) {
         var scope = pulseData && pulseData.pending_decisions_scope;
         return !scope || scope.unit === "review_packet";
@@ -1133,11 +1133,11 @@
         };
       };
 
-      /* Who owns a stream. A named owner is matched by name only, so "Nova"
-         never wears Eli's face because the domain says engineering; the domain
-         names the agent only when the payload names no one. Known agents get
-         their headshot as a hover card (name, role, state, task, Open in
-         OrgX); a person gets initials, OrgX itself its mark. */
+
+
+
+
+
       var renderPulseAvatar = function (stream) {
         var identity = window.OrgXAgentIdentity;
         var name = stream.agent_name && String(stream.agent_name).trim();
@@ -1185,7 +1185,7 @@
         return "muted";
       };
 
-      // Status words become kit chips; the chip reserves the widest label so rows hold still.
+
       var CHIP_RESERVE = "running succeeded queued blocked stale draft";
       var chipSpec = function (status, blockerCount, kind) {
         var key = toStatusKey(status);
@@ -1251,7 +1251,7 @@
         );
       };
 
-      // Where each workstream stands, in the words of the progress line.
+
       var segmentFor = function (status, blockerCount) {
         var key = toStatusKey(status);
         if (blockerCount > 0 || key === "blocked" || key === "at_risk" || key === "failed") return "blocked";
@@ -1262,8 +1262,8 @@
       };
       var SEGMENT_WORDS = { done: "done", review: "in review", active: "active", blocked: "blocked", planned: "not started" };
 
-      /* A task tally is authoritative for completion; weighted percentage is
-         only a fallback. Keep known task states separate from workstreams. */
+
+
       var renderProgress = function (pulseData, healthHtml) {
         var taskProgress = pulseData.task_progress;
         var hasTaskTally = Boolean(taskProgress && taskProgress.completed !== null && taskProgress.total !== null);
@@ -1356,8 +1356,8 @@
         );
       };
 
-      /* A list row. The title is the row's one link, stretched over the row;
-         the leading slot (an agent's hover card, or an icon) sits above it. */
+
+
       var linkRow = function (url, leading, leadingTone, title, metaHtml, trailing, extraClass) {
         var href = window.OrgXLinks.normalize(url) || window.OrgXLinks.live(currentPulseData && currentPulseData.id);
         return (
@@ -1380,8 +1380,8 @@
         }).join("");
       };
 
-      // "5 wait on you: 1 blocker, 3 decisions, 1 review": one decision row stands
-      // for every pending decision, so the list says how the count adds up.
+
+
       var needsYouBreakdown = function (pulseData) {
         if (!pulseData) return "";
         var total = countNeedsYou(pulseData);
@@ -1696,8 +1696,8 @@
         injectHtml('<div class="pulse-shell-card"><div class="ox-card ox-surface" role="status" aria-label="Loading initiative pulse"><div class="pulse-head" style="height:44px;display:flex;align-items:center;gap:10px;padding:0 20px"><span class="sk" style="width:8px;height:8px;border-radius:50%"></span><span class="sk" style="width:36%;height:12px"></span></div><div class="pulse-shell">  <div class="pulse-hero"><span class="sk pulse-tile" style="border:0"></span><span style="display:flex;flex-direction:column;gap:8px;flex:1"><span class="sk" style="width:30%;height:11px"></span><span class="sk" style="width:62%;height:22px"></span></span></div>  <span style="display:flex;flex-direction:column;gap:8px"><span style="display:flex;justify-content:space-between"><span class="sk" style="width:96px;height:20px"></span><span class="sk" style="width:76px;height:22px;border-radius:999px"></span></span><span class="sk" style="width:100%;height:8px;border-radius:999px"></span><span class="sk" style="width:58%;height:12px"></span></span>  <span class="sk" style="width:100%;height:44px"></span>  <span class="sk" style="width:100%;height:56px"></span>  <span class="sk" style="width:100%;height:56px"></span></div><ox-footer variant="reads" state="loading"></ox-footer>        </div></div>');
       };
 
-      /* Empty and error keep the loaded card's head (tile, title) so the card
-         changes content, not shape, and say in plain words what to do next. */
+
+
       var calmCard = function (edge, title, desc, cta, role) {
         var tone = edge === "red" ? "red" : edge === "amber" ? "amber" : "";
         return (
@@ -1712,7 +1712,7 @@
         );
       };
 
-      // Retry asks the host to run the pulse again; the card cannot call it itself.
+
       window.retryPulse = function (button) {
         if (button) { button.disabled = true; button.textContent = "Asking again…"; }
         Promise.resolve(window.OrgXWidgetRuntime.sendFollowUpMessage("Show the initiative pulse again.")).catch(function () {
@@ -1746,10 +1746,10 @@
           return;
         }
 
-        /* The pulse snapshot and the live panel are separate sources. When the
-           panel above is already listing running workstreams, "no recent pulse
-           data" is true of this card but reads as though nothing is happening,
-           so the copy defers to what the reader can already see. */
+
+
+
+
         function emptyState(recoveryFor, recoveryLabel) {
           var liveRows =
             window.OrgXLiveStore && window.OrgXLiveStore.liveRowCount
@@ -1791,7 +1791,7 @@
         // One number for the header, the rail and the Review button.
         var needsCount = attentionItems.length ? countNeedsYou(pulse) : 0;
 
-        // Economics and ETA move to the footer detail: proof, not a headline.
+
         var economics = "";
         if (pulse.roi_summary) {
           var roiValue =
@@ -1828,8 +1828,8 @@
             key: "streams",
             value: streamCount || pulse.workstreams.length || pulse.milestones.length,
             label: "Streams",
-            // The blocked child is already loud in the attention line and the
-            // population bar. Keep the aggregate count neutral so red stays meaningful.
+
+
             alert: false,
           });
         }
@@ -1856,7 +1856,7 @@
               (pulse.artifact_summary && pulse.artifact_summary.total) ||
               pulse.recent_artifacts.length,
             label: "Output",
-            // Items awaiting review warrant attention, not alarm — amber, not red.
+
             warn: reviewCount > 0,
           });
         }
@@ -1883,7 +1883,7 @@
         var updatedAt = pulse.updated_at ? new Date(pulse.updated_at).getTime() : NaN;
         var isStale = toStatusKey(pulse.status) === "stale" || (Number.isFinite(updatedAt) && Date.now() - updatedAt > 10 * 60 * 1000);
 
-        // The opening line: amber when something waits on you, red when work is blocked.
+
         var waiting = needsCount;
         var lineTone = !waiting ? "calm" : (pulse.blockers || []).length ? "blocking" : "needs-you";
         var blockerTotal = (pulse.blockers || []).length;
@@ -1938,7 +1938,7 @@
         );
       };
 
-      // The footer's text action opens the live view through the host.
+
       document.addEventListener("ox-action", function (event) {
         var footer = event.target && event.target.closest ? event.target.closest("ox-footer[data-url]") : null;
         if (!footer) return;

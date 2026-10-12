@@ -592,8 +592,8 @@
       };
     }
 
-    // Which sources a partial brief is missing, in words. The payload names them in degraded,
-    // dataGaps or degraded_reason (codes like workspace_pulse_unavailable).
+
+
     const SOURCE_NAMES = {
       workspace_pulse: 'the workspace pulse', pulse: 'the workspace pulse', value_dashboard: 'value numbers', value: 'value numbers',
       decisions: 'decisions', pending_decisions: 'decisions', receipts: 'receipts', top_receipts: 'receipts',
@@ -634,7 +634,7 @@
         : 'Some sources didn’t load for this brief. Counts may be low until the next refresh.';
     }
 
-    // Priority headlines: the title's first sentence, about three lines; the rest stays as body text.
+
     const HEADLINE_MAX = 96;
     const NOT_A_SENTENCE_END = /(?:\b(?:e\.g|i\.e|vs|etc|approx|incl|No|Mr|Ms|Dr|St|Inc|Ltd)|\b[A-Z])$/;
     function splitHeadline(text) {
@@ -650,8 +650,8 @@
         rest = full.slice(end).trim();
         break;
       }
-      // A long first sentence splits at its label ("Production verification of PR #424: …");
-      // otherwise CSS clamps it. Never "…" plus an orphaned continuation.
+
+
       const colon = head.indexOf(': ');
       if (head.length > HEADLINE_MAX && colon >= 16 && colon <= HEADLINE_MAX) {
         rest = head.slice(colon + 2).trim() + (rest ? ' ' + rest : '');
@@ -793,8 +793,8 @@
                 'completion'
               )}, ${pluralize(asNumber(sessionSummary.failed) || 0, 'failure')}.`;
 
-      // Pending decisions are their own row in the digest (with a link to the queue); this list
-      // holds what else needs attention.
+
+
       const attentionSignals = [];
       if (blockedWork > 0) {
         attentionSignals.push({
@@ -1003,7 +1003,7 @@
       `;
     }
 
-    // Scannable rows: who, the title (two lines at most, the whole text in its tooltip), one line of why.
+
     function renderPriorityRows(brief) {
       return brief.priorities
         .slice(0, 3)
@@ -1133,7 +1133,7 @@
       return rows + narrative;
     }
 
-    // The opening line: amber when something waits on you, red when work is blocked, calm otherwise.
+
     function attentionLine(brief) {
       const parts = [];
       if (brief.pendingDecisions > 0) parts.push((brief.decisionsExact === false ? 'about ' : '') + pluralize(brief.pendingDecisions, 'decision'));
@@ -1160,7 +1160,7 @@
         return { state: 'stale', heading: 'Out of date', detail: `as of ${brief.clockLabel}`, action };
       }
       if (line.tone === 'calm') {
-        // The caught-up frame has no text action; fresh carries the same check and keeps the link.
+
         return { state: action ? 'fresh' : 'caught-up', heading: 'Nothing waits on you', detail: brief.doneLine || brief.timeLabel.toLowerCase(), action };
       }
       return { state: 'fresh', heading: `Generated ${brief.clockLabel}`, detail: brief.doneLine || 'up to date', action };

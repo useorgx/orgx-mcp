@@ -443,8 +443,8 @@
         accentRgb: (profile && profile.accentRgb) || '20, 184, 166'
       };
     }
-    /* "Open live": the agent's run in the live view when there is one, else the
-       agent's desk. Built by the shared link builder (real app routes only). */
+
+
     function buildAgentUrl(nameOrKey, runId) {
       return runId ? window.OrgXLinks.live(null, { run: runId }) : window.OrgXLinks.agent(nameOrKey);
     }
@@ -758,10 +758,10 @@
       return '<ox-state-chip state="' + state + '"' + (label ? ' label="' + escapeHtml(label) + '"' : '') + ' reserve="' + CHIP_RESERVE + '">' + escapeHtml(label || agent.statusLabel) + '</ox-state-chip>';
     }
 
-    /* The original headshot (kit photo mode); the OrgX mark or initials when
-       the owner is not one of the seven agents. Never an empty circle. */
-    /* Every known agent is their headshot as a hover card (name, role, state,
-       current task, Open in OrgX); anyone else gets initials, OrgX its mark. */
+
+
+
+
     function renderAgentCard(agent, size) {
       var identity = window.OrgXAgentIdentity;
       var who = identity.profile(agent.name, agent.role);
@@ -1377,10 +1377,10 @@
     }
 
     if (demoParams.get('loading') !== 'true' && demoState !== 'loading') initWidget({
-      /* Live control flow. The board is a point-in-time snapshot; this
-         subscribes so agents that start, finish, or block after the message was
-         sent show up instead of going unseen. Additive — a payload with no
-         'live' grant renders exactly as before. */
+
+
+
+
       live: {
         anchor: '.board',
         widget: 'agent-status',

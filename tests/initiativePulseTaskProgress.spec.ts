@@ -15,6 +15,7 @@ type PulseModel = {
   normalizePulse(payload: unknown): {
     health_score: number | null;
     task_progress: TaskProgress | null;
+    recent_artifacts: Array<{ id: string; status: string }>;
   } | null;
 };
 
@@ -328,49 +329,74 @@ describe('initiative pulse: task progress preserves review and host interactions
     expectPercent(15);
   });
 
-  it('keeps proof totals, review states, rail focus, and host links intact', async () => {
-    await render(pulse({
-      continuity: { progress: { completed: 5, total: 34, pct: 76, active: 2, blocked: 1 } },
-      pending_decisions: 2,
-      recent_artifacts: [
-        { id: 'proof-review', title: 'Receipt integrity proof', status: 'in_review', primary_url: 'https://useorgx.com/artifacts/proof-review' },
-        { id: 'proof-draft', title: 'Capture draft', status: 'draft' },
-        { id: 'proof-accepted', title: 'Delivery proof', status: 'approved' },
-      ],
-      artifact_summary: { total: 7 },
-    }));
-    expect(railValue('actions')).toBe('3');
-    expect(document.querySelector('ox-attention-line')?.getAttribute('count')).toBe('3');
-    expect(railValue('artifacts')).toBe('7');
+  it.each([
+    ['legacy stored approval', {}, 'Recorded', 2, 0],
+    ['canonical approved deliverable without a durable acceptance ledger',
+      { purpose: 'deliverable', reviewRequired: false, superseded_by: null }, 'Approved', 1, 1],
+  ] as const)(
+    'keeps proof totals, review states, rail focus, and host links intact with %s',
+    async (_, approvedFields, approvedLabel, unacceptedCount, recordedCount) => {
+      const payload = pulse({
+        continuity: { progress: { completed: 5, total: 34, pct: 76, active: 2, blocked: 1 } },
+        pending_decisions: 2,
+        recent_artifacts: [
+          { id: 'proof-review', title: 'Receipt integrity proof', status: 'in_review', primary_url: 'https://useorgx.com/artifacts/proof-review' },
+          { id: 'proof-draft', title: 'Capture draft', status: 'draft' },
+          { id: 'proof-accepted', title: 'Delivery proof', status: 'approved', ...approvedFields },
+        ],
+        artifact_summary: { total: 7 },
+      });
+      await render(payload);
+      expect(scope.OrgXPulseWidgetModel.normalizePulse(payload)?.recent_artifacts
+        .find((artifact) => artifact.id === 'proof-accepted')?.status).toBe('approved');
+      expect(railValue('actions')).toBe('3');
+      expect(document.querySelector('ox-attention-line')?.getAttribute('count')).toBe('3');
+      expect(railValue('artifacts')).toBe('7');
 
-    const outputButton = document.querySelector(
-      '.pulse-rail-button[data-panel-key="artifacts"]'
-    ) as HTMLButtonElement;
-    scope.togglePulsePanel('artifacts', outputButton);
-    await vi.advanceTimersByTimeAsync(400);
-    expect(document.activeElement).toBe(outputButton);
-    expect(outputButton.getAttribute('aria-expanded')).toBe('true');
-    expect(outputButton.getAttribute('aria-pressed')).toBe('true');
-    expect(visibleText()).toContain('1 waiting for your review');
-    expect(visibleText()).toContain('1 not accepted');
-    expect(document.querySelector('.pulse-artifact-row ox-state-chip[label="Draft"]')).not.toBeNull();
-    expect(visibleText()).toContain('1 accepted');
-    expect(visibleText()).toContain('3 shown · 7 tracked in OrgX');
+      const outputButton = document.querySelector(
+        '.pulse-rail-button[data-panel-key="artifacts"]'
+      ) as HTMLButtonElement;
+      scope.togglePulsePanel('artifacts', outputButton);
+      await vi.advanceTimersByTimeAsync(400);
+      expect(document.activeElement).toBe(outputButton);
+      expect(outputButton.getAttribute('aria-expanded')).toBe('true');
+      expect(outputButton.getAttribute('aria-pressed')).toBe('true');
+      expect(visibleText()).toContain('1 waiting for your review');
+      expect(visibleText()).toContain(`${unacceptedCount} not accepted`);
+      if (recordedCount) expect(visibleText()).toContain(`${recordedCount} recorded`);
+      else expect(visibleText()).not.toMatch(/\b\d+ recorded\b/);
+      expect(document.querySelector('.pulse-artifact-row ox-state-chip[label="Draft"]')).not.toBeNull();
+      expect(visibleText()).not.toMatch(/\b\d+ accepted\b/);
+      expect(document.querySelector('.pulse-quality-strip .q-met')).toBeNull();
+      const rows = Array.from(document.querySelectorAll<HTMLElement>('.pulse-artifact-row'));
+      expect(rows).toHaveLength(3);
+      const approvedRow = rows.find((row) => row.querySelector('.pulse-list-title')?.textContent === 'Delivery proof');
+      expect(approvedRow).toBeDefined();
+      expect(approvedRow!.querySelector('ox-state-chip')?.getAttribute('label')).toBe(approvedLabel);
+      expect(approvedRow!.querySelector('ox-state-chip')?.getAttribute('state')).toBe('view_only');
+      expect(approvedRow!.classList.contains('is-review')).toBe(false);
+      expect(approvedRow!.querySelector('.pulse-list-leading[data-tone="teal"]')).toBeNull();
+      const reviewRow = rows.find((row) => row.querySelector('.pulse-list-title')?.textContent === 'Receipt integrity proof');
+      expect(reviewRow).toBeDefined();
+      expect(reviewRow!.querySelector('ox-state-chip')?.getAttribute('state')).toBe('needs_you');
+      expect(reviewRow!.classList.contains('is-review')).toBe(true);
+      expect(visibleText()).toContain('3 shown · 7 tracked in OrgX');
 
-    const openExternal = vi.fn();
-    scope.openai.openExternal = openExternal;
-    const reviewLink = Array.from(document.querySelectorAll<HTMLAnchorElement>('.pulse-row-link'))
-      .find((link) => link.textContent?.includes('Receipt integrity proof'));
-    expect(reviewLink).toBeDefined();
-    // The fixture mounts scripts with window.eval; jsdom's separately compiled
-    // inline event attributes do not share that global scope. Exercise the real
-    // host bridge with the rendered link target rather than replacing it with a
-    // stubbed link handler.
-    const event = new MouseEvent('click', { cancelable: true });
-    expect(scope.OrgXWidgetRuntime.openWidgetLink(reviewLink!.href, event)).toBe(false);
-    expect(event.defaultPrevented).toBe(true);
-    expect(openExternal).toHaveBeenCalledWith({ url: 'https://useorgx.com/artifacts/proof-review' });
-    expect(progressText()).toContain('5 of 34 tasks done');
-    expectPercent(15);
-  });
+      const openExternal = vi.fn();
+      scope.openai.openExternal = openExternal;
+      const reviewLink = Array.from(document.querySelectorAll<HTMLAnchorElement>('.pulse-row-link'))
+        .find((link) => link.textContent?.includes('Receipt integrity proof'));
+      expect(reviewLink).toBeDefined();
+      // The fixture mounts scripts with window.eval; jsdom's separately compiled
+      // inline event attributes do not share that global scope. Exercise the real
+      // host bridge with the rendered link target rather than replacing it with a
+      // stubbed link handler.
+      const event = new MouseEvent('click', { cancelable: true });
+      expect(scope.OrgXWidgetRuntime.openWidgetLink(reviewLink!.href, event)).toBe(false);
+      expect(event.defaultPrevented).toBe(true);
+      expect(openExternal).toHaveBeenCalledWith({ url: 'https://useorgx.com/artifacts/proof-review' });
+      expect(progressText()).toContain('5 of 34 tasks done');
+      expectPercent(15);
+    }
+  );
 });

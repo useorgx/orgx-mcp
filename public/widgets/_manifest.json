@@ -62,8 +62,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 79398,
-      "hash": "5cfc7a6aa48f",
+      "bytes": 78652,
+      "hash": "77791e108788",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -228,8 +228,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 105872,
-      "hash": "7484c72f695e",
+      "bytes": 101636,
+      "hash": "e945cc50a77e",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -267,8 +267,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 69660,
-      "hash": "454e51df8522",
+      "bytes": 68778,
+      "hash": "e9bb3feba96a",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
