@@ -12,18 +12,20 @@ const contracts = [
   { name: 'durableDelegation', version: 'durable_delegation_v2', fixture: 'durable-delegation-v2' },
   { name: 'scaffoldWorkflow', version: 'scaffold_workflow_v1', fixture: 'scaffold-workflow-v1' },
   { name: 'entityVocabulary', version: 'entity_vocabulary_v1', fixture: 'entity-vocabulary-v1' },
+  { name: 'artifactProofInput', version: 'artifact_proof_input_v1', fixture: 'artifact-proof-input-v1' },
 ];
 for (const contract of contracts) {
   const generated = readFileSync(resolve(root, `src/generated/${contract.name}.ts`), 'utf8');
   const manifest = JSON.parse(readFileSync(resolve(root, `src/generated/${contract.name}.manifest.json`), 'utf8'));
   const fixture = readFileSync(resolve(root, `tests/fixtures/${contract.fixture}.json`), 'utf8');
+  const cases = JSON.parse(fixture);
   const boundary = generated.indexOf('\n\n');
   if (boundary < 0 || manifest.contract !== contract.version ||
     manifest.repository !== 'hopeatina/orgx' ||
     manifest.source !== `orgx/packages/contracts/src/${contract.name}.ts` ||
     !/^[0-9a-f]{64}$/.test(manifest.source_sha256) ||
     !generated.slice(0, boundary).includes(`source_sha256: ${manifest.source_sha256}`) ||
-    !generated.slice(boundary + 2).trim() || JSON.parse(fixture).length === 0 ||
+    !generated.slice(boundary + 2).trim() || !Array.isArray(cases) || cases.length === 0 ||
     sha256(generated.slice(boundary + 2)) !== manifest.source_sha256 ||
     sha256(fixture) !== manifest.fixture_sha256) {
     throw new Error(`${contract.version} generated contract drift; regenerate from the pinned OrgX source`);
