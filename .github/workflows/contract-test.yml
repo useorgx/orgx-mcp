@@ -58,18 +58,7 @@ jobs:
           echo "OAuth discovery OK"
 
       - name: Verify local entity type catalog is populated
-        run: |
-          set -euo pipefail
-          TYPES="$(grep -oE "'[a-z_]+'" src/shared/entity.ts | tr -d "'" | sort -u || true)"
-          echo "Local entity types:"
-          echo "$TYPES"
-          echo "---"
-          COUNT="$(printf '%s\n' "$TYPES" | sed '/^$/d' | wc -l | tr -d ' ')"
-          if [ "$COUNT" -lt 15 ]; then
-            echo "Entity type count too low ($COUNT), possible drift"
-            exit 1
-          fi
-          echo "Entity types look consistent ($COUNT types)"
+        run: node scripts/check-entity-type-catalog.mjs
 
       - name: Install Chromium for browser contract checks
         env:
