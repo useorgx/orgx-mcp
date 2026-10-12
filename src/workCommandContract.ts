@@ -90,13 +90,13 @@ export type CreateWorkRequest = {
   idempotencyKeyGenerated: boolean;
   body: {
     workspace_id: string;
-    command_id: string;
+    command_id?: string;
     expected_aggregate_version: 0;
     title: string;
     description?: string | null;
-    initiative_id: string;
-    workstream_id: string;
-    milestone_id: string;
+    initiative_id?: string;
+    workstream_id?: string;
+    milestone_id?: string;
     priority: WorkCommandPriority;
     due_date?: string | null;
     metadata: JsonRecord;
@@ -114,8 +114,10 @@ export type CompleteWorkRequest = {
   body: {
     workspace_id: string;
     task_id: string;
-    expected_updated_at: string;
-    expected_aggregate_version: number;
+    version_token?: string;
+    expected_updated_at?: string;
+    expected_aggregate_version?: number;
+    actual_hours?: number | null;
     summary?: string | null;
     evidence: JsonRecord;
     cost_cents: number;
@@ -225,12 +227,16 @@ export function buildCreateWorkCommandRequest(
 
   const workspaceId = requireUuid(options.workspaceId, 'workspace_id');
   if ('ok' in workspaceId) return workspaceId;
-  const initiativeId = requireUuid(args.initiative_id, 'initiative_id');
-  if ('ok' in initiativeId) return initiativeId;
-  const workstreamId = requireUuid(args.workstream_id, 'workstream_id');
-  if ('ok' in workstreamId) return workstreamId;
-  const milestoneId = requireUuid(args.milestone_id, 'milestone_id');
-  if ('ok' in milestoneId) return milestoneId;
+  const hierarchyFields = ['initiative_id', 'workstream_id', 'milestone_id'] as const;
+  const hierarchy: Partial<Record<(typeof hierarchyFields)[number], string>> = {};
+  // OrgX resolves the default inbox when the complete hierarchy is omitted.
+  if (hierarchyFields.some((field) => args[field] !== undefined && args[field] !== null)) {
+    for (const field of hierarchyFields) {
+      const parsed = requireUuid(args[field], field);
+      if ('ok' in parsed) return parsed;
+      hierarchy[field] = parsed.value;
+    }
+  }
 
   const commandId = optionalUuid(args.command_id, 'command_id');
   if ('ok' in commandId) return commandId;
@@ -290,13 +296,12 @@ export function buildCreateWorkCommandRequest(
     idempotencyKeyGenerated: idempotency.generated,
     body: {
       workspace_id: workspaceId.value,
-      command_id: commandId.value ?? crypto.randomUUID(),
+      // OrgX derives command identity from workspace + retry key.
+      ...(commandId.value ? { command_id: commandId.value } : {}),
       expected_aggregate_version: 0,
       title,
       ...(description ? { description } : {}),
-      initiative_id: initiativeId.value,
-      workstream_id: workstreamId.value,
-      milestone_id: milestoneId.value,
+      ...hierarchy,
       priority: (priorityRaw as WorkCommandPriority | null) ?? 'medium',
       ...(dueDate ? { due_date: dueDate } : {}),
       metadata: readRecord(args.metadata) ?? {},
@@ -309,8 +314,8 @@ export function buildCreateWorkCommandRequest(
 
 /**
  * Build the POST /api/v1/commands/complete-work request. The optimistic
- * concurrency tokens (expected_updated_at + expected_aggregate_version) are
- * required from the caller — the route rejects a mismatch with a conflict, so
+ * concurrency input is either the timestamp/version pair or a server-issued
+ * version_token. The route rejects a mismatch, so
  * they must come from a fresh read, never a guess.
  */
 export function buildCompleteWorkCommandRequest(
@@ -322,24 +327,24 @@ export function buildCompleteWorkCommandRequest(
   const taskId = requireUuid(args.task_id, 'task_id');
   if ('ok' in taskId) return taskId;
 
-  const expectedUpdatedAt = nonEmptyString(args.expected_updated_at);
-  if (!expectedUpdatedAt || !DATETIME_WITH_OFFSET_RE.test(expectedUpdatedAt)) {
-    return fail(
-      'expected_updated_at',
-      'expected_updated_at is required and must be the ISO datetime (with timezone offset) read from the current task record'
-    );
+  const versionToken = nonEmptyString(args.version_token);
+  if (args.version_token !== undefined && !versionToken) {
+    return fail('version_token', 'version_token must be a non-empty server-issued concurrency token');
   }
-
+  const expectedUpdatedAt = nonEmptyString(args.expected_updated_at);
+  if ((!versionToken || args.expected_updated_at !== undefined) &&
+      (!expectedUpdatedAt || !DATETIME_WITH_OFFSET_RE.test(expectedUpdatedAt))) {
+    return fail('expected_updated_at', 'expected_updated_at is required and must be the ISO datetime (with timezone offset) read from the current task record, or send version_token');
+  }
   const expectedVersion = args.expected_aggregate_version;
-  if (
-    typeof expectedVersion !== 'number' ||
-    !Number.isInteger(expectedVersion) ||
-    expectedVersion < 0
-  ) {
-    return fail(
-      'expected_aggregate_version',
-      'expected_aggregate_version is required and must be the non-negative integer version read from the current task record'
-    );
+  if ((!versionToken || expectedVersion !== undefined) &&
+      (typeof expectedVersion !== 'number' || !Number.isInteger(expectedVersion) || expectedVersion < 0)) {
+    return fail('expected_aggregate_version', 'expected_aggregate_version is required and must be the non-negative integer version read from the current task record, or send version_token');
+  }
+  const actualHours = args.actual_hours;
+  if (actualHours !== undefined && actualHours !== null &&
+      (typeof actualHours !== 'number' || !Number.isFinite(actualHours) || actualHours < 0 || actualHours > 100_000)) {
+    return fail('actual_hours', 'actual_hours must be null or a finite measured duration from 0 to 100000 hours');
   }
 
   const summary = nonEmptyString(args.summary);
@@ -369,8 +374,10 @@ export function buildCompleteWorkCommandRequest(
     body: {
       workspace_id: workspaceId.value,
       task_id: taskId.value,
-      expected_updated_at: expectedUpdatedAt,
-      expected_aggregate_version: expectedVersion,
+      ...(versionToken ? { version_token: versionToken } : {}),
+      ...(expectedUpdatedAt ? { expected_updated_at: expectedUpdatedAt } : {}),
+      ...(typeof expectedVersion === 'number' ? { expected_aggregate_version: expectedVersion } : {}),
+      ...(actualHours !== undefined ? { actual_hours: actualHours as number | null } : {}),
       ...(summary ? { summary } : {}),
       evidence: readRecord(args.evidence) ?? {},
       cost_cents: costCents.value,

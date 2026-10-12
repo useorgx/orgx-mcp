@@ -1022,10 +1022,14 @@ it.each(['commander', 'executor', 'full'])('%s preserves the runtime completion 
   expect(tool.inputSchema.properties).toHaveProperty('task_id');
   expect(tool.inputSchema.properties).toHaveProperty('expected_updated_at');
   expect(tool.inputSchema.properties).toHaveProperty('expected_aggregate_version');
+  expect(tool.inputSchema.properties).toHaveProperty('version_token');
   expect(tool.inputSchema.properties).not.toHaveProperty('type');
   expect(tool.inputSchema.required).toContain('task_id');
-  expect(tool.inputSchema.required).toContain('expected_updated_at');
-  expect(tool.inputSchema.required).toContain('expected_aggregate_version');
+  expect(tool.inputSchema.required).not.toContain('expected_updated_at');
+  expect(tool.inputSchema.required).not.toContain('expected_aggregate_version');
+  expect(tool.inputSchema.required).not.toContain('version_token');
+  expect(tool.description).toContain('server-issued version_token');
+  expect(tool.description).toContain('expected_updated_at and expected_aggregate_version');
 }, 30000);
 
 

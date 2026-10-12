@@ -6974,7 +6974,7 @@ export class OrgXMcp extends McpAgent<
             _v2_tool: toolId,
             idempotency_key: built.idempotencyKey,
             ...(toolId === 'orgx_create_work'
-              ? { command_id: (built as { body: { command_id: string } }).body.command_id }
+              ? { command_id: (built as { body: { command_id?: string } }).body.command_id ?? data.taskId }
               : {}),
             ...(meta ? { meta } : {}),
           };

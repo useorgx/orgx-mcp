@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-12T05:20:22.658Z",
-  "sourceHash": "79997f0398714e41",
+  "generatedAt": "2026-10-12T05:28:45.824Z",
+  "sourceHash": "b6f72680626813c6",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -11718,7 +11718,7 @@
     {
       "id": "orgx_complete_work",
       "title": "Complete Work (v1 Command)",
-      "description": "Marks a v1 ledger work item complete (POST /api/v1/commands/complete-work) with optimistic concurrency: expected_updated_at and expected_aggregate_version must match the current task record or the command returns a conflict — read them fresh, never guess. Records summary, evidence, and cost on the completion event; it does not verify the work. An Idempotency-Key is generated when none is supplied. USE WHEN: closing a ledger-backed work item created with orgx_create_work. NEXT: orgx_submit_receipt for durable proof of the completed work. DO NOT USE WHEN: completing ordinary OrgX tasks — use orgx_act (complete_with_proof); or on a version conflict — re-read the task and retry with current values.",
+      "description": "Marks a v1 ledger work item complete (POST /api/v1/commands/complete-work) with optimistic concurrency: send the server-issued version_token or current expected_updated_at and expected_aggregate_version. A mismatch returns a conflict — read them fresh, never guess. Records summary, evidence, and cost on the completion event; it does not verify the work. An Idempotency-Key is generated when none is supplied. USE WHEN: closing a ledger-backed work item created with orgx_create_work. NEXT: orgx_submit_receipt for durable proof of the completed work. DO NOT USE WHEN: completing ordinary OrgX tasks — use orgx_act (complete_with_proof); or on a version conflict — re-read the task and retry with current values.",
       "category": "Proof Runtime v1",
       "inputSchema": {
         "type": "object",
@@ -11731,14 +11731,18 @@
             "type": "string",
             "description": "REQUIRED. UUID of the ledger work item to complete."
           },
+          "version_token": {
+            "type": "string",
+            "description": "Opaque server-issued concurrency token bound to this task and workspace. Use it instead of the raw timestamp/version pair."
+          },
           "expected_updated_at": {
             "type": "string",
-            "description": "REQUIRED. The task's current updated_at as an ISO datetime with timezone offset. A mismatch returns a conflict."
+            "description": "When no version_token is supplied: The task's current updated_at as an ISO datetime with timezone offset. A mismatch returns a conflict."
           },
           "expected_aggregate_version": {
             "type": "integer",
             "minimum": 0,
-            "description": "REQUIRED. The task's current aggregate version. A mismatch returns a conflict."
+            "description": "When no version_token is supplied: The task's current aggregate version. A mismatch returns a conflict."
           },
           "summary": {
             "type": "string",
@@ -11748,6 +11752,19 @@
             "type": "object",
             "additionalProperties": {},
             "description": "Free-form JSON evidence recorded on the completion event."
+          },
+          "actual_hours": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Measured task duration in hours. Omit or send null when unknown; zero is a measured duration."
           },
           "cost_cents": {
             "type": "integer",
@@ -11772,9 +11789,7 @@
           }
         },
         "required": [
-          "task_id",
-          "expected_updated_at",
-          "expected_aggregate_version"
+          "task_id"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -11805,7 +11820,7 @@
     {
       "id": "orgx_create_work",
       "title": "Create Work (v1 Command)",
-      "description": "Accepts organizational work onto the v1 proof-runtime ledger (POST /api/v1/commands/create-work). Records the work item as a command event; it does not start external execution. Requires an existing initiative + workstream + milestone chain. An Idempotency-Key is generated when none is supplied; retrying with the same idempotency_key returns the original result instead of duplicating. USE WHEN: registering a ledger-backed work item under an existing milestone so its lifecycle is event-sourced. NEXT: orgx_complete_work when the work finishes, or orgx_events_tail to watch the recorded events. DO NOT USE WHEN: creating initiatives, workstreams, milestones, or ordinary tasks — use orgx_write; or when dispatching an agent — use orgx_spawn.",
+      "description": "Accepts organizational work onto the v1 proof-runtime ledger (POST /api/v1/commands/create-work). Records the work item as a command event; it does not start external execution. Supply the full initiative + workstream + milestone chain, or omit all three to use the canonical workspace inbox. An Idempotency-Key is generated when none is supplied; retrying with the same idempotency_key returns the original result instead of duplicating. USE WHEN: registering a ledger-backed work item under an existing milestone so its lifecycle is event-sourced. NEXT: orgx_complete_work when the work finishes, or orgx_events_tail to watch the recorded events. DO NOT USE WHEN: creating initiatives, workstreams, milestones, or ordinary tasks — use orgx_write; or when dispatching an agent — use orgx_spawn.",
       "category": "Proof Runtime v1",
       "inputSchema": {
         "type": "object",
@@ -11825,15 +11840,15 @@
           },
           "initiative_id": {
             "type": "string",
-            "description": "REQUIRED. Parent initiative UUID."
+            "description": "Parent initiative UUID. Supply all three hierarchy IDs together, or omit all three."
           },
           "workstream_id": {
             "type": "string",
-            "description": "REQUIRED. Parent workstream UUID."
+            "description": "Parent workstream UUID. Supply all three hierarchy IDs together, or omit all three."
           },
           "milestone_id": {
             "type": "string",
-            "description": "REQUIRED. Parent milestone UUID."
+            "description": "Parent milestone UUID. Supply all three hierarchy IDs together, or omit all three."
           },
           "priority": {
             "type": "string",
@@ -11861,7 +11876,7 @@
           },
           "command_id": {
             "type": "string",
-            "description": "Client-supplied command UUID. Generated when omitted."
+            "description": "Client-supplied command UUID. Derived by OrgX from workspace and retry key when omitted."
           },
           "expected_aggregate_version": {
             "type": "integer",
@@ -11885,10 +11900,7 @@
           }
         },
         "required": [
-          "title",
-          "initiative_id",
-          "workstream_id",
-          "milestone_id"
+          "title"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"

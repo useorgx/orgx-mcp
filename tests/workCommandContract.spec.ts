@@ -65,7 +65,7 @@ describe('buildCreateWorkCommandRequest', () => {
     });
   });
 
-  it('generates command_id and Idempotency-Key when omitted', () => {
+  it('generates Idempotency-Key and leaves stable command identity to OrgX when omitted', () => {
     const built = buildCreateWorkCommandRequest(baseArgs, {
       workspaceId: WORKSPACE_ID,
     });
@@ -73,7 +73,7 @@ describe('buildCreateWorkCommandRequest', () => {
     if (!built.ok) return;
     expect(built.idempotencyKeyGenerated).toBe(true);
     expect(built.idempotencyKey).toMatch(UUID_RE);
-    expect(built.body.command_id).toMatch(UUID_RE);
+    expect(built.body).not.toHaveProperty('command_id');
     // route defaults mirrored so the strict schema accepts the body
     expect(built.body.priority).toBe('medium');
     expect(built.body.metadata).toEqual({});
