@@ -1,3 +1,6 @@
+import { hashHistoricalDispatchAcceptanceChecksV1 } from './generated/dispatchAcceptanceSerialization';
+export { canonicalHistoricalDispatchAcceptanceJsonV1 as canonicalJson } from './generated/dispatchAcceptanceSerialization';
+
 /**
  * The single dispatch contract shared by every verb that starts agent work.
  *
@@ -503,30 +506,8 @@ export function normalizeDispatchContract(
  * callers that declare the same checks in a different key order must produce
  * the same hash, or the completion-time comparison is meaningless.
  */
-export function canonicalJson(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalJson).join(',')}]`;
-  }
-  const entries = Object.entries(value as Record<string, unknown>)
-    .filter(([, v]) => v !== undefined)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  return `{${entries
-    .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`)
-    .join(',')}}`;
-}
-
-export async function hashAcceptanceContract(
-  checks: NormalizedAcceptanceCheck[]
-): Promise<string> {
-  const canonical = canonicalJson(checks);
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(canonical)
-  );
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+export async function hashAcceptanceContract(checks: NormalizedAcceptanceCheck[]): Promise<string> {
+  return hashHistoricalDispatchAcceptanceChecksV1(checks);
 }
 
 /**
