@@ -314,8 +314,8 @@ export function buildCreateWorkCommandRequest(
 
 /**
  * Build the POST /api/v1/commands/complete-work request. The optimistic
- * concurrency tokens (expected_updated_at + expected_aggregate_version) are
- * or server-issued version_token are required — the route rejects a mismatch, so
+ * concurrency input is either the timestamp/version pair or a server-issued
+ * version_token. The route rejects a mismatch, so
  * they must come from a fresh read, never a guess.
  */
 export function buildCompleteWorkCommandRequest(

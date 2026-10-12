@@ -69,4 +69,30 @@ describe('actual MCP work command response parity', () => {
       expect(callApi).toHaveBeenCalledOnce();
     } finally { await Promise.allSettled([client.close(), server.close()]); }
   });
+  it('keeps explicit command identity and additive server response metadata', async () => {
+    callApi.mockReset().mockImplementation(async (_env, _path, request) => {
+      expect(JSON.parse(request.body)).toMatchObject({ command_id: taskId });
+      return Response.json({ data: { taskId, duplicate: false, futureField: 'preserved' }, meta: { apiVersion: '1', workspaceId } });
+    });
+    const { client, server } = await connect();
+    try {
+      const result = await client.callTool({ name: 'orgx_create_work', arguments: { title: 'Register explicit work', command_id: taskId, idempotency_key: 'explicit-fixture' } });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({ taskId, command_id: taskId, futureField: 'preserved', meta: { apiVersion: '1', workspaceId } });
+      expect(callApi).toHaveBeenCalledOnce();
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+  it.each([
+    { name: 'orgx_create_work', arguments: { title: 'Partial hierarchy', initiative_id: workspaceId } },
+    { name: 'orgx_complete_work', arguments: { task_id: taskId, version_token: '' } },
+    { name: 'orgx_complete_work', arguments: { task_id: taskId, version_token: 'token', actual_hours: -1 } },
+  ])('refuses invalid registered input before a request: $name', async (request) => {
+    callApi.mockReset();
+    const { client, server } = await connect();
+    try {
+      const result = await client.callTool(request);
+      expect(result.isError).toBe(true);
+      expect(callApi).not.toHaveBeenCalled();
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
 });
