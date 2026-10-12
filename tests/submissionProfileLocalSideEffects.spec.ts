@@ -1,3 +1,8 @@
+// Load the mocked worker before tests; cold module compilation is harness setup.
+import { OrgXMcp } from '../src/index';
+import { LegacyBatchCapabilityCache } from '../src/legacyBatchCutover';
+import { LEGACY_SCAFFOLD_BATCH_CAPABILITY } from '../src/generated/legacyScaffoldBatchProfile';
+import { executeLegacyEntityBatch } from '../src/generated/legacyEntityBatchExecution';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { describe, expect, it, vi } from 'vitest';
@@ -319,7 +324,6 @@ function successfulApiResponse(path: string, init?: RequestInit): Response {
 async function createSubmissionProfileHarness(
   profile: SubmissionProfile
 ) {
-  const { OrgXMcp } = await import('../src/index');
   const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
   const storagePut = vi.fn(async () => undefined);
   const sqlExec = vi.fn(() => []);
@@ -760,6 +764,62 @@ describe('submission profile worker-local side-effect suppression', () => {
       spies.consoleInfo.mockRestore();
       spies.consoleWarn.mockRestore();
       spies.consoleError.mockRestore();
+    }
+  });
+});
+
+
+describe('registered legacy batch capability cutover', () => {
+  it.each(['bulk', 'scaffold', 'uncertain scaffold', 'run-token scaffold', 'draft', 'actor changed', 'workspace changed', 'expired', 'expired refreshed', 'old server', 'resolved actor'] as const)('preserves registered %s behavior with cached discovery', async variant => {
+    const { client, server, worker, spies } = await createSubmissionProfileHarness('full');
+    try {
+      worker.props.authSource = 'oauth';
+      let cacheNow = Date.now();
+      worker.legacyBatchCapabilities = new LegacyBatchCapabilityCache(() => cacheNow);
+      apiMocks.callOrgxApiJson.mockImplementation(async (_env: unknown, path: string, init?: RequestInit) => {
+        if (path === '/api/billing/usage' && variant === 'resolved actor') return Response.json({ identity: { resolvedUserId: '33333333-3333-4333-8333-333333333333' } });
+        if (path === '/api/client/bootstrap?source_client=mcp') return Response.json({ data: { workspace: { id: WORKSPACE_ID }, workflow_contracts: { legacy_scaffold_batch: LEGACY_SCAFFOLD_BATCH_CAPABILITY } } });
+        if (path === '/api/v1/workflows/legacy-scaffold-batch') {
+          if (variant === 'uncertain scaffold') throw new Error('offline uncertain write');
+          const body = JSON.parse(String(init?.body));
+          const data = await executeLegacyEntityBatch({ entities: body.entities, ownerId: body.owner_id, concurrency: body.concurrency, continueOnError: body.continue_on_error,
+            createEntity: async node => Response.json({ type: node.type, data: { ...node, id: INITIATIVE_ID } }) });
+          return Response.json({ data, meta: { batchVersion: body.version, workspaceId: WORKSPACE_ID } });
+        }
+        if (path === '/api/entities' && init?.method === 'POST') { const body = JSON.parse(String(init.body)); return Response.json({ type: body.type, data: { ...body, id: INITIATIVE_ID } }); }
+        return successfulApiResponse(path, init);
+      });
+      worker.sessionContext = { workspaceId: WORKSPACE_ID };
+      apiMocks.fetchContextPreparation.mockResolvedValue({ context_pack: null, context_capsule: null, context_delivery: null, ...(variant === 'old server' ? {} : { workflow_contracts: { legacy_scaffold_batch: LEGACY_SCAFFOLD_BATCH_CAPABILITY } }) });
+      await client.callTool({ name: 'orgx_bootstrap', arguments: { workspace_id: WORKSPACE_ID } });
+      expect(apiMocks.fetchContextPreparation).toHaveBeenCalled();
+      if (variant === 'actor changed') worker.props.userId = 'other-actor';
+      if (variant === 'workspace changed') worker.sessionContext.workspaceId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+      if (variant === 'expired' || variant === 'expired refreshed') {
+        cacheNow += 300001;
+        if (variant === 'expired refreshed') await client.callTool({ name: 'orgx_bootstrap', arguments: { workspace_id: WORKSPACE_ID } });
+      }
+      if (variant === 'run-token scaffold') worker.props.authSource = 'run_token';
+      apiMocks.callOrgxApiJson.mockClear();
+      const result = await client.callTool({ name: variant === 'bulk' ? 'batch_create_entities' : 'scaffold_initiative', arguments: variant === 'bulk'
+        ? { entities: [{ type: 'initiative', title: 'Offline', ref: 'root' }] }
+        : { title: 'Offline', mode: variant === 'draft' ? 'draft' : 'scaffold', response_mode: 'fast_ack', workstreams: [] } });
+      const writes = apiMocks.callOrgxApiJson.mock.calls.filter(([, path, init]) => init?.method === 'POST' && ['/api/entities', '/api/v1/workflows/legacy-scaffold-batch'].includes(path));
+      if (variant === 'draft') expect(writes).toEqual([]);
+      else {
+        expect(writes, JSON.stringify(result)).toHaveLength(1);
+        const legacy = ['run-token scaffold', 'actor changed', 'workspace changed', 'expired', 'old server'].includes(variant);
+        expect(writes[0][1]).toBe(legacy ? '/api/entities' : '/api/v1/workflows/legacy-scaffold-batch');
+        expect(writes[0][3]).toMatchObject({ userId: variant === 'resolved actor' ? '33333333-3333-4333-8333-333333333333' : variant === 'actor changed' ? 'other-actor' : 'directory-reviewer' });
+        if (!legacy) expect(writes[0][3]).toMatchObject({ allowFallback: false });
+      }
+      if (variant === 'uncertain scaffold') {
+        expect(JSON.stringify(result)).toContain('Do not retry');
+        expect(JSON.stringify(result)).not.toContain('Re-run the same prompt');
+      } else expect(result.isError).not.toBe(true);
+    } finally {
+      await Promise.allSettled([client.close(), server.close()]);
+      spies.consoleInfo.mockRestore(); spies.consoleWarn.mockRestore(); spies.consoleError.mockRestore();
     }
   });
 });

@@ -550,3 +550,16 @@ The submission sequence is:
 The current user-supplied findings require separating operations behind `manage_lifecycle`, `orgx_write`, `orgx_act`, `orgx_plan`, `orgx_spawn`, `orgx_decide`, and `approve_agent_work`, and replacing misleading decision tool names. A title-only fix from the older October 5 audit does not address that newer finding. `scaffold_initiative`'s message says further review is required without a specific defect; do not claim that a schema refactor guarantees its clearance. Residual generic holds require the provider review path after concrete defects are fixed.
 
 The available plugin management tools expose installation/search/permissions, not publisher package upload/version creation or provider scans, and the execution environment has no established authenticated portal session. This is an **access/tooling blocker for external scanning**, separate from the identified source issues and from any provider rejection. Deployment and the provider scan remain pending, and no deployment receipt exists. Continue the authorized source/local verification work; never fabricate a created version, deployment, or cleared scan.
+
+
+### Legacy scaffold batch compatibility
+
+Core owns the generated legacy planner, goal-alias preparation, normalization,
+runner and finite profile. `legacyBatchCutover.ts` selects one batch POST only
+from an authenticated cached capability bound to the actor/workspace. Bootstrap
+refreshes discovery through its existing context read. Old app versions and
+excluded forms keep the compatibility path before writes. A failed or malformed
+batch response never falls back or resends. The server remains authoritative for
+all identity, delegation, workspace, referenced records and returned-row scope.
+Goals and objectives are distinct: the legacy `objective_ids` spelling accepts
+goal UUIDs; genuine objective UUIDs do not satisfy a goal invariant.

@@ -1,0 +1,7 @@
+{
+  "contract": "legacy_entity_batch_response_v1",
+  "repository": "hopeatina/orgx",
+  "source": "orgx/packages/contracts/src/legacyEntityBatchResponse.ts",
+  "source_sha256": "f0c2ec376ae4b36598de991bf87d79767e7ff1398fb2c157ec61960a8997ea36",
+  "fixture_sha256": "6ba814caa4e7cff5abd774b9f7757a3f8259da001f4ada129befc2271a3e92a3"
+}

@@ -1,0 +1,616 @@
+[
+  {
+    "name": "initiative full explicit",
+    "node": {
+      "type": "initiative"
+    },
+    "issue": null
+  },
+  {
+    "name": "initiative trimmed type",
+    "node": {
+      "type": " initiative "
+    },
+    "issue": null
+  },
+  {
+    "name": "initiative uppercase type",
+    "node": {
+      "type": "INITIATIVE"
+    },
+    "issue": {
+      "reason": "unsupported_node_type"
+    }
+  },
+  {
+    "name": "workstream full explicit",
+    "node": {
+      "type": "workstream",
+      "initiative_id": "root-id"
+    },
+    "issue": null
+  },
+  {
+    "name": "workstream trimmed type",
+    "node": {
+      "type": " workstream ",
+      "initiative_id": "root-id"
+    },
+    "issue": null
+  },
+  {
+    "name": "workstream uppercase type",
+    "node": {
+      "type": "WORKSTREAM",
+      "initiative_id": "root-id"
+    },
+    "issue": {
+      "reason": "unsupported_node_type"
+    }
+  },
+  {
+    "name": "workstream missing initiative",
+    "node": {
+      "type": "workstream"
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "initiative_id"
+    }
+  },
+  {
+    "name": "workstream ref initiative",
+    "node": {
+      "type": "workstream",
+      "initiative_ref": "local-initiative"
+    },
+    "issue": null
+  },
+  {
+    "name": "workstream object ref initiative",
+    "node": {
+      "type": "workstream",
+      "initiative_id": {
+        "$ref": "local-initiative"
+      }
+    },
+    "issue": null
+  },
+  {
+    "name": "workstream blank initiative",
+    "node": {
+      "type": "workstream",
+      "initiative_id": " "
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "initiative_id"
+    }
+  },
+  {
+    "name": "milestone full explicit",
+    "node": {
+      "type": "milestone",
+      "initiative_id": "root-id",
+      "workstream_id": "work-id"
+    },
+    "issue": null
+  },
+  {
+    "name": "milestone trimmed type",
+    "node": {
+      "type": " milestone ",
+      "initiative_id": "root-id",
+      "workstream_id": "work-id"
+    },
+    "issue": null
+  },
+  {
+    "name": "milestone uppercase type",
+    "node": {
+      "type": "MILESTONE",
+      "initiative_id": "root-id",
+      "workstream_id": "work-id"
+    },
+    "issue": {
+      "reason": "unsupported_node_type"
+    }
+  },
+  {
+    "name": "milestone missing initiative",
+    "node": {
+      "type": "milestone",
+      "workstream_id": "work-id"
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "initiative_id"
+    }
+  },
+  {
+    "name": "milestone ref initiative",
+    "node": {
+      "type": "milestone",
+      "workstream_id": "work-id",
+      "initiative_ref": "local-initiative"
+    },
+    "issue": null
+  },
+  {
+    "name": "milestone object ref initiative",
+    "node": {
+      "type": "milestone",
+      "workstream_id": "work-id",
+      "initiative_id": {
+        "$ref": "local-initiative"
+      }
+    },
+    "issue": null
+  },
+  {
+    "name": "milestone blank initiative",
+    "node": {
+      "type": "milestone",
+      "workstream_id": "work-id",
+      "initiative_id": " "
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "initiative_id"
+    }
+  },
+  {
+    "name": "milestone missing workstream",
+    "node": {
+      "type": "milestone",
+      "initiative_id": "root-id"
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "workstream_id"
+    }
+  },
+  {
+    "name": "milestone ref workstream",
+    "node": {
+      "type": "milestone",
+      "initiative_id": "root-id",
+      "workstream_ref": "local-workstream"
+    },
+    "issue": null
+  },
+  {
+    "name": "milestone object ref workstream",
+    "node": {
+      "type": "milestone",
+      "initiative_id": "root-id",
+      "workstream_id": {
+        "$ref": "local-workstream"
+      }
+    },
+    "issue": null
+  },
+  {
+    "name": "milestone blank workstream",
+    "node": {
+      "type": "milestone",
+      "initiative_id": "root-id",
+      "workstream_id": " "
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "workstream_id"
+    }
+  },
+  {
+    "name": "task full explicit",
+    "node": {
+      "type": "task",
+      "initiative_id": "root-id",
+      "workstream_id": "work-id",
+      "milestone_id": "milestone-id"
+    },
+    "issue": null
+  },
+  {
+    "name": "task trimmed type",
+    "node": {
+      "type": " task ",
+      "initiative_id": "root-id",
+      "workstream_id": "work-id",
+      "milestone_id": "milestone-id"
+    },
+    "issue": null
+  },
+  {
+    "name": "task uppercase type",
+    "node": {
+      "type": "TASK",
+      "initiative_id": "root-id",
+      "workstream_id": "work-id",
+      "milestone_id": "milestone-id"
+    },
+    "issue": {
+      "reason": "unsupported_node_type"
+    }
+  },
+  {
+    "name": "task missing initiative",
+    "node": {
+      "type": "task",
+      "workstream_id": "work-id",
+      "milestone_id": "milestone-id"
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "initiative_id"
+    }
+  },
+  {
+    "name": "task ref initiative",
+    "node": {
+      "type": "task",
+      "workstream_id": "work-id",
+      "milestone_id": "milestone-id",
+      "initiative_ref": "local-initiative"
+    },
+    "issue": null
+  },
+  {
+    "name": "task object ref initiative",
+    "node": {
+      "type": "task",
+      "workstream_id": "work-id",
+      "milestone_id": "milestone-id",
+      "initiative_id": {
+        "$ref": "local-initiative"
+      }
+    },
+    "issue": null
+  },
+  {
+    "name": "task blank initiative",
+    "node": {
+      "type": "task",
+      "workstream_id": "work-id",
+      "milestone_id": "milestone-id",
+      "initiative_id": " "
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "initiative_id"
+    }
+  },
+  {
+    "name": "task missing workstream",
+    "node": {
+      "type": "task",
+      "initiative_id": "root-id",
+      "milestone_id": "milestone-id"
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "workstream_id"
+    }
+  },
+  {
+    "name": "task ref workstream",
+    "node": {
+      "type": "task",
+      "initiative_id": "root-id",
+      "milestone_id": "milestone-id",
+      "workstream_ref": "local-workstream"
+    },
+    "issue": null
+  },
+  {
+    "name": "task object ref workstream",
+    "node": {
+      "type": "task",
+      "initiative_id": "root-id",
+      "milestone_id": "milestone-id",
+      "workstream_id": {
+        "$ref": "local-workstream"
+      }
+    },
+    "issue": null
+  },
+  {
+    "name": "task blank workstream",
+    "node": {
+      "type": "task",
+      "initiative_id": "root-id",
+      "milestone_id": "milestone-id",
+      "workstream_id": " "
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "workstream_id"
+    }
+  },
+  {
+    "name": "task missing milestone",
+    "node": {
+      "type": "task",
+      "initiative_id": "root-id",
+      "workstream_id": "work-id"
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "milestone_id"
+    }
+  },
+  {
+    "name": "task ref milestone",
+    "node": {
+      "type": "task",
+      "initiative_id": "root-id",
+      "workstream_id": "work-id",
+      "milestone_ref": "local-milestone"
+    },
+    "issue": null
+  },
+  {
+    "name": "task object ref milestone",
+    "node": {
+      "type": "task",
+      "initiative_id": "root-id",
+      "workstream_id": "work-id",
+      "milestone_id": {
+        "$ref": "local-milestone"
+      }
+    },
+    "issue": null
+  },
+  {
+    "name": "task blank milestone",
+    "node": {
+      "type": "task",
+      "initiative_id": "root-id",
+      "workstream_id": "work-id",
+      "milestone_id": " "
+    },
+    "issue": {
+      "reason": "implicit_hierarchy",
+      "field": "milestone_id"
+    }
+  },
+  {
+    "name": "goal_ids array/omitted None",
+    "node": {
+      "type": "initiative",
+      "goal_ids": null
+    },
+    "issue": null
+  },
+  {
+    "name": "goal_ids array/omitted []",
+    "node": {
+      "type": "initiative",
+      "goal_ids": []
+    },
+    "issue": null
+  },
+  {
+    "name": "goal_ids array/omitted ['goal-fixture']",
+    "node": {
+      "type": "initiative",
+      "goal_ids": [
+        "goal-fixture"
+      ]
+    },
+    "issue": null
+  },
+  {
+    "name": "goal_ids array/omitted [12]",
+    "node": {
+      "type": "initiative",
+      "goal_ids": [
+        12
+      ]
+    },
+    "issue": null
+  },
+  {
+    "name": "goal_ids scalar goal-fixture",
+    "node": {
+      "type": "initiative",
+      "goal_ids": "goal-fixture"
+    },
+    "issue": {
+      "reason": "non_array_goals",
+      "field": "goal_ids"
+    }
+  },
+  {
+    "name": "goal_ids scalar {}",
+    "node": {
+      "type": "initiative",
+      "goal_ids": {}
+    },
+    "issue": {
+      "reason": "non_array_goals",
+      "field": "goal_ids"
+    }
+  },
+  {
+    "name": "goal_ids scalar 12",
+    "node": {
+      "type": "initiative",
+      "goal_ids": 12
+    },
+    "issue": {
+      "reason": "non_array_goals",
+      "field": "goal_ids"
+    }
+  },
+  {
+    "name": "objective_ids array/omitted None",
+    "node": {
+      "type": "initiative",
+      "objective_ids": null
+    },
+    "issue": null
+  },
+  {
+    "name": "objective_ids array/omitted []",
+    "node": {
+      "type": "initiative",
+      "objective_ids": []
+    },
+    "issue": null
+  },
+  {
+    "name": "objective_ids array/omitted ['goal-fixture']",
+    "node": {
+      "type": "initiative",
+      "objective_ids": [
+        "goal-fixture"
+      ]
+    },
+    "issue": null
+  },
+  {
+    "name": "objective_ids array/omitted [12]",
+    "node": {
+      "type": "initiative",
+      "objective_ids": [
+        12
+      ]
+    },
+    "issue": null
+  },
+  {
+    "name": "objective_ids scalar goal-fixture",
+    "node": {
+      "type": "initiative",
+      "objective_ids": "goal-fixture"
+    },
+    "issue": {
+      "reason": "non_array_goals",
+      "field": "objective_ids"
+    }
+  },
+  {
+    "name": "objective_ids scalar {}",
+    "node": {
+      "type": "initiative",
+      "objective_ids": {}
+    },
+    "issue": {
+      "reason": "non_array_goals",
+      "field": "objective_ids"
+    }
+  },
+  {
+    "name": "objective_ids scalar 12",
+    "node": {
+      "type": "initiative",
+      "objective_ids": 12
+    },
+    "issue": {
+      "reason": "non_array_goals",
+      "field": "objective_ids"
+    }
+  },
+  {
+    "name": "artifact",
+    "node": {
+      "type": "artifact"
+    },
+    "issue": {
+      "reason": "unsupported_node_type"
+    }
+  },
+  {
+    "name": "decision",
+    "node": {
+      "type": "decision"
+    },
+    "issue": {
+      "reason": "unsupported_node_type"
+    }
+  },
+  {
+    "name": "workspace",
+    "node": {
+      "type": "workspace"
+    },
+    "issue": {
+      "reason": "unsupported_node_type"
+    }
+  },
+  {
+    "name": "unknown",
+    "node": {
+      "type": "unknown"
+    },
+    "issue": {
+      "reason": "unsupported_node_type"
+    }
+  },
+  {
+    "name": "malformed 0",
+    "node": null,
+    "issue": {
+      "reason": "invalid_node"
+    }
+  },
+  {
+    "name": "malformed 1",
+    "node": [],
+    "issue": {
+      "reason": "invalid_node"
+    }
+  },
+  {
+    "name": "malformed 2",
+    "node": {},
+    "issue": {
+      "reason": "invalid_node"
+    }
+  },
+  {
+    "name": "malformed 3",
+    "node": "node",
+    "issue": {
+      "reason": "invalid_node"
+    }
+  },
+  {
+    "name": "malformed 4",
+    "node": {
+      "type": null
+    },
+    "issue": {
+      "reason": "invalid_node"
+    }
+  },
+  {
+    "name": "malformed 5",
+    "node": {
+      "type": 12
+    },
+    "issue": {
+      "reason": "invalid_node"
+    }
+  },
+  {
+    "name": "malformed 6",
+    "node": {
+      "type": " "
+    },
+    "issue": {
+      "reason": "invalid_node"
+    }
+  },
+  {
+    "name": "shape is not authorization",
+    "node": {
+      "type": "initiative",
+      "owner_id": "foreign-owner-fixture",
+      "workspace_id": "foreign-workspace-fixture"
+    },
+    "issue": null
+  }
+]

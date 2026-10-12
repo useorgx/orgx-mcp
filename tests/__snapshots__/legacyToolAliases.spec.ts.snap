@@ -219,7 +219,7 @@ exports[`listed tool surfaces > profile "commander" lists byte-identical tool de
   "orgx_widget_decide": "747c88d2e0bc8fbe",
   "orgx_write": "21b53305611befd1",
   "resume_agent_run": "79289e7616445902",
-  "scaffold_initiative": "21fd5da8fea984b6",
+  "scaffold_initiative": "d648a40f14bb0ebe",
 }
 `;
 
@@ -484,7 +484,7 @@ exports[`listed tool surfaces > profile "full" lists byte-identical tool descrip
   "resume_plan_session": "b836de74a1f20d0a",
   "review_artifact": "326e48293c3f656d",
   "save_artifact": "a79f894f98f20294",
-  "scaffold_initiative": "21fd5da8fea984b6",
+  "scaffold_initiative": "d648a40f14bb0ebe",
   "score_next_up_queue": "48c368c412cb805e",
   "scoring_config": "978827eec8a0dbc8",
   "spawn_agent_task": "52f15eef9aa07f4b",
@@ -560,7 +560,7 @@ exports[`listed tool surfaces > profile "legacy" lists byte-identical tool descr
   "request_independent_artifact_review": "370116328b77e2b5",
   "resume_agent_run": "79289e7616445902",
   "review_artifact": "326e48293c3f656d",
-  "scaffold_initiative": "21fd5da8fea984b6",
+  "scaffold_initiative": "d648a40f14bb0ebe",
   "spawn_agent_task": "52f15eef9aa07f4b",
   "track_project_progress": "b5dab2cf71a40ccc",
 }
@@ -636,7 +636,7 @@ exports[`listed tool surfaces > profile "planner" lists byte-identical tool desc
   "orgx_widget_decide": "747c88d2e0bc8fbe",
   "orgx_write": "21b53305611befd1",
   "resume_agent_run": "79289e7616445902",
-  "scaffold_initiative": "21fd5da8fea984b6",
+  "scaffold_initiative": "d648a40f14bb0ebe",
 }
 `;
 
