@@ -16,7 +16,9 @@ The original response is returned without waiting for telemetry delivery.
 | Property | Meaning |
 |---|---|
 | `tool_id`, `tool_family` | Selected tool and stable functional family |
-| `status` | `success` or `error`, including HTTP-200 MCP logical failures |
+| `status` | Transport/response `success` or `error`, including HTTP-200 logical failures |
+| `event_outcome` | `success` only for an observed semantic result; `failure` for errors; `unknown` when the result is not observed |
+| `identity_namespace`, `telemetry_audience` | Canonical account/service identity and explicit classification; unknown is not external |
 | `mcp_logical_error` | True for JSON-RPC errors, `CallToolResult.isError`, `structuredContent.ok=false`, or a non-empty structured error without an explicit success marker |
 | `error_code`, `error_kind` | Bounded machine-readable failure labels; no raw error prose |
 | `source_client`, `profile` | Normalized client (including OpenCode) and effective MCP tool profile after fail-closed negotiation |
@@ -43,12 +45,17 @@ available.
 All examples use the single canonical event and `journey_phase='complete'` so
 legacy or future phase events cannot double-count invocations.
 
+See [the cross-product contract](posthog-cross-product-contract.md) for canonical
+identity, cohort filters, schema version and rollout gates. New success rates
+require `telemetry_schema_version='2026-10-12'`; legacy events stay separate.
+
 ### 1. Per-tool call volume and logical success
 
 ```sql
 SELECT properties.tool_id AS tool_id,
        count() AS calls,
-       countIf(properties.status = 'success') AS successes,
+       countIf(properties.event_outcome = 'success') AS successes,
+       countIf(properties.event_outcome = 'unknown') AS unobserved,
        countIf(properties.status = 'error') AS errors,
        round(100.0 * successes / nullif(calls, 0), 1) AS success_pct
   FROM events

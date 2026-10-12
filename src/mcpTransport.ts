@@ -716,7 +716,7 @@ async function captureMcpToolCallVisibility<Env>(
     resolvedErrorCode || observation.isError || response.status >= 400
       ? 'error'
       : 'success';
-  const distinctId = auth.userId ?? resolveAnonymousDistinctId(ctx);
+  const distinctId = resolveAuthenticatedOrgxUserId(auth, asRecord(ctx.props)) ?? auth.userId ?? resolveAnonymousDistinctId(ctx);
   const { metadata, workspaceId, sourceClient } =
     sanitizeToolCallMetadata(toolCall);
 
@@ -768,7 +768,9 @@ async function captureMcpToolCallVisibility<Env>(
       outcome: status === 'success' && !observation.logicalResultObserved ? 'attempt' : status,
     }),
     ...metadata,
-    request_uuid: crypto.randomUUID(),
+    request_uuid: response.headers.get('x-orgx-request-id') ?? crypto.randomUUID(),
+    trace_id: response.headers.get('x-orgx-trace-id'),
+    span_id: response.headers.get('x-orgx-span-id'),
     http_status: response.status,
     journey_phase: 'complete',
     auth_ms: journey.authMs,
@@ -823,7 +825,9 @@ async function captureMcpToolCallVisibility<Env>(
       },
     },
     event: 'mcp_tool_invocation',
+    optOut: asRecord(ctx.props).telemetryOptOut === true,
     distinctId,
+    workspaceId: pickString(asRecord(ctx.props).workspace_id),
     properties: {
       ...transportMetadata,
       tool_id: toolCall.toolName,
@@ -887,7 +891,7 @@ function captureDeprecatedToolTelemetry<Env>(
 ): void {
   if (!warning) return;
 
-  const distinctId = auth.userId ?? resolveAnonymousDistinctId(ctx);
+  const distinctId = resolveAuthenticatedOrgxUserId(auth, asRecord(ctx.props)) ?? auth.userId ?? resolveAnonymousDistinctId(ctx);
   captureWorkerPosthogEvent({
     env: env as PosthogTelemetryEnv,
     ctx,
@@ -1014,7 +1018,7 @@ export async function handleMcpRequest<Env, Props>(
   if ('response' in auth && auth.response) {
     if (auth.userId) {
       const rejected = await normalizeRequestBody(request, connectionProfile, undefined, false);
-      const rejectedCtx = { ...ctx, props: { ...asRecord(ctx.props), userId: auth.userId, operationContractVersion: 'unknown' } };
+      const rejectedCtx = { ...ctx, props: { ...asRecord(ctx.props), userId: auth.userId, ...(request.headers.get('dnt') === '1' ? { telemetryOptOut: true } : {}), operationContractVersion: 'unknown' } };
       ctx.waitUntil?.(captureMcpToolCallsVisibility(env, rejectedCtx as ExecutionContextWithProps<unknown>, auth,
         rejected.toolCalls ?? [], auth.response, { requestStartedAt, authMs, normalizationMs: 0, handlerMs: 0,
           responseHeadersMs: Math.max(0, Date.now() - requestStartedAt), profile: connectionProfile,
@@ -1029,10 +1033,12 @@ export async function handleMcpRequest<Env, Props>(
   const nextProps: Record<string, unknown> = {
     ...existingProps,
     userId: auth.userId,
+    ...(request.headers.get('dnt') === '1' ? { telemetryOptOut: true } : {}),
     scope: auth.scope,
     email: auth.email,
     profile: connectionProfile,
   };
+  if (request.headers.get('dnt') !== '1') delete nextProps.telemetryOptOut;
   if (orgxUserId) nextProps.orgxUserId = orgxUserId;
   else delete nextProps.orgxUserId;
   // Reject stale sessions before dispatch; fresh sessions import the current catalog.
@@ -1217,9 +1223,11 @@ export async function handleMcpWebSocket<Env, Props>(
   const props: Record<string, unknown> = {
     ...existingProps,
     userId: auth.userId,
+    ...(request.headers.get('dnt') === '1' ? { telemetryOptOut: true } : {}),
     scope: auth.scope,
     email: auth.email,
   };
+  if (request.headers.get('dnt') !== '1') delete props.telemetryOptOut;
   if (orgxUserId) props.orgxUserId = orgxUserId;
   else delete props.orgxUserId;
   const ctxWithProps = ctx as ExecutionContextWithProps<Props>;
