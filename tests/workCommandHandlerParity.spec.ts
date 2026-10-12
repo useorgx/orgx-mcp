@@ -85,6 +85,7 @@ describe('actual MCP work command response parity', () => {
   it.each([
     { name: 'orgx_create_work', arguments: { title: 'Partial hierarchy', initiative_id: workspaceId } },
     { name: 'orgx_complete_work', arguments: { task_id: taskId, version_token: '' } },
+    { name: 'orgx_complete_work', arguments: { task_id: taskId } },
     { name: 'orgx_complete_work', arguments: { task_id: taskId, version_token: 'token', actual_hours: -1 } },
   ])('refuses invalid registered input before a request: $name', async (request) => {
     callApi.mockReset();
