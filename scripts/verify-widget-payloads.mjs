@@ -21,10 +21,10 @@ try {
         // The kit-built card: its receipt rows replace the old dispatch spine.
         await page.locator('.wcard[data-state] .rows ox-receipt-row').first().waitFor();
         const text = await renderedText(page.locator('#content'));
-        assert.match(text, /No agent work was dispatched/);
+        assert.match(text, /Nothing (?:was started|has started|started)/);
         assert.doesNotMatch(text, /Queued|Routing pending|Sync time unavailable|Awaiting receipt ID|Open execution/i);
         assert.equal(await page.locator('.wcard').getAttribute('data-state'), action === 'guard' ? 'blocked' : 'preflight');
-        if (action === 'guard') assert.match(text, /Dispatch blocked/i);
+        if (action === 'guard') assert.match(text, /Can’t run|Dispatch blocked/i);
         await page.screenshot({ path: `${output}/${action}-${theme}-${width}.png`, fullPage: true });
         await page.close(); checks++;
       }
@@ -65,7 +65,7 @@ try {
     await page.goto(`${origin}/widgets/agent-status.html?demo=true&theme=dark`);
     await page.locator('[data-agent-tab]').first().waitFor();
     await page.locator('[data-agent-tab]').nth(1).click();
-    assert.equal(await page.locator('[data-agent-tab]').nth(1).getAttribute('aria-selected'), 'true');
+    assert.equal(await page.locator('[data-agent-tab]').nth(1).getAttribute('aria-pressed'), 'true');
     await page.locator('[data-action="toggle-details"]').click();
     assert.equal(await page.locator('[data-action="toggle-details"]').getAttribute('aria-expanded'), 'true');
     await page.goto(`${origin}/widgets/morning-brief.html?demo=true&theme=dark`);

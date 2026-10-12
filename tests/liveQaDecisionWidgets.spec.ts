@@ -346,6 +346,23 @@ describe('B4 · short headlines', () => {
     expect(variant('.dq-narrow')).toBe('1 here · 25 across the workspace');
     expect(variant('.dq-wide')).toBe('1 here · 25 in workspace');
     expect(document.querySelector('.dq-more')!.textContent).toContain('24 more across the workspace in OrgX');
+    expect(new URL(document.querySelector<HTMLAnchorElement>('.dq-more')!.href).searchParams.get('center')).toBe('w');
+  });
+
+  it('decisions: more in an initiative opens that initiative instead of the general queue', async () => {
+    ensureCssEscape();
+    const initiativeId = '33333333-3333-4333-8333-333333333333';
+    mountWidget('decisions', {
+      payload: {
+        decisions: [plainDecision(D1, 'Ship the pricing page?')],
+        pending_decisions_scope: { level: 'initiative', initiative_id: initiativeId, workspace_id: 'w', total: 15, unit: 'review_packet' },
+      },
+      callTool: vi.fn(() => Promise.resolve({})),
+    });
+    await vi.waitFor(() => expect(document.querySelector('.dq-more')).not.toBeNull());
+    const link = document.querySelector<HTMLAnchorElement>('.dq-more')!;
+    expect(link.textContent).toContain('14 more in this initiative');
+    expect(link.href).toBe('https://useorgx.com/live/' + initiativeId);
   });
 
   it('decisions: the headline is clamped to about three lines in CSS, never cut in the text', () => {
