@@ -83,8 +83,10 @@ try {
     else await page.locator('[data-section-index="1"]').click();
     assert.match(await page.locator('[data-section-body]').innerText(), /Answer Room/);
     await page.goto(`${origin}/widgets/initiative-pulse.html?demo=true&theme=dark`);
-    await page.locator('.pulse-attention').click();
-    assert.equal(await page.locator('.pulse-attention').getAttribute('aria-expanded'), 'true');
+    const needsYou = page.locator('.pulse-rail-button[data-panel-key="actions"]');
+    assert.equal(await page.locator('ox-attention-line button').count(), 0);
+    await needsYou.click();
+    assert.equal(await needsYou.getAttribute('aria-expanded'), 'true');
     await page.close(); checks += 6;
   }
   console.log(`${checks} payload, pagination, and disclosure cases passed`);

@@ -70,14 +70,6 @@
       .pulse-shell-card .ox-card[data-edge="mute"] { --edge-rgb: var(--ox-edge-mute-rgb); }
 
       .pulse-head { border-bottom: 1px solid var(--ox-border); --ox-attention-padding: 0 8px 0 20px; }
-      .pulse-attention {
-        display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: 0; padding: 0 12px;
-        border-radius: 9px; border: 1px solid var(--ox-action-border); background: var(--ox-action); color: var(--ox-action-fg);
-        font-size: 12.5px; font-weight: 650; white-space: nowrap; cursor: pointer;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
-      }
-      .pulse-attention svg { width: 13px; height: 13px; transition: transform 160ms ease; }
-      .pulse-attention.is-open svg { transform: rotate(180deg); }
 
       .pulse-shell { padding: 18px 22px 8px; display: flex; flex-direction: column; gap: 14px; }
 
@@ -237,7 +229,7 @@
 
       .sk { display: block; border-radius: 6px; background: var(--ox-skeleton, rgba(127, 127, 127, 0.12)); }
 
-      .pulse-attention:focus-visible, .pulse-rail-button:focus-visible, .deep-link:focus-visible {
+      .pulse-rail-button:focus-visible, .deep-link:focus-visible {
         outline: 2px solid var(--ox-focus, var(--ox-teal)); outline-offset: 2px; border-radius: 8px;
       }
 
@@ -1100,38 +1092,6 @@
         return items.slice(0, 5);
       };
 
-      var buildAttentionBanner = function (pulseData, items) {
-        if (!items.length) return null;
-        var reviewCount = (pulseData.recent_artifacts || []).filter(awaitsReview).length;
-        if ((pulseData.blockers || []).length) {
-          return {
-            eyebrow:
-              (pulseData.blockers || []).length +
-              " blocker" +
-              ((pulseData.blockers || []).length === 1 ? "" : "s") +
-              " slowing momentum",
-            headline: items[0].label,
-          };
-        }
-        if (pulseData.pending_decisions > 0) {
-          return {
-            eyebrow:
-              pulseData.pending_decisions +
-              " decision" +
-              (pulseData.pending_decisions === 1 ? "" : "s") +
-              " waiting on you",
-            headline: items[0].label,
-          };
-        }
-        return {
-          eyebrow:
-            reviewCount +
-            " output item" +
-            (reviewCount === 1 ? "" : "s") +
-            " waiting for review",
-          headline: items[0].label,
-        };
-      };
 
 
 
@@ -1669,12 +1629,6 @@
           }
         );
 
-        var attentionBanner = document.querySelector(".pulse-attention");
-        if (attentionBanner) {
-          attentionBanner.classList.toggle("is-open", activePanel === "actions");
-          attentionBanner.setAttribute("aria-expanded", String(activePanel === "actions"));
-        }
-
         var panelHost = shell.querySelector("#pulse-panel-host");
         if (!panelHost) return;
         animatePanelHost(
@@ -1787,8 +1741,7 @@
         }).length;
 
         var attentionItems = buildAttentionItems(pulse, dashboardUrl);
-        var attentionBanner = buildAttentionBanner(pulse, attentionItems);
-        // One number for the header, the rail and the Review button.
+        // One number for the header and the Needs you tab.
         var needsCount = attentionItems.length ? countNeedsYou(pulse) : 0;
 
 
@@ -1896,7 +1849,6 @@
           : "Nothing needs you";
         var edge = !waiting ? "teal" : lineTone === "blocking" ? "red" : "amber";
         var tileTone = lineTone === "blocking" ? "red" : waiting ? "amber" : "teal";
-        var actionsOpen = uiState.panel === "actions";
 
         var footerState = isStale ? "stale" : "fresh";
         var footerHeading = isStale ? "Out of date" : "Synced " + syncLabel;
@@ -1909,11 +1861,6 @@
               '<div class="pulse-head">' +
                 '<ox-attention-line tone="' + lineTone + '" count="' + waiting + '">' +
                   "<span>" + lineHtml + "</span>" +
-                  (attentionBanner
-                    ? '<button slot="action" type="button" class="pulse-attention' + (actionsOpen ? " is-open" : "") +
-                      '" onclick="togglePulsePanel(\'actions\', this)" aria-controls="pulse-panel-host" aria-expanded="' + String(actionsOpen) +
-                      '" title="' + escapeHtml(attentionBanner.headline) + '">Review ' + escapeHtml(String(waiting)) + " " + icons.chevronDown(13) + "</button>"
-                    : "") +
                 "</ox-attention-line>" +
               "</div>" +
               '<div class="pulse-shell">' +

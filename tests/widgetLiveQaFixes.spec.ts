@@ -112,7 +112,7 @@ describe('initiative pulse: needs-you holds only what waits on a person (C2, C3)
     expect(document.querySelector('.pulse-attention')).toBeNull();
   });
 
-  it('counts blockers, decisions and reviews the same in the header, rail and button', async () => {
+  it('counts attention in the header and opens it through the Needs you tab', async () => {
     mountWidget('initiative-pulse', {
       payload: qaPulse({
         pending_decisions: 3,
@@ -127,8 +127,18 @@ describe('initiative pulse: needs-you holds only what waits on a person (C2, C3)
     // 1 blocker + 3 decisions + 1 review; the draft and the next steps do not count.
     expect(railValue('actions')).toBe('5');
     expect(document.querySelector('ox-attention-line')!.getAttribute('count')).toBe('5');
-    expect(document.querySelector('.pulse-attention')!.textContent).toContain('Review 5');
+    expect(document.querySelector('ox-attention-line button')).toBeNull();
     expect(pageText()).toContain('5 need you');
+    const needsYou = document.querySelector<HTMLButtonElement>('.pulse-rail-button[data-panel-key="actions"]')!;
+    const toggle = (window as unknown as { togglePulsePanel(key: string, trigger: HTMLButtonElement): void }).togglePulsePanel;
+    toggle('actions', needsYou);
+    await settle();
+    expect(needsYou.getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement).toBe(needsYou);
+    expect(document.querySelector('#pulse-panel-host')!.textContent).toContain('Waiting on pricing approval');
+    toggle('actions', needsYou);
+    await settle();
+    expect(needsYou.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('never shows a tool identifier in next-step copy', async () => {

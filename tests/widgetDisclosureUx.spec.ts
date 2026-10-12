@@ -33,7 +33,8 @@ describe('widget disclosure UX', () => {
     const source = readWidget('initiative-pulse');
 
     expect(source).toContain('window.togglePulsePanel = function (panel, trigger)');
-    expect(source).toContain("togglePulsePanel(\\'actions\\', this)");
+    expect(source).toContain('data-panel-key=');
+    expect(source).toContain("\\', this)");
     expect(source).toContain('trigger.focus();');
   });
 
