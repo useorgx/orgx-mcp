@@ -2756,7 +2756,12 @@
       const more = Math.max(others.length - shown.length, scoped ? scoped.total - pendingDecisions().length : 0);
       const where = scoped ? (scoped.level === 'initiative' ? ' in this initiative' : ' across the workspace') : '';
       const about = scoped && !scoped.exact && more > others.length - shown.length ? 'About ' : '';
-      return `<nav class="dq-queue" aria-label="Other decisions waiting on you">${rows}${more > 0 ? `<a class="ox-open dq-more" ${linkAttrs(buildDecisionsUrl())}${about ? ' title="The count may include duplicates"' : ''}>${about}${more} more${escapeHtml(where)} in OrgX</a>` : ''}</nav>`;
+      const rawScope = data && data.pending_decisions_scope || {};
+      const initiativeId = firstString(rawScope.initiative_id);
+      const moreUrl = scoped && scoped.level === 'initiative' && initiativeId
+        ? window.OrgXLinks.live(initiativeId)
+        : window.OrgXLinks.decisions({ status: 'pending', center: firstString(rawScope.workspace_id) });
+      return `<nav class="dq-queue" aria-label="Other decisions waiting on you">${rows}${more > 0 ? `<a class="ox-open dq-more" ${linkAttrs(moreUrl)}${about ? ' title="The count may include duplicates"' : ''}>${about}${more} more${escapeHtml(where)} in OrgX</a>` : ''}</nav>`;
     };
 
     var historyHtml = (current) => {
