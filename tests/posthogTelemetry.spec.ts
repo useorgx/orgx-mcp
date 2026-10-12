@@ -64,7 +64,7 @@ it('bounds concurrent events and classifies unobserved HTTP success as unknown',
   const fetchMock = vi.fn(() => response); vi.stubGlobal('fetch', fetchMock);
   const ctx = { waitUntil: vi.fn() }; const env = { POSTHOG_KEY: 'phc_test' };
   const before = workerTelemetryHealth.dropped;
-  for (let i = 0; i < 110; i++) captureWorkerPosthogEvent({ env, ctx, event: 'mcp_tool_invocation', distinctId: '11111111-1111-4111-8111-111111111111', properties: { status: 'success', mcp_response_observed: false } });
+  for (let i = 0; i < 110; i++) captureWorkerPosthogEvent({ env, ctx: { waitUntil: ctx.waitUntil }, queueOwner: ctx, event: 'mcp_tool_invocation', distinctId: '11111111-1111-4111-8111-111111111111', properties: { status: 'success', mcp_response_observed: false } });
   expect(fetchMock).toHaveBeenCalledTimes(100); expect(workerTelemetryHealth.dropped - before).toBe(10);
   const payload = JSON.parse(String((fetchMock.mock.calls[0] as any)[1].body));
   expect(payload.batch[0].properties.event_outcome).toBe('unknown');

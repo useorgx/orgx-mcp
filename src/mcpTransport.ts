@@ -646,18 +646,23 @@ async function observeMcpResponse(
 }
 
 function observationForBatchCall(observation: McpResponseObservation, toolCall: McpToolCallTelemetry, responseStatus: number): McpResponseObservation {
-  const { isError: _isError, errorCode: _errorCode, errorKind: _errorKind, ...timing } = observation;
+  const { isError: _isError, errorCode: _errorCode, errorKind: _errorKind,
+    validationIssueCount: _validationIssueCount, validationIssueCodes: _validationIssueCodes,
+    validationIssuesTruncated: _validationIssuesTruncated, ...timing } = observation;
   const records = observation.logicalResponseRecords ?? [];
   const matched = toolCall.jsonrpcId === undefined ? undefined : records.find((record) => {
     const id = asRecord(record).id;
     return typeof id === typeof toolCall.jsonrpcId && id === toolCall.jsonrpcId;
   });
   const globalError = records.find((record) => asRecord(record).id === null && Object.keys(asRecord(asRecord(record).error)).length > 0);
-  const logical = matched !== undefined ? logicalResultFromRecord(matched)
+  const logical: McpLogicalResult = matched !== undefined ? logicalResultFromRecord(matched)
     : globalError !== undefined ? logicalResultFromRecord(globalError)
       : responseStatus === 202 || responseStatus === 204 ? { isError: false }
       : { isError: true, errorCode: 'mcp_response_missing', errorKind: 'mcp_response_missing' };
-  return { ...timing, ...logical, logicalResultObserved: matched !== undefined || globalError !== undefined };
+  const { validationIssueCount, validationIssueCodes, validationIssuesTruncated, ...outcome } = logical;
+  return { ...timing, ...outcome,
+    ...(matched !== undefined ? { validationIssueCount, validationIssueCodes, validationIssuesTruncated } : {}),
+    logicalResultObserved: matched !== undefined || globalError !== undefined };
 }
 
 function normalizeTelemetrySourceClient(
@@ -830,6 +835,7 @@ async function captureMcpToolCallVisibility<Env>(
       },
     },
     event: 'mcp_tool_invocation',
+    queueOwner: ctx,
     optOut: asRecord(ctx.props).telemetryOptOut === true,
     distinctId,
     workspaceId: pickString(asRecord(ctx.props).workspace_id),

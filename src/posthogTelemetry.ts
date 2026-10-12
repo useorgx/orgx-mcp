@@ -44,12 +44,14 @@ export function captureWorkerPosthogEvent(params: {
   /** Membership/credential-admitted scope only; never raw tool arguments. */
   workspaceId?: string;
   optOut?: boolean;
+  /** Actual request/lifecycle owner when delivery uses an adapter context. */
+  queueOwner?: object;
 }): void {
   try {
     const apiKey = params.env.POSTHOG_KEY;
     if (params.optOut || (params.ctx?.props as { telemetryOptOut?: unknown } | undefined)?.telemetryOptOut === true || !apiKey || apiKey === 'test-posthog-key' || params.env.ORGX_TELEMETRY_DISABLED === '1') return;
     if (!/^[a-z][a-z0-9_]{1,100}$/.test(params.event)) return;
-    const owner = params.ctx ?? params.env;
+    const owner = params.queueOwner ?? params.ctx ?? params.env;
     const count = pending.get(owner) ?? 0;
     if (count >= TELEMETRY_LIMITS.maxQueueEvents) { workerTelemetryHealth.dropped++; return; }
     const accountId = canonicalAccountId(params.distinctId);
