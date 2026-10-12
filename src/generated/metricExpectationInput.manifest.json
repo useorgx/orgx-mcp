@@ -2,6 +2,6 @@
   "contract": "metric_registration_input_v1",
   "repository": "hopeatina/orgx",
   "source": "orgx/packages/contracts/src/metricExpectationInput.ts",
-  "source_sha256": "f323a52b9ef0bd233f9b4c89a41b9e8cb839adfa0250600c20f719a6c21ba0c4",
+  "source_sha256": "52bda41cb92c07179627950442706860970858281bc55f1877e9ebe443e25048",
   "fixture_sha256": "3f9fdfde733c8f8341cd46f44e3c102ff4b119330e7aa1070a39ad5e1b9ee831"
 }
