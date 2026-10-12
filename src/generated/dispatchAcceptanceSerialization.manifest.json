@@ -2,6 +2,6 @@
   "contract": "dispatch_acceptance_serialization_v1",
   "repository": "hopeatina/orgx",
   "source": "orgx/packages/contracts/src/dispatchAcceptanceSerialization.ts",
-  "source_sha256": "167bff29bd48e4951b782d51cfe72b98a9ff0f99cbf3db05c95c1d61c593d65e",
+  "source_sha256": "fd9e5ae9e74e37cf3b9cf79b29571b9282a1b52820a5ee0ab350748d0a9514b5",
   "fixture_sha256": "667fa13811084c895ef74e3f95d72fdc74be2cb6e0172f05ad4887b8f38b4c53"
 }
