@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-11T17:48:34.895Z",
-  "sourceHash": "dab7426c21c75488",
+  "generatedAt": "2026-10-12T04:46:36.663Z",
+  "sourceHash": "a15556e56f76a1b2",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -14796,9 +14796,7 @@
                   "type": "object",
                   "properties": {
                     "name": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 240
+                      "$ref": "#/properties/plan/properties/initiative/properties/title"
                     },
                     "goal": {
                       "anyOf": [
@@ -14845,9 +14843,7 @@
                     "depends_on": {
                       "type": "array",
                       "items": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 240
+                        "$ref": "#/properties/plan/properties/initiative/properties/title"
                       },
                       "maxItems": 20
                     },
@@ -14860,30 +14856,13 @@
                       },
                       "maxItems": 20
                     },
-                    "expected_tokens": {
-                      "type": "integer",
-                      "exclusiveMinimum": 0,
-                      "maximum": 1000000
-                    },
-                    "expected_duration_hours": {
-                      "type": "number",
-                      "exclusiveMinimum": 0,
-                      "maximum": 300
-                    },
-                    "expected_budget_usd": {
-                      "type": "number",
-                      "exclusiveMinimum": 0,
-                      "maximum": 1000000
-                    },
                     "milestones": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
                           "title": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 240
+                            "$ref": "#/properties/plan/properties/initiative/properties/title"
                           },
                           "description": {
                             "anyOf": [
@@ -14902,9 +14881,7 @@
                               "type": "object",
                               "properties": {
                                 "title": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 240
+                                  "$ref": "#/properties/plan/properties/initiative/properties/title"
                                 },
                                 "detail": {
                                   "anyOf": [
@@ -14926,28 +14903,28 @@
                                     "implement"
                                   ]
                                 },
-                                "depends_on": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 240
-                                  },
-                                  "maxItems": 15
-                                },
                                 "agent_id": {
                                   "type": "string",
                                   "minLength": 1,
                                   "maxLength": 120
                                 },
+                                "depends_on": {
+                                  "$ref": "#/properties/plan/properties/workstreams/items/properties/depends_on"
+                                },
                                 "expected_tokens": {
-                                  "$ref": "#/properties/plan/properties/workstreams/items/properties/expected_tokens"
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 1000000
                                 },
                                 "expected_duration_hours": {
-                                  "$ref": "#/properties/plan/properties/workstreams/items/properties/expected_duration_hours"
+                                  "type": "number",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 300
                                 },
                                 "expected_budget_usd": {
-                                  "$ref": "#/properties/plan/properties/workstreams/items/properties/expected_budget_usd"
+                                  "type": "number",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 1000000
                                 }
                               },
                               "required": [
@@ -14964,6 +14941,15 @@
                         "additionalProperties": false
                       },
                       "maxItems": 10
+                    },
+                    "expected_tokens": {
+                      "$ref": "#/properties/plan/properties/workstreams/items/properties/milestones/items/properties/tasks/items/properties/expected_tokens"
+                    },
+                    "expected_duration_hours": {
+                      "$ref": "#/properties/plan/properties/workstreams/items/properties/milestones/items/properties/tasks/items/properties/expected_duration_hours"
+                    },
+                    "expected_budget_usd": {
+                      "$ref": "#/properties/plan/properties/workstreams/items/properties/milestones/items/properties/tasks/items/properties/expected_budget_usd"
                     }
                   },
                   "required": [
@@ -14985,10 +14971,6 @@
           "source_evidence": {
             "type": "object",
             "properties": {
-              "target_url": {
-                "type": "string",
-                "format": "uri"
-              },
               "verification_state": {
                 "type": "string",
                 "enum": [
@@ -14997,21 +14979,37 @@
                   "unverified"
                 ]
               },
+              "target_url": {
+                "type": "string",
+                "format": "uri",
+                "maxLength": 2000
+              },
               "evidence_urls": {
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "format": "uri"
-                }
+                  "format": "uri",
+                  "maxLength": 2000
+                },
+                "maxItems": 20
+              },
+              "source_url": {
+                "type": "string",
+                "format": "uri",
+                "maxLength": 2000
+              },
+              "verified_by": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
               },
               "notes": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               }
             },
             "required": [
-              "target_url",
-              "verification_state",
-              "evidence_urls"
+              "verification_state"
             ],
             "additionalProperties": false
           },
@@ -18302,9 +18300,7 @@
                   "type": "object",
                   "properties": {
                     "name": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 240
+                      "$ref": "#/properties/plan/properties/initiative/properties/title"
                     },
                     "goal": {
                       "anyOf": [
@@ -18351,9 +18347,7 @@
                     "depends_on": {
                       "type": "array",
                       "items": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 240
+                        "$ref": "#/properties/plan/properties/initiative/properties/title"
                       },
                       "maxItems": 20
                     },
@@ -18366,30 +18360,13 @@
                       },
                       "maxItems": 20
                     },
-                    "expected_tokens": {
-                      "type": "integer",
-                      "exclusiveMinimum": 0,
-                      "maximum": 1000000
-                    },
-                    "expected_duration_hours": {
-                      "type": "number",
-                      "exclusiveMinimum": 0,
-                      "maximum": 300
-                    },
-                    "expected_budget_usd": {
-                      "type": "number",
-                      "exclusiveMinimum": 0,
-                      "maximum": 1000000
-                    },
                     "milestones": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
                           "title": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 240
+                            "$ref": "#/properties/plan/properties/initiative/properties/title"
                           },
                           "description": {
                             "anyOf": [
@@ -18408,9 +18385,7 @@
                               "type": "object",
                               "properties": {
                                 "title": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 240
+                                  "$ref": "#/properties/plan/properties/initiative/properties/title"
                                 },
                                 "detail": {
                                   "anyOf": [
@@ -18432,28 +18407,28 @@
                                     "implement"
                                   ]
                                 },
-                                "depends_on": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 240
-                                  },
-                                  "maxItems": 15
-                                },
                                 "agent_id": {
                                   "type": "string",
                                   "minLength": 1,
                                   "maxLength": 120
                                 },
+                                "depends_on": {
+                                  "$ref": "#/properties/plan/properties/workstreams/items/properties/depends_on"
+                                },
                                 "expected_tokens": {
-                                  "$ref": "#/properties/plan/properties/workstreams/items/properties/expected_tokens"
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 1000000
                                 },
                                 "expected_duration_hours": {
-                                  "$ref": "#/properties/plan/properties/workstreams/items/properties/expected_duration_hours"
+                                  "type": "number",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 300
                                 },
                                 "expected_budget_usd": {
-                                  "$ref": "#/properties/plan/properties/workstreams/items/properties/expected_budget_usd"
+                                  "type": "number",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 1000000
                                 }
                               },
                               "required": [
@@ -18470,6 +18445,15 @@
                         "additionalProperties": false
                       },
                       "maxItems": 10
+                    },
+                    "expected_tokens": {
+                      "$ref": "#/properties/plan/properties/workstreams/items/properties/milestones/items/properties/tasks/items/properties/expected_tokens"
+                    },
+                    "expected_duration_hours": {
+                      "$ref": "#/properties/plan/properties/workstreams/items/properties/milestones/items/properties/tasks/items/properties/expected_duration_hours"
+                    },
+                    "expected_budget_usd": {
+                      "$ref": "#/properties/plan/properties/workstreams/items/properties/milestones/items/properties/tasks/items/properties/expected_budget_usd"
                     }
                   },
                   "required": [
@@ -18491,10 +18475,6 @@
           "source_evidence": {
             "type": "object",
             "properties": {
-              "target_url": {
-                "type": "string",
-                "format": "uri"
-              },
               "verification_state": {
                 "type": "string",
                 "enum": [
@@ -18503,21 +18483,37 @@
                   "unverified"
                 ]
               },
+              "target_url": {
+                "type": "string",
+                "format": "uri",
+                "maxLength": 2000
+              },
               "evidence_urls": {
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "format": "uri"
-                }
+                  "format": "uri",
+                  "maxLength": 2000
+                },
+                "maxItems": 20
+              },
+              "source_url": {
+                "type": "string",
+                "format": "uri",
+                "maxLength": 2000
+              },
+              "verified_by": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
               },
               "notes": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4000
               }
             },
             "required": [
-              "target_url",
-              "verification_state",
-              "evidence_urls"
+              "verification_state"
             ],
             "additionalProperties": false
           }

@@ -1,0 +1,7 @@
+{
+  "contract": "durable_delegation_v2",
+  "repository": "hopeatina/orgx",
+  "source": "orgx/packages/contracts/src/durableDelegation.ts",
+  "source_sha256": "1b096a5fee01902341508b3bd372e4332f8d9ad380ba8c3e943351a6022fa0c4",
+  "fixture_sha256": "b4782f05cbd335893a73335b701e66a22cdcf51c9029c0dfb4cecbc2b77b1c7b"
+}

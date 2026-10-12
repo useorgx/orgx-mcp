@@ -1,0 +1,7 @@
+{
+  "contract": "scaffold_workflow_v1",
+  "repository": "hopeatina/orgx",
+  "source": "orgx/packages/contracts/src/scaffoldWorkflow.ts",
+  "source_sha256": "459051406b81040f19b4bf1875eb5362530ca014683380afb93e254220f8e876",
+  "fixture_sha256": "c95ff208033cc61193f682d27d15a62e29faf851a1f28c0f3615ee18bcf11855"
+}

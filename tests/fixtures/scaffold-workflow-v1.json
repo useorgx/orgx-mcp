@@ -1,0 +1,752 @@
+[
+  {
+    "name": "minimal plan",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "valid": true,
+    "normalized": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "visibility": "private"
+    }
+  },
+  {
+    "name": "canonical text trimming",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": " Delivery ",
+          "summary": " context "
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "valid": true,
+    "normalized": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery",
+          "summary": "context"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "visibility": "private"
+    }
+  },
+  {
+    "name": "twenty task dependencies",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement",
+                    "depends_on": [
+                      "Task 0",
+                      "Task 1",
+                      "Task 2",
+                      "Task 3",
+                      "Task 4",
+                      "Task 5",
+                      "Task 6",
+                      "Task 7",
+                      "Task 8",
+                      "Task 9",
+                      "Task 10",
+                      "Task 11",
+                      "Task 12",
+                      "Task 13",
+                      "Task 14",
+                      "Task 15",
+                      "Task 16",
+                      "Task 17",
+                      "Task 18",
+                      "Task 19"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "valid": true,
+    "normalized": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement",
+                    "depends_on": [
+                      "Task 0",
+                      "Task 1",
+                      "Task 2",
+                      "Task 3",
+                      "Task 4",
+                      "Task 5",
+                      "Task 6",
+                      "Task 7",
+                      "Task 8",
+                      "Task 9",
+                      "Task 10",
+                      "Task 11",
+                      "Task 12",
+                      "Task 13",
+                      "Task 14",
+                      "Task 15",
+                      "Task 16",
+                      "Task 17",
+                      "Task 18",
+                      "Task 19"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "visibility": "private"
+    }
+  },
+  {
+    "name": "twenty one dependencies",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement",
+                    "depends_on": [
+                      "Task 0",
+                      "Task 1",
+                      "Task 2",
+                      "Task 3",
+                      "Task 4",
+                      "Task 5",
+                      "Task 6",
+                      "Task 7",
+                      "Task 8",
+                      "Task 9",
+                      "Task 10",
+                      "Task 11",
+                      "Task 12",
+                      "Task 13",
+                      "Task 14",
+                      "Task 15",
+                      "Task 16",
+                      "Task 17",
+                      "Task 18",
+                      "Task 19",
+                      "Task 20"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "empty dependency",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ],
+            "depends_on": [
+              " "
+            ]
+          }
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "unknown execution policy",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ],
+            "execution_policy": {
+              "launch": true
+            }
+          }
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "unknown authority",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "owner_id": "untrusted"
+    },
+    "valid": false
+  },
+  {
+    "name": "no workstreams",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": []
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "blank title",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": " "
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "source optional URLs",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "source_evidence": {
+        "verification_state": "partial"
+      }
+    },
+    "valid": true,
+    "normalized": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "source_evidence": {
+        "verification_state": "partial"
+      },
+      "visibility": "private"
+    }
+  },
+  {
+    "name": "source independent provenance",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "source_evidence": {
+        "verification_state": "verified",
+        "source_url": "https://example.org/proof",
+        "verified_by": "fixture"
+      }
+    },
+    "valid": true,
+    "normalized": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "source_evidence": {
+        "verification_state": "verified",
+        "source_url": "https://example.org/proof",
+        "verified_by": "fixture"
+      },
+      "visibility": "private"
+    }
+  },
+  {
+    "name": "invalid URL",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "source_evidence": {
+        "verification_state": "partial",
+        "target_url": "bad"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "bounded evidence",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "source_evidence": {
+        "verification_state": "partial",
+        "evidence_urls": [
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org",
+          "https://example.org"
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "oversized source notes",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "source_evidence": {
+        "verification_state": "partial",
+        "notes": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "oversized task detail",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement",
+                    "detail": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "nullable fields",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ],
+            "goal": null
+          }
+        ]
+      }
+    },
+    "valid": true,
+    "normalized": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ],
+            "goal": null
+          }
+        ]
+      },
+      "visibility": "private"
+    }
+  },
+  {
+    "name": "unknown task type",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement",
+                    "type": "dispatch"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "estimate ceiling",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ],
+            "expected_tokens": 1000001
+          }
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "negative budget",
+    "body": {
+      "plan": {
+        "initiative": {
+          "title": "Delivery"
+        },
+        "workstreams": [
+          {
+            "name": "Engineering",
+            "milestones": [
+              {
+                "title": "Release",
+                "tasks": [
+                  {
+                    "title": "Implement"
+                  }
+                ]
+              }
+            ],
+            "expected_budget_usd": -1
+          }
+        ]
+      }
+    },
+    "valid": false
+  }
+]

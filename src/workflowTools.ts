@@ -1,3 +1,4 @@
+import { InitiativePlanSchema as INITIATIVE_PLAN_SCHEMA, ScaffoldSourceEvidenceSchema as sourceEvidenceSchema } from './generated/scaffoldWorkflow';
 import { z } from 'zod';
 import { modalityProofInputSchema } from './modalityProofInput';
 import { ArtifactProofPredecessorSchema, isProofRevisionDescription, normalizeProofRevisionDescription } from './proofRevisionDescription';
@@ -196,50 +197,7 @@ const completionProofArtifactSchema = z.object({
   catch (error) { context.addIssue({ code: 'custom', path: ['description'], message: error instanceof Error ? error.message : 'Invalid OrgX proof revision description.' }); }
 }).refine((value) => Boolean(value.artifact_url || value.external_url), 'A durable artifact_url or external_url is required.');
 
-const estimateFields = {
-  expected_tokens: z.number().int().positive().max(1_000_000).optional(),
-  expected_duration_hours: z.number().positive().max(300).optional(),
-  expected_budget_usd: z.number().positive().max(1_000_000).optional(),
-};
-const planTaskSchema = z.object({
-  title: z.string().trim().min(1).max(240),
-  detail: z.string().max(4000).nullable().optional(),
-  type: z.enum(['research', 'create', 'review', 'implement']).optional(),
-  depends_on: z.array(z.string().min(1).max(240)).max(15).optional(),
-  agent_id: z.string().min(1).max(120).optional(),
-  ...estimateFields,
-}).strict();
-const planMilestoneSchema = z.object({
-  title: z.string().trim().min(1).max(240),
-  description: z.string().max(4000).nullable().optional(),
-  tasks: z.array(planTaskSchema).max(15).optional(),
-}).strict();
-const planWorkstreamSchema = z.object({
-  name: z.string().trim().min(1).max(240),
-  goal: z.string().max(4000).nullable().optional(),
-  domain: z.enum(['product', 'engineering', 'marketing', 'sales', 'operations', 'design', 'orchestration']).optional(),
-  agent_id: z.string().min(1).max(120).optional(),
-  agent_name: z.string().min(1).max(120).optional(),
-  confidence: z.number().min(0).max(1).optional(),
-  rationale: z.string().max(2000).optional(),
-  depends_on: z.array(z.string().min(1).max(240)).max(20).optional(),
-  deliverables: z.array(z.string().min(1).max(500)).max(20).optional(),
-  ...estimateFields,
-  milestones: z.array(planMilestoneSchema).max(10).optional(),
-}).strict();
-
-/** Portable projection of the existing OrgX atomic scaffold vocabulary. */
-export const INITIATIVE_PLAN_SCHEMA = z.object({
-  initiative: z.object({ title: z.string().trim().min(1).max(240), summary: z.string().max(4000).nullable().optional() }).strict(),
-  workstreams: z.array(planWorkstreamSchema).min(1).max(20),
-}).strict();
-
-const sourceEvidenceSchema = z.object({
-  target_url: z.string().url(),
-  verification_state: z.enum(['verified', 'partial', 'unverified']),
-  evidence_urls: z.array(z.string().url()),
-  notes: z.string().optional(),
-}).strict();
+export { InitiativePlanSchema as INITIATIVE_PLAN_SCHEMA } from './generated/scaffoldWorkflow';
 
 const hierarchyInput = {
   workspace_id: workspaceId,
@@ -288,6 +246,14 @@ const legacyMilestoneSchema = z.object({
 const legacyWorkstreamSchema = z.object({
   ...legacyNodeFields, milestones: z.array(legacyMilestoneSchema).optional(),
 }).strict().refine(hasLegacyLabel, 'A workstream title or name is required.');
+// The richer legacy handler has a separate wire contract. Preserve its source
+// evidence until it can carry every atomic provenance field without data loss.
+const legacySourceEvidenceSchema = z.object({
+  target_url: z.string().url(),
+  verification_state: z.enum(['verified', 'partial', 'unverified']),
+  evidence_urls: z.array(z.string().url()),
+  notes: z.string().optional(),
+}).strict();
 const legacyScaffoldInput = {
   title: createTitle,
   summary: z.string().optional(),
@@ -296,7 +262,7 @@ const legacyScaffoldInput = {
   goal_ids: z.array(z.string().uuid()).optional(),
   objective_ids: z.array(z.string().uuid()).optional(),
   workstreams: z.array(legacyWorkstreamSchema).optional(),
-  source_evidence: sourceEvidenceSchema.optional(),
+  source_evidence: legacySourceEvidenceSchema.optional(),
   context: z.array(z.object({
     entity_type: z.string().min(1), entity_id: id, section: z.string().optional(), label: z.string().optional(), relevance: z.string().optional(),
   }).strict()).optional(),

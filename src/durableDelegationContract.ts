@@ -4,17 +4,11 @@
  * Delegation is successful only when the canonical release returns distinct
  * durable task/run/job IDs and evidence that the job was claimed for execution.
  */
-export const DURABLE_DELEGATION_CONTRACT = 'durable_delegation_v2';
+import { DURABLE_DELEGATION_CONTRACT, readClaimedDelegationEvidence, type ClaimedDelegationEvidence } from './generated/durableDelegation';
+export { DURABLE_DELEGATION_CONTRACT } from './generated/durableDelegation';
 
 export type DurableDelegationContractResult =
-  | {
-      ok: true;
-      /** Absent when the spawn carried free-form instructions and no task. */
-      taskId: string | null;
-      runId: string;
-      jobId: string;
-      dispatchReceipt: Record<string, unknown>;
-    }
+  | ({ ok: true } & ClaimedDelegationEvidence)
   | { ok: true; reassigned: true; taskId: string; agentId: string }
   | {
       ok: false;
@@ -75,44 +69,14 @@ export function validateDurableDelegationResponse(
     };
   }
 
-  // Durable = a persisted run whose job a worker claimed. A task is optional:
-  // a spawn with free-form instructions has none, and requiring one refused
-  // every such spawn after its run had started (2026-09-27).
-  const taskId = readNonEmptyString(data, 'task_id');
-  const runId = readNonEmptyString(data, 'run_id');
-  const jobId = readNonEmptyString(data, 'job_id');
-  if (!runId || !jobId) {
-    return {
-      ok: false,
-      message:
-        'Delegation was not confirmed by the canonical OrgX release. Its durable run or job receipt is missing.',
+  const result = readClaimedDelegationEvidence(data);
+  if (!result.ok) {
+    const messages = {
+      missing_ids: 'Delegation was not confirmed by the canonical OrgX release. Its durable run or job receipt is missing.',
+      synthetic_ids: 'Delegation was rejected because the upstream returned a synthetic execution identifier instead of durable receipts.',
+      unclaimed: 'Delegation was not confirmed because the durable job was not claimed for execution.',
     };
+    return { ok: false, message: messages[result.reason] };
   }
-
-  if (
-    (taskId !== null && (taskId === runId || taskId.startsWith('api-'))) ||
-    runId.startsWith('api-') ||
-    jobId.startsWith('api-')
-  ) {
-    return {
-      ok: false,
-      message:
-        'Delegation was rejected because the upstream returned a synthetic execution identifier instead of durable receipts.',
-    };
-  }
-
-  const dispatchReceipt = asRecord(data.dispatch_receipt);
-  const isClaimedDispatch =
-    dispatchReceipt?.dispatch === 'inline_claimed' ||
-    dispatchReceipt?.dispatch === 'cloud_claimed' ||
-    dispatchReceipt?.dispatch === 'session_orchestrator';
-  if (!isClaimedDispatch || dispatchReceipt?.jobStatus !== 'running') {
-    return {
-      ok: false,
-      message:
-        'Delegation was not confirmed because the durable job was not claimed for execution.',
-    };
-  }
-
-  return { ok: true, taskId, runId, jobId, dispatchReceipt };
+  return { ok: true, ...result.evidence };
 }
