@@ -10,7 +10,7 @@ describe('pinned OrgX delegation source', () => {
     expect(() => execFileSync(process.execPath, [resolve(process.cwd(), 'scripts/check-mcp-domain-contracts.mjs')], { stdio: 'pipe' })).not.toThrow();
     const temp = mkdtempSync(resolve(tmpdir(), 'mcp-delegation-generator-'));
     try {
-      for (const path of ['scripts/check-mcp-domain-contracts.mjs', 'src/generated/durableDelegation.ts', 'src/generated/durableDelegation.manifest.json', 'tests/fixtures/durable-delegation-v2.json', 'src/generated/scaffoldWorkflow.ts', 'src/generated/scaffoldWorkflow.manifest.json', 'tests/fixtures/scaffold-workflow-v1.json']) {
+      for (const path of ['scripts/check-mcp-domain-contracts.mjs', 'src/generated/durableDelegation.ts', 'src/generated/durableDelegation.manifest.json', 'tests/fixtures/durable-delegation-v2.json', 'src/generated/scaffoldWorkflow.ts', 'src/generated/scaffoldWorkflow.manifest.json', 'tests/fixtures/scaffold-workflow-v1.json', 'src/generated/entityVocabulary.ts', 'src/generated/entityVocabulary.manifest.json', 'tests/fixtures/entity-vocabulary-v1.json']) {
         mkdirSync(dirname(resolve(temp, path)), { recursive: true });
         copyFileSync(resolve(process.cwd(), path), resolve(temp, path));
       }
@@ -21,6 +21,11 @@ describe('pinned OrgX delegation source', () => {
       writeFileSync(generated, source.replace("receipt.jobStatus !== 'running'", "receipt.jobStatus !== 'queued'"));
       expect(() => run()).toThrow(/generated contract drift/);
       writeFileSync(generated, source);
+      const vocabulary = resolve(temp, 'src/generated/entityVocabulary.ts');
+      const vocabularySource = readFileSync(vocabulary, 'utf8');
+      writeFileSync(vocabulary, vocabularySource.replace("  'workspace',", "  'tenant',"));
+      expect(() => run()).toThrow(/entity_vocabulary_v1 generated contract drift/);
+      writeFileSync(vocabulary, vocabularySource);
       writeFileSync(resolve(temp, 'tests/fixtures/durable-delegation-v2.json'), '[]');
       expect(() => run()).toThrow(/generated contract drift/);
     } finally { rmSync(temp, { recursive: true, force: true }); }
