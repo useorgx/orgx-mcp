@@ -642,7 +642,7 @@ describe('mcpTransport', () => {
         } as any,
         ctx,
         handler,
-        vi.fn(async () => ({ userId: 'user-123', scope: 'mcp:all' }))
+        vi.fn(async () => ({ userId: 'user_clerk123', orgxUserId: '11111111-1111-4111-8111-111111111111', scope: 'mcp:all' }))
       );
       await tracked.drain();
 
@@ -654,6 +654,8 @@ describe('mcpTransport', () => {
       const posthogPayload = JSON.parse(posthogCall?.[1].body as string) as {
         batch: Array<{ event: string; properties: Record<string, unknown> }>;
       };
+      expect((posthogPayload.batch[0] as any)?.distinct_id).toBe('11111111-1111-4111-8111-111111111111');
+      expect(posthogPayload.batch[0]?.properties.identity_namespace).toBe('orgx_account');
       expect(posthogPayload.batch[0]?.event).toBe('mcp_tool_invocation');
       expect(posthogPayload.batch[0]?.properties).toMatchObject({
         tool_id: 'orgx_write',
@@ -695,7 +697,7 @@ describe('mcpTransport', () => {
         is_widget_tool: false,
         request_id: 'req-1',
         conversation_id: 'conv-1',
-        user_id: 'user-123',
+        user_id: 'user_clerk123',
         workspace_id: '4be1ff06-a5e5-4b34-8974-3348c47ea4f1',
         metadata: expect.objectContaining({
           tool_family: 'entity_write',

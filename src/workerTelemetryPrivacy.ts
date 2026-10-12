@@ -1,3 +1,5 @@
+import { VALIDATION_ISSUE_CODES } from './mcpValidationTelemetry';
+import { safeCorrelation, TELEMETRY_LIMITS } from './telemetryContract';
 import {
   CHATGPT_TOOL_DEFINITIONS, PLAN_SESSION_TOOLS,
   CLIENT_INTEGRATION_TOOL_DEFINITIONS, STREAM_TOOL_DEFINITIONS,
@@ -109,10 +111,12 @@ const numericProperties = new Set([
   'edge_rate_limit_billing_ms', 'tokens_used', 'cost_usd', 'estimated_cost_usd',
   'search_result_count', 'search_missing_title_count', 'task_count', 'deprecation_window_days',
   'deprecation_min_quiet_days',
+  'validation_issue_count',
   'ttfc_ms', 'decisions_ms', 'artifacts_ms', 'work_ms', 'history_ms', 'ledger_ms', 'receipt_ms', 'workspaces_ms',
   'degraded_count', 'event_count',
 ]);
 const booleanProperties = new Set([
+  'validation_issues_truncated',
   'has_user_id', 'has_workspace_id', 'has_initiative_id', 'has_workstream_id',
   'has_task_id', 'has_conversation_id', 'has_working_directory',
   'followed_expected_next_tool', 'response_read_error', 'response_parse_truncated',
@@ -122,7 +126,7 @@ const booleanProperties = new Set([
   'mcp_response_observed',
   'cold', 'warm', 'agent_picked', 'has_workspace',
 ]);
-const uuidProperties = new Set(['workspace_id', 'initiative_id', 'request_uuid',
+const uuidProperties = new Set(['request_id', 'session_id', 'run_id', 'workspace_id', 'initiative_id', 'request_uuid',
   'attempt_id', 'connection_id', 'event_id']);
 const toolProperties = new Set(['tool_id', 'previous_tool_id', 'expected_next_tool_id',
   'previous_expected_next_tool_id', 'deprecated_tool_id', 'replacement_tool_id',
@@ -139,9 +143,12 @@ export function sanitizeWorkerTelemetryProperties(
   properties: Record<string, unknown> = {}
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(properties)) {
+  for (const [key, value] of Object.entries(properties).slice(0, TELEMETRY_LIMITS.maxProperties)) {
     if (value === undefined || value === null) continue;
-    if (numericProperties.has(key)) {
+    if (key === 'trace_id' || key === 'span_id') {
+      const id = safeCorrelation(value, key === 'trace_id' ? 'trace' : 'span');
+      if (id) result[key] = id;
+    } else if (numericProperties.has(key)) {
       if (typeof value === 'number' && Number.isFinite(value) && value >= 0) result[key] = value;
     } else if (booleanProperties.has(key)) {
       if (typeof value === 'boolean') result[key] = value;
@@ -169,6 +176,8 @@ export function sanitizeWorkerTelemetryProperties(
           typeof count === 'number' && Number.isSafeInteger(count) && count >= 0) counts[type] = count;
       }
       result[key] = counts;
+    } else if (key === 'validation_issue_codes' && Array.isArray(value)) {
+      result[key] = [...new Set(value.filter((code) => typeof code === 'string' && (VALIDATION_ISSUE_CODES as readonly string[]).includes(code)))].slice(0, 10);
     } else if (enumProperties[key] && typeof value === 'string') {
       result[key] = enumProperties[key].includes(value) ? value : 'other';
       // JSON-RPC and HTTP numeric errors have a closed, non-free-text format.

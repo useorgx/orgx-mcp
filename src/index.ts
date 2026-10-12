@@ -2092,7 +2092,9 @@ export class OrgXMcp extends McpAgent<
       env: this.env,
       ctx: this.ctx as any,
       event,
-      distinctId,
+      distinctId: this.props?.orgxUserId ?? distinctId,
+      optOut: this.props?.telemetryOptOut === true,
+      workspaceId: this.props?.workspace_id,
       properties,
       serverVersion: MCP_SERVER_VERSION,
     });

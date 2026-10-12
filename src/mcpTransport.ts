@@ -1,3 +1,4 @@
+import { summarizeValidationIssues, type ValidationTelemetrySummary } from './mcpValidationTelemetry';
 import {
   MCP_COMPATIBILITY_RETIREMENT_POLICY,
   resolveDeprecatedToolCall,
@@ -86,7 +87,7 @@ type McpJourneyTimings = {
   sessionPresent: boolean;
 };
 
-type McpLogicalResult = {
+type McpLogicalResult = ValidationTelemetrySummary & {
   isError: boolean;
   errorCode?: string;
   errorKind?: string;
@@ -492,6 +493,7 @@ function logicalResultFromRecord(value: unknown): McpLogicalResult {
 
   return {
     isError: true,
+    ...summarizeValidationIssues(jsonRpcErrorData.issues ?? asRecord(jsonRpcErrorData.details).issues ?? structuredError.issues ?? asRecord(structuredError.details).issues),
     errorCode: errorCode ?? (isJsonRpcError ? 'jsonrpc_error' : 'mcp_tool_error'),
     errorKind: errorKind ?? (isJsonRpcError ? 'jsonrpc_error' : 'mcp_tool_error'),
   };
@@ -644,18 +646,23 @@ async function observeMcpResponse(
 }
 
 function observationForBatchCall(observation: McpResponseObservation, toolCall: McpToolCallTelemetry, responseStatus: number): McpResponseObservation {
-  const { isError: _isError, errorCode: _errorCode, errorKind: _errorKind, ...timing } = observation;
+  const { isError: _isError, errorCode: _errorCode, errorKind: _errorKind,
+    validationIssueCount: _validationIssueCount, validationIssueCodes: _validationIssueCodes,
+    validationIssuesTruncated: _validationIssuesTruncated, ...timing } = observation;
   const records = observation.logicalResponseRecords ?? [];
   const matched = toolCall.jsonrpcId === undefined ? undefined : records.find((record) => {
     const id = asRecord(record).id;
     return typeof id === typeof toolCall.jsonrpcId && id === toolCall.jsonrpcId;
   });
   const globalError = records.find((record) => asRecord(record).id === null && Object.keys(asRecord(asRecord(record).error)).length > 0);
-  const logical = matched !== undefined ? logicalResultFromRecord(matched)
+  const logical: McpLogicalResult = matched !== undefined ? logicalResultFromRecord(matched)
     : globalError !== undefined ? logicalResultFromRecord(globalError)
       : responseStatus === 202 || responseStatus === 204 ? { isError: false }
       : { isError: true, errorCode: 'mcp_response_missing', errorKind: 'mcp_response_missing' };
-  return { ...timing, ...logical, logicalResultObserved: matched !== undefined || globalError !== undefined };
+  const { validationIssueCount, validationIssueCodes, validationIssuesTruncated, ...outcome } = logical;
+  return { ...timing, ...outcome,
+    ...(matched !== undefined ? { validationIssueCount, validationIssueCodes, validationIssuesTruncated } : {}),
+    logicalResultObserved: matched !== undefined || globalError !== undefined };
 }
 
 function normalizeTelemetrySourceClient(
@@ -716,7 +723,7 @@ async function captureMcpToolCallVisibility<Env>(
     resolvedErrorCode || observation.isError || response.status >= 400
       ? 'error'
       : 'success';
-  const distinctId = auth.userId ?? resolveAnonymousDistinctId(ctx);
+  const distinctId = resolveAuthenticatedOrgxUserId(auth, asRecord(ctx.props)) ?? auth.userId ?? resolveAnonymousDistinctId(ctx);
   const { metadata, workspaceId, sourceClient } =
     sanitizeToolCallMetadata(toolCall);
 
@@ -768,7 +775,9 @@ async function captureMcpToolCallVisibility<Env>(
       outcome: status === 'success' && !observation.logicalResultObserved ? 'attempt' : status,
     }),
     ...metadata,
-    request_uuid: crypto.randomUUID(),
+    request_uuid: response.headers.get('x-orgx-request-id') ?? crypto.randomUUID(),
+    trace_id: response.headers.get('x-orgx-trace-id'),
+    span_id: response.headers.get('x-orgx-span-id'),
     http_status: response.status,
     journey_phase: 'complete',
     auth_ms: journey.authMs,
@@ -786,6 +795,9 @@ async function captureMcpToolCallVisibility<Env>(
     response_read_error: observation.responseReadError,
     response_parse_truncated: observation.responseParseTruncated,
     mcp_logical_error: observation.isError,
+    validation_issue_count: observation.validationIssueCount,
+    validation_issue_codes: observation.validationIssueCodes,
+    validation_issues_truncated: observation.validationIssuesTruncated,
     mcp_response_observed: observation.logicalResultObserved ?? false,
     error_kind: resolvedErrorKind,
     session_present: journey.sessionPresent,
@@ -823,7 +835,10 @@ async function captureMcpToolCallVisibility<Env>(
       },
     },
     event: 'mcp_tool_invocation',
+    queueOwner: ctx,
+    optOut: asRecord(ctx.props).telemetryOptOut === true,
     distinctId,
+    workspaceId: pickString(asRecord(ctx.props).workspace_id),
     properties: {
       ...transportMetadata,
       tool_id: toolCall.toolName,
@@ -887,7 +902,7 @@ function captureDeprecatedToolTelemetry<Env>(
 ): void {
   if (!warning) return;
 
-  const distinctId = auth.userId ?? resolveAnonymousDistinctId(ctx);
+  const distinctId = resolveAuthenticatedOrgxUserId(auth, asRecord(ctx.props)) ?? auth.userId ?? resolveAnonymousDistinctId(ctx);
   captureWorkerPosthogEvent({
     env: env as PosthogTelemetryEnv,
     ctx,
@@ -1014,7 +1029,7 @@ export async function handleMcpRequest<Env, Props>(
   if ('response' in auth && auth.response) {
     if (auth.userId) {
       const rejected = await normalizeRequestBody(request, connectionProfile, undefined, false);
-      const rejectedCtx = { ...ctx, props: { ...asRecord(ctx.props), userId: auth.userId, operationContractVersion: 'unknown' } };
+      const rejectedCtx = { ...ctx, props: { ...asRecord(ctx.props), userId: auth.userId, ...(request.headers.get('dnt') === '1' ? { telemetryOptOut: true } : {}), operationContractVersion: 'unknown' } };
       ctx.waitUntil?.(captureMcpToolCallsVisibility(env, rejectedCtx as ExecutionContextWithProps<unknown>, auth,
         rejected.toolCalls ?? [], auth.response, { requestStartedAt, authMs, normalizationMs: 0, handlerMs: 0,
           responseHeadersMs: Math.max(0, Date.now() - requestStartedAt), profile: connectionProfile,
@@ -1029,10 +1044,12 @@ export async function handleMcpRequest<Env, Props>(
   const nextProps: Record<string, unknown> = {
     ...existingProps,
     userId: auth.userId,
+    ...(request.headers.get('dnt') === '1' ? { telemetryOptOut: true } : {}),
     scope: auth.scope,
     email: auth.email,
     profile: connectionProfile,
   };
+  if (request.headers.get('dnt') !== '1') delete nextProps.telemetryOptOut;
   if (orgxUserId) nextProps.orgxUserId = orgxUserId;
   else delete nextProps.orgxUserId;
   // Reject stale sessions before dispatch; fresh sessions import the current catalog.
@@ -1217,9 +1234,11 @@ export async function handleMcpWebSocket<Env, Props>(
   const props: Record<string, unknown> = {
     ...existingProps,
     userId: auth.userId,
+    ...(request.headers.get('dnt') === '1' ? { telemetryOptOut: true } : {}),
     scope: auth.scope,
     email: auth.email,
   };
+  if (request.headers.get('dnt') !== '1') delete props.telemetryOptOut;
   if (orgxUserId) props.orgxUserId = orgxUserId;
   else delete props.orgxUserId;
   const ctxWithProps = ctx as ExecutionContextWithProps<Props>;

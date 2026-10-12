@@ -1,17 +1,26 @@
+import { exportPosthogDiagnostic } from './posthogDiagnostics';
 import { sanitizeWorkerTelemetryProperties } from './workerTelemetryPrivacy';
+import { canonicalAccountId, invocationOutcome, TELEMETRY_SCHEMA_VERSION, TELEMETRY_LIMITS, telemetryAudience } from './telemetryContract';
 
 export type PosthogTelemetryEnv = {
   POSTHOG_KEY?: string;
   POSTHOG_HOST?: string;
+  ORGX_TELEMETRY_AUDIENCE?: string;
+  ORGX_TELEMETRY_DISABLED?: string;
+  ORGX_POSTHOG_LOGS_ENABLED?: string;
+  ORGX_TELEMETRY_ENVIRONMENT?: string;
   MCP_SERVER_URL?: string;
   SENTRY_RELEASE?: string;
   CF_VERSION_METADATA?: { id?: string };
 };
 
-const TELEMETRY_SCHEMA_VERSION = '2026-09-30';
-const CAPTURE_TIMEOUT_MS = 2000;
+const CAPTURE_TIMEOUT_MS = TELEMETRY_LIMITS.timeoutMs;
+const pending = new WeakMap<object, number>();
+export const workerTelemetryHealth = { delivered: 0, failed: 0, dropped: 0 };
+
 
 type WaitUntilLike = {
+  props?: unknown;
   waitUntil?: (promise: Promise<unknown>) => unknown;
 };
 
@@ -22,7 +31,7 @@ export function resolveAnonymousDistinctId(ctx: unknown): string {
   } catch {
     // ignore
   }
-  return 'mcp:anonymous';
+  return `mcp:${crypto.randomUUID()}`;
 }
 
 export function captureWorkerPosthogEvent(params: {
@@ -32,10 +41,22 @@ export function captureWorkerPosthogEvent(params: {
   distinctId: string;
   properties?: Record<string, unknown>;
   serverVersion?: string;
+  /** Membership/credential-admitted scope only; never raw tool arguments. */
+  workspaceId?: string;
+  optOut?: boolean;
+  /** Actual request/lifecycle owner when delivery uses an adapter context. */
+  queueOwner?: object;
 }): void {
   try {
     const apiKey = params.env.POSTHOG_KEY;
-    if (!apiKey || apiKey === 'test-posthog-key') return;
+    if (params.optOut || (params.ctx?.props as { telemetryOptOut?: unknown } | undefined)?.telemetryOptOut === true || !apiKey || apiKey === 'test-posthog-key' || params.env.ORGX_TELEMETRY_DISABLED === '1') return;
+    if (!/^[a-z][a-z0-9_]{1,100}$/.test(params.event)) return;
+    const owner = params.queueOwner ?? params.ctx ?? params.env;
+    const count = pending.get(owner) ?? 0;
+    if (count >= TELEMETRY_LIMITS.maxQueueEvents) { workerTelemetryHealth.dropped++; return; }
+    const accountId = canonicalAccountId(params.distinctId);
+    const distinctId = accountId ?? (/^mcp:[a-zA-Z0-9-]{1,160}$/.test(params.distinctId) ? params.distinctId : resolveAnonymousDistinctId(undefined));
+    const workspaceId = canonicalAccountId(params.workspaceId);
 
     const host = (
       params.env.POSTHOG_HOST || 'https://us.i.posthog.com'
@@ -48,9 +69,14 @@ export function captureWorkerPosthogEvent(params: {
       telemetry_schema_version: TELEMETRY_SCHEMA_VERSION,
       surface: 'mcp',
       event_origin: 'cloudflare_worker',
-      environment: params.env.MCP_SERVER_URL?.includes('staging')
-        ? 'preview'
-        : 'production',
+      telemetry_source: 'orgx-mcp',
+      identity_namespace: accountId ? 'orgx_account' : 'anonymous',
+      telemetry_audience: telemetryAudience(params.env.ORGX_TELEMETRY_AUDIENCE),
+      $process_person_profile: Boolean(accountId),
+      ...(workspaceId ? { $groups: { workspace: workspaceId } } : {}),
+      ...(params.event === 'mcp_tool_invocation' ? { event_outcome: invocationOutcome(params.properties?.status, params.properties?.mcp_response_observed) } : {}),
+      environment: ['production', 'preview', 'development', 'test'].includes(params.env.ORGX_TELEMETRY_ENVIRONMENT ?? '')
+        ? params.env.ORGX_TELEMETRY_ENVIRONMENT : 'unknown',
     };
 
     const release = params.env.SENTRY_RELEASE;
@@ -79,7 +105,7 @@ export function captureWorkerPosthogEvent(params: {
           type: 'capture',
           uuid: eventId,
           event: params.event,
-          distinct_id: params.distinctId,
+          distinct_id: distinctId,
           properties: eventProperties,
           timestamp: sentAt,
         },
@@ -87,29 +113,68 @@ export function captureWorkerPosthogEvent(params: {
       sent_at: sentAt,
     };
 
+    const body = JSON.stringify(payload);
+    if (new TextEncoder().encode(body).byteLength > TELEMETRY_LIMITS.maxEventBytes) { workerTelemetryHealth.dropped++; return; }
+    pending.set(owner, count + 1);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), CAPTURE_TIMEOUT_MS);
     const request = fetch(`${host}/batch/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body,
       signal: controller.signal,
     })
-      .then((response) => {
-        if (!response.ok) {
+      .then(async (response) => {
+        if (!response.ok || !(await acceptedCaptureResponse(response))) {
+          workerTelemetryHealth.failed++;
           console.warn('[telemetry] PostHog capture rejected', {
             event: params.event,
             status: response.status,
           });
-        }
+        } else workerTelemetryHealth.delivered++;
       })
       .catch(() => {
+        workerTelemetryHealth.failed++;
         console.warn('[telemetry] PostHog capture unavailable', { event: params.event });
       })
-      .finally(() => clearTimeout(timeout));
+      .finally(() => { clearTimeout(timeout); pending.set(owner, Math.max(0, (pending.get(owner) ?? 1) - 1)); });
 
-    params.ctx?.waitUntil?.(request);
+    const diagnostic = params.event === 'mcp_tool_invocation' && eventProperties.event_outcome === 'failure'
+      ? exportPosthogDiagnostic({ key: apiKey, host, service: 'orgx-mcp',
+          enabled: params.env.ORGX_POSTHOG_LOGS_ENABLED === '1', environment: String(eventProperties.environment),
+          release: typeof eventProperties.release === 'string' ? eventProperties.release : undefined,
+          audience: params.env.ORGX_TELEMETRY_AUDIENCE }, 'mcp_invocation_failed', {
+          userId: accountId, requestId: eventProperties.request_id ?? eventProperties.request_uuid,
+          traceId: eventProperties.trace_id, spanId: eventProperties.span_id,
+        }) : Promise.resolve();
+    params.ctx?.waitUntil?.(Promise.allSettled([request, diagnostic]));
   } catch {
     // ignore
   }
+}
+
+/** Inspect bounded ingestion acknowledgements, including HTTP-200 quota rejection. */
+async function acceptedCaptureResponse(response: Response): Promise<boolean> {
+  if (!response.body) return true;
+  const reader = response.body.getReader();
+  let bytes = 0;
+  const chunks: Uint8Array[] = [];
+  try {
+    while (bytes <= 1024) {
+      const part = await reader.read();
+      if (part.done) break;
+      bytes += part.value.byteLength;
+      if (bytes > 1024) return false;
+      chunks.push(part.value);
+    }
+    const all = new Uint8Array(bytes);
+    let offset = 0;
+    for (const chunk of chunks) { all.set(chunk, offset); offset += chunk.byteLength; }
+    const raw = new TextDecoder().decode(all);
+    if (!raw) return true;
+    const result = JSON.parse(raw) as { status?: unknown; quota_limited?: unknown; error?: unknown };
+    return !result.error && !(Array.isArray(result.quota_limited) && result.quota_limited.length > 0)
+      && (result.status === undefined || result.status === 1 || result.status === 'Ok');
+  } catch { return false; }
+  finally { await reader.cancel().catch(() => undefined); }
 }
