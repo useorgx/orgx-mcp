@@ -50,6 +50,12 @@ describe('validateSpawnContract', () => {
 });
 
 describe('buildOrgxSpawnForwardArgs', () => {
+  it('preserves the restrictive profile while mapping the explicit Responses runtime', () => {
+    const input = { agent_type: 'orchestrator', task_id: 'task-1', runtime: 'cloud_openai', execution_profile: 'bounded_text_only', max_cost_usd: 1 };
+    const forwarded = buildOrgxSpawnForwardArgs('spawn_agent_task', input);
+    expect(forwarded).toMatchObject({ execution_target: 'cloud', sdk_backend: 'openai', execution_profile: 'bounded_text_only', max_cost_usd: 1 });
+    expect(input.runtime).toBe('cloud_openai');
+  });
   it('maps orgx_spawn ad-hoc spawn fields to spawn_agent_task args', () => {
     expect(
       buildOrgxSpawnForwardArgs('spawn_agent_task', {

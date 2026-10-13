@@ -117,6 +117,9 @@ export const dispatchEffectsSchema = z.object({
  * the four surfaces cannot drift apart again.
  */
 export const DISPATCH_CONTRACT_SHAPE = {
+  execution_profile: z.enum(['bounded_text_only']).optional().describe(
+    'Optional restrictive cloud OpenAI Responses profile: no tools, hosted search, delegation, media generation or automatic judging. Requires a positive model cost cap. Final text is unevaluated.'
+  ),
   deadline: z
     .string()
     .optional()
