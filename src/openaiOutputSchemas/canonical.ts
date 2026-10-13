@@ -503,6 +503,7 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       estimatedTokens: z.number().optional(),
       estimated_cost_usd: z.number().optional(),
       max_cost_usd: z.number().optional(),
+      execution_profile: z.literal('bounded_text_only').optional(),
       candidate_routes: z.array(resourceSchema).optional(),
       cost_frontier: z.array(resourceSchema).optional(),
       estimate_only: z.boolean().optional(),

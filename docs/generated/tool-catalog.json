@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-12T07:59:23.142Z",
+  "generatedAt": "2026-10-13T01:31:36.763Z",
   "sourceHash": "69de103a90ac0647",
   "version": "1.0.0",
   "totalTools": 164,
@@ -124,6 +124,13 @@
           "spawn": {
             "type": "boolean",
             "description": "If true (default), spawn a new agent run for the target agent"
+          },
+          "execution_profile": {
+            "type": "string",
+            "enum": [
+              "bounded_text_only"
+            ],
+            "description": "Optional restrictive cloud OpenAI Responses profile: no tools, hosted search, delegation, media generation or automatic judging. Requires a positive model cost cap. Final text is unevaluated."
           },
           "deadline": {
             "type": "string",
@@ -434,6 +441,13 @@
               "local"
             ],
             "description": "Optional provider preference. Use auto unless the user requests a specific provider or the budget/capability comparison has selected one."
+          },
+          "execution_profile": {
+            "type": "string",
+            "enum": [
+              "bounded_text_only"
+            ],
+            "description": "Optional restrictive cloud OpenAI Responses profile: no tools, hosted search, delegation, media generation or automatic judging. Requires a positive model cost cap. Final text is unevaluated."
           },
           "deadline": {
             "type": "string",
@@ -4551,6 +4565,13 @@
             ],
             "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
           },
+          "execution_profile": {
+            "type": "string",
+            "enum": [
+              "bounded_text_only"
+            ],
+            "description": "Optional restrictive cloud OpenAI Responses profile: no tools, hosted search, delegation, media generation or automatic judging. Requires a positive model cost cap. Final text is unevaluated."
+          },
           "deadline": {
             "type": "string",
             "description": "Optional ISO-8601 instant by which the work must finish (e.g. \"2026-09-28T17:00:00Z\"). Validated and recorded; free text is rejected because a constraint that cannot be evaluated is not a constraint."
@@ -6347,6 +6368,13 @@
               "local"
             ],
             "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
+          },
+          "execution_profile": {
+            "type": "string",
+            "enum": [
+              "bounded_text_only"
+            ],
+            "description": "Optional restrictive cloud OpenAI Responses profile: no tools, hosted search, delegation, media generation or automatic judging. Requires a positive model cost cap. Final text is unevaluated."
           },
           "deadline": {
             "type": "string",
@@ -12104,6 +12132,13 @@
             "type": "string",
             "description": "Optional voice, format, or style constraints"
           },
+          "execution_profile": {
+            "type": "string",
+            "enum": [
+              "bounded_text_only"
+            ],
+            "description": "Optional restrictive cloud OpenAI Responses profile: no tools, hosted search, delegation, media generation or automatic judging. Requires a positive model cost cap. Final text is unevaluated."
+          },
           "deadline": {
             "type": "string",
             "description": "Optional ISO-8601 instant by which the work must finish (e.g. \"2026-09-28T17:00:00Z\"). Validated and recorded; free text is rejected because a constraint that cannot be evaluated is not a constraint."
@@ -14458,6 +14493,13 @@
             ],
             "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
           },
+          "execution_profile": {
+            "type": "string",
+            "enum": [
+              "bounded_text_only"
+            ],
+            "description": "Optional restrictive cloud OpenAI Responses profile: no tools, hosted search, delegation, media generation or automatic judging. Requires a positive model cost cap. Final text is unevaluated."
+          },
           "deadline": {
             "type": "string",
             "description": "Optional ISO-8601 instant by which the work must finish (e.g. \"2026-09-28T17:00:00Z\"). Validated and recorded; free text is rejected because a constraint that cannot be evaluated is not a constraint."
@@ -16130,6 +16172,13 @@
             ],
             "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
           },
+          "execution_profile": {
+            "type": "string",
+            "enum": [
+              "bounded_text_only"
+            ],
+            "description": "Optional restrictive cloud OpenAI Responses profile: no tools, hosted search, delegation, media generation or automatic judging. Requires a positive model cost cap. Final text is unevaluated."
+          },
           "deadline": {
             "type": "string",
             "description": "Optional ISO-8601 instant by which the work must finish (e.g. \"2026-09-28T17:00:00Z\"). Validated and recorded; free text is rejected because a constraint that cannot be evaluated is not a constraint."
@@ -17773,6 +17822,13 @@
               "local"
             ],
             "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
+          },
+          "execution_profile": {
+            "type": "string",
+            "enum": [
+              "bounded_text_only"
+            ],
+            "description": "Optional restrictive cloud OpenAI Responses profile: no tools, hosted search, delegation, media generation or automatic judging. Requires a positive model cost cap. Final text is unevaluated."
           },
           "deadline": {
             "type": "string",
