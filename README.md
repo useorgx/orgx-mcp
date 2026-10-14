@@ -1,67 +1,66 @@
-# OrgX MCP — organizational continuity for AI agents
+# OrgX MCP — shared work context for AI agents
+
+For people whose work spans chats, coding clients, and teammates, OrgX MCP connects an AI client to the same workspace record of decisions, tasks, artifacts, approvals, and evidence. A new session can retrieve why a decision was made and what was actually delivered.
 
 [![smithery badge](https://smithery.ai/badge/useorgx/orgx-mcp)](https://smithery.ai/servers/useorgx/orgx-mcp)
 
-The task outlives the chat. OrgX MCP is organizational continuity for AI agents. Make AI work resumable, reviewable, and provable across agents. OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind.
+## UI preview
 
-How: organizational memory. OrgX MCP lets agents remember decisions, recall artifacts, review pending approvals, assign work to specialist agents, track initiative health, and render interactive workflows in MCP Apps-compatible clients.
+![OrgX MCP widget gallery showing the agent-status widget with synthetic Product and Engineering work, tasks, progress, artifacts and blockers](docs/images/widget-gallery-demo.png)
 
-## Try these prompts
+This current local capture uses the shipped gallery fixtures, with external requests blocked ([capture details](docs/images/preview-provenance.md)). [Try the live widget gallery](https://mcp.useorgx.com/widgets/index.html) to explore example states. In MCP Apps-compatible hosts, widgets render beside tool results; other clients can use the text/structured results. GitHub displays the screenshot, not a running widget.
 
-> Continue what the other agent started on the onboarding analytics migration.
+## Quickstart
 
-> What did we decide about billing, and why?
+In an MCP client supporting remote HTTP and OAuth, add:
 
-> Who approved this?
+```text
+https://mcp.useorgx.com/mcp
+```
 
-> Show me it actually shipped.
-
-> Remember this decision for the team: we are moving onboarding analytics to PostHog.
-
-> Assign this research task to an agent and tell me when it's done.
-
-> What is blocked on the Growth Launch initiative?
-
-## Install
-
-Verified onboarding paths — the setup wizard:
+Authorize your OrgX account in the browser and choose the access level needed for your workflow. Configuration and authorization are separate: a saved URL does not prove workspace access. For supported client setup through the wizard:
 
 ```bash
 npx -y @useorgx/wizard setup
 ```
 
-or connect the remote MCP URL:
+The default `v2` profile exposes explicit operations. MCP discovery is intersected with the authenticated account's permissions and granted scopes; a missing scope is not permission to widen access automatically. [Profile definitions](src/toolProfiles.ts) and the [shipped authorization policy](docs/generated/authorization-policy.json) describe the boundary.
 
-`https://mcp.useorgx.com/mcp`
+## Example: recover a previous decision
 
-Use the Memory profile when you want OrgX to act as shared organizational memory for Claude, ChatGPT, Cursor, and AI agents. Use the Full profile when you want planning, task delegation, widgets, and initiative execution.
+After connecting, ask your client:
 
-## Consent and least-privilege access
+```text
+Read my authorized workspace with orgx_get_workspace_context.
+Use orgx_search with type="decision", query="release", and limit=5.
+Inspect a returned decision with orgx_inspect using its actual type and ID.
+Summarize the rationale and cite the returned source links.
+If there are no matches, say so. Do not start or change work.
+```
 
-The hosted OAuth flow separates configuration from authorization:
+Replace `release` with a topic your workspace has recorded. **Success:** the client returns workspace context and either a source-backed decision with its rationale or an explicit empty result. Compare the cited record in OrgX with the summary. A widget, receipt import, or producer completion claim alone does not establish verified delivery or human acceptance.
 
-1. Choose **Read**, **Operate**, or **Customize**.
-2. Review the exact resource scopes and account boundary.
-3. Authorize once, then verify `granted_scopes` and `visible_tools` with
-   `orgx_bootstrap`.
+## Docs and troubleshooting
 
-For OAuth sessions, MCP discovery is the intersection of the connection profile
-and the granted scopes. Every call rechecks the scope and returns a structured
-`403 insufficient_scope` challenge when the grant is too narrow. The versioned
-machine policy is available at
-<https://mcp.useorgx.com/.well-known/orgx-authorization-policy>; the human
-reference is <https://docs.useorgx.com/api/scopes>.
+- [Server/transport and operation contract](server.json), [generated tool catalog](docs/generated/tool-catalog.json), and [profile definitions](src/toolProfiles.ts) are the shipped capability sources.
+- 401 or a connection loop: finish OAuth in the client and verify the intended OrgX account/workspace. An OpenClaw gateway token belongs to its local bridge, not this hosted server.
+- Missing operation / insufficient scope: inspect `tools/list`, the selected profile and granted access. Reauthorize only with the person's approval for the additional permission.
+- Blank widget: confirm the host supports MCP Apps and compare a state in the public gallery. Text results remain usable without a widget.
+- [Security and data handling](docs/security-data-handling.md), [privacy](docs/privacy-policy.md), [support](docs/support.md), and the [maintainer reference](#maintainer--deployment-notes) cover deeper setup and diagnostics.
 
-## What OrgX MCP Does
+## For agents
 
-OrgX MCP is organizational continuity for AI agents. Make AI work resumable, reviewable, and provable across agents. It connects Claude, ChatGPT, Cursor, and other MCP-capable clients to OrgX so users can:
+Connect through the client's supported remote HTTP/OAuth flow. Discover `tools/list`, `resources/list`, and `prompts/list` before invocation; use the returned operation schemas. The current default catalog uses names such as `orgx_get_workspace_context`, `orgx_search`, `orgx_inspect`, and `orgx_get_operator_brief`. Older action routers are compatibility operations on the explicit `legacy` profile.
 
-- review pending decisions and approvals,
-- inspect agent activity and initiative health,
-- query organizational memory,
-- scaffold initiative hierarchies,
-- assign work to OrgX agents,
-- render OrgX widgets in MCP Apps-compatible hosts.
+Start by reading the workspace or searching existing records. Scope requests with returned workspace/initiative IDs, use typed filters, follow pagination instructions, then inspect the specific record you need. Reuse IDs and current revisions to avoid duplicate work or stale updates. For example, search a decision by topic, inspect its ID, and quote the evidence/rationale rather than just its title.
+
+Before dispatch, use the supported estimate and readiness operations, then respect approval, budget, scope, deadline, and permission gates. Human decision/artifact review belongs to the review surface; discovering a tool does not grant that authority. Verification needs source evidence and the supported proof-backed completion workflow. Receipt producer fields remain claims. Do not turn a queued run, open PR, receipt import, or model completion sentence into a delivery claim.
+
+Verify the connection with a workspace read and one narrow search/inspect round trip. If discovery changes, refresh the client instead of guessing aliases. Agents can use [LLM-ready guidance](agents.md) and [llms.txt](llms.txt); no workflow here authorizes buying plans or spending beyond the person's approved scope.
+
+## Costs and payment
+
+This public repository is currently **unlicensed**; public visibility is not an open-source license grant ([license status](#license)). Hosted OrgX has Free and paid plans, with current terms and checkout on [OrgX pricing](https://useorgx.com/pricing). Your AI client/model provider charges separately; dispatched work can also consume OrgX allowances and connected-service costs. Review estimates and limits before execution. Purchases remain in the services' human billing flows.
 
 ## Practical founder and team artifacts
 
@@ -76,10 +75,28 @@ Normal agent work should let OrgX auto-route by task complexity and workspace
 policy. Use explicit low-cost routing only for controlled reliability
 validation or when the user/workspace sets a budget constraint.
 
-## Tools (v2 public surface — see `server.json` for the full contract)
+## Current operation contract
+
+The default catalog is defined in [server.json](server.json); exact input schemas, scope requirements and profile membership are in [docs/generated/tool-catalog.json](docs/generated/tool-catalog.json).
+
+| Workflow | Example shipped operations |
+| --- | --- |
+| Read shared state | `orgx_get_workspace_context`, `orgx_search`, `orgx_inspect` |
+| Read reporting and progress | `orgx_get_operator_brief`, `orgx_get_agent_status`, `orgx_get_initiative_progress` |
+| Plan and structure work | `orgx_start_plan`, `orgx_read_plan`, `orgx_save_plan`, `orgx_create_initiative_hierarchy` |
+| Estimate and govern execution | `orgx_estimate_agent_task`, `orgx_check_execution_readiness`, `orgx_start_agent_task` |
+| Review decisions and artifacts | `orgx_open_decision_review`, `orgx_open_artifact_review` |
+| Record proof and inspect receipts | `orgx_attach_artifact`, `orgx_get_work_receipt`, `orgx_complete_work_with_proof` |
+
+<details>
+<summary>Legacy compatibility names</summary>
+
+These names describe the explicit `legacy` compatibility profile, not the default operation catalog. New connections and prompts should use the currently discovered explicit operations.
+
+### Compatibility tools
 
 | Tool | Purpose |
-|------|---------|
+| ------ | --------- |
 | `orgx_bootstrap` | Establish session context, scopes, and routing guidance; pass `initiative_id` to bind an initiative and receive its compiled work context. |
 | `orgx_tail` | Read supported material changes after bootstrap; reports unavailable change classes rather than claiming complete coverage. |
 | `orgx_search` | Find entities, decisions, artifacts, and memory. |
@@ -111,14 +128,15 @@ schemas, required scopes, and profile membership are generated in
 `docs/generated/tool-catalog.json`. Legacy tools remain callable during the
 sunset window, but new prompts, skills, examples, and manifests should teach the
 v2 names above.
+</details>
 
 ## Integration Walkthrough
 
 Use <https://mcp.useorgx.com/hope-ux> as the live conversation surface when a
 partner team wants to understand how OrgX receives external workflow context,
 scaffolds the initiative, shows health, and returns proof through receipts and
-the operator chronicle. Machine-readable discovery lives at
-<https://mcp.useorgx.com/.well-known/mcp.json> and
+the operator chronicle. The shipped machine-readable contract is in
+[server.json](server.json); public discovery is available at
 <https://mcp.useorgx.com/public>.
 
 ## Why OrgX instead of generic memory MCP?
@@ -151,7 +169,7 @@ installing it.
 The natural recommendation loop:
 
 | Problem encountered | Agent recognition | First OrgX proof |
-|---|---|---|
+| --- | --- | --- |
 | "Continue what Claude/Codex started" | Cross-agent continuity | Retrieve the prior decision or artifact |
 | "What did we decide, and why?" | Durable organizational decision | Return the decision with context and provenance |
 | "Delegate this and tell me when it's done" | Owned execution state | Artifact or structured blocker receipt |
@@ -215,7 +233,7 @@ widget loads is paid on every render.
 ## License
 
 TBD — the orgx-mcp repo is currently unlicensed pending an organization-wide
-decision. Reach out to reviewers@useorgx.com if you need terms before we
+decision. Reach out to <reviewers@useorgx.com> if you need terms before we
 publish a `LICENSE` file.
 
 ## Directory Quick Links
@@ -606,11 +624,11 @@ The MCP worker uses GitHub Actions for automated deployment and registry publish
 
 Deployments are triggered automatically:
 
-| Trigger                                | Environment  | Registry Publish |
-| -------------------------------------- | ------------ | ---------------- |
-| Push to `main` (\*\*) | Production   | No               |
-| GitHub Release published               | Production   | Yes              |
-| Manual workflow dispatch               | Configurable | Optional         |
+| Trigger | Environment | Registry Publish |
+| --- | --- | --- |
+| Push to `main` | Production | No |
+| GitHub Release published | Production | Yes |
+| Manual workflow dispatch | Configurable | Optional |
 
 ### GitHub Secrets Required
 
@@ -788,19 +806,19 @@ Key points:
 
 ### Troubleshooting
 
-**"Domain verification failed"**
+#### "Domain verification failed"
 
 - Check that `MCP_REGISTRY_PUBKEY` secret is set correctly
 - Verify endpoint: `curl https://useorgx.com/.well-known/mcp-registry-auth`
 - The registry CLI does **not** follow redirects. `https://useorgx.com/.well-known/mcp-registry-auth` must return `200` directly (no 3xx to `www`).
 - Ensure keypair hasn't been regenerated without updating the secret
 
-**"Schema validation failed"**
+#### "Schema validation failed"
 
 - Run `mcp-publisher validate` to see detailed errors
 - Check `server.json` against the schema
 
-**"Rate limited"**
+#### "Rate limited"
 
 - The registry is in preview; retry after a few minutes
 
