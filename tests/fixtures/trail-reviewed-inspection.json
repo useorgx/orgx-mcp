@@ -1,6 +1,6 @@
 {
   "privacy": "fully_synthetic_no_user_data",
-  "source_commit": "f193c0da017f18a55e961ecb48d8eb8eaa9949e9",
+  "source_commit": "715d6b3e258f4b945749860161b05abc577c7c20",
   "original": {
     "schema_version": "agent-work-receipt/v0.2",
     "receipt_id": "trail:synthetic-codex:synthetic-review:T1",
@@ -684,7 +684,7 @@
         "status": "pending"
       },
       "metadata": {
-        "kind": "verified_change",
+        "kind": "blocked",
         "provenance": "local_human_correction",
         "decided_by_evidence": "ev-2",
         "local_correction": true
@@ -1201,7 +1201,7 @@
       "content_hash": {
         "algorithm": "sha-256",
         "encoding": "hex",
-        "value": "3aa8ded67ee6869756f6cf9e1aad8176cec4383059165fe658c64eabdb9d3813"
+        "value": "52a031b7626d43985ece34133ad07ffc4f3ccf599cac8b3d522ce2739b95b91c"
       }
     }
   }
