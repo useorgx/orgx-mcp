@@ -75,7 +75,9 @@ Normal agent work should let OrgX auto-route by task complexity and workspace
 policy. Use explicit low-cost routing only for controlled reliability
 validation or when the user/workspace sets a budget constraint.
 
-## Current operation contract
+## What OrgX MCP Does
+
+### Current operation contract
 
 The default catalog is defined in [server.json](server.json); exact input schemas, scope requirements and profile membership are in [docs/generated/tool-catalog.json](docs/generated/tool-catalog.json).
 
