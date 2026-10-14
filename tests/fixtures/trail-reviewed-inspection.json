@@ -1,0 +1,1208 @@
+{
+  "privacy": "fully_synthetic_no_user_data",
+  "source_commit": "715d6b3e258f4b945749860161b05abc577c7c20",
+  "original": {
+    "schema_version": "agent-work-receipt/v0.2",
+    "receipt_id": "trail:synthetic-codex:synthetic-review:T1",
+    "intent": {
+      "summary": "Fix the tests and typecheck after the change",
+      "objective": "Fix the tests and typecheck after the change",
+      "acceptance_criteria": [
+        "Tests pass after the change",
+        "Typecheck passes after the change"
+      ],
+      "criteria": [
+        {
+          "id": "c1",
+          "text": "Tests pass after the change",
+          "kind": "tests",
+          "source": "inferred"
+        },
+        {
+          "id": "c2",
+          "text": "Typecheck passes after the change",
+          "kind": "typecheck",
+          "source": "inferred"
+        }
+      ],
+      "request_ref": {
+        "system": "synthetic-codex",
+        "type": "session",
+        "id": "synthetic-review"
+      },
+      "metadata": {
+        "origin": "ask",
+        "provenance": "trail_inferred"
+      }
+    },
+    "actor": {
+      "type": "agent",
+      "id": "synthetic-codex",
+      "display_name": "synthetic-codex",
+      "runtime": {
+        "name": "synthetic-codex"
+      }
+    },
+    "authority": {
+      "mode": "unknown",
+      "status": "unknown",
+      "scope": {
+        "actions": [],
+        "resources": []
+      },
+      "metadata": {
+        "permission_mode": "unknown",
+        "provenance": "observed"
+      }
+    },
+    "actions": [
+      {
+        "id": "step-1",
+        "type": "edit.edit",
+        "summary": "src/retry.ts",
+        "status": "completed",
+        "system": "synthetic-codex",
+        "target_refs": [
+          {
+            "system": "workspace",
+            "type": "file",
+            "id": "src/retry.ts"
+          }
+        ],
+        "started_at": "2026-10-14T10:00:00.000Z",
+        "completed_at": "2026-10-14T10:00:00.000Z"
+      },
+      {
+        "id": "step-2",
+        "type": "bash.test",
+        "summary": "npm test",
+        "status": "completed",
+        "system": "synthetic-codex",
+        "started_at": "2026-10-14T10:00:00.000Z",
+        "completed_at": "2026-10-14T10:00:00.000Z"
+      }
+    ],
+    "artifacts": [
+      {
+        "id": "file-1",
+        "kind": "source_file",
+        "name": "retry.ts",
+        "role": "intermediate",
+        "ref": {
+          "system": "workspace",
+          "type": "file",
+          "id": "src/retry.ts"
+        },
+        "created_at": "2026-10-14T10:00:00.000Z",
+        "metadata": {
+          "decided_by": "edited_not_delivered"
+        }
+      }
+    ],
+    "evidence": [
+      {
+        "id": "ev-2",
+        "kind": "check_output",
+        "summary": "test pass: npm test",
+        "observed_at": "2026-10-14T10:00:00.000Z",
+        "excerpt": "12 tests passed",
+        "ref": {
+          "system": "synthetic-codex",
+          "type": "transcript_event",
+          "id": "synthetic-review#2"
+        }
+      },
+      {
+        "id": "ev-0",
+        "kind": "request",
+        "summary": "What the person asked",
+        "observed_at": "2026-10-14T10:00:00.000Z",
+        "excerpt": "Fix the tests and typecheck after the change",
+        "ref": {
+          "system": "synthetic-codex",
+          "type": "transcript_event",
+          "id": "synthetic-review#0"
+        }
+      }
+    ],
+    "outcome": {
+      "status": "succeeded",
+      "criteria_results": [
+        {
+          "criterion_id": "c1",
+          "status": "met",
+          "evidence_ids": [
+            "ev-2"
+          ],
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c2",
+          "status": "unknown",
+          "evidence_ids": [],
+          "confidence": 0.3
+        }
+      ],
+      "summary": "verified_change (inferred from the steps)",
+      "acceptance": {
+        "status": "pending"
+      },
+      "metadata": {
+        "kind": "verified_change",
+        "confidence": 0.3,
+        "provenance": "trail_inferred",
+        "decided_by_evidence": "ev-2"
+      }
+    },
+    "verification": {
+      "status": "passed",
+      "method": "Checks observed in the transcript (test, typecheck, lint, build runs after the last change) and acceptance criteria matched to evidence.",
+      "verifier": {
+        "type": "service",
+        "id": "orgx-trail",
+        "display_name": "trail"
+      },
+      "checks": [
+        {
+          "id": "check-2",
+          "name": "test: npm test",
+          "status": "passed",
+          "method": "Pass/fail read from the command output.",
+          "evidence_ids": [
+            "ev-2"
+          ]
+        },
+        {
+          "id": "criterion-c1",
+          "name": "Tests pass after the change",
+          "status": "passed",
+          "method": "Acceptance criterion (tests) matched to evidence by trail rules.",
+          "evidence_ids": [
+            "ev-2"
+          ],
+          "criterion_ids": [
+            "c1"
+          ]
+        }
+      ],
+      "evidence_ids": [
+        "ev-2"
+      ],
+      "verified_at": "2026-10-14T10:00:00.000Z"
+    },
+    "cost": {
+      "currency": "USD",
+      "total": 0,
+      "estimated": true,
+      "metadata": {
+        "basis": "no token counts in this transcript"
+      }
+    },
+    "lineage": {
+      "run_ref": {
+        "system": "synthetic-codex",
+        "type": "session",
+        "id": "synthetic-review"
+      },
+      "parent_receipt_refs": [],
+      "references": []
+    },
+    "human_interventions": [],
+    "timestamps": {
+      "started_at": "2026-10-14T10:00:00.000Z",
+      "completed_at": "2026-10-14T10:00:00.000Z",
+      "issued_at": "2026-10-14T10:00:00.000Z"
+    },
+    "provenance": [
+      {
+        "path": "/intent/objective",
+        "basis": "observed",
+        "confidence": 1
+      },
+      {
+        "path": "/intent/criteria",
+        "basis": "inferred",
+        "method": "trail-rules/trail-2.1",
+        "confidence": 0.6
+      },
+      {
+        "path": "/outcome/status",
+        "basis": "inferred",
+        "method": "trail-rules/trail-2.1",
+        "confidence": 0.3
+      },
+      {
+        "path": "/verification/status",
+        "basis": "observed",
+        "method": "checks read from the transcript",
+        "confidence": 0.9
+      },
+      {
+        "path": "/cost/total",
+        "basis": "inferred",
+        "method": "list prices x transcript tokens",
+        "confidence": 0
+      }
+    ],
+    "trajectory": [],
+    "extensions": {
+      "org.orgx.trail/v1": {
+        "root_thread": "T1",
+        "origin": "ask",
+        "cwd": null,
+        "repo": "example-labs/atlas",
+        "project": null,
+        "coverage": {
+          "status": "complete",
+          "scope": "provided extraction steps",
+          "source_status": "unknown",
+          "sections": {
+            "actions": {
+              "total": 2,
+              "returned": 2,
+              "limit": 300,
+              "truncated": false
+            },
+            "edited_files": {
+              "total": 1,
+              "returned": 1,
+              "limit": 100,
+              "truncated": false
+            },
+            "conversation": {
+              "total": 1,
+              "returned": 1,
+              "limit": 400,
+              "truncated": false
+            },
+            "inputs": {
+              "total": 1,
+              "returned": 1,
+              "limit": 50,
+              "truncated": false
+            },
+            "evidence": {
+              "total": 2,
+              "returned": 2,
+              "excerpt_limit": 1200,
+              "source_availability": "not_loaded"
+            }
+          },
+          "omitted_ranges": [],
+          "excerpt_clipping": "unknown",
+          "missing_sources": [
+            "original_client_history"
+          ]
+        },
+        "outcome_kind": "verified_change",
+        "confidence": {
+          "outcome": 0.3,
+          "boundary": null,
+          "backtracks": null,
+          "criteria": 0.3
+        },
+        "criteria": [
+          {
+            "id": "c1",
+            "kind": "tests",
+            "text": "Tests pass after the change",
+            "status": "met",
+            "confidence": 0.9,
+            "evidence_ids": [
+              "ev-2"
+            ]
+          },
+          {
+            "id": "c2",
+            "kind": "typecheck",
+            "text": "Typecheck passes after the change",
+            "status": "unknown",
+            "confidence": 0.3,
+            "evidence_ids": []
+          }
+        ],
+        "episodes": [],
+        "changes_of_course": [],
+        "corroborated_by_two_reads": false,
+        "provenance": {
+          "intent": "observed (the ask)",
+          "criteria": "rules over the ask",
+          "outcome": "rules over the steps",
+          "artifacts_roles": "rules",
+          "cost": "none"
+        }
+      },
+      "org.orgx.review/v1": {
+        "version": "org.orgx.review/v1",
+        "domain": "code",
+        "subject": {
+          "type": "commit",
+          "title": "example-labs/atlas",
+          "system": "github",
+          "id": "example-labs/atlas"
+        },
+        "work": "example-labs/atlas · Fix the tests and typecheck after the change",
+        "sources": [
+          {
+            "id": "ask",
+            "type": "chat",
+            "title": "Request from the person",
+            "where": "message 1",
+            "note": "The person’s own words. Criteria below are read from them by Trail’s rules."
+          },
+          {
+            "id": "repo",
+            "type": "artifact",
+            "title": "example-labs/atlas",
+            "href": "https://github.com/example-labs/atlas",
+            "note": "The repository the work ran in."
+          }
+        ],
+        "criteria": [
+          {
+            "criterion_id": "c1",
+            "short": "Tests pass after the change",
+            "source_refs": [
+              {
+                "source_id": "ask",
+                "at": "message 1",
+                "quote": "Fix the tests"
+              }
+            ],
+            "source_check": "unchecked",
+            "source_note": "Read from the person’s words by Trail’s rules. The wording of the criterion is Trail’s; the quote is theirs.",
+            "lenses": {
+              "judged": {
+                "status": "none",
+                "note": "No review against the codebase or a skill was recorded."
+              },
+              "measured": {
+                "status": "pass",
+                "note": "The tests ran after the last change and did not fail.",
+                "evidence_ids": [
+                  "ev-2"
+                ]
+              },
+              "observed": {
+                "status": "pass",
+                "note": "Recorded output shows it.",
+                "evidence_ids": [
+                  "ev-2"
+                ]
+              },
+              "outcome": {
+                "status": "none",
+                "note": "No log or analytics signal linked."
+              }
+            },
+            "episode_ids": [
+              "ep-e8333dedaf38"
+            ]
+          },
+          {
+            "criterion_id": "c2",
+            "short": "Typecheck passes after the change",
+            "source_refs": [
+              {
+                "source_id": "ask",
+                "at": "message 1",
+                "quote": "typecheck"
+              }
+            ],
+            "source_check": "unchecked",
+            "source_note": "Read from the person’s words by Trail’s rules. The wording of the criterion is Trail’s; the quote is theirs.",
+            "lenses": {
+              "judged": {
+                "status": "none",
+                "note": "No review against the codebase or a skill was recorded."
+              },
+              "measured": {
+                "status": "none",
+                "note": "No run of this kind after the last change."
+              },
+              "observed": {
+                "status": "none",
+                "note": "No output excerpt recorded for this."
+              },
+              "outcome": {
+                "status": "none",
+                "note": "No log or analytics signal linked."
+              }
+            },
+            "episode_ids": []
+          }
+        ],
+        "episodes": [
+          {
+            "id": "ep-bc44e10d5911",
+            "kind": "ask",
+            "at": "2026-10-14T10:00:00.000Z",
+            "title": "Fix the tests and typecheck after the change",
+            "evidence_ids": [
+              "ev-0"
+            ],
+            "action_ids": []
+          },
+          {
+            "id": "ep-e8333dedaf38",
+            "kind": "check",
+            "at": "2026-10-14T10:00:00.000Z",
+            "title": "Passed test: npm test",
+            "why": "After the last change.",
+            "evidence_ids": [
+              "ev-2"
+            ],
+            "action_ids": [
+              "step-2"
+            ]
+          }
+        ],
+        "layers": {
+          "inputs": {
+            "status": "part",
+            "note": "One message"
+          },
+          "sources": {
+            "status": "part",
+            "note": "Ask only; no doc or ticket",
+            "how": "Name the spec, ticket or doc in the ask so criteria can be quoted from it."
+          },
+          "transcript": {
+            "status": "full",
+            "note": "1 messages, 2 tool calls in the provided steps; excerpts may be clipped"
+          },
+          "judged": {
+            "status": "missing",
+            "note": "No review",
+            "how": "Add a reviewer pass against the codebase and the pinned skills; record it as a verification check."
+          },
+          "measured": {
+            "status": "part",
+            "note": "1 of 2 tested"
+          },
+          "observed": {
+            "status": "part",
+            "note": "Some outputs recorded"
+          },
+          "outcome": {
+            "status": "missing",
+            "note": "No signal",
+            "how": "Link a log or analytics query that shows the behavior after release."
+          }
+        },
+        "inputs": [
+          {
+            "who": "Person",
+            "type": "chat",
+            "text": "Fix the tests and typecheck after the change",
+            "at": "2026-10-14T10:00:00.000Z",
+            "quality": "full"
+          }
+        ],
+        "conversation": [
+          {
+            "who": "human",
+            "text": "Fix the tests and typecheck after the change",
+            "at": "2026-10-14T10:00:00.000Z",
+            "episode_id": "ep-bc44e10d5911"
+          }
+        ],
+        "readings": [
+          {
+            "label": "Trail’s rules, reading the steps",
+            "value": "verified_change · confidence 0.3"
+          },
+          {
+            "label": "Each criterion, judged against evidence",
+            "value": "1 met, 0 not met, 1 unknown"
+          }
+        ],
+        "metadata": {
+          "producer": "trail",
+          "threads": 0,
+          "backtracks": 0,
+          "tool_calls": 2,
+          "failed_calls": 0
+        }
+      }
+    },
+    "integrity": {
+      "content_hash": {
+        "algorithm": "sha-256",
+        "encoding": "hex",
+        "value": "8f170fcef30d83db9df655c4a2a1c1e30faa5d1ef5829bc91614f0d1e270a057"
+      }
+    }
+  },
+  "wire": {
+    "schema_version": "agent-work-receipt/v0.2",
+    "receipt_id": "trail:synthetic-codex:synthetic-review:T1",
+    "intent": {
+      "summary": "Fix the tests and typecheck after the change",
+      "objective": "Fix the tests and typecheck after the change",
+      "acceptance_criteria": [
+        "Tests pass after the change",
+        "Typecheck passes after the change"
+      ],
+      "criteria": [
+        {
+          "id": "c1",
+          "text": "Tests pass after the change",
+          "kind": "tests",
+          "source": "inferred"
+        },
+        {
+          "id": "c2",
+          "text": "Typecheck passes after the change",
+          "kind": "typecheck",
+          "source": "inferred"
+        }
+      ],
+      "request_ref": {
+        "system": "synthetic-codex",
+        "type": "session",
+        "id": "synthetic-review"
+      },
+      "metadata": {
+        "origin": "ask",
+        "provenance": "trail_inferred"
+      }
+    },
+    "actor": {
+      "type": "agent",
+      "id": "synthetic-codex",
+      "display_name": "synthetic-codex",
+      "runtime": {
+        "name": "synthetic-codex"
+      }
+    },
+    "authority": {
+      "mode": "unknown",
+      "status": "unknown",
+      "scope": {
+        "actions": [],
+        "resources": []
+      },
+      "metadata": {
+        "permission_mode": "unknown",
+        "provenance": "observed"
+      }
+    },
+    "actions": [
+      {
+        "id": "step-1",
+        "type": "edit.edit",
+        "summary": "src/retry.ts",
+        "status": "completed",
+        "system": "synthetic-codex",
+        "target_refs": [
+          {
+            "system": "workspace",
+            "type": "file",
+            "id": "src/retry.ts"
+          }
+        ],
+        "started_at": "2026-10-14T10:00:00.000Z",
+        "completed_at": "2026-10-14T10:00:00.000Z"
+      },
+      {
+        "id": "step-2",
+        "type": "bash.test",
+        "summary": "npm test",
+        "status": "completed",
+        "system": "synthetic-codex",
+        "started_at": "2026-10-14T10:00:00.000Z",
+        "completed_at": "2026-10-14T10:00:00.000Z"
+      }
+    ],
+    "artifacts": [
+      {
+        "id": "file-1",
+        "kind": "source_file",
+        "name": "retry.ts",
+        "role": "intermediate",
+        "ref": {
+          "system": "workspace",
+          "type": "file",
+          "id": "src/retry.ts"
+        },
+        "created_at": "2026-10-14T10:00:00.000Z",
+        "metadata": {
+          "decided_by": "edited_not_delivered"
+        }
+      }
+    ],
+    "evidence": [
+      {
+        "id": "ev-2",
+        "kind": "check_output",
+        "summary": "test pass: npm test",
+        "observed_at": "2026-10-14T10:00:00.000Z",
+        "excerpt": "12 tests passed",
+        "ref": {
+          "system": "synthetic-codex",
+          "type": "transcript_event",
+          "id": "synthetic-review#2"
+        }
+      },
+      {
+        "id": "ev-0",
+        "kind": "request",
+        "summary": "What the person asked",
+        "observed_at": "2026-10-14T10:00:00.000Z",
+        "excerpt": "Fix the tests and typecheck after the change",
+        "ref": {
+          "system": "synthetic-codex",
+          "type": "transcript_event",
+          "id": "synthetic-review#0"
+        }
+      }
+    ],
+    "outcome": {
+      "status": "blocked",
+      "criteria_results": [
+        {
+          "criterion_id": "c1",
+          "status": "met",
+          "evidence_ids": [
+            "ev-2"
+          ],
+          "confidence": 0.9
+        },
+        {
+          "criterion_id": "c2",
+          "status": "unmet",
+          "evidence_ids": [],
+          "decided_by": {
+            "type": "human",
+            "id": "local-workspace-member"
+          }
+        }
+      ],
+      "summary": "verified_change (inferred from the steps)",
+      "acceptance": {
+        "status": "pending"
+      },
+      "metadata": {
+        "kind": "blocked",
+        "provenance": "local_human_correction",
+        "decided_by_evidence": "ev-2",
+        "local_correction": true
+      }
+    },
+    "verification": {
+      "status": "passed",
+      "method": "Checks observed in the transcript (test, typecheck, lint, build runs after the last change) and acceptance criteria matched to evidence.",
+      "verifier": {
+        "type": "service",
+        "id": "orgx-trail",
+        "display_name": "trail"
+      },
+      "checks": [
+        {
+          "id": "check-2",
+          "name": "test: npm test",
+          "status": "passed",
+          "method": "Pass/fail read from the command output.",
+          "evidence_ids": [
+            "ev-2"
+          ]
+        },
+        {
+          "id": "criterion-c1",
+          "name": "Tests pass after the change",
+          "status": "passed",
+          "method": "Acceptance criterion (tests) matched to evidence by trail rules.",
+          "evidence_ids": [
+            "ev-2"
+          ],
+          "criterion_ids": [
+            "c1"
+          ]
+        }
+      ],
+      "evidence_ids": [
+        "ev-2"
+      ],
+      "verified_at": "2026-10-14T10:00:00.000Z"
+    },
+    "cost": {
+      "currency": "USD",
+      "total": 0,
+      "estimated": true,
+      "metadata": {
+        "basis": "no token counts in this transcript"
+      }
+    },
+    "lineage": {
+      "run_ref": {
+        "system": "synthetic-codex",
+        "type": "session",
+        "id": "synthetic-review"
+      },
+      "parent_receipt_refs": [],
+      "references": []
+    },
+    "human_interventions": [],
+    "timestamps": {
+      "started_at": "2026-10-14T10:00:00.000Z",
+      "completed_at": "2026-10-14T10:00:00.000Z",
+      "issued_at": "2026-10-14T10:00:00.000Z"
+    },
+    "provenance": [
+      {
+        "path": "/intent/objective",
+        "basis": "observed",
+        "confidence": 1
+      },
+      {
+        "path": "/intent/criteria",
+        "basis": "inferred",
+        "method": "trail-rules/trail-2.1",
+        "confidence": 0.6
+      },
+      {
+        "path": "/verification/status",
+        "basis": "observed",
+        "method": "checks read from the transcript",
+        "confidence": 0.9
+      },
+      {
+        "path": "/cost/total",
+        "basis": "inferred",
+        "method": "list prices x transcript tokens",
+        "confidence": 0
+      },
+      {
+        "path": "/outcome/status",
+        "basis": "declared",
+        "method": "local_human_correction"
+      },
+      {
+        "path": "/extensions/org.orgx.trail~1v1/criteria/1/status",
+        "basis": "declared",
+        "method": "local_human_correction"
+      },
+      {
+        "path": "/outcome/criteria_results/1/status",
+        "basis": "declared",
+        "method": "local_human_correction"
+      }
+    ],
+    "trajectory": [],
+    "extensions": {
+      "org.orgx.trail/v1": {
+        "root_thread": "T1",
+        "origin": "ask",
+        "cwd": null,
+        "repo": "example-labs/atlas",
+        "project": null,
+        "coverage": {
+          "status": "complete",
+          "scope": "provided extraction steps",
+          "source_status": "unknown",
+          "sections": {
+            "actions": {
+              "total": 2,
+              "returned": 2,
+              "limit": 300,
+              "truncated": false
+            },
+            "edited_files": {
+              "total": 1,
+              "returned": 1,
+              "limit": 100,
+              "truncated": false
+            },
+            "conversation": {
+              "total": 1,
+              "returned": 1,
+              "limit": 400,
+              "truncated": false
+            },
+            "inputs": {
+              "total": 1,
+              "returned": 1,
+              "limit": 50,
+              "truncated": false
+            },
+            "evidence": {
+              "total": 2,
+              "returned": 2,
+              "excerpt_limit": 1200,
+              "source_availability": "not_loaded"
+            }
+          },
+          "omitted_ranges": [],
+          "excerpt_clipping": "unknown",
+          "missing_sources": [
+            "original_client_history"
+          ]
+        },
+        "outcome_kind": "blocked",
+        "confidence": {
+          "outcome": null,
+          "boundary": null,
+          "backtracks": null,
+          "criteria": 0.9
+        },
+        "criteria": [
+          {
+            "id": "c1",
+            "kind": "tests",
+            "text": "Tests pass after the change",
+            "status": "met",
+            "confidence": 0.9,
+            "evidence_ids": [
+              "ev-2"
+            ]
+          },
+          {
+            "id": "c2",
+            "kind": "typecheck",
+            "text": "Typecheck passes after the change",
+            "status": "unmet",
+            "evidence_ids": [],
+            "by": "human",
+            "basis": "local_human_correction"
+          }
+        ],
+        "episodes": [],
+        "changes_of_course": [],
+        "corroborated_by_two_reads": false,
+        "provenance": {
+          "intent": "observed (the ask)",
+          "criteria": "rules over the ask",
+          "outcome": "rules over the steps",
+          "artifacts_roles": "rules",
+          "cost": "none"
+        },
+        "read_projection": {
+          "outcome_basis": "local_human_correction",
+          "conflicts": []
+        },
+        "local_review": {
+          "authority": "local_only",
+          "revision": 7,
+          "corrections": [
+            {
+              "field": "/outcome/status",
+              "original": "succeeded",
+              "resolved": "blocked",
+              "by": "human",
+              "at": "2026-10-14T11:00:00Z",
+              "scope": "local_receipt",
+              "review_revision": 7
+            },
+            {
+              "field": "/criteria/c2/status",
+              "original": "unknown",
+              "resolved": "unmet",
+              "by": "human",
+              "at": "2026-10-14T11:00:00Z",
+              "scope": "local_receipt",
+              "review_revision": 7
+            }
+          ],
+          "original": {
+            "outcome": {
+              "status": "succeeded",
+              "criteria_results": [
+                {
+                  "criterion_id": "c1",
+                  "status": "met",
+                  "evidence_ids": [
+                    "ev-2"
+                  ],
+                  "confidence": 0.9
+                },
+                {
+                  "criterion_id": "c2",
+                  "status": "unknown",
+                  "evidence_ids": [],
+                  "confidence": 0.3
+                }
+              ],
+              "summary": "verified_change (inferred from the steps)",
+              "acceptance": {
+                "status": "pending"
+              },
+              "metadata": {
+                "kind": "verified_change",
+                "confidence": 0.3,
+                "provenance": "trail_inferred",
+                "decided_by_evidence": "ev-2"
+              }
+            },
+            "criteria": [
+              {
+                "id": "c1",
+                "kind": "tests",
+                "text": "Tests pass after the change",
+                "status": "met",
+                "confidence": 0.9,
+                "evidence_ids": [
+                  "ev-2"
+                ]
+              },
+              {
+                "id": "c2",
+                "kind": "typecheck",
+                "text": "Typecheck passes after the change",
+                "status": "unknown",
+                "confidence": 0.3,
+                "evidence_ids": []
+              }
+            ],
+            "provenance": [
+              {
+                "path": "/intent/objective",
+                "basis": "observed",
+                "confidence": 1
+              },
+              {
+                "path": "/intent/criteria",
+                "basis": "inferred",
+                "method": "trail-rules/trail-2.1",
+                "confidence": 0.6
+              },
+              {
+                "path": "/outcome/status",
+                "basis": "inferred",
+                "method": "trail-rules/trail-2.1",
+                "confidence": 0.3
+              },
+              {
+                "path": "/verification/status",
+                "basis": "observed",
+                "method": "checks read from the transcript",
+                "confidence": 0.9
+              },
+              {
+                "path": "/cost/total",
+                "basis": "inferred",
+                "method": "list prices x transcript tokens",
+                "confidence": 0
+              }
+            ],
+            "confidence": {
+              "outcome": 0.3,
+              "boundary": null,
+              "backtracks": null,
+              "criteria": 0.3
+            }
+          }
+        },
+        "workstream": null,
+        "labels": null,
+        "suggested_links": [],
+        "links": []
+      },
+      "org.orgx.review/v1": {
+        "version": "org.orgx.review/v1",
+        "domain": "code",
+        "subject": {
+          "type": "commit",
+          "title": "example-labs/atlas",
+          "system": "github",
+          "id": "example-labs/atlas"
+        },
+        "work": "example-labs/atlas · Fix the tests and typecheck after the change",
+        "sources": [
+          {
+            "id": "ask",
+            "type": "chat",
+            "title": "Request from the person",
+            "where": "message 1",
+            "note": "The person’s own words. Criteria below are read from them by Trail’s rules."
+          },
+          {
+            "id": "repo",
+            "type": "artifact",
+            "title": "example-labs/atlas",
+            "href": "https://github.com/example-labs/atlas",
+            "note": "The repository the work ran in."
+          }
+        ],
+        "criteria": [
+          {
+            "criterion_id": "c1",
+            "short": "Tests pass after the change",
+            "source_refs": [
+              {
+                "source_id": "ask",
+                "at": "message 1",
+                "quote": "Fix the tests"
+              }
+            ],
+            "source_check": "unchecked",
+            "source_note": "Read from the person’s words by Trail’s rules. The wording of the criterion is Trail’s; the quote is theirs.",
+            "lenses": {
+              "judged": {
+                "status": "none",
+                "note": "No review against the codebase or a skill was recorded."
+              },
+              "measured": {
+                "status": "pass",
+                "note": "The tests ran after the last change and did not fail.",
+                "evidence_ids": [
+                  "ev-2"
+                ]
+              },
+              "observed": {
+                "status": "pass",
+                "note": "Recorded output shows it.",
+                "evidence_ids": [
+                  "ev-2"
+                ]
+              },
+              "outcome": {
+                "status": "none",
+                "note": "No log or analytics signal linked."
+              }
+            },
+            "episode_ids": [
+              "ep-e8333dedaf38"
+            ]
+          },
+          {
+            "criterion_id": "c2",
+            "short": "Typecheck passes after the change",
+            "source_refs": [
+              {
+                "source_id": "ask",
+                "at": "message 1",
+                "quote": "typecheck"
+              }
+            ],
+            "source_check": "unchecked",
+            "source_note": "Read from the person’s words by Trail’s rules. The wording of the criterion is Trail’s; the quote is theirs.",
+            "lenses": {
+              "judged": {
+                "status": "none",
+                "note": "No review against the codebase or a skill was recorded."
+              },
+              "measured": {
+                "status": "none",
+                "note": "No run of this kind after the last change."
+              },
+              "observed": {
+                "status": "none",
+                "note": "No output excerpt recorded for this."
+              },
+              "outcome": {
+                "status": "none",
+                "note": "No log or analytics signal linked."
+              }
+            },
+            "episode_ids": [],
+            "local_correction": {
+              "status": "unmet",
+              "by": "human",
+              "at": "2026-10-14T11:00:00Z"
+            }
+          }
+        ],
+        "episodes": [
+          {
+            "id": "ep-bc44e10d5911",
+            "kind": "ask",
+            "at": "2026-10-14T10:00:00.000Z",
+            "title": "Fix the tests and typecheck after the change",
+            "evidence_ids": [
+              "ev-0"
+            ],
+            "action_ids": []
+          },
+          {
+            "id": "ep-e8333dedaf38",
+            "kind": "check",
+            "at": "2026-10-14T10:00:00.000Z",
+            "title": "Passed test: npm test",
+            "why": "After the last change.",
+            "evidence_ids": [
+              "ev-2"
+            ],
+            "action_ids": [
+              "step-2"
+            ]
+          }
+        ],
+        "layers": {
+          "inputs": {
+            "status": "part",
+            "note": "One message"
+          },
+          "sources": {
+            "status": "part",
+            "note": "Ask only; no doc or ticket",
+            "how": "Name the spec, ticket or doc in the ask so criteria can be quoted from it."
+          },
+          "transcript": {
+            "status": "full",
+            "note": "1 messages, 2 tool calls in the provided steps; excerpts may be clipped"
+          },
+          "judged": {
+            "status": "missing",
+            "note": "No review",
+            "how": "Add a reviewer pass against the codebase and the pinned skills; record it as a verification check."
+          },
+          "measured": {
+            "status": "part",
+            "note": "1 of 2 tested"
+          },
+          "observed": {
+            "status": "part",
+            "note": "Some outputs recorded"
+          },
+          "outcome": {
+            "status": "missing",
+            "note": "No signal",
+            "how": "Link a log or analytics query that shows the behavior after release."
+          }
+        },
+        "inputs": [
+          {
+            "who": "Person",
+            "type": "chat",
+            "text": "Fix the tests and typecheck after the change",
+            "at": "2026-10-14T10:00:00.000Z",
+            "quality": "full"
+          }
+        ],
+        "conversation": [
+          {
+            "who": "human",
+            "text": "Fix the tests and typecheck after the change",
+            "at": "2026-10-14T10:00:00.000Z",
+            "episode_id": "ep-bc44e10d5911"
+          }
+        ],
+        "readings": [
+          {
+            "label": "Trail’s rules, reading the steps",
+            "value": "verified_change · confidence 0.3"
+          },
+          {
+            "label": "Each criterion, judged against evidence",
+            "value": "1 met, 0 not met, 1 unknown"
+          }
+        ],
+        "metadata": {
+          "producer": "trail",
+          "threads": 0,
+          "backtracks": 0,
+          "tool_calls": 2,
+          "failed_calls": 0
+        }
+      }
+    },
+    "integrity": {
+      "content_hash": {
+        "algorithm": "sha-256",
+        "encoding": "hex",
+        "value": "52a031b7626d43985ece34133ad07ffc4f3ccf599cac8b3d522ce2739b95b91c"
+      }
+    }
+  }
+}
