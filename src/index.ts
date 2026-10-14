@@ -55,7 +55,7 @@ import {
 import { isModelVisibleToolMeta } from './toolVisibility';
 import { applyToolArgumentAliases } from './toolArgumentAliases';
 import { isWidgetOnlyTool } from './widgetToolContract';
-import { WORKFLOW_TOOL_ADAPTERS, EXTENDED_WORKFLOW_TOOL_ADAPTERS, resolveWorkflowInvocationSecuritySchemes, type WorkflowToolAdapter } from './workflowTools';
+import { WORKFLOW_TOOL_ADAPTERS, EXTENDED_WORKFLOW_TOOL_ADAPTERS, getWorkflowToolContract, resolveWorkflowInvocationSecuritySchemes, type WorkflowToolAdapter } from './workflowTools';
 import { RECEIPT_OPERATION_TOOLS, executeReceiptOperation } from './receiptOperationTools';
 import { WIDGET_OPERATION_TOOLS } from './widgetOperations';
 import { getPublicOperationContract, getPublicOperationContracts } from './publicOperationContracts';
@@ -134,6 +134,9 @@ import { fetchContextPreparation, fetchContextPack } from './contextPack';
 import {
   validateEntityCreatePayloadContract,
 } from './batchCreate';
+import { isRemedyCode, RemedyError } from './remedyErrors';
+import { installIdempotencyKeyGuard } from './idempotencyKeys';
+import { isMutatingOperation, typedRemedyDetails, withTypedRemedy } from './typedToolErrors';
 import {
   buildClientAwareContentBlocks,
   buildFailureDetails,
@@ -2471,7 +2474,8 @@ export class OrgXMcp extends McpAgent<
 
   private async withOrgx(
     runner: () => Promise<CallToolResult>,
-    toolId?: string
+    toolId?: string,
+    args?: Record<string, unknown>
   ): Promise<CallToolResult> {
     try {
       const result = await runner();
@@ -2531,23 +2535,42 @@ export class OrgXMcp extends McpAgent<
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // Typed remedies come from the failure's origin, its structured backend
+      // code, or its status. Message matching is only the last resort.
+      const diagnostic = diagnoseToolFailure({
+        toolId: toolId ?? 'unknown',
+        error,
+        args,
+        mutating: isMutatingOperation(toolId),
+      });
+      const typed = isRemedyCode(diagnostic.code);
       if (error instanceof OrgXApiError) {
         return this.toolError(message, {
-          code:
-            error.statusCode === 401 || error.statusCode === 403
-              ? 'permission_denied'
-              : error.statusCode === 404
-              ? 'entity_not_found'
-              : error.statusCode === 400
-              ? 'invalid_input'
-              : error.statusCode && error.statusCode >= 500
-              ? 'upstream_unavailable'
-              : 'tool_execution_failed',
+          code: typed
+            ? diagnostic.code
+            : error.statusCode === 401 || error.statusCode === 403
+            ? 'permission_denied'
+            : error.statusCode === 404
+            ? 'entity_not_found'
+            : error.statusCode === 400
+            ? 'invalid_input'
+            : error.statusCode && error.statusCode >= 500
+            ? 'upstream_unavailable'
+            : 'tool_execution_failed',
           status: error.statusCode,
-          details: {
-            retryable: Boolean(error.statusCode && error.statusCode >= 500),
-            suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
-          },
+          details: typed
+            ? typedRemedyDetails(diagnostic)
+            : {
+                retryable: Boolean(error.statusCode && error.statusCode >= 500),
+                suggested_next_calls: [{ tool: 'orgx_get_workspace_context', args: {} }],
+              },
+        });
+      }
+      if (typed) {
+        return this.toolError(message, {
+          code: diagnostic.code,
+          status: error instanceof RemedyError ? error.status : undefined,
+          details: typedRemedyDetails(diagnostic),
         });
       }
       return this.toolError(message);
@@ -4261,6 +4284,11 @@ export class OrgXMcp extends McpAgent<
             {
               method: 'POST',
               body: JSON.stringify(body),
+              // Public lifecycle operations require a retry key; forward it so
+              // a retried pause/resume/retry/cancel applies at most once.
+              ...(isLifecycle && typeof args.idempotency_key === 'string'
+                ? { headers: { 'Idempotency-Key': args.idempotency_key } }
+                : {}),
             },
             isLifecycle
               ? {
@@ -4324,7 +4352,7 @@ export class OrgXMcp extends McpAgent<
         });
         throw error;
       }
-    });
+    }, toolId, args);
   }
 
   /**
@@ -4696,6 +4724,7 @@ export class OrgXMcp extends McpAgent<
 
               let url = endpoint.path;
               let fetchInit: RequestInit;
+              let retryKeyHeader: Record<string, string> | undefined;
 
               if (endpoint.method === 'GET') {
                 const endpointPath =
@@ -4767,6 +4796,9 @@ export class OrgXMcp extends McpAgent<
                     artifactId
                   )}/independent-review`;
                   normalizedToolArgs = {};
+                  if (typeof toolArgs.idempotency_key === 'string') {
+                    retryKeyHeader = { 'Idempotency-Key': toolArgs.idempotency_key };
+                  }
                 }
                 if (tool.id === 'record_quality_score') {
                   const normalized =
@@ -4842,6 +4874,7 @@ export class OrgXMcp extends McpAgent<
                 fetchInit = {
                   method: 'POST',
                   body: JSON.stringify(normalizedToolArgs),
+                  ...(retryKeyHeader ? { headers: retryKeyHeader } : {}),
                 };
               }
 
@@ -7837,6 +7870,17 @@ export class OrgXMcp extends McpAgent<
       toolId: id, securitySchemes: schemes, userId: this.resolveUserId() ?? undefined,
       serverUrl: this.env.MCP_SERVER_URL, featureDescription: `use ${id.replace(/_/g, ' ')}`,
     });
+    // Writes that declare a required idempotency_key return a typed
+    // idempotency_key_required remedy when it is missing (src/idempotencyKeys.ts),
+    // after the same authorization check the operation itself performs.
+    installIdempotencyKeyGuard(this.server, {
+      authorize: (id, args) => {
+        const schemes = getWorkflowToolContract(id)
+          ? resolveWorkflowInvocationSecuritySchemes(id, args)
+          : RECEIPT_OPERATION_TOOLS.find((tool) => tool.id === id)?.securitySchemes;
+        return schemes ? auth(id, schemes) : null;
+      },
+    });
     const directResult = (raw: Record<string, unknown>): CallToolResult => {
       const split = separateOperationWidgetMeta(raw);
       return { content: [{ type: 'text', text: JSON.stringify(split.data) }], structuredContent: split.data, ...(split.meta ? { _meta: split.meta } : {}) };
@@ -7847,7 +7891,7 @@ export class OrgXMcp extends McpAgent<
       this.server.registerTool(tool.id, {
         title: tool.title, description: tool.description, inputSchema: this.withClientContext(tool.inputSchema),
         annotations: tool.annotations, _meta: { ...tool._meta, 'mcp/securitySchemes': tool.securitySchemes },
-      }, async (args: Record<string, unknown>, extra: unknown) => {
+      }, async (args: Record<string, unknown>, extra: unknown) => withTypedRemedy(await (async (): Promise<CallToolResult> => {
         const schemes = resolveWorkflowInvocationSecuritySchemes(tool.id, args);
         const blocked = auth(tool.id, schemes);
         if (blocked) return blocked;
@@ -7857,7 +7901,7 @@ export class OrgXMcp extends McpAgent<
           return directResult(await this.requestPublicOperation(request.path, {
             method: request.method, ...(request.body ? { body: JSON.stringify(request.body) } : {}), ...(request.headers ? { headers: request.headers } : {}),
           }));
-        }, tool.id);
+        }, tool.id, effective);
         const canonicalArgs = tool.toCanonicalArgs(effective);
         if (tool.id === 'orgx_open_artifact_review' && typeof canonicalArgs.artifact_id === 'string') return this.withOrgx(async () => {
           const params = new URLSearchParams({ widget_meta: '1', ...(effective.workspace_id ? { workspace_id: String(effective.workspace_id) } : {}) });
@@ -7865,7 +7909,7 @@ export class OrgXMcp extends McpAgent<
           const split = separateOperationWidgetMeta(raw);
           const data = split.data.data && typeof split.data.data === 'object' ? split.data.data as Record<string, unknown> : split.data;
           return { content: [{ type: 'text', text: summarizeArtifactReviewEnvelope(data as any) }], structuredContent: data, ...(split.meta ? { _meta: split.meta } : {}) };
-        }, tool.id);
+        }, tool.id, effective);
         if (tool.id === 'orgx_complete_work_with_proof' && canonicalArgs.type === 'task') return this.withOrgx(async () => {
           const request = await taskProofCompletionRequest(canonicalArgs);
           return directResult(await this.requestPublicOperation('/api/v1/workflows/complete-with-proof', {
@@ -7873,7 +7917,7 @@ export class OrgXMcp extends McpAgent<
           // Keyed proof writes can commit before the short primary deadline.
           // Keep their response and retries on the same canonical data plane.
           }, { allowFallback: false }));
-        }, tool.id);
+        }, tool.id, effective);
         if (tool.id === 'orgx_get_operation_status') {
           if (!canonicalArgs.kind && typeof canonicalArgs.operation_id === 'string' && ORGX_UUID_RE.test(canonicalArgs.operation_id)) {
             // Opaque UUIDs from existing durable APIs remain useful. An
@@ -7901,13 +7945,13 @@ export class OrgXMcp extends McpAgent<
             const split = separateOperationWidgetMeta(raw);
             const data = split.data.data && typeof split.data.data === 'object' ? split.data.data as Record<string, unknown> : split.data;
             return { ...result, structuredContent: { ...result.structuredContent, ...data }, ...(split.meta ? { _meta: { ...result._meta, ...split.meta } } : {}) };
-          }, tool.id);
+          }, tool.id, effective);
         }
         if (tool.id === 'orgx_complete_work_with_proof' && result.structuredContent && !result.isError) return {
           ...result, structuredContent: { data: result.structuredContent, meta: { apiVersion: '1', workspaceId: effective.workspace_id ?? this.sessionContext?.workspaceId ?? null, implementation: 'compatibility' } },
         };
         return result;
-      });
+      })(), { toolId: tool.id, args }));
     }
     for (const tool of RECEIPT_OPERATION_TOOLS) {
       if (!allowed(tool.id)) continue;
@@ -7940,7 +7984,7 @@ export class OrgXMcp extends McpAgent<
               tool.id === 'orgx_get_work_receipt' || tool.id === 'orgx_list_work_receipts' ? `${path}${path.includes('?') ? '&' : '?'}widget_meta=1` : path, init),
           });
           return directResult(raw);
-        }, tool.id);
+        }, tool.id, args);
       });
     }
     for (const tool of WIDGET_OPERATION_TOOLS) {

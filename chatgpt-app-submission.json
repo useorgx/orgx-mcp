@@ -124,7 +124,7 @@
         "idempotentHint": false
       },
       "justifications": {
-        "read_only_justification": "Create a durable planning draft with a title and optional initial markdown. An optional retry key replays the same unedited draft; conflicting content or a draft edited since creation returns a conflict. Does not create executable work or dispatch agents. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "read_only_justification": "Create a durable planning draft with a title and optional initial markdown. The required retry key replays the same unedited draft; conflicting content or a draft edited since creation returns a conflict. Does not create executable work or dispatch agents. This operation creates records or changes existing planning, work, evidence, or execution state.",
         "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
         "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }

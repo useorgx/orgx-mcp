@@ -10,6 +10,7 @@ import {
 } from './contractTools';
 import { SECURITY_SCHEMES, SCAFFOLD_INITIATIVE_WIDGET_META, OUTPUT_TEMPLATE_URIS, WIDGET_URIS } from './toolDefinitions';
 import { jsonValueSchema } from './openaiOutputSchemas/shared';
+import { idempotencyKeySchema } from './idempotencyKeySchema';
 
 /** A public operation is bound to one implementation, never a caller-selected verb. */
 export interface WorkflowBackendRequest {
@@ -45,7 +46,8 @@ const modifiesRecords = { readOnlyHint: false, destructiveHint: true, openWorldH
 const dispatchesWork = { readOnlyHint: false, destructiveHint: true, openWorldHint: true };
 const id = z.string().trim().min(1);
 const workspaceId = z.string().uuid().optional().describe('Workspace UUID. Defaults to the authenticated session workspace when unambiguous.');
-const retryKey = z.string().trim().min(1).max(200).optional().describe('Stable retry key for this request. Reuse it only with identical input.');
+/** Every mutating operation requires one; see src/idempotencyKeys.ts. */
+const retryKey = idempotencyKeySchema;
 const workType = z.enum(['initiative', 'workstream', 'milestone', 'task']);
 const planSessionId = z.string().trim().regex(/^(?:orgx:\/\/plan_session\/)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
   .describe('Plan session UUID or orgx://plan_session/<uuid> URI.');
@@ -88,7 +90,8 @@ function project(
     reason: 'Rationale required by the compatibility rejection-review gate. This opener does not persist or submit it.',
   };
   return Object.fromEntries(fields.map((field) => {
-    const schema = overrides[field] ?? shape[field];
+    // Writes never inherit the canonical router's optional retry key.
+    const schema = overrides[field] ?? (field === 'idempotency_key' ? retryKey : shape[field]);
     if (!schema) throw new Error(`Missing ${canonicalId} input: ${field}`);
     const description = overrides[field]?.description ?? descriptions[field]
       ?? schema.description?.replace(/REQUIRED (?:when|for)[^.]+\./g, '').replace(/(?:orgx_[a-z_]+|list_entities|scaffold_initiative)/g, 'OrgX');
@@ -317,7 +320,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     'Read whether the authorized workspace has execution credentials and configuration before dispatching agent work. Never dispatches a run.',
     { workspace_id: workspaceId }, { executionKind: 'client', annotations: readOnly }),
   operation('orgx_start_plan', 'orgx_plan', 'Start OrgX Plan',
-    'Create a durable planning draft with a title and optional initial markdown. An optional retry key replays the same unedited draft; conflicting content or a draft edited since creation returns a conflict. Does not create executable work or dispatch agents.',
+    'Create a durable planning draft with a title and optional initial markdown. The required retry key replays the same unedited draft; conflicting content or a draft edited since creation returns a conflict. Does not create executable work or dispatch agents.',
     { title: createTitle, initial_plan: z.string().max(200_000).optional(), workspace_id: workspaceId, idempotency_key: retryKey }, {
       annotations: { ...appendOnly, idempotentHint: false }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
       backendRequest: (args) => ({ method: 'POST', path: '/api/v1/workflows/save-plan', body: {
@@ -332,7 +335,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     }),
   operation('orgx_save_plan', 'orgx_plan', 'Save OrgX Plan',
     'Save the full markdown draft in OrgX only if the required expected revision is current. Optionally record an edit summary. Does not complete planning or dispatch work.',
-    { session_id: planSessionId, plan_content: planMarkdown, title: createTitle.optional(), edit_summary: z.string().trim().min(1).max(4000).optional(), expected_version: planVersion, workspace_id: workspaceId }, {
+    { session_id: planSessionId, plan_content: planMarkdown, title: createTitle.optional(), edit_summary: z.string().trim().min(1).max(4000).optional(), expected_version: planVersion, workspace_id: workspaceId, idempotency_key: retryKey }, {
       annotations: { ...modifiesRecords, idempotentHint: false }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
       backendRequest: (args) => {
         const { plan_content, ...body } = bodyArgs(args);
@@ -342,9 +345,9 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   operation('orgx_complete_plan', 'orgx_plan', 'Complete OrgX Plan',
     'Save final markdown and complete the planning session only if its expected revision is current. Optionally attach the completed plan to typed work targets; attachment failures are reported separately after completion. Does not start execution. After an uncertain response, read the plan before repeating the completion.',
     { session_id: planSessionId, plan_content: planMarkdown, expected_version: planVersion,
-      attach_to: z.array(planAttachment).min(1).max(100).optional(), workspace_id: workspaceId }, {
+      attach_to: z.array(planAttachment).min(1).max(100).optional(), workspace_id: workspaceId, idempotency_key: retryKey }, {
       annotations: { ...modifiesRecords, idempotentHint: false }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
-      backendRequest: (args) => ({ method: 'POST', path: '/api/v1/workflows/complete-plan', body: bodyArgs(args) }),
+      backendRequest: (args) => ({ method: 'POST', path: '/api/v1/workflows/complete-plan', body: bodyArgs(args), headers: retryHeaders(args) }),
     }),
   operation('orgx_validate_initiative_plan', 'scaffold_initiative', 'Validate OrgX Initiative Plan',
     'Validate a deterministic hierarchy and source evidence in OrgX; return its digest and structural findings. Does not create records, launch agents, or invoke paid generation.',
@@ -352,7 +355,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       backendRequest: (args) => ({ method: 'POST', path: '/api/v1/workflows/validate-initiative-plan', body: bodyArgs(args) }) }),
   operation('orgx_create_initiative_hierarchy', 'scaffold_initiative', 'Create OrgX Initiative Hierarchy',
     'Atomically commit a deterministic initiative hierarchy in OrgX using a stable retry key. Creates work records without launching agents. Visibility defaults to private; source evidence is retained.',
-    { ...hierarchyInput, plan_digest: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(), idempotency_key: retryKey.unwrap() }, {
+    { ...hierarchyInput, plan_digest: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(), idempotency_key: retryKey }, {
       fixedArgs: { visibility: 'private' }, executionKind: 'scaffold', annotations: appendOnly,
       backendRequest: (args) => ({ method: 'POST', path: '/api/v1/workflows/scaffold-initiative', body: bodyArgs(args), headers: retryHeaders(args) }),
     }),
@@ -409,7 +412,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     action === 'pause' || action === 'cancel'
       ? `${action === 'pause' ? 'Pause' : 'Cancel'} a hierarchy node through OrgX lifecycle control, propagating to descendant work and stopping active runs. Does not mark work complete.`
       : `${action === 'retry' ? 'Retry eligible' : 'Resume paused'} work through canonical OrgX recovery, preserving attempt lineage and redispatching where permitted. Can incur costs and connected-service effects.`,
-    project('manage_lifecycle', ['level', 'id']), {
+    project('manage_lifecycle', ['level', 'id', 'idempotency_key'], { idempotency_key: retryKey }), {
       fixedArgs: { action }, executionKind: 'stream', annotations: dispatchesWork, securitySchemes: SECURITY_SCHEMES.handoffRequiresAuth,
     })),
   operation('orgx_capture_decision', 'orgx_decide', 'Capture OrgX Decision',
@@ -440,7 +443,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     project('review_artifact', ['artifact_id', 'entity_id', 'workspace_id']), { executionKind: 'chatgpt', annotations: readOnly }),
   operation('orgx_request_independent_artifact_review', 'request_independent_artifact_review', 'Request Independent OrgX Artifact Review',
     'Queue an independent evaluator for a completed artifact. OrgX chooses the evaluator and persists the assessment. May incur model costs or use external providers; the producing agent cannot choose the score.',
-    project('request_independent_artifact_review', ['artifact_id']), {
+    project('request_independent_artifact_review', ['artifact_id', 'idempotency_key'], { idempotency_key: retryKey }), {
       executionKind: 'client', annotations: { ...appendOnly, openWorldHint: true },
     }),
   operation('orgx_complete_work_with_proof', 'orgx_act', 'Complete OrgX Work With Proof',

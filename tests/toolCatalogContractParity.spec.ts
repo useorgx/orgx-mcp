@@ -127,7 +127,7 @@ describe('generated tool catalog contract parity', () => {
       });
     }
     const plan = catalog.tools.find((tool) => tool.id === 'orgx_start_plan')!;
-    expect(plan.inputSchema?.required).toEqual(['title']);
+    expect(plan.inputSchema?.required).toEqual(['title', 'idempotency_key']);
     expect(plan.profileContracts?.['claude-directory-legacy'].inputSchema.required).toEqual(['feature_name']);
     const review = catalog.tools.find((tool) => tool.id === 'orgx_open_decision_review')!;
     expect(review.inputSchema?.properties).not.toHaveProperty('action');

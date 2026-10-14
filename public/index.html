@@ -1024,21 +1024,21 @@
                 </div>
               </div>
               <p class="text-sm text-white/40 leading-relaxed mb-4">
-                View pending decisions, approve or reject with notes, and access
-                decision history.
+                View pending decisions, open a human review, and capture durable
+                decisions with their rationale.
               </p>
               <div class="space-y-1.5">
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >get_pending_decisions()</code
+                  >orgx_list_pending_decisions()</code
                 >
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >approve_decision(id, note)</code
+                  >orgx_open_decision_review({ decision_id })</code
                 >
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >reject_decision(id, reason)</code
+                  >orgx_capture_decision({ decision, idempotency_key })</code
                 >
               </div>
             </div>
@@ -1083,21 +1083,21 @@
                 </div>
               </div>
               <p class="text-sm text-white/40 leading-relaxed mb-4">
-                Monitor agent status, spawn new tasks, and configure agent
-                behavior.
+                Monitor agent status, dispatch tasks, and hand work off to
+                specialist agents.
               </p>
               <div class="space-y-1.5">
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >get_agent_status()</code
+                  >orgx_get_agent_status()</code
                 >
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >spawn_agent_task(agent, task)</code
+                  >orgx_start_agent_task({ task_id, idempotency_key })</code
                 >
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >configure_org(action, agent_type)</code
+                  >orgx_handoff_task({ task_id, agent_type, idempotency_key })</code
                 >
               </div>
             </div>
@@ -1145,19 +1145,19 @@
               <div class="space-y-1.5">
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >get_initiative_pulse({ initiative_id })</code
+                  >orgx_get_initiative_progress({ initiative_id })</code
                 >
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >get_initiative_pulse({ initiative_name })</code
+                  >orgx_create_workstream({ initiative_id, title, idempotency_key })</code
                 >
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >orgx_write({ operation, type, fields })</code
+                  >orgx_update_work({ type, id, fields, idempotency_key })</code
                 >
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >orgx_act({ type, id, action })</code
+                  >orgx_pause_work({ level, id, idempotency_key })</code
                 >
               </div>
             </div>
@@ -1204,7 +1204,7 @@
                 >
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >get_org_snapshot()</code
+                  >orgx_get_workspace_context()</code
                 >
               </div>
             </div>
@@ -1256,15 +1256,15 @@
               <div class="space-y-1.5">
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >start_plan_session(goal)</code
+                  >orgx_start_plan({ title, idempotency_key })</code
                 >
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >improve_plan(session_id)</code
+                  >orgx_save_plan({ session_id, plan_content, expected_version, idempotency_key })</code
                 >
                 <code
                   class="text-[10px] text-white/30 font-mono block bg-white/[0.03] px-2 py-1.5 rounded"
-                  >complete_plan(session_id)</code
+                  >orgx_complete_plan({ session_id, plan_content, expected_version, idempotency_key })</code
                 >
               </div>
             </div>

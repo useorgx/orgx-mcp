@@ -972,8 +972,13 @@
     var callLaunch = (scaffold) => {
       if (isDemo && demoState === 'launched') return Promise.resolve({ structuredContent: { ok: true, command_id: DEMO_COMMAND_ID } });
       if (isDemo && demoState === 'launch-failed') return Promise.reject(new Error('OrgX could not launch it. Nothing changed.'));
+      var initiativeId = scaffold.initiative.raw_id || scaffold.initiative.id;
+      // Launch is a write: one idempotency key per hold, so a retried
+      // request cannot launch the initiative twice.
+      var nonce = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
       return window.OrgXWidgetRuntime.callTool('orgx_launch_initiative', {
-        initiative_id: scaffold.initiative.raw_id || scaffold.initiative.id,
+        initiative_id: initiativeId,
+        idempotency_key: 'widget:launch:' + initiativeId + ':' + nonce,
       });
     };
 
