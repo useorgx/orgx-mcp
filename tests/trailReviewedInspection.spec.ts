@@ -5,7 +5,7 @@ import { portableReceiptInput } from '../src/portableReceiptInput';
 
 describe('pinned Trail reviewed wire conformance', () => {
   it('reads the exact synthetic exported outcome and criteria while preserving producer authority', () => {
-    expect(fixture.source_commit).toBe('da2d24b8eda9e9bb5c02832cc2eacf9873c5eb85');
+    expect(fixture.source_commit).toBe('f193c0da017f18a55e961ecb48d8eb8eaa9949e9');
     expect(portableReceiptInput.safeParse(fixture.wire).success).toBe(true);
     const detail=RECEIPT_OPERATION_OUTPUT_SCHEMAS.orgx_get_work_receipt.parse(projectWorkReceiptDetail({receipt:fixture.wire}));
     expect(detail.producer_claims).toEqual({outcome_status:'blocked',verification_status:'passed',acceptance_status:'pending'});

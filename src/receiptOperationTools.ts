@@ -204,7 +204,7 @@ export function projectWorkReceiptDetail(raw: Record<string, unknown>): Record<s
   });
   array(review.episodes).slice(0, 20).forEach((value, i) => { const e = record(value); for (const name of ['criterion_ids', 'evidence_ids']) sections[`review_episodes_${i}_${name}`] = { total: array(e[name]).filter((v) => typeof v === 'string').length, limit: 20 }; });
   const fields = [{ path: '/objective', value: intent.objective, limit: 2000 }, { path: '/outcome_summary', value: record(receipt.outcome).summary, limit: 2000 }];
-  evidence.slice(0, 12).forEach((value, i) => fields.push({ path: `/evidence/${i}/summary`, value: record(value).summary, limit: 2000 }, { path: `/proof/evidence/${i}/label`, value: record(value).summary, limit: 280 }));
+  evidence.slice(0, 12).forEach((value, i) => fields.push({ path: `/evidence/${i}/summary`, value: record(value).summary, limit: 2000 }, { path: `/proof/evidence/${i}/label`, value: str(record(value).summary)?.trim(), limit: 280 }));
   criteria.slice(0, 40).forEach((value, i) => fields.push({ path: `/criteria/${i}/text`, value: record(value).text, limit: 2000 }));
   return {
     ok: true, receipt_id: str(data.receipt_id ?? record(data.row).id) ?? '', external_receipt_id: str(receipt.receipt_id) ?? '',

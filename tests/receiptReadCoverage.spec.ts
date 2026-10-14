@@ -30,4 +30,10 @@ describe('bounded receipt read coverage', () => {
     expect(parsed.coverage?.sections.criteria_0_evidence.truncated).toBe(true);
     expect(parsed.coverage?.clipped_fields).toContainEqual({path:'/objective',original_characters:2001,limit:2000,unit:'utf16_code_unit'});
   });
+  it('counts proof label clipping after the renderer trims its input', () => {
+    const result=projectWorkReceiptDetail({receipt:{schema_version:'agent-work-receipt/v0.2',receipt_id:'synthetic',evidence:[{id:'e1',summary:' '.repeat(280)+'x'}]}});
+    const parsed=RECEIPT_OPERATION_OUTPUT_SCHEMAS.orgx_get_work_receipt.parse(result);
+    expect(parsed.proof.evidence[0].label).toBe('x');
+    expect(parsed.coverage?.clipped_fields.some((f)=>f.path==='/proof/evidence/0/label')).toBe(false);
+  });
 });

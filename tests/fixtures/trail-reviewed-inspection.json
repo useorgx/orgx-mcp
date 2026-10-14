@@ -1,6 +1,6 @@
 {
   "privacy": "fully_synthetic_no_user_data",
-  "source_commit": "da2d24b8eda9e9bb5c02832cc2eacf9873c5eb85",
+  "source_commit": "f193c0da017f18a55e961ecb48d8eb8eaa9949e9",
   "original": {
     "schema_version": "agent-work-receipt/v0.2",
     "receipt_id": "trail:synthetic-codex:synthetic-review:T1",
@@ -673,7 +673,6 @@
           "criterion_id": "c2",
           "status": "unmet",
           "evidence_ids": [],
-          "confidence": 0.3,
           "decided_by": {
             "type": "human",
             "id": "local-workspace-member"
@@ -686,8 +685,7 @@
       },
       "metadata": {
         "kind": "verified_change",
-        "confidence": 0.3,
-        "provenance": "trail_inferred",
+        "provenance": "local_human_correction",
         "decided_by_evidence": "ev-2",
         "local_correction": true
       }
@@ -764,12 +762,6 @@
         "confidence": 0.6
       },
       {
-        "path": "/outcome/status",
-        "basis": "inferred",
-        "method": "trail-rules/trail-2.1",
-        "confidence": 0.3
-      },
-      {
         "path": "/verification/status",
         "basis": "observed",
         "method": "checks read from the transcript",
@@ -780,6 +772,21 @@
         "basis": "inferred",
         "method": "list prices x transcript tokens",
         "confidence": 0
+      },
+      {
+        "path": "/outcome/status",
+        "basis": "declared",
+        "method": "local_human_correction"
+      },
+      {
+        "path": "/extensions/org.orgx.trail~1v1/criteria/1/status",
+        "basis": "declared",
+        "method": "local_human_correction"
+      },
+      {
+        "path": "/outcome/criteria_results/1/status",
+        "basis": "declared",
+        "method": "local_human_correction"
       }
     ],
     "trajectory": [],
@@ -834,10 +841,10 @@
         },
         "outcome_kind": "blocked",
         "confidence": {
-          "outcome": 0.3,
+          "outcome": null,
           "boundary": null,
           "backtracks": null,
-          "criteria": 0.3
+          "criteria": 0.9
         },
         "criteria": [
           {
@@ -855,7 +862,6 @@
             "kind": "typecheck",
             "text": "Typecheck passes after the change",
             "status": "unmet",
-            "confidence": 0.3,
             "evidence_ids": [],
             "by": "human",
             "basis": "local_human_correction"
@@ -870,6 +876,10 @@
           "outcome": "rules over the steps",
           "artifacts_roles": "rules",
           "cost": "none"
+        },
+        "read_projection": {
+          "outcome_basis": "local_human_correction",
+          "conflicts": []
         },
         "local_review": {
           "authority": "local_only",
@@ -893,7 +903,95 @@
               "scope": "local_receipt",
               "review_revision": 7
             }
-          ]
+          ],
+          "original": {
+            "outcome": {
+              "status": "succeeded",
+              "criteria_results": [
+                {
+                  "criterion_id": "c1",
+                  "status": "met",
+                  "evidence_ids": [
+                    "ev-2"
+                  ],
+                  "confidence": 0.9
+                },
+                {
+                  "criterion_id": "c2",
+                  "status": "unknown",
+                  "evidence_ids": [],
+                  "confidence": 0.3
+                }
+              ],
+              "summary": "verified_change (inferred from the steps)",
+              "acceptance": {
+                "status": "pending"
+              },
+              "metadata": {
+                "kind": "verified_change",
+                "confidence": 0.3,
+                "provenance": "trail_inferred",
+                "decided_by_evidence": "ev-2"
+              }
+            },
+            "criteria": [
+              {
+                "id": "c1",
+                "kind": "tests",
+                "text": "Tests pass after the change",
+                "status": "met",
+                "confidence": 0.9,
+                "evidence_ids": [
+                  "ev-2"
+                ]
+              },
+              {
+                "id": "c2",
+                "kind": "typecheck",
+                "text": "Typecheck passes after the change",
+                "status": "unknown",
+                "confidence": 0.3,
+                "evidence_ids": []
+              }
+            ],
+            "provenance": [
+              {
+                "path": "/intent/objective",
+                "basis": "observed",
+                "confidence": 1
+              },
+              {
+                "path": "/intent/criteria",
+                "basis": "inferred",
+                "method": "trail-rules/trail-2.1",
+                "confidence": 0.6
+              },
+              {
+                "path": "/outcome/status",
+                "basis": "inferred",
+                "method": "trail-rules/trail-2.1",
+                "confidence": 0.3
+              },
+              {
+                "path": "/verification/status",
+                "basis": "observed",
+                "method": "checks read from the transcript",
+                "confidence": 0.9
+              },
+              {
+                "path": "/cost/total",
+                "basis": "inferred",
+                "method": "list prices x transcript tokens",
+                "confidence": 0
+              }
+            ],
+            "confidence": {
+              "outcome": 0.3,
+              "boundary": null,
+              "backtracks": null,
+              "criteria": 0.3
+            }
+          }
         },
         "workstream": null,
         "labels": null,
@@ -1103,7 +1201,7 @@
       "content_hash": {
         "algorithm": "sha-256",
         "encoding": "hex",
-        "value": "7bf88634e9a1da78da9f6e7dc47b3b64b0ec15295197059e12c0a30a36a92b64"
+        "value": "3aa8ded67ee6869756f6cf9e1aad8176cec4383059165fe658c64eabdb9d3813"
       }
     }
   }
