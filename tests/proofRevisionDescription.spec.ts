@@ -63,7 +63,7 @@ describe('published completion description revision contract', () => {
     const { server, client } = await connect();
     try {
       const result = await client.callTool({ name: 'orgx_complete_work_with_proof', arguments: {
-        type: 'task', id: task, artifact: { ...artifact, description: encoded },
+        type: 'task', id: task, idempotency_key: 'proof-revision-retry', artifact: { ...artifact, description: encoded },
         verification: [`orgx:modality-proof:v1:${JSON.stringify(modality)}`],
       } });
       expect(result.isError).not.toBe(true);
@@ -76,7 +76,8 @@ describe('published completion description revision contract', () => {
         description: artifact.description, artifact_hash: artifact.artifact_hash,
         atomic_unit_type: artifact.atomic_unit_type });
       const typed = await taskProofCompletionRequest({ type: 'task', id: task, workspace_id: workspace,
-        artifact: { ...artifact, predecessor }, verification: [`orgx:modality-proof:v1:${JSON.stringify(modality)}`] });
+        artifact: { ...artifact, predecessor }, verification: [`orgx:modality-proof:v1:${JSON.stringify(modality)}`],
+        idempotency_key: 'proof-revision-retry' });
       expect(init.body).toBe(JSON.stringify(typed.body));
       expect(new Headers(init.headers).get('Idempotency-Key')).toBe(typed.idempotencyKey);
     } finally { await Promise.allSettled([client.close(), server.close()]); }

@@ -5,6 +5,8 @@ import { getClaudeDirectoryToolContract } from './claudeDirectoryTools';
 import { getPublicOperationContract } from './publicOperationContracts';
 import { resolveProfileToolSet } from './toolProfiles';
 import { isWidgetOnlyTool } from './widgetToolContract';
+import { IDEMPOTENCY_KEY_PLACEHOLDER } from './idempotencyKeySchema';
+import { isMissingIdempotencyKey, requiresIdempotencyKey } from './idempotencyKeys';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -271,7 +273,12 @@ function callSatisfiesAdvertisedSchema(tool: string, args: JsonRecord, profile: 
   const schema = z.object(contract.inputSchema);
   if (tool === 'orgx_get_operation_status' && !args.operation_id && !(args.kind && args.id)) return false;
   const strict = adapter || !('source' in contract);
-  return (strict ? schema.strict() : schema.passthrough()).safeParse(args).success;
+  // A continuation is a template: the caller mints the required retry key for
+  // each intended write, so a breadcrumb never carries one of its own.
+  const keyed = requiresIdempotencyKey(contract.inputSchema) && isMissingIdempotencyKey(args)
+    ? { ...args, idempotency_key: IDEMPOTENCY_KEY_PLACEHOLDER }
+    : args;
+  return (strict ? schema.strict() : schema.passthrough()).safeParse(keyed).success;
 }
 
 export function canonicalizeToolCallGuidance(

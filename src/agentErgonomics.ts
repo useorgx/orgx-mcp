@@ -6,15 +6,13 @@ import type { PayloadNormalizationWarning } from './generated/legacyEntityBatchW
 export type { PayloadNormalizationWarning } from './generated/legacyEntityBatchWire';
 export { normalizeEntityCreatePayloadForAgents } from './generated/legacyEntityBatchPreparation';
 
-export type FailureDiagnostic = {
-  code: string;
-  reason: string;
-  safe_to_retry: boolean;
-  corrected_payload?: Record<string, unknown>;
-  valid_values?: readonly string[];
-  suggested_next_calls?: Array<{ tool: string; args: Record<string, unknown> }>;
-  security_note?: string;
-};
+import {
+  buildRemedy,
+  classifyFailureMessage,
+  classifyStructuredFailure,
+  type FailureDiagnostic,
+} from './remedyErrors';
+export type { FailureDiagnostic } from './remedyErrors';
 
 function compactString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0
@@ -163,11 +161,28 @@ export function normalizeRecordOutcomeArgs(
   return { body, workspaceId };
 }
 
-export function diagnoseToolFailure(params: {
+export type ToolFailureInput = {
   toolId: string;
   error: unknown;
   args?: Record<string, unknown>;
-}): FailureDiagnostic {
+  /** Upstream tool error code when the failure arrived as a tool result. */
+  code?: string;
+  /** HTTP status when known. */
+  status?: number;
+  /** Structured upstream error details (approver, limits, versions...). */
+  details?: unknown;
+  /** True when the failing tool writes durable state. */
+  mutating?: boolean;
+};
+
+/**
+ * Explain a tool failure as a typed remedy.
+ *
+ * Structured signals win: a RemedyError from the origin, a backend error code,
+ * the HTTP status, or a transport failure on a write. Tool-specific contract
+ * corrections follow. Message patterns are only the last resort.
+ */
+export function diagnoseToolFailure(params: ToolFailureInput): FailureDiagnostic {
   const message = redactSensitiveText(
     params.error instanceof Error
       ? params.error.message
@@ -176,6 +191,18 @@ export function diagnoseToolFailure(params: {
       : String(params.error)
   );
   const lower = message.toLowerCase();
+
+  const structured = classifyStructuredFailure({
+    error: params.error,
+    code: params.code,
+    status: params.status,
+    details: params.details,
+    mutating: params.mutating,
+    args: params.args,
+  });
+  if (structured) {
+    return buildRemedy(structured.code, { toolId: params.toolId, args: params.args, facts: structured.facts, message });
+  }
 
   if (params.toolId === 'record_quality_score' || /taskid is required|agentdomain is required/.test(lower)) {
     const normalized = normalizeRecordQualityScoreArgs(params.args ?? {});
@@ -241,16 +268,10 @@ export function diagnoseToolFailure(params: {
     };
   }
 
-  if (/no approval received|approval/i.test(message)) {
-    return {
-      code: 'approval_required_or_missing',
-      reason:
-        'The requested write appears to require an approval record or explicit user confirmation before execution.',
-      safe_to_retry: false,
-      suggested_next_calls: [
-        { tool: 'orgx_decide', args: { action: 'list_pending' } },
-      ],
-    };
+  // Last resort: no structured signal identified the failure.
+  const fromMessage = classifyFailureMessage(message, params.mutating);
+  if (fromMessage) {
+    return buildRemedy(fromMessage, { toolId: params.toolId, args: params.args, message });
   }
 
   return {
@@ -261,16 +282,13 @@ export function diagnoseToolFailure(params: {
   };
 }
 
-export function buildFailureDetails(params: {
-  toolId: string;
-  error: unknown;
-  args?: Record<string, unknown>;
-}): Record<string, unknown> {
+export function buildFailureDetails(params: ToolFailureInput): Record<string, unknown> {
   const diagnostic = diagnoseToolFailure(params);
   return {
     diagnostic,
     retryable: diagnostic.safe_to_retry,
-    suggested_next_calls: diagnostic.suggested_next_calls,
-    corrected_payload: diagnostic.corrected_payload,
+    ...(diagnostic.suggested_next_calls ? { suggested_next_calls: diagnostic.suggested_next_calls } : {}),
+    ...(diagnostic.corrected_payload ? { corrected_payload: diagnostic.corrected_payload } : {}),
+    ...(diagnostic.retry_after_seconds !== undefined ? { retry_after_seconds: diagnostic.retry_after_seconds } : {}),
   };
 }

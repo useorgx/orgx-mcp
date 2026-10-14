@@ -180,7 +180,7 @@ describe('plan session widget', () => {
 
     expect(calls[0]).toEqual([
       'orgx_record_plan_edit',
-      { session_id: 'plan-1', edit_summary: 'Outcome: Name the reviewer.' },
+      { session_id: 'plan-1', edit_summary: 'Outcome: Name the reviewer.', idempotency_key: expect.stringMatching(/^widget:plan-edit:plan-1:.+/) },
     ]);
     expect(footer().getAttribute('state')).toBe('failed');
     expect((doc.querySelector('[data-guidance-input]') as HTMLTextAreaElement).value).toBe('Name the reviewer.');

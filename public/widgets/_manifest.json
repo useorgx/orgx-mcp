@@ -353,8 +353,8 @@
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 53741,
-      "hash": "26ae550f60f6",
+      "bytes": 54063,
+      "hash": "ba332bf65294",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -434,8 +434,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 88623,
-      "hash": "d97ac5b829e5",
+      "bytes": 89014,
+      "hash": "124d169b2a90",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",

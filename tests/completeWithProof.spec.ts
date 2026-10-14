@@ -70,7 +70,7 @@ describe("registered completion predecessor boundary", () => {
       checked_at: "2026-10-10T07:01:00Z", evidence_refs: [{ url: "https://example.test/ci/1", hash: "actual-sha" }] };
     try {
       const result = await client.callTool({ name: "orgx_complete_work_with_proof", arguments: {
-        type: "task", id: TASK_ID,
+        type: "task", id: TASK_ID, idempotency_key: "proof-retry-1",
         artifact: { ...completionArtifact, modality_proof, ...(replacement ? { predecessor } : {}) },
       } });
       expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
@@ -79,7 +79,7 @@ describe("registered completion predecessor boundary", () => {
       expect(path).toBe("/api/v1/workflows/complete-with-proof");
       expect(options).toMatchObject({ allowFallback: false });
       expect(init.method).toBe("POST");
-      expect(new Headers(init.headers).get("Idempotency-Key")).toMatch(/^mcp-proof:[a-f0-9]{64}$/);
+      expect(new Headers(init.headers).get("Idempotency-Key")).toBe("proof-retry-1");
       const body = JSON.parse(init.body);
       expect(body).toMatchObject({ type: "task", id: TASK_ID, workspace_id: WORKSPACE_ID,
         artifact: { artifact_type: "eng.diff_pack", artifact_url: completionArtifact.external_url, modality_proof } });
@@ -109,7 +109,7 @@ describe("registered completion predecessor boundary", () => {
     const { server, client, compatibilityHandler } = await connectCompletionOperations();
     try {
       const result = await client.callTool({ name: "orgx_complete_work_with_proof", arguments: {
-        type: "task", id: TASK_ID, artifact: { ...completionArtifact, predecessor: invalid },
+        type: "task", id: TASK_ID, idempotency_key: "proof-retry-1", artifact: { ...completionArtifact, predecessor: invalid },
       } });
       expect(result.isError).toBe(true);
       expect(completionApi.callOrgxApiJson).not.toHaveBeenCalled();
@@ -125,11 +125,29 @@ describe("registered completion predecessor boundary", () => {
     const { server, client } = await connectCompletionOperations();
     try {
       const result = await client.callTool({ name: "orgx_complete_work_with_proof", arguments: {
-        type: "task", id: TASK_ID, artifact: { ...completionArtifact, predecessor },
+        type: "task", id: TASK_ID, idempotency_key: "proof-retry-1", artifact: { ...completionArtifact, predecessor },
       } });
       expect(result.structuredContent).toEqual(conflict);
       expect(completionApi.callOrgxApiJson).toHaveBeenCalledOnce();
       expect(result.structuredContent).toMatchObject({ data: { completed: false, proof_attached: false } });
+    } finally { await Promise.allSettled([client.close(), server.close()]); }
+  });
+
+  it("returns a typed remedy instead of deriving a key when idempotency_key is missing", async () => {
+    completionApi.callOrgxApiJson.mockReset();
+    const { server, client, compatibilityHandler } = await connectCompletionOperations();
+    try {
+      const result = await client.callTool({ name: "orgx_complete_work_with_proof", arguments: {
+        type: "task", id: TASK_ID, artifact: completionArtifact,
+      } });
+      expect(result.isError).toBe(true);
+      const error = (result.structuredContent as { error: Record<string, any> }).error;
+      expect(error).toMatchObject({ code: "idempotency_key_required", status: 400 });
+      expect(error.details.diagnostic).toMatchObject({ code: "idempotency_key_required", required_field: "idempotency_key", safe_to_retry: true });
+      expect(error.details.suggested_next_calls).toEqual([{ tool: "orgx_complete_work_with_proof",
+        args: { type: "task", id: TASK_ID, artifact: completionArtifact, idempotency_key: error.details.diagnostic.example_idempotency_key } }]);
+      expect(completionApi.callOrgxApiJson).not.toHaveBeenCalled();
+      expect(compatibilityHandler).not.toHaveBeenCalled();
     } finally { await Promise.allSettled([client.close(), server.close()]); }
   });
 

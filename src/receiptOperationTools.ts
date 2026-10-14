@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { ToolSecuritySchemes } from './contractTools';
 import { portableReceiptInput } from './portableReceiptInput';
+import { receiptIdempotencyKeySchema } from './idempotencyKeySchema';
 import { SECURITY_SCHEMES } from './toolDefinitions';
 import { projectReceiptReviewExtension, receiptReviewProjectionSchema } from './receiptReviewProjection';
 import { buildPortableReceiptProof } from './portableReceiptProof';
@@ -119,8 +120,8 @@ const reads = { readOnlyHint: true, destructiveHint: false, openWorldHint: false
 export const RECEIPT_OPERATION_TOOLS: readonly ReceiptOperationTool[] = [
   {
     id: 'orgx_submit_work_receipt', title: 'Submit OrgX Work Receipt',
-    description: 'Import one portable Agent Work Receipt v0.1 or v0.2 into the authenticated workspace ledger. Preserves the full document, including identified criteria, evidence, provenance, lineage and review extensions. Producer outcome, verification and acceptance are claims; import does not verify, accept or complete work. The canonical import enforces document limits, reserved harness names, workspace quota and content-bound idempotency. Never falls back to a legacy write after rejection.',
-    inputSchema: { workspace_id: workspace, receipt: portableReceiptInput.describe('Complete portable Agent Work Receipt. Use v0.2 for identified criteria and evidence-linked results. Standard metadata and namespaced extensions carry producer data, never executable commands.'), idempotency_key: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/).optional().describe('Retry key bound to this document. Omit to use its content hash.') },
+    description: 'Import one portable Agent Work Receipt v0.1 or v0.2 into the authenticated workspace ledger. Preserves the full document, including identified criteria, evidence, provenance, lineage and review extensions. Producer outcome, verification and acceptance are claims; import does not verify, accept or complete work. The canonical import enforces document limits, reserved harness names, workspace quota and the required document-bound idempotency key. Never falls back to a legacy write after rejection.',
+    inputSchema: { workspace_id: workspace, receipt: portableReceiptInput.describe('Complete portable Agent Work Receipt. Use v0.2 for identified criteria and evidence-linked results. Standard metadata and namespaced extensions carry producer data, never executable commands.'), idempotency_key: receiptIdempotencyKeySchema },
     annotations: { ...reads, readOnlyHint: false }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
   },
   {
@@ -232,7 +233,7 @@ export async function executeReceiptOperation(id: ReceiptOperationId, raw: Recor
   const workspaceId = workspace.parse(args.workspace_id ?? context.workspaceId ?? undefined);
   if (!workspaceId) throw new Error('Select an authenticated workspace before using the receipt ledger.');
   if (id === 'orgx_submit_work_receipt') {
-    const result = await context.request('/api/v1/agent-work-receipts', { method: 'POST', body: JSON.stringify({ workspace_id: workspaceId, receipt: args.receipt, ...(args.idempotency_key ? { idempotency_key: args.idempotency_key } : {}) }) });
+    const result = await context.request('/api/v1/agent-work-receipts', { method: 'POST', body: JSON.stringify({ workspace_id: workspaceId, receipt: args.receipt, idempotency_key: args.idempotency_key }) });
     if (result.ok === false || result.error) return result;
     if (result.ok !== true || !str(result.receipt_id)) throw new Error('OrgX did not confirm receipt admission.');
     const receipt = record(args.receipt);

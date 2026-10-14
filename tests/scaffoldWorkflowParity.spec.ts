@@ -37,8 +37,9 @@ describe('legacy scaffold compatibility during the atomic migration', () => {
     expect(tool).toBeDefined();
     const schema = z.object(tool.inputSchema).strict();
     const evidence = { target_url: 'https://example.org/source', verification_state: 'partial', evidence_urls: Array(21).fill('https://example.org/proof'), notes: 'x'.repeat(4001) };
-    expect(schema.safeParse({ title: 'Delivery', source_evidence: evidence }).success).toBe(true);
-    expect(schema.safeParse({ title: 'Delivery', source_evidence: { ...evidence, verified_by: 'fixture' } }).success).toBe(false);
+    expect(schema.safeParse({ title: 'Delivery', source_evidence: evidence, idempotency_key: 'legacy-scaffold-1' }).success).toBe(true);
+    expect(schema.safeParse({ title: 'Delivery', source_evidence: evidence }).success).toBe(false);
+    expect(schema.safeParse({ title: 'Delivery', source_evidence: { ...evidence, verified_by: 'fixture' }, idempotency_key: 'legacy-scaffold-1' }).success).toBe(false);
   });
 });
 

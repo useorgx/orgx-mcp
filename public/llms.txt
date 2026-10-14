@@ -65,6 +65,32 @@ Primary v2 tools (full contract in server.json):
 - get_operator_chronicle: Use when the user asks what was decided, shipped, or proven over a period.
 - consolidate_pr: Use when a GitHub pull request needs a durable consolidation_pass receipt.
 
+Writes and failures (default v2 operation profile):
+- Every write requires `idempotency_key`: orgx_start_plan, orgx_save_plan,
+  orgx_complete_plan, orgx_record_plan_edit, orgx_create_initiative_hierarchy,
+  orgx_create_initiative, orgx_create_workstream, orgx_create_milestone,
+  orgx_create_task, orgx_update_work, orgx_start_agent_task, orgx_handoff_task,
+  orgx_launch_initiative, orgx_pause_work, orgx_resume_work, orgx_retry_work,
+  orgx_cancel_work, orgx_capture_decision, orgx_attach_artifact,
+  orgx_request_independent_artifact_review, orgx_complete_work_with_proof, and
+  orgx_submit_work_receipt.
+- Mint one stable key per intended change (for example
+  `<client>:<operation>:<uuid>`). Resend the same key with identical input to
+  retry after a timeout or unknown outcome; OrgX applies the write at most once.
+  Use a new key for a different change. A missing key returns
+  `idempotency_key_required` with an example key; nothing is written.
+- Failures carry a typed `error.code` with `details.diagnostic` and
+  `details.suggested_next_calls` that name tools on this profile:
+  `approval_required` (approver and requested scope when known; next
+  orgx_list_pending_decisions or orgx_open_decision_review),
+  `stale_version` (re-read, reapply, retry with the new expected_version and a
+  new key), `stale_lease` (inspect the owner; reclaim only your own expired
+  lease), `budget_exhausted` and `rate_limited` (limit and
+  `retry_after_seconds`), `outcome_unknown` (reconcile with
+  orgx_get_operation_status or a read before retrying with the same key),
+  `forbidden` (no alternative route; ask an administrator), and
+  `idempotency_key_conflict` (the key was used with different input).
+
 Example prompts:
 - "Continue what the other agent started on the billing migration."
 - "What did we decide about billing, and why?"

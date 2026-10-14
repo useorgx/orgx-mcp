@@ -3,7 +3,7 @@
   "name": "com.useorgx/orgx-mcp",
   "title": "OrgX MCP — Organizational Continuity for AI Agents",
   "description": "Make AI work resumable, reviewable, and provable across agents.",
-  "version": "1.1.7",
+  "version": "1.2.0",
   "websiteUrl": "https://useorgx.com",
   "vendor": {
     "name": "OrgX",
@@ -821,7 +821,7 @@
     {
       "name": "orgx_start_plan",
       "title": "Start OrgX Plan",
-      "description": "Create a durable planning draft with a title and optional initial markdown. An optional retry key replays the same unedited draft; conflicting content or a draft edited since creation returns a conflict. Does not create executable work or dispatch agents.",
+      "description": "Create a durable planning draft with a title and optional initial markdown. The required retry key replays the same unedited draft; conflicting content or a draft edited since creation returns a conflict. Does not create executable work or dispatch agents.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -844,11 +844,12 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
-          "title"
+          "title",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -985,12 +986,19 @@
             "type": "string",
             "format": "uuid",
             "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "session_id",
           "plan_content",
-          "expected_version"
+          "expected_version",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -1102,12 +1110,19 @@
             "type": "string",
             "format": "uuid",
             "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "session_id",
           "plan_content",
-          "expected_version"
+          "expected_version",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -1741,7 +1756,8 @@
           "idempotency_key": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
@@ -1850,7 +1866,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -1858,7 +1876,8 @@
           }
         },
         "required": [
-          "title"
+          "title",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -1960,7 +1979,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -1974,7 +1995,8 @@
         },
         "required": [
           "title",
-          "initiative_id"
+          "initiative_id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -2076,7 +2098,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -2098,7 +2122,8 @@
         },
         "required": [
           "title",
-          "workstream_id"
+          "workstream_id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -2200,7 +2225,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -2226,7 +2253,8 @@
         },
         "required": [
           "title",
-          "workstream_id"
+          "workstream_id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -2352,7 +2380,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -2362,7 +2390,8 @@
         "required": [
           "type",
           "id",
-          "fields"
+          "fields",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -2714,7 +2743,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -2722,7 +2753,8 @@
           }
         },
         "required": [
-          "task_id"
+          "task_id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -2925,7 +2957,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -2934,7 +2968,8 @@
         },
         "required": [
           "task_id",
-          "agent_type"
+          "agent_type",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -2995,7 +3030,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -3003,7 +3040,8 @@
           }
         },
         "required": [
-          "initiative_id"
+          "initiative_id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -3067,11 +3105,18 @@
             "type": "string",
             "minLength": 1,
             "description": "UUID of the node"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "level",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -3134,11 +3179,18 @@
             "type": "string",
             "minLength": 1,
             "description": "UUID of the node"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "level",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -3201,11 +3253,18 @@
             "type": "string",
             "minLength": 1,
             "description": "UUID of the node"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "level",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -3268,11 +3327,18 @@
             "type": "string",
             "minLength": 1,
             "description": "UUID of the node"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "level",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -3346,7 +3412,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -3354,7 +3422,8 @@
           }
         },
         "required": [
-          "decision"
+          "decision",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -3587,7 +3656,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -3630,7 +3701,8 @@
           "id",
           "name",
           "artifact_type",
-          "location"
+          "location",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -3739,10 +3811,17 @@
             "type": "string",
             "format": "uuid",
             "description": "Completed work_artifacts UUID to evaluate"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
-          "artifact_id"
+          "artifact_id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -3859,7 +3938,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -3874,7 +3955,8 @@
         "required": [
           "type",
           "id",
-          "artifact"
+          "artifact",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -3916,7 +3998,7 @@
     {
       "name": "orgx_submit_work_receipt",
       "title": "Submit OrgX Work Receipt",
-      "description": "Import one portable Agent Work Receipt v0.1 or v0.2 into the authenticated workspace ledger. Preserves the full document, including identified criteria, evidence, provenance, lineage and review extensions. Producer outcome, verification and acceptance are claims; import does not verify, accept or complete work. The canonical import enforces document limits, reserved harness names, workspace quota and content-bound idempotency. Never falls back to a legacy write after rejection.",
+      "description": "Import one portable Agent Work Receipt v0.1 or v0.2 into the authenticated workspace ledger. Preserves the full document, including identified criteria, evidence, provenance, lineage and review extensions. Producer outcome, verification and acceptance are claims; import does not verify, accept or complete work. The canonical import enforces document limits, reserved harness names, workspace quota and the required document-bound idempotency key. Never falls back to a legacy write after rejection.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -7903,11 +7985,12 @@
           "idempotency_key": {
             "type": "string",
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$",
-            "description": "Retry key bound to this document. Omit to use its content hash."
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected. Bound to this receipt document; up to 160 characters of letters, digits, and . _ : / -."
           }
         },
         "required": [
-          "receipt"
+          "receipt",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -12184,12 +12267,15 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "session_id",
-          "edit_summary"
+          "edit_summary",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"

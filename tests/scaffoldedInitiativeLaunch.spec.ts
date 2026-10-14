@@ -36,7 +36,7 @@ describe('scaffolded initiative launch', () => {
     footer().dispatchEvent(new CustomEvent('ox-primary'));
 
     await vi.waitFor(() => {
-      expect(callTool).toHaveBeenCalledWith('orgx_launch_initiative', { initiative_id: 'INI-7' });
+      expect(callTool).toHaveBeenCalledWith('orgx_launch_initiative', { initiative_id: 'INI-7', idempotency_key: expect.stringMatching(/^widget:launch:INI-7:.+/) });
       expect(callTool).toHaveBeenCalledWith('orgx_get_operation_status', { kind: 'command', id: COMMAND_ID });
     });
     await vi.waitFor(() => {
@@ -56,7 +56,7 @@ describe('scaffolded initiative launch', () => {
 
     footer().dispatchEvent(new CustomEvent('ox-primary'));
     await vi.waitFor(() => expect(callTool).toHaveBeenCalledTimes(2));
-    expect(callTool).toHaveBeenLastCalledWith('orgx_launch_initiative', { initiative_id: 'INI-7' });
+    expect(callTool).toHaveBeenLastCalledWith('orgx_launch_initiative', { initiative_id: 'INI-7', idempotency_key: expect.stringMatching(/^widget:launch:INI-7:.+/) });
   });
 
   it('renders authoritative aggregate creation counts without inventing hierarchy details or readiness', async () => {
