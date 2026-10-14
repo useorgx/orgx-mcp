@@ -8,6 +8,7 @@ import { projectReceiptReviewExtension, receiptReviewProjectionSchema } from './
 import { buildPortableReceiptProof } from './portableReceiptProof';
 import { toolCallSchema } from './openaiOutputSchemas/shared';
 import { workLedgerOutputShape, workLedgerQuerySchema } from './openaiOutputSchemas/workLedger';
+import { receiptReadCoverage, receiptReadCoverageSchema } from './receiptReadCoverage';
 
 const workspace = z.string().uuid().optional().describe('Workspace UUID. Defaults to the authenticated workspace.');
 const limit = z.number().int().min(1).max(100).default(25);
@@ -84,6 +85,7 @@ export const RECEIPT_OPERATION_OUTPUT_SCHEMAS = {
     evidence: z.array(z.object({ id: z.string(), kind: z.string(), summary: z.string(), uri: z.string().nullable() })),
     evidence_total: z.number(), criteria: z.array(detailCriterionSchema),
     criteria_total: z.number(), review_extension: receiptReviewProjectionSchema,
+    coverage: receiptReadCoverageSchema.optional(),
     proof: proofSchema,
     workstream: z.object({ id: z.string(), title: z.string(), status: z.string().nullable(), repo: z.string().nullable() }).nullable(),
     mappings: z.array(z.object({ entity_id: z.string().nullable(), entity_type: z.string().nullable(), entity_title: z.string().nullable(), status: z.string().nullable(), confidence: z.number().nullable() })),
@@ -189,6 +191,21 @@ export function projectWorkReceiptDetail(raw: Record<string, unknown>): Record<s
   const review = record(record(receipt.extensions)['org.orgx.review/v1']);
   const evidence = array(receipt.evidence);
   const workstream = record(data.workstream);
+  const sections: Record<string, { total: number; limit: number }> = {
+    evidence: { total: evidence.length, limit: 12 }, criteria: { total: criteria.length, limit: 40 },
+    mappings: { total: array(data.mappings).length, limit: 10 }, links: { total: array(data.links).length, limit: 20 },
+    uncertainty: { total: array(data.uncertain).filter((v) => typeof v === 'string').length, limit: 20 },
+    review_sources: { total: array(review.sources).length, limit: 20 }, review_criteria: { total: array(review.criteria).length, limit: 20 }, review_episodes: { total: array(review.episodes).length, limit: 20 },
+  };
+  criteria.slice(0, 40).forEach((value, i) => { const c = record(value), r = results.get(c.id); sections[`criteria_${i}_evidence`] = { total: array(r?.evidence_ids ?? c.evidence_ids).filter((v) => typeof v === 'string').length, limit: 20 }; });
+  array(review.criteria).slice(0, 20).forEach((value, i) => {
+    const c = record(value); sections[`review_criteria_${i}_sources`] = { total: array(c.source_refs).length, limit: 5 };
+    for (const name of ['judged', 'measured', 'observed', 'outcome']) sections[`review_criteria_${i}_${name}_evidence`] = { total: array(record(record(c.lenses)[name]).evidence_ids).filter((v) => typeof v === 'string').length, limit: 20 };
+  });
+  array(review.episodes).slice(0, 20).forEach((value, i) => { const e = record(value); for (const name of ['criterion_ids', 'evidence_ids']) sections[`review_episodes_${i}_${name}`] = { total: array(e[name]).filter((v) => typeof v === 'string').length, limit: 20 }; });
+  const fields = [{ path: '/objective', value: intent.objective, limit: 2000 }, { path: '/outcome_summary', value: record(receipt.outcome).summary, limit: 2000 }];
+  evidence.slice(0, 12).forEach((value, i) => fields.push({ path: `/evidence/${i}/summary`, value: record(value).summary, limit: 2000 }, { path: `/proof/evidence/${i}/label`, value: record(value).summary, limit: 280 }));
+  criteria.slice(0, 40).forEach((value, i) => fields.push({ path: `/criteria/${i}/text`, value: record(value).text, limit: 2000 }));
   return {
     ok: true, receipt_id: str(data.receipt_id ?? record(data.row).id) ?? '', external_receipt_id: str(receipt.receipt_id) ?? '',
     receipt_review_revision: str(data.receipt_review_revision),
@@ -197,6 +214,7 @@ export function projectWorkReceiptDetail(raw: Record<string, unknown>): Record<s
     reported_bar: reportedBar(receipt, intent),
     producer_claims: receiptProducerClaims(receipt), receipt_assessment: data.receipt_assessment ?? { evidence_status: evidence.length ? 'recorded' : 'none', verification_status: 'producer_reported', acceptance_status: 'awaiting_human_review', outcome_status: null },
     human_judgment: data.human_judgment ?? null,
+    coverage: receiptReadCoverage(sections, fields),
     evidence: evidence.slice(0, 12).map((value) => { const e = record(value); return { id: str(e.id) ?? '', kind: str(e.kind) ?? '', summary: (str(e.summary) ?? '').slice(0, 2000), uri: str(record(e.ref).uri) }; }),
     evidence_total: evidence.length,
     criteria: criteria.slice(0, 40).map((value) => {
