@@ -24,7 +24,7 @@ Authorize your OrgX account in the browser and choose the access level needed fo
 npx -y @useorgx/wizard setup
 ```
 
-The default `v2` profile exposes explicit operations. MCP discovery is intersected with the authenticated account's permissions and granted scopes; a missing scope is not permission to widen access automatically. [Profile definitions](src/toolProfiles.ts) and the [shipped authorization policy](docs/generated/authorization-policy.json) describe the boundary.
+The repository's default `v2` implementation exposes explicit operations. MCP discovery is intersected with the authenticated account's permissions and granted scopes; a missing scope is not permission to widen access automatically. [Profile definitions](src/toolProfiles.ts) and the [shipped authorization policy](docs/generated/authorization-policy.json) describe the boundary. Verify authenticated `tools/list` for your actual connection; a repository manifest or cached public catalog does not prove which operations a deployment exposes to you.
 
 ## Example: recover a previous decision
 
@@ -52,7 +52,7 @@ Replace `release` with a topic your workspace has recorded. **Success:** the cli
 
 Connect through the client's supported remote HTTP/OAuth flow. Discover `tools/list`, `resources/list`, and `prompts/list` before invocation; use the returned operation schemas. The current default catalog uses names such as `orgx_get_workspace_context`, `orgx_search`, `orgx_inspect`, and `orgx_get_operator_brief`. Older action routers are compatibility operations on the explicit `legacy` profile.
 
-Start by reading the workspace or searching existing records. Scope requests with returned workspace/initiative IDs, use typed filters, follow pagination instructions, then inspect the specific record you need. Reuse IDs and current revisions to avoid duplicate work or stale updates. For example, search a decision by topic, inspect its ID, and quote the evidence/rationale rather than just its title.
+Start by reading the workspace or searching existing records. Scope requests with returned workspace/initiative IDs, use typed filters, follow pagination instructions, then inspect the specific record you need. Reuse IDs and current revisions to avoid duplicate work or stale updates. Write operations require `idempotency_key`: use one stable key per intended change and resend identical input with that key after a timeout or unknown outcome; a different change needs a new key. For example, search a decision by topic, inspect its ID, and quote the evidence/rationale rather than just its title.
 
 Before dispatch, use the supported estimate and readiness operations, then respect approval, budget, scope, deadline, and permission gates. Human decision/artifact review belongs to the review surface; discovering a tool does not grant that authority. Verification needs source evidence and the supported proof-backed completion workflow. Receipt producer fields remain claims. Do not turn a queued run, open PR, receipt import, or model completion sentence into a delivery claim.
 
@@ -125,11 +125,10 @@ These names describe the explicit `legacy` compatibility profile, not the defaul
 | `get_operator_chronicle` | Read back decisions, artifacts, PR velocity, goals, and gaps over a period. |
 | `consolidate_pr` | Generate and persist a consolidation_pass receipt for a GitHub pull request. |
 
-The server and OAuth discovery contract is in `server.json`; per-tool input
-schemas, required scopes, and profile membership are generated in
-`docs/generated/tool-catalog.json`. Legacy tools remain callable during the
-sunset window, but new prompts, skills, examples, and manifests should teach the
-v2 names above.
+The names in this table belong to the explicit `legacy` compatibility profile.
+New prompts, skills, examples and manifests should use the explicit operations
+in the **Current operation contract** table and authenticated `tools/list`,
+with schemas from `server.json` and `docs/generated/tool-catalog.json`.
 </details>
 
 ## Integration Walkthrough
@@ -417,9 +416,9 @@ These routes operate only on the currently authenticated user's dedicated `Anthr
 
 ## Thursday E2E (Agent Loop + MCP Apps + Context Survival)
 
-This worker ships a deterministic E2E flow you can run live from any MCP client (real OrgX APIs, no mocks):
+This section retains historical live-API compatibility prompt machinery. Use it only when authenticated discovery advertises the prompt/operations on an explicitly selected compatibility profile and the person has authorized its state changes. It is separate from the default quickstart and synthetic gallery. Current human-review and execution gates remain authoritative.
 
-- Prompt: `thursday-e2e` (primary). Scaffolds an initiative, creates a pending decision, approves it, spawns an agent task, and renders the widgets.
+- Prompt: `thursday-e2e` (historical compatibility flow). Scaffolds an initiative, creates a pending decision, requests its review, and can dispatch authorized agent work under the currently enforced gates.
 - Prompt alias: `thursday-e2e-demo` (backwards-compat). Same flow as `thursday-e2e`.
 
 Context survival notes:
@@ -440,37 +439,37 @@ Widget protocol notes:
 
 **User prompt:** `Show me the pending decisions that need approval today.`
 
-**Expected behavior:** The worker calls `orgx_decide action=list_pending`, returns seeded decisions for the authenticated workspace, and renders the decisions widget in compatible hosts.
+**Expected behavior:** The client calls `orgx_list_pending_decisions`, optionally scoped by a returned `workspace_id` or `initiative_id`, and reads the authorized pending decisions. Human review uses `orgx_open_decision_review`; the person makes the ruling in the review surface. An empty list is a valid result.
 
 ### Example 2: Check initiative health
 
 **User prompt:** `Give me the pulse for the Search Copilot Readiness initiative.`
 
-**Expected behavior:** The worker calls `orgx_inspect type=initiative`, returns milestones, blockers, and activity, and renders the initiative pulse widget in compatible hosts.
+**Expected behavior:** Find the initiative with `orgx_search`, then call `orgx_get_initiative_progress` with its returned `initiative_id`, or `orgx_inspect` with `type="initiative"` and that `id`. Summarize the returned milestones, blockers and activity with evidence links; render the widget when the host supports it.
 
 ### Example 3: Scaffold a hierarchy
 
 **User prompt:** `Plan a launch initiative with two workstreams, one milestone each, and two tasks per milestone.`
 
-**Expected behavior:** The worker calls `orgx_plan action=start`, then uses `orgx_write` for durable records as needed.
+**Expected behavior:** Start a planning draft with `orgx_start_plan` using `title` and a stable `idempotency_key`. When the person authorizes committing the reviewed hierarchy, use `orgx_create_initiative_hierarchy` with its structured `plan` and a separate stable `idempotency_key`, following validation/source-evidence requirements. Creating the hierarchy does not dispatch agents.
 
 ### Example 4: Assign work to an agent
 
 **User prompt:** `Assign the engineering agent a task to audit the onboarding funnel.`
 
-**Expected behavior:** The worker calls `orgx_spawn`, records the assignment in OrgX, and returns the task or handoff result. For normal agent work, omit `model_tier`, `provider`, and `model` so OrgX can auto-route by task complexity and workspace policy.
+**Expected behavior:** Reuse an existing task, or create one with `orgx_create_task` using `title`, a returned `workstream_id`, and `idempotency_key`. Estimate it with `orgx_estimate_agent_task` and `task: { "task_id": "<returned-task-id>" }`; check `orgx_check_execution_readiness` and the applicable approval/budget gates. When execution is authorized, call `orgx_start_agent_task` with that `task_id`, `idempotency_key`, and the desired `agent_type`. Report the returned operation/run state and later inspect its evidence. For normal work, omit `model_tier`, `provider`, and `model` so OrgX can route under workspace policy.
 
 During controlled reliability validation, pin the run to the low-cost verification path:
 
 ```json
 {
-  "action": "spawn",
+  "task_id": "<returned-task-id>",
   "agent_type": "engineering",
-  "title": "Audit onboarding funnel",
   "instructions": "Find the highest-impact onboarding defect and return a PR URL or structured blocker with verification evidence.",
   "model_tier": "standard",
   "budget_mode": "cheapest_valid",
-  "max_cost_usd": 0.5
+  "max_cost_usd": 0.5,
+  "idempotency_key": "<stable-key-for-this-intended-dispatch>"
 }
 ```
 
@@ -478,9 +477,10 @@ Only use those verification overrides while proving loop reliability or when the
 
 ## Compatibility Hierarchy Scaffolding + Context Attachments
 
-The v2 public surface uses `orgx_plan` and `orgx_write` for new prompts and
-skills. The lower-level hierarchy tools below remain callable during the
-compatibility window for older clients and bulk migration scripts.
+The router-style calls and lower-level hierarchy helpers below are legacy-only
+references for compatibility clients and migration scripts, subject to their
+authenticated discovery. New prompts and skills use `orgx_start_plan` and the
+explicit create/update operations, with their declared schemas and write keys.
 
 ### Legacy `batch_create_entities`: IDs + `ref` dependency resolution
 
