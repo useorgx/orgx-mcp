@@ -77,17 +77,17 @@
             {
               "@type": "HowToStep",
               "name": "Bootstrap",
-              "text": "Establish workspace context with orgx_bootstrap."
+              "text": "Read workspace context with orgx_get_workspace_context."
             },
             {
               "@type": "HowToStep",
               "name": "Scaffold",
-              "text": "Create the integration initiative with scaffold_initiative."
+              "text": "Validate the integration hierarchy with orgx_validate_initiative_plan, then commit it with orgx_create_initiative_hierarchy and an idempotency_key."
             },
             {
               "@type": "HowToStep",
               "name": "Verify",
-              "text": "Read get_initiative_pulse and get_operator_chronicle for health and proof."
+              "text": "Read orgx_get_initiative_progress and orgx_get_operator_brief for health and proof."
             }
           ]
         }
@@ -750,23 +750,23 @@
           <div class="tool-rail" aria-label="MCP integration sequence">
             <div class="rail-item">
               <div class="rail-step">01</div>
-              <div class="rail-tool">orgx_bootstrap</div>
+              <div class="rail-tool">orgx_get_workspace_context</div>
             </div>
             <div class="rail-item">
               <div class="rail-step">02</div>
-              <div class="rail-tool">scaffold_initiative</div>
+              <div class="rail-tool">orgx_create_initiative_hierarchy</div>
             </div>
             <div class="rail-item">
               <div class="rail-step">03</div>
-              <div class="rail-tool">get_initiative_pulse</div>
+              <div class="rail-tool">orgx_get_initiative_progress</div>
             </div>
             <div class="rail-item">
               <div class="rail-step">04</div>
-              <div class="rail-tool">get_operator_chronicle</div>
+              <div class="rail-tool">orgx_get_operator_brief</div>
             </div>
             <div class="rail-item">
               <div class="rail-step">05</div>
-              <div class="rail-tool">orgx_submit_receipt</div>
+              <div class="rail-tool">orgx_submit_work_receipt</div>
             </div>
           </div>
         </div>

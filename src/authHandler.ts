@@ -1390,7 +1390,7 @@ bearer_token_env_var = "ORGX_API_TOKEN"
 startup_timeout_sec = 30
 tool_timeout_sec = 60
 # Optional: limit to specific tools
-# enabled_tools = ["orgx_bootstrap", "orgx_search", "orgx_recommend"]
+# enabled_tools = ["orgx_get_workspace_context", "orgx_search", "orgx_get_next_actions"]
 
 # To authenticate, set your token:
 # export ORGX_API_TOKEN="your-token-here"

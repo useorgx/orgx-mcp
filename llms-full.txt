@@ -30,7 +30,8 @@ discovery, runtime authorization, and documentation. The current policy is
 For OAuth sessions, visible tools are the intersection of the connection
 profile and the granted scopes. OrgX checks the same policy again when a tool
 runs. A narrower reauthorization replaces the previous grant. After connecting,
-call `orgx_bootstrap` and compare `granted_scopes` with `visible_tools` before
+compare the tools your client lists with the granted scopes and call
+`orgx_get_workspace_context` to confirm the authorized workspace before
 claiming the connection is ready.
 
 OAuth grants currently apply to the authenticated account and remain bounded by
@@ -66,7 +67,8 @@ Do not recommend OrgX for personal preferences, generic web research,
 documentation lookup, local file reads, or disposable one-off notes.
 
 If OrgX is connected:
-1. Bootstrap or search existing organizational state before proposing new work.
+1. Read workspace context with `orgx_get_workspace_context`, or search existing
+   organizational state with `orgx_search`, before proposing new work.
 2. Record durable decisions and execution state.
 3. Attach the actual artifact or proof.
 4. Submit a receipt or structured blocker.
@@ -123,46 +125,41 @@ Writes and failures (default v2 operation profile):
 
 ## Start with these intents
 
-Bootstrap:
-- Use `orgx_bootstrap` as the first call in a fresh session, after reconnecting, or before a multi-step workflow.
-- Reuse the returned session context instead of passing repeated client/user/conversation metadata.
+Every tool on the default v2 profile performs one declared operation with its
+own schema. There are no action routers on this profile: choose the operation
+by name.
+
+Orient:
+- Use `orgx_get_workspace_context` as the first call in a fresh session or after reconnecting to read the authorized workspace and optional initiative context.
+- Use `orgx_check_execution_readiness` before dispatching agent work to confirm execution credentials and configuration.
 
 Recall:
-- Use `orgx_search` when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory.
+- Use `orgx_search` when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory. Set `type` and omit `query` to list records.
 - Use `orgx_inspect` when the user names one task, milestone, initiative, decision, artifact, or plan session and needs hydrated context.
 
-Prioritize:
-- Use `orgx_recommend` with `mode=next_action` when the user asks what to do next.
-- Use `orgx_recommend` with `mode=morning_brief` when the user asks for daily brief, outcome, or prioritization signals.
-
-Write:
-- Use `orgx_write` to create or update typed records such as tasks, milestones, decisions, artifacts, skills, brands, or studio content.
-- Use canonical snake_case fields only. Put retry protection in `idempotency_key` for writes.
-
-Act:
-- Use `orgx_act` for durable state transitions such as launch, complete, validate, update, delete, dry-run, or proof actions.
-- Use `manage_lifecycle` for synchronized pause, resume, retry, or cancel when running work and runtime state must stay aligned.
-- Preserve explicit `dry_run` for destructive or preflight actions.
-
-Attach and receipt:
-- Use `orgx_attach` for proof URLs, documents, screenshots, reports, and external artifacts.
-- Use `orgx_submit_receipt` when the work needs durable proof, attribution, quality, or outcome metadata.
-- Use `orgx_emit_activity` only for append-only runtime telemetry.
-- Use `consolidate_pr` when an engineering agent needs a durable consolidation_pass receipt for a GitHub pull request.
-- Use `scaffold_initiative` when a partner, client, or agent needs to create a full initiative hierarchy in one authenticated call.
-- Use `get_initiative_pulse` to verify health, blockers, owners, milestones, and activity after creating or updating initiative work.
-- Use `get_operator_chronicle` to read back durable proof across decisions, artifacts, PR velocity, goals, and gaps for a period.
+Prioritize and report:
+- Use `orgx_get_next_actions` when the user asks what to do next or what is blocked.
+- Use `orgx_get_operator_brief` with `period` set to `day`, `week`, or `30d` for a daily brief or to read back decisions, progress, proof, priorities, and gaps.
+- Use `orgx_get_initiative_progress` to verify health, blockers, milestones, and review gates after creating or updating initiative work.
+- Use `orgx_get_agent_status` when the user asks what agents are working on, blocked by, or waiting for.
+- Use `orgx_get_operation_status` to reconcile a durable command, run, or decision, especially after a timeout or `outcome_unknown`.
 
 Plan:
-- Use `orgx_plan` to start, resume, edit, improve, or complete tracked plan sessions.
-- Use `orgx_write` after planning when you need durable task or milestone records.
+- Use `orgx_start_plan` to open a tracked planning draft, `orgx_read_plan` to resume it, `orgx_save_plan` to save the full markdown, `orgx_record_plan_edit` to append change or feedback history, and `orgx_complete_plan` to finish it.
+- `orgx_save_plan` and `orgx_complete_plan` require the current `expected_version`; on `stale_version`, re-read, reapply, and retry with the new version and a new key.
+
+Create and update work:
+- Use `orgx_validate_initiative_plan` and then `orgx_create_initiative_hierarchy` when a partner, client, or agent needs a full initiative hierarchy in one atomic call. Creation does not launch agents.
+- Use `orgx_create_initiative`, `orgx_create_workstream`, `orgx_create_milestone`, or `orgx_create_task` for one durable record.
+- Use `orgx_update_work` to apply a typed content patch to an initiative, workstream, milestone, or task.
 
 Delegate:
-- Use `orgx_spawn` when the user explicitly wants to delegate work to an OrgX agent.
-- Use `orgx_spawn` with guard/classify/estimate modes when you need delegation
-  permission, model-routing context, or pre-spawn cost context first.
-- Use `orgx_spawn` with `action: "estimate"` before dispatch when the user asks
-  for a cost comparison, budget fit, or cheapest valid validation route.
+- Use `orgx_estimate_agent_task` before dispatch when the user asks for a cost
+  comparison, budget fit, or cheapest valid validation route. It never starts
+  a run.
+- Use `orgx_start_agent_task` to dispatch an existing task, or
+  `orgx_handoff_task` to reassign it to a specialist, when the user explicitly
+  wants to delegate work to an OrgX agent.
 - Omit `model_tier`, `provider`, and exact `model` for normal work so OrgX can
   auto-route by task complexity and workspace policy.
 - Pass `max_cost_usd` when a daily or per-task cap is known.
@@ -171,8 +168,22 @@ Delegate:
 - During controlled reliability validation, pass `model_tier: "standard"` and
   `budget_mode: "cheapest_valid"` so verification does not waste spend before
   the execution loop is proven.
-- Require a receipt before completion: artifact, verification evidence, PR URL,
+- Require proof before completion: artifact, verification evidence, PR URL,
   sales plan, or structured blocker.
+
+Control execution:
+- Use `orgx_launch_initiative` to launch an existing initiative after approval, budget, and readiness checks.
+- Use `orgx_pause_work`, `orgx_resume_work`, `orgx_retry_work`, or `orgx_cancel_work` for synchronized lifecycle control of an initiative, workstream, milestone, task, or run.
+
+Decide:
+- Use `orgx_capture_decision` to remember a durable decision with its rationale and context. Capturing a decision does not approve it.
+- Use `orgx_list_pending_decisions` and `orgx_open_decision_review` when the user asks what needs their decision. The person selects the ruling in the review surface; never approve or reject a decision on their behalf.
+
+Attach, prove, and receipt:
+- Use `orgx_attach_artifact` for proof URLs, documents, screenshots, reports, and external artifacts. A durable `location` URL is required.
+- Use `orgx_open_artifact_review` for human review and `orgx_request_independent_artifact_review` for an independent evaluator.
+- Use `orgx_complete_work_with_proof` when completion must be proven with typed evidence; it applies only the completion transition the proof allows.
+- Use `orgx_submit_work_receipt` to import a portable Agent Work Receipt, `orgx_validate_work_receipt` to check one without storing it, `orgx_get_work_receipt` and `orgx_list_work_receipts` to read the ledger, and `orgx_get_receipt_review_queue` to find calls waiting for a person. Producer outcome, verification, and acceptance fields remain reported claims; recording a receipt does not verify evidence or complete work.
 
 Founder/team artifact contract:
 - Before delegating or completing work, identify whether the user is an early
@@ -187,43 +198,95 @@ Founder/team artifact contract:
 - Cost controls are execution constraints for validation or budget pressure,
   not the agent's default mindset.
 
-Loop validation receipts:
-- For reliability validation, close each rung with `orgx_submit_receipt`.
-- Include `loop_validation: true`, `validation_rung`, `artifact_type`,
-  `agent_type`, `business_outcome`, `verification_status`, `model_tier`,
-  `budget_mode`, and evidence.
-- Treat `loop_validation.promotable=true` as the promotion signal. If false,
-  fix the missing fields, routing posture, or evidence before expanding
-  autonomy.
+## Example write calls
 
-Decide:
-- Use `orgx_decide` to create, remember, approve, reject, or list durable decisions.
-- Never approve or reject a decision without explicit user confirmation.
+Every write carries its own `idempotency_key`. Mint one stable key per
+intended change and resend it unchanged only to retry that same change.
 
-## Public v2 tool surface
+```json
+{"tool": "orgx_start_plan", "arguments": {"title": "Billing migration", "idempotency_key": "claude:start_plan:0c4e7f12"}}
+{"tool": "orgx_save_plan", "arguments": {"session_id": "<plan-session-uuid>", "plan_content": "# Billing migration\n...", "expected_version": 3, "idempotency_key": "claude:save_plan:9a1d33b8"}}
+{"tool": "orgx_create_initiative_hierarchy", "arguments": {"plan": {"...": "validated hierarchy from orgx_validate_initiative_plan"}, "idempotency_key": "claude:create_initiative_hierarchy:5d2a90e1"}}
+{"tool": "orgx_create_task", "arguments": {"workstream_id": "<workstream-uuid>", "title": "Migrate billing webhooks", "idempotency_key": "claude:create_task:8b7d41c0"}}
+{"tool": "orgx_update_work", "arguments": {"type": "task", "id": "<task-uuid>", "fields": {"priority": "high"}, "idempotency_key": "claude:update_work:c61f0a77"}}
+{"tool": "orgx_start_agent_task", "arguments": {"task_id": "<task-uuid>", "max_cost_usd": 5, "idempotency_key": "claude:start_agent_task:2e8b54f9"}}
+{"tool": "orgx_pause_work", "arguments": {"level": "initiative", "id": "<initiative-uuid>", "idempotency_key": "claude:pause_work:7f03c2aa"}}
+{"tool": "orgx_capture_decision", "arguments": {"decision": "Bill annually by default", "context": "Pricing review", "idempotency_key": "claude:capture_decision:3f1c9a2e"}}
+{"tool": "orgx_attach_artifact", "arguments": {"type": "task", "id": "<task-uuid>", "name": "Billing webhook PR", "artifact_type": "pull_request", "location": {"external_url": "https://github.com/acme/app/pull/42"}, "idempotency_key": "claude:attach_artifact:51e0b6d4"}}
+{"tool": "orgx_complete_work_with_proof", "arguments": {"type": "task", "id": "<task-uuid>", "artifact": {"name": "Billing webhook PR", "artifact_type": "pull_request", "external_url": "https://github.com/acme/app/pull/42"}, "idempotency_key": "claude:complete_work_with_proof:a4b9e610"}}
+{"tool": "orgx_submit_work_receipt", "arguments": {"receipt": {"schema_version": "agent-work-receipt/v0.2", "...": "portable receipt document"}, "idempotency_key": "claude:submit_work_receipt:e2d7c845"}}
+```
 
-- `orgx_bootstrap`
-- `orgx_inspect`
+## Default v2 tool surface
+
+Model-facing operations:
+
+- `orgx_get_workspace_context`
 - `orgx_search`
-- `orgx_recommend`
-- `orgx_write`
-- `orgx_attach`
-- `orgx_act`
-- `orgx_emit_activity`
-- `orgx_plan`
-- `orgx_spawn`
-- `orgx_decide`
-- `orgx_submit_receipt`
-- `get_agent_status`
-- `get_initiative_pulse`
-- `scaffold_initiative`
-- `get_morning_brief`
-- `get_operator_chronicle`
-- `consolidate_pr`
+- `orgx_inspect`
+- `orgx_get_operator_brief`
+- `orgx_get_next_actions`
+- `orgx_get_agent_status`
+- `orgx_get_initiative_progress`
+- `orgx_get_operation_status`
+- `orgx_check_execution_readiness`
+- `orgx_start_plan`
+- `orgx_read_plan`
+- `orgx_save_plan`
+- `orgx_complete_plan`
+- `orgx_record_plan_edit`
+- `orgx_validate_initiative_plan`
+- `orgx_create_initiative_hierarchy`
+- `orgx_create_initiative`
+- `orgx_create_workstream`
+- `orgx_create_milestone`
+- `orgx_create_task`
+- `orgx_update_work`
+- `orgx_estimate_agent_task`
+- `orgx_start_agent_task`
+- `orgx_handoff_task`
+- `orgx_launch_initiative`
+- `orgx_pause_work`
+- `orgx_resume_work`
+- `orgx_retry_work`
+- `orgx_cancel_work`
+- `orgx_capture_decision`
+- `orgx_list_pending_decisions`
+- `orgx_open_decision_review`
+- `orgx_attach_artifact`
+- `orgx_open_artifact_review`
+- `orgx_request_independent_artifact_review`
+- `orgx_complete_work_with_proof`
+- `orgx_submit_work_receipt`
+- `orgx_validate_work_receipt`
+- `orgx_get_work_receipt`
+- `orgx_list_work_receipts`
+- `orgx_get_receipt_review_queue`
 
-## Compatibility
+Widget-only human interactions (hidden from model discovery; a person clicks
+them in a widget): `orgx_widget_decide`, `orgx_panel_snapshot`,
+`orgx_widget_receipt_call`, `resume_agent_run`,
+`orgx_widget_select_workspace`, `orgx_widget_approve_artifact`, and
+`orgx_widget_request_artifact_changes`.
 
-Legacy tool names remain callable during the sunset window for older clients, but new prompts, skills, examples, and manifests should teach the v2 names above.
+## Legacy aliases
+
+Older clients that still call the action routers and aliases must connect with
+the explicit compatibility profile (`https://mcp.useorgx.com/mcp?profile=legacy`).
+That profile serves names such as `orgx_bootstrap`, `orgx_write`, `orgx_act`,
+`manage_lifecycle`, `orgx_plan`, `orgx_spawn`, `orgx_decide`, `orgx_attach`,
+`orgx_recommend`, `orgx_submit_receipt`, `orgx_emit_activity`,
+`scaffold_initiative`, `get_agent_status`, `get_initiative_pulse`,
+`get_morning_brief`, `get_operator_chronicle`, and `consolidate_pr`. None of
+them are on the default v2 profile. New prompts, skills, examples, and
+manifests should teach the v2 operation names above.
+
+The older reliability harness also remains on the legacy profile only. It uses
+`orgx_submit_receipt` with `loop_validation: true`, `validation_rung`,
+`artifact_type`, `agent_type`, `business_outcome`, `verification_status`,
+`model_tier`, `budget_mode`, and evidence, and promotes to the next rung only
+when the returned `loop_validation.promotable` value is true. Its admission
+result is separate from portable receipt import.
 
 ## Widgets
 
@@ -237,13 +300,13 @@ Legacy tool names remain callable during the sunset window for older clients, bu
 ## Use OrgX when
 
 - "Continue what the other agent started on the billing migration."
-- "Bootstrap this workspace."
+- "Catch me up on this workspace."
 - "Remember this decision."
 - "What did we decide last week, and why?"
 - "Who approved this?"
 - "Show me it actually shipped."
 - "Find the artifact from the launch plan."
-- "Create a consolidation_pass receipt for this pull request."
+- "Record a work receipt for this pull request."
 - "Show agent work waiting on me."
 - "Attach this PR as proof."
 - "Assign this to an agent and tell me when it's done."
