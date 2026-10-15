@@ -120,8 +120,17 @@ Writes and failures (default v2 operation profile):
   lease), `budget_exhausted` and `rate_limited` (limit and
   `retry_after_seconds`), `outcome_unknown` (reconcile with
   orgx_get_operation_status or a read before retrying with the same key),
-  `forbidden` (no alternative route; ask an administrator), and
-  `idempotency_key_conflict` (the key was used with different input).
+  `forbidden` (no alternative route; ask an administrator),
+  `idempotency_key_conflict` (the key was used with different input), and
+  `effect_scope_missing` / `effect_scope_invalid` (re-dispatch with an
+  explicit, valid `effects` scope and a new key; never route the effect
+  through another tool).
+- Dispatch effects fail closed: orgx_start_agent_task and orgx_handoff_task
+  without an `effects` scope give the run NO external effects (any attempt
+  returns `effect_scope_missing`). Declare the effects the work needs in
+  `effects.allowed` / `effects.approval_required`; `{"allowed": []}` declares
+  none. A child or handed-off run's scope is intersected with its parent's,
+  and approval-required effects stay approval-required in children.
 
 ## Start with these intents
 
@@ -163,6 +172,11 @@ Delegate:
 - Omit `model_tier`, `provider`, and exact `model` for normal work so OrgX can
   auto-route by task complexity and workspace policy.
 - Pass `max_cost_usd` when a daily or per-task cap is known.
+- Pass an explicit `effects` scope on every dispatch. The effect gate fails
+  closed: omitting `effects` gives the run no external effects
+  (`effect_scope_missing`), and `{"allowed": []}` declares that it needs none.
+  Put effects a person must approve in `approval_required`. A child or
+  handed-off run can only narrow its parent's scope.
 - Pass `provider` or exact `model` only when the user explicitly selected one
   or a cost/quality comparison picked it.
 - During controlled reliability validation, pass `model_tier: "standard"` and
@@ -209,7 +223,7 @@ intended change and resend it unchanged only to retry that same change.
 {"tool": "orgx_create_initiative_hierarchy", "arguments": {"plan": {"...": "validated hierarchy from orgx_validate_initiative_plan"}, "idempotency_key": "claude:create_initiative_hierarchy:5d2a90e1"}}
 {"tool": "orgx_create_task", "arguments": {"workstream_id": "<workstream-uuid>", "title": "Migrate billing webhooks", "idempotency_key": "claude:create_task:8b7d41c0"}}
 {"tool": "orgx_update_work", "arguments": {"type": "task", "id": "<task-uuid>", "fields": {"priority": "high"}, "idempotency_key": "claude:update_work:c61f0a77"}}
-{"tool": "orgx_start_agent_task", "arguments": {"task_id": "<task-uuid>", "max_cost_usd": 5, "idempotency_key": "claude:start_agent_task:2e8b54f9"}}
+{"tool": "orgx_start_agent_task", "arguments": {"task_id": "<task-uuid>", "max_cost_usd": 5, "effects": {"allowed": ["pull_request.create"], "approval_required": ["merge", "deploy"]}, "idempotency_key": "claude:start_agent_task:2e8b54f9"}}
 {"tool": "orgx_pause_work", "arguments": {"level": "initiative", "id": "<initiative-uuid>", "idempotency_key": "claude:pause_work:7f03c2aa"}}
 {"tool": "orgx_capture_decision", "arguments": {"decision": "Bill annually by default", "context": "Pricing review", "idempotency_key": "claude:capture_decision:3f1c9a2e"}}
 {"tool": "orgx_attach_artifact", "arguments": {"type": "task", "id": "<task-uuid>", "name": "Billing webhook PR", "artifact_type": "pull_request", "location": {"external_url": "https://github.com/acme/app/pull/42"}, "idempotency_key": "claude:attach_artifact:51e0b6d4"}}

@@ -68,8 +68,8 @@ Create and update work:
 - orgx_update_work: Use to apply a typed content patch to an initiative, workstream, milestone, or task.
 
 Delegate and control execution:
-- orgx_estimate_agent_task: Use before dispatch for routing and cost context; never starts a run.
-- orgx_start_agent_task, orgx_handoff_task: Use when an existing task should be dispatched or reassigned to a specialist agent under budget and permission policy.
+- orgx_estimate_agent_task: Use before dispatch for routing and cost context; never starts a run or grants effects.
+- orgx_start_agent_task, orgx_handoff_task: Use when an existing task should be dispatched or reassigned to a specialist agent under budget and permission policy. Declare an explicit `effects` scope; without one the run gets no external effects.
 - orgx_launch_initiative: Use to launch an existing initiative after approval, budget, and readiness checks.
 - orgx_pause_work, orgx_resume_work, orgx_retry_work, orgx_cancel_work: Use for synchronized lifecycle control of initiatives, workstreams, milestones, tasks, or runs.
 
@@ -122,8 +122,17 @@ Writes and failures (default v2 operation profile):
   lease), `budget_exhausted` and `rate_limited` (limit and
   `retry_after_seconds`), `outcome_unknown` (reconcile with
   orgx_get_operation_status or a read before retrying with the same key),
-  `forbidden` (no alternative route; ask an administrator), and
-  `idempotency_key_conflict` (the key was used with different input).
+  `forbidden` (no alternative route; ask an administrator),
+  `idempotency_key_conflict` (the key was used with different input), and
+  `effect_scope_missing` / `effect_scope_invalid` (re-dispatch with an
+  explicit, valid `effects` scope and a new key; never route the effect
+  through another tool).
+- Dispatch effects fail closed: orgx_start_agent_task and orgx_handoff_task
+  without an `effects` scope give the run NO external effects (any attempt
+  returns `effect_scope_missing`). Declare the effects the work needs in
+  `effects.allowed` / `effects.approval_required`; `{"allowed": []}` declares
+  none. A child or handed-off run's scope is intersected with its parent's,
+  and approval-required effects stay approval-required in children.
 
 Example prompts:
 - "Continue what the other agent started on the billing migration."

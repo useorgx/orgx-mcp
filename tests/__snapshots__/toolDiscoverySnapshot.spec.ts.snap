@@ -262,7 +262,7 @@ exports[`tool discovery snapshot > full tool catalog description hashes are lock
   "orgx_describe_tool": "ca80b55167b8",
   "orgx_emit_activity": "953acc905ecd",
   "orgx_emit_execution_graph": "48318413e69f",
-  "orgx_estimate_agent_task": "45f445dc0118",
+  "orgx_estimate_agent_task": "9d2947351ebe",
   "orgx_events_tail": "0df026373c8a",
   "orgx_expect": "fd2db89c38cf",
   "orgx_flag_risk_work": "f4098e8b5561",

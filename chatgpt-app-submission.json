@@ -258,7 +258,7 @@
         "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run. This operation reads or validates data without changing durable business state.",
+        "read_only_justification": "Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run. An estimate grants no effects: the dispatch that follows must declare its effects scope, or the run gets no external effects (effect_scope_missing). This operation reads or validates data without changing durable business state.",
         "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
         "destructive_justification": "Does not permanently delete records or perform a destructive transition. Producer claims and appended evidence do not establish human acceptance."
       }
