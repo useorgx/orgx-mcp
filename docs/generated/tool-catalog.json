@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T05:19:02.236Z",
-  "sourceHash": "97b4318d4fe4f1b9",
+  "generatedAt": "2026-10-14T10:29:34.458Z",
+  "sourceHash": "d78dfd45006efb98",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -165,7 +165,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -173,11 +173,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -475,7 +475,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -483,11 +483,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -4591,7 +4591,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -4599,11 +4599,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -6388,7 +6388,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -6396,11 +6396,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -12145,7 +12145,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -12153,11 +12153,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -14535,7 +14535,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -14543,11 +14543,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -15541,7 +15541,7 @@
     {
       "id": "orgx_estimate_agent_task",
       "title": "Estimate OrgX Agent Task",
-      "description": "Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run.",
+      "description": "Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run. An estimate grants no effects: the dispatch that follows must declare its effects scope, or the run gets no external effects (effect_scope_missing).",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -16232,7 +16232,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -16240,11 +16240,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -17932,7 +17932,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -17940,11 +17940,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",

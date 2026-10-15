@@ -132,8 +132,10 @@ const activationActionSchema = z.object({
       mode: z.string().optional(),
       period: z.string().optional(),
       receipt_type: z.string().optional(),
+      idempotency_key: z.string().optional(),
     })
     .optional(),
+  required_inputs: z.array(z.string()).optional(),
 });
 
 export const activationSchema = z.object({

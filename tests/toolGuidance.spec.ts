@@ -9,6 +9,16 @@ import { CLAUDE_DIRECTORY_SURFACE } from '../src/toolProfiles';
 import { installToolResultGuidanceWrapper } from '../src/toolResultRegistration';
 
 describe('tool result guidance', () => {
+  it('keeps template breadcrumbs that declare required_inputs and still validates the args they carry', () => {
+    const template = { tool: 'orgx_create_task', args: { idempotency_key: 'mcp:create_task:1' }, required_inputs: ['title', 'workstream_id'] };
+    expect(canonicalizeToolCallGuidance(template, null, 'v2')).toEqual(template);
+    // Without the declaration the same call is incomplete and dropped.
+    expect(canonicalizeToolCallGuidance({ tool: 'orgx_create_task', args: {} }, null, 'v2')).toBeNull();
+    // A declared input the schema does not advertise, or an invalid carried arg, is dropped.
+    expect(canonicalizeToolCallGuidance({ ...template, required_inputs: ['title', 'workstream_id', 'bogus'] }, null, 'v2')).toBeNull();
+    expect(canonicalizeToolCallGuidance({ ...template, args: { priority: 'portfolio' } }, null, 'v2')).toBeNull();
+  });
+
   it('validates named ledger next_calls and filters incompatible search calls against the negotiated profile', () => {
     const result = { structuredContent: { next_calls: [
       { tool: 'orgx_search', args: { scope: 'work_ledger', receipt_id: 'receipt-1' } },

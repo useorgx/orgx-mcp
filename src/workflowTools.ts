@@ -385,7 +385,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       fixedArgs: { operation: 'update' }, annotations: modifiesRecords, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
   operation('orgx_estimate_agent_task', 'orgx_spawn', 'Estimate OrgX Agent Task',
-    'Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run.',
+    'Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run. An estimate grants no effects: the dispatch that follows must declare its effects scope, or the run gets no external effects (effect_scope_missing).',
     { task: z.union([z.object({ task_id: id }).strict(), z.object({ title: createTitle, instructions: z.string().min(1).optional() }).strict()]),
       ...project('orgx_spawn', ['initiative_id', 'workspace_id', 'agent_type', 'model_tier', 'model', 'provider', 'runtime', 'budget_mode', 'max_cost_usd']) }, {
       fixedArgs: { action: 'estimate' }, annotations: readOnly, securitySchemes: SECURITY_SCHEMES.agentReadRequiresAuth,

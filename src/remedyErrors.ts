@@ -16,8 +16,12 @@
  * and carries arguments that satisfy that tool's advertised schema
  * (tests/remedyErrors.spec.ts enumerates them). A `forbidden` failure never
  * suggests an alternative route: a different tool is not a way around a
- * missing permission.
+ * missing permission, and an effect-scope refusal is answered only by
+ * re-dispatching with an explicit, valid `effects` scope — never by routing
+ * the effect through a different tool.
  */
+
+import { DISPATCH_EFFECT_NAMES } from './dispatchContract';
 
 export const REMEDY_CODES = [
   'approval_required',
@@ -29,6 +33,8 @@ export const REMEDY_CODES = [
   'forbidden',
   'idempotency_key_required',
   'idempotency_key_conflict',
+  'effect_scope_missing',
+  'effect_scope_invalid',
 ] as const;
 
 export type RemedyCode = (typeof REMEDY_CODES)[number];
@@ -170,6 +176,16 @@ const BACKEND_CODE_MAP: Readonly<Record<string, RemedyCode>> = {
   idempotency_key_conflict: 'idempotency_key_conflict',
   idempotency_conflict: 'idempotency_key_conflict',
   idempotency_key_reused: 'idempotency_key_conflict',
+
+  // The effect gate fails closed: a dispatch without an `effects` scope gets
+  // no external effects, and a scope naming an unknown effect (or widening a
+  // parent's scope) is refused.
+  effect_scope_missing: 'effect_scope_missing',
+  missing_effect_scope: 'effect_scope_missing',
+  effects_not_declared: 'effect_scope_missing',
+  effect_scope_invalid: 'effect_scope_invalid',
+  invalid_effect_scope: 'effect_scope_invalid',
+  unknown_effect: 'effect_scope_invalid',
 };
 
 export function remedyCodeFromBackendCode(code: unknown): RemedyCode | null {
@@ -351,6 +367,8 @@ export function classifyStructuredFailure(signal: FailureSignal): Classification
 export function classifyFailureMessage(message: string, mutating = false): RemedyCode | null {
   const lower = message.toLowerCase();
   if (/idempotency[_ ]key (?:was )?(?:already used|reused|conflict)|idempotency conflict/.test(lower)) return 'idempotency_key_conflict';
+  if (/effect[_ ]scope[_ ]missing|no effects? scope (?:was )?declared/.test(lower)) return 'effect_scope_missing';
+  if (/effect[_ ]scope[_ ]invalid|invalid effects? scope/.test(lower)) return 'effect_scope_invalid';
   if (/approval (?:is )?required|requires? (?:human )?approval|awaiting (?:human )?approval|no approval received|pending approval/.test(lower)) return 'approval_required';
   if (/lease (?:has )?(?:expired|lost|is held|conflict)|stale lease/.test(lower)) return 'stale_lease';
   if (/stale (?:version|revision|plan)|version conflict|revision conflict|expected[_ ]version (?:is )?(?:stale|outdated|mismatch)/.test(lower)) return 'stale_version';
@@ -531,6 +549,28 @@ export function buildRemedy(
         suggested_next_calls: [{ tool: toolId, args: { ...rest, idempotency_key: example } }],
       };
     }
+    case 'effect_scope_missing':
+      return withoutUndefined({
+        code,
+        reason: 'This dispatch declared no effects scope, so OrgX gives the run no external effects (connected-service writes such as sending email, pushing code, or deploying). Internal work such as editing files and running tests is unaffected.',
+        remedy: 'If the work needs an external effect, re-dispatch it with an explicit effects scope that names only the effects it needs (use approval_required for any that a person must approve), and a new idempotency_key because the input changed. Send effects: { "allowed": [] } to declare that it needs none. Do not route the effect through another tool to avoid the gate.',
+        safe_to_retry: false,
+        required_field: 'effects',
+        valid_values: DISPATCH_EFFECT_NAMES,
+        requested_scope: facts.requested_scope,
+        suggested_next_calls: inspectCall(args),
+      });
+    case 'effect_scope_invalid':
+      return withoutUndefined({
+        code,
+        reason: 'The effects scope was refused: it names an unknown effect or asks for more than the parent run or caller authority allows. Nothing was dispatched under it.',
+        remedy: 'Re-dispatch with an explicit effects scope that uses only the listed effect names and stays within the parent run\'s scope (a child can only narrow it; effects that require approval stay approval-required), with a new idempotency_key because the input changed. Do not route the effect through another tool to avoid the gate.',
+        safe_to_retry: false,
+        required_field: 'effects',
+        valid_values: DISPATCH_EFFECT_NAMES,
+        requested_scope: facts.requested_scope,
+        suggested_next_calls: inspectCall(args),
+      });
     case 'idempotency_key_conflict':
       return {
         code,
