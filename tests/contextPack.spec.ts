@@ -29,6 +29,12 @@ describe('context pack helpers', () => {
       entity_type: 'initiative',
       entity_id: 'i1',
     });
+    expect(
+      buildContextPackRequestBody({ type: 'initiative', id: 'i1' }, { briefSources: true })
+    ).toEqual({ entity_type: 'initiative', entity_id: 'i1', brief_sources: true, relations: 1 });
+    expect(
+      buildContextPackRequestBody({ type: 'task', id: 't1' }, { briefSources: true, relations: 0 })
+    ).toMatchObject({ brief_sources: true, relations: 0 });
   });
 
   it('builds the workspace context capsule request body', () => {
