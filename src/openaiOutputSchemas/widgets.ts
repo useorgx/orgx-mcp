@@ -163,6 +163,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             title: z.string(),
             urgency: z.enum(['low', 'medium', 'high', 'critical']),
             waiting_since: z.string().nullable(),
+            initiative_id: z.string().nullable().optional(),
             initiative_title: z.string().nullable(),
             blocked: z.boolean(),
             decide_in_orgx_reason: z.string().nullable(),
@@ -187,7 +188,9 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           question: z.string(),
           urgency: z.enum(['low', 'medium', 'high', 'critical']),
           waiting_since: z.string().nullable(),
+          initiative_id: z.string().nullable().optional(),
           initiative_title: z.string().nullable(),
+          run_id: z.string().nullable().optional(),
           recommendation: z
             .object({
               status: z.enum(['ready', 'unverified', 'unavailable']),
@@ -342,6 +345,16 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         .optional(),
       // The panel's own live feed (see src/live/panelFeed.ts).
       live: streamGrantSchema.optional(),
+      // The conversation the panel was opened beside (thread entrypoint).
+      thread: z
+        .object({
+          conversation_id: z.string(),
+          source: z.enum(['client_context', 'host_session']),
+          initiative_id: z.string().nullable(),
+          initiative_title: z.string().nullable(),
+        })
+        .strict()
+        .optional(),
     })
     .strict(),
 
