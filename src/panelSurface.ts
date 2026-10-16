@@ -216,6 +216,8 @@ export interface PanelQueueItem {
   title: string;
   urgency: PanelUrgency;
   waiting_since: string | null;
+  /** The initiative this item belongs to, when OrgX names one. */
+  initiative_id: string | null;
   initiative_title: string | null;
   blocked: boolean;
   /** Present only when OrgX says this one has to be decided in the app. */
@@ -292,7 +294,10 @@ export interface PanelFocus {
   question: string;
   urgency: PanelUrgency;
   waiting_since: string | null;
+  initiative_id: string | null;
   initiative_title: string | null;
+  /** The agent run this decision came from; the panel joins its receipt by this id. */
+  run_id: string | null;
   recommendation: {
     status: 'ready' | 'unverified' | 'unavailable';
     action: string | null;
@@ -414,6 +419,20 @@ export interface PanelSnapshot {
    * worker cannot mint one; the panel then refreshes when it is opened.
    */
   live?: StreamGrant;
+  /**
+   * The conversation the panel was opened beside (the thread entrypoint), and
+   * the initiative this MCP session is bound to. Absent when the host sent no
+   * conversation id, as in the sidebar.
+   */
+  thread?: PanelThread;
+}
+
+export interface PanelThread {
+  conversation_id: string;
+  /** Which carrier named the conversation. */
+  source: 'client_context' | 'host_session';
+  initiative_id: string | null;
+  initiative_title: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -825,6 +844,7 @@ function toQueueItem(decision: NormalizedDecision): PanelQueueItem {
     title: clipText(decision.title, PANEL_TITLE_MAX) ?? 'Decision',
     urgency: decision.urgency,
     waiting_since: decision.createdAt,
+    initiative_id: decision.initiativeId,
     initiative_title: decision.initiativeTitle,
     blocked: decision.blocked,
     decide_in_orgx_reason: decision.decideInOrgxReason,
@@ -862,7 +882,9 @@ function toFocus(decision: NormalizedDecision): PanelFocus {
     question: clipText(decision.question, PANEL_QUESTION_MAX) ?? 'Decision',
     urgency: decision.urgency,
     waiting_since: decision.createdAt,
+    initiative_id: decision.initiativeId,
     initiative_title: decision.initiativeTitle,
+    run_id: decision.runId,
     recommendation: rec
       ? {
           status:
@@ -1346,6 +1368,8 @@ export interface PanelSurfaceHost {
   viewerUserIds(): Array<string | null | undefined>;
   /** The MCP session's workspace, if it carries one. */
   sessionWorkspace(): { id: string; name: string | null } | null;
+  /** The initiative this MCP session is bound to, if any. */
+  sessionInitiative?(): string | null;
   /** Read-only inference of the caller's active workspace. Never persisted. */
   inferWorkspace(): Promise<{ id: string; name: string | null } | null>;
   /**
@@ -1419,9 +1443,47 @@ async function timedSource<T>(
   }
 }
 
+const PANEL_CONVERSATION_ID_MAX = 255;
+
+/**
+ * Bind the panel to the conversation it was opened beside. An agent-declared
+ * `_context.conversation.id` wins; otherwise the host's anonymized
+ * `_meta["openai/session"]`, which ChatGPT sends on every tool call, names it.
+ * The initiative comes from the session, never from a guess over the queue;
+ * the queue only supplies its title.
+ */
+export function buildPanelThread(input: {
+  context?: unknown;
+  requestMeta?: Record<string, unknown> | null;
+  initiativeId?: string | null;
+  queue?: PanelQueueItem[];
+}): PanelThread | null {
+  const conversation = asRecord(asRecord(input.context)?.conversation);
+  // An id is never clipped: one that overruns the bound is not used at all.
+  const bounded = (value: unknown) => {
+    const id = str(value);
+    return id && id.length <= PANEL_CONVERSATION_ID_MAX ? id : null;
+  };
+  const fromContext = bounded(conversation?.id);
+  const fromHost = bounded(input.requestMeta?.['openai/session']);
+  const conversationId = fromContext ?? fromHost;
+  if (!conversationId) return null;
+  const initiativeId = input.initiativeId && UUID_RE.test(input.initiativeId) ? input.initiativeId.toLowerCase() : null;
+  const titled = initiativeId
+    ? (input.queue ?? []).find((item) => item.initiative_id?.toLowerCase() === initiativeId && item.initiative_title)
+    : undefined;
+  return {
+    conversation_id: conversationId,
+    source: fromContext ? 'client_context' : 'host_session',
+    initiative_id: initiativeId,
+    initiative_title: titled?.initiative_title ?? null,
+  };
+}
+
 export async function handlePanelSnapshot(
   host: PanelSurfaceHost,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  requestMeta?: Record<string, unknown> | null
 ): Promise<CallToolResult> {
   const auth = host.authRequired();
   if (auth) return auth;
@@ -1501,6 +1563,13 @@ export async function handlePanelSnapshot(
       viewerUserIds: host.viewerUserIds(),
     });
     if (work) snapshot.work = work;
+    const thread = buildPanelThread({
+      context: args?._context,
+      requestMeta,
+      initiativeId: host.sessionInitiative?.() ?? null,
+      queue: snapshot.queue,
+    });
+    if (thread) snapshot.thread = thread;
     if (wantsHistory && workspace) {
       let records: unknown[] | null = null;
       let reason: string | null = null;
@@ -1593,7 +1662,8 @@ export function registerPanelSurface(
       annotations: { ...PANEL_SNAPSHOT_TOOL_CONTRACT.annotations },
       _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
     } as Parameters<typeof registerAppTool>[2],
-    async (args: Record<string, unknown>) => handlePanelSnapshot(host, args)
+    async (args: Record<string, unknown>, extra?: { _meta?: Record<string, unknown> }) =>
+      handlePanelSnapshot(host, args, extra?._meta ?? null)
   );
   if (allowedTools && !allowedTools.has(RECEIPT_CALL_TOOL_ID)) return;
   const receiptContract = currentOperations ? CURRENT_RECEIPT_CALL_TOOL_CONTRACT : RECEIPT_CALL_TOOL_CONTRACT;

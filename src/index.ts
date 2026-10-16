@@ -464,6 +464,7 @@ import {
   withClientSessionIdentity,
 } from './clientSessionIdentity';
 import { applyEntityWriteAttribution } from './entityWriteAttribution';
+import { ORGX_SERVER_INSTRUCTIONS } from './serverInstructions';
 import { ensureSqliteColumn } from './sqliteSchema';
 import { checkToolPlanAccess } from './toolAccessGating';
 import { resolveLegacyToolAlias } from './deprecatedTools';
@@ -524,6 +525,7 @@ function computeServerVersion(): string {
 
 const MCP_SERVER_VERSION = computeServerVersion();
 
+
 function createInstrumentedMcpServer(): McpServer {
   return Sentry.wrapMcpServerWithSentry(
     new McpServer({
@@ -538,7 +540,7 @@ function createInstrumentedMcpServer(): McpServer {
           sizes: ['64x64', '128x128', 'any'],
         },
       ],
-    }),
+    }, { instructions: ORGX_SERVER_INSTRUCTIONS }),
     {
       // MCP arguments and results can contain customer strategy, credentials,
       // or generated artifacts. Keep spans useful without recording payloads.
@@ -3192,6 +3194,7 @@ export class OrgXMcp extends McpAgent<
               name: this.sessionContext.workspaceName ?? null,
             }
           : null,
+      sessionInitiative: () => this.sessionContext?.initiativeId ?? null,
       inferWorkspace: () => this.inferSessionWorkspace(userId()),
       fetchPendingDecisions: async ({ workspaceId, limit }) => {
         const id = userId();

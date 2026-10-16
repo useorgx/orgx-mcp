@@ -42,6 +42,9 @@
       syncedAt: null,
       tokens: {},
       mode: params.get('mode') === 'thread' ? 'thread' : 'global',
+      // True once the panel has bound itself to the conversation it was opened
+      // beside; an explicit ?mode= in the URL always wins over the binding.
+      threadBound: params.has('mode'),
       listOpen: false,
       evidenceOpen: false,
       composer: null,
@@ -1471,7 +1474,8 @@
     }
 
     function launchContext(s) {
-      var initiative = null;
+      var initiative = s && s.thread && s.thread.initiative_title ? s.thread.initiative_title : null;
+      if (initiative) return { initiative: initiative };
       (s && s.queue || []).some(function pick(item) { initiative = item.initiative_title || null; return Boolean(initiative); });
       return { initiative: initiative };
     }
@@ -1926,21 +1930,30 @@
     /** The work behind the open decision: the ledger's receipts for its PR, read once per decision. */
     function maybeFetchBehind(focus) {
       if (!Receipts || !focus || ui.behind[focus.id] !== undefined) return;
-      var pr = Receipts.prOf([focus.title, focus.question, focus.detail].filter(Boolean).join('\n'));
-      if (!pr) { ui.behind[focus.id] = null; return; }
+      // Join by id first: the run the decision came from is the run its
+      // receipt names. A pull request number read from the text is only the
+      // fallback for decisions that carry no run.
+      var queries = Receipts.behindQueries(focus);
+      if (!queries.length) { ui.behind[focus.id] = null; return; }
       ui.behind[focus.id] = 'loading';
-      if (isGallery) { ui.behind[focus.id] = gallery.behind(pr); rememberRows(ui.behind[focus.id]); later(render, 0); return; }
+      if (isGallery) { ui.behind[focus.id] = gallery.behind(Receipts.prOf([focus.title, focus.question, focus.detail].filter(Boolean).join('\n'))); rememberRows(ui.behind[focus.id]); later(render, 0); return; }
       var gen = ui.generation;
-      observeRead('behind', 'open', R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: 'pr:' + pr }))).then(function onBehind(result) {
-        if (gen !== ui.generation) return;
-        var data = result && result.data;
-        ui.behind[focus.id] = Receipts.normalizeList(data, 'pr:' + pr);
-        rememberRows(ui.behind[focus.id]);
-        if (ui.tab === 'needs' && ui.snapshot && ui.snapshot.focus && ui.snapshot.focus.id === focus.id) render();
-      }, function onBehindError() {
-        if (gen !== ui.generation) return;
-        ui.behind[focus.id] = null;
-      });
+      function attempt(i) {
+        var query = queries[i];
+        observeRead('behind', 'open', R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: query }))).then(function onBehind(result) {
+          if (gen !== ui.generation) return;
+          var list = Receipts.normalizeList(result && result.data, query);
+          if ((!list || list.status !== 'ok' || !list.items || !list.items.length) && i + 1 < queries.length) { attempt(i + 1); return; }
+          ui.behind[focus.id] = list;
+          rememberRows(ui.behind[focus.id]);
+          if (ui.tab === 'needs' && ui.snapshot && ui.snapshot.focus && ui.snapshot.focus.id === focus.id) render();
+        }, function onBehindError() {
+          if (gen !== ui.generation) return;
+          if (i + 1 < queries.length) { attempt(i + 1); return; }
+          ui.behind[focus.id] = null;
+        });
+      }
+      attempt(0);
     }
 
     /** In progress is read only when opened: the same snapshot with view "work". */
@@ -2034,6 +2047,13 @@
       }
       ui.snapshot = snapshot;
       ui.syncedAt = new Date(snapshot.generated_at);
+      // The thread entrypoint: OrgX named the conversation this panel sits
+      // beside, so open on this chat's view rather than the sidebar's. A
+      // fullscreen panel is the sidebar (global) entrypoint and stays global.
+      if (!ui.threadBound && snapshot.thread && snapshot.thread.conversation_id) {
+        ui.threadBound = true;
+        if (!(Host && Host.displayMode() === 'fullscreen')) ui.mode = 'thread';
+      }
       ui.auth = null;
       if (!openedTracked) {
         openedTracked = true;

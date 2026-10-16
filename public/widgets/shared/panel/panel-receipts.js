@@ -275,5 +275,20 @@
     return m ? m[1] : null;
   }
 
-  global.OrgXPanelReceipts = { normalizeList: normalizeList, normalizeDetail: normalizeDetail, listHtml: listHtml, detailHtml: detailHtml, behindHtml: behindHtml, iterateSentence: iterateSentence, prOf: prOf, pips: pips };
+  var RUN_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  /**
+   * The Work Ledger lookups for "the work behind this", best first: the run
+   * the decision came from (a receipt names it as its run), then a pull
+   * request the decision's text mentions.
+   */
+  function behindQueries(focus) {
+    var out = [];
+    if (focus && typeof focus.run_id === 'string' && RUN_ID.test(focus.run_id)) out.push('run:' + focus.run_id);
+    var pr = focus ? prOf([focus.title, focus.question, focus.detail].filter(Boolean).join('\n')) : null;
+    if (pr) out.push('pr:' + pr);
+    return out;
+  }
+
+  global.OrgXPanelReceipts = { normalizeList: normalizeList, normalizeDetail: normalizeDetail, listHtml: listHtml, detailHtml: detailHtml, behindHtml: behindHtml, iterateSentence: iterateSentence, prOf: prOf, behindQueries: behindQueries, pips: pips };
 })(typeof window !== 'undefined' ? window : globalThis);
