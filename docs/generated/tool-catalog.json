@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-16T14:04:25.049Z",
-  "sourceHash": "61f5812b392885c0",
+  "generatedAt": "2026-10-16T14:28:49.747Z",
+  "sourceHash": "8707368e79b5e215",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -8045,7 +8045,7 @@
     {
       "id": "orgx_widget_decide",
       "title": "Decide from the decisions widget",
-      "description": "Widget-only: settles one pending item (a decision of any type, an agent-run approval, or an action awaiting approval) after the person clicks in the decisions widget or the OrgX panel. Sends what the item's widget_actions ask for: an option, several options, a typed answer or a reason. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the item as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.",
+      "description": "Widget-only: settles one pending item (a decision of any type, an agent-run approval, an action awaiting approval, or a suggestion to link a captured session to an initiative) after the person clicks in the decisions widget or the OrgX panel. Sends what the item's widget_actions ask for: an option, several options, a typed answer or a reason. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the item as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
@@ -8053,14 +8053,15 @@
           "decision_id": {
             "type": "string",
             "minLength": 1,
-            "description": "Pending item being settled (decision, agent-run approval or action id)"
+            "description": "Pending item being settled (decision, agent-run approval, action or session id)"
           },
           "kind": {
             "type": "string",
             "enum": [
               "decision",
               "approval",
-              "action"
+              "action",
+              "link"
             ],
             "description": "The item's widget_actions.kind. Defaults to decision."
           },

@@ -358,12 +358,13 @@
       'allow once': 'Allowed once', 'allow and continue': 'Allowed', 'send answer': 'Answer sent', 'send guidance and retry': 'Guidance sent',
       'confirm and continue': 'Confirmed', 'confirm selection': 'Confirmed', confirm: 'Confirmed', 'accept plan': 'Plan accepted',
       'apply edit': 'Edit applied', retry: 'Retry approved', 'retry and continue': 'Retry approved', acknowledge: 'Acknowledged',
+      link: 'Linked', 'not this': 'Not linked',
       'send back': 'Sent back', deny: 'Denied', decline: 'Declined', reject: 'Rejected', 'request changes': 'Changes requested', 'stop here': 'Stopped',
     };
     function pastTense(label, action) {
       return PAST[String(label || '').toLowerCase()] || (action === 'approve' ? 'Approved' : 'Sent back');
     }
-    var KINDS = ['decision', 'approval', 'action'];
+    var KINDS = ['decision', 'approval', 'action', 'link'];
     var TEXT_MAX = 2000;
     function has(list, value) { return Array.isArray(list) && list.indexOf(value) !== -1; }
     function kindOf(f) {
@@ -1087,7 +1088,7 @@
     }
 
     function packetHtml(f, headingTag) {
-      var metaBits = [askerPhrase(f), f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
+      var metaBits = [askerPhrase(f), f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : f.kind === 'link' ? 'Session link' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
       var askerAvatarHtml = '<span class="pn-asker" aria-hidden="true">' + askerAvatar(f.asker_kind, f.asker, 'inline') + '</span>';
       var error = ui.actionError && ui.actionError.id === f.id ? actionErrorHtml() : '';
       var changed = ui.changedSince
@@ -1170,7 +1171,7 @@
           '<button type="button" class="mini approve" data-action="approve" data-id="' + esc(item.id) + '" aria-label="' + esc(c.approve.label + ': ' + item.title) + '">' + esc(c.approve.label) + '</button></div>';
       }
       var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
-      var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : '';
+      var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : item.kind === 'link' ? 'Session link · ' : '';
       var arrived = ui.seenRows && !ui.seenRows[item.id];
       if (grouped) {
         // Inside a group the title is the group's; the line is what differs.
@@ -2321,6 +2322,7 @@
         if (!status) return 'recorded; status not available yet';
         if (agreeing) return action === 'approve' ? 'agents start; every receipt is judged against this bar' : 'OrgX redrafts it and asks again';
         if (c.kind === 'action') return action === 'approve' ? 'the action can run' : 'the action does not run';
+        if (c.kind === 'link') return action === 'approve' ? 'its work now counts toward this initiative' : 'OrgX stops suggesting it';
         if (c.kind === 'approval') return action === 'approve' ? 'the run continues' : 'the run stops at this step';
         return action === 'approve' ? 'the agent can continue' : 'the agent reworks it';
       }
@@ -2351,7 +2353,7 @@
       R.callTool('orgx_widget_decide', args).then(function onDecided(result) {
         if (gen !== ui.generation) return;
         if (c.kind !== 'decision') {
-          // Agent-run approvals and actions settle in the call itself; there is no decision status to read.
+          // Approvals, actions and links settle in the call itself; there is no decision status to read.
           var data = R.extractStructuredWidgetData ? R.extractStructuredWidgetData(result, true) : null;
           settle({ state: 'succeeded', status: data && data.status });
           return;
