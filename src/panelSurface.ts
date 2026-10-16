@@ -406,6 +406,8 @@ export interface PanelSnapshot {
   };
   /** What OrgX knows about the bound initiative, with where each part came from. */
   brief?: PanelBrief;
+  /** Finished outputs waiting on a person's acceptance, newest first. */
+  awaiting_acceptance?: PanelAwaitingArtifact[];
   degraded: string[];
   /** Present only when the snapshot was asked for view "work". */
   work?: PanelWork;
@@ -1069,6 +1071,45 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+export const PANEL_AWAITING_LIMIT = 3;
+
+export interface PanelAwaitingArtifact {
+  artifact_id: string;
+  title: string;
+  status: 'in_review' | 'eval_passed';
+  updated_at: string | null;
+  url: string;
+}
+
+/**
+ * The finished outputs a person can accept now: in review or past evals,
+ * newest first. Each one is reviewed in the artifact review widget, which
+ * already carries the accept and request-changes actions.
+ */
+export function listAwaitingAcceptance(records: unknown[] | null): PanelAwaitingArtifact[] {
+  if (!records) return [];
+  const out: PanelAwaitingArtifact[] = [];
+  for (const raw of records) {
+    const record = asRecord(raw);
+    const normalized = record ? normalizeArtifactRecord(record) : null;
+    const id = normalized?.id;
+    if (!record || !normalized || !id || !UUID_ANY_RE.test(id)) continue;
+    const status = normalized.status.toLowerCase();
+    if (status !== 'in_review' && status !== 'eval_passed') continue;
+    if (typeof record.superseded_by === 'string' && record.superseded_by) continue;
+    out.push({
+      artifact_id: id,
+      title: clipText(normalized.title, PANEL_TITLE_MAX) ?? 'Untitled artifact',
+      status,
+      updated_at: str(record.updated_at) ?? str(record.created_at) ?? null,
+      url: buildEntityLink('artifact', id).url,
+    });
+  }
+  return out
+    .sort((a, b) => timeOf(b.updated_at) - timeOf(a.updated_at))
+    .slice(0, PANEL_AWAITING_LIMIT);
+}
+
 /**
  * The app's ledger-backed proof (`acceptance_records`: accepted by a human
  * on a work artifact). Null means the app could not read it; a malformed
@@ -1367,6 +1408,7 @@ export function buildPanelSnapshot(input: BuildPanelSnapshotInput): PanelSnapsho
     };
     if (!summary.approver_known) degraded.push('proof_unavailable');
   }
+  const awaiting = listAwaitingAcceptance(input.artifacts ?? null);
 
   return {
     schema: PANEL_SNAPSHOT_SCHEMA,
@@ -1385,6 +1427,7 @@ export function buildPanelSnapshot(input: BuildPanelSnapshotInput): PanelSnapsho
     focus: focusDecision ? toFocus(focusDecision) : null,
     selection: { requested_id: requestedId, status: selectionStatus },
     proof,
+    ...(awaiting.length ? { awaiting_acceptance: awaiting } : {}),
     degraded,
   };
 }

@@ -1272,6 +1272,12 @@
       } else if (calm) {
         html += '<p class="proof-quiet">No output has been accepted yet.</p>';
       }
+      (s.awaiting_acceptance || []).forEach(function awaitingRow(a) {
+        html += '<p class="proof-sub proof-await"><span>' + esc(a.title) + ' is ready for you</span> ' +
+          '<button type="button" class="text-btn" data-action="review-artifact" data-prompt="' +
+          esc('Open the OrgX review for the artifact "' + a.title + '" (' + a.artifact_id + ') so I can accept it or ask for changes.') +
+          '">Review here</button></p>';
+      });
       if (p.completed_unaccepted > 0) {
         html += '<p class="proof-sub">' + p.completed_unaccepted.toLocaleString() + (p.completed_unaccepted === 1 ? ' finished output waits' : ' finished outputs wait') + ' for acceptance' +
           ' <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.workLedger({ center: s.workspace && s.workspace.id, range: '30d' })) + '">Review in OrgX ↗</button></p>';
@@ -2563,6 +2569,7 @@
           }
           break;
         case 'share': doShare(id); break;
+        case 'review-artifact': launchPrompt(el); break;
         case 'stop-share': stopShare(); break;
         case 'tab': setTab(el.getAttribute('data-tab')); break;
         case 'launch': launchPrompt(el); break;
