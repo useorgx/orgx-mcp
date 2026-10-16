@@ -30,7 +30,7 @@ import {
 } from './presentation';
 
 const decideActionSchema = z.enum(['approve', 'reject']);
-const panelItemKindSchema = z.enum(['decision', 'approval', 'action']);
+const panelItemKindSchema = z.enum(['decision', 'approval', 'action', 'link']);
 const panelReceiptRowSchema = z
   .object({
     id: z.string(),
@@ -114,7 +114,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
   orgx_widget_decide: z
     .object({
       decision_id: z.string().optional(),
-      kind: z.enum(['decision', 'approval', 'action']).optional(),
+      kind: z.enum(['decision', 'approval', 'action', 'link']).optional(),
       action: z.enum(['approved', 'rejected']).optional(),
       status: z.string().optional(),
       route: z.string().optional(),

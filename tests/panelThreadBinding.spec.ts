@@ -123,3 +123,29 @@ describe('server instructions', () => {
     expect(ORGX_SERVER_INSTRUCTIONS.split(/(?<=\.) /)).toHaveLength(3);
   });
 });
+
+describe('session-link suggestions in the queue', () => {
+  const SESSION = '55555555-5555-4555-8555-555555555555';
+  it('keep their link kind, Link / Not this labels, and open the initiative', async () => {
+    const result = await handlePanelSnapshot(host({
+      fetchPendingDecisions: vi.fn(async () => ({
+        ok: true,
+        data: {
+          decisions: [{
+            id: SESSION, type: 'link', summary: 'Link "Pricing chat" to Pilot launch?', urgency: 'low',
+            created_at: '2026-10-01T10:00:00.000Z', context: { initiative_id: INIT },
+            review_packet: { question: 'Does "Pricing chat" belong to Pilot launch?', references: [{ type: 'initiative', id: INIT, label: 'Pilot launch' }] },
+            widget_actions: { kind: 'link', actions: ['approve', 'reject'], labels: { approve: 'Link', reject: 'Not this' }, reject_requires_reason: false },
+          }],
+        },
+      })),
+    }), {});
+    const s = result.structuredContent as Record<string, any>;
+    expect(s.queue[0]).toMatchObject({
+      id: SESSION, kind: 'link', initiative_id: INIT, initiative_title: 'Pilot launch',
+      widget_actions: { kind: 'link', labels: { approve: 'Link', reject: 'Not this' } },
+    });
+    expect(s.queue[0].url).toContain(INIT);
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(s).success).toBe(true);
+  });
+});

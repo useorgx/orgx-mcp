@@ -251,7 +251,8 @@ export interface PanelOption {
   label: string;
 }
 
-export type PanelItemKind = 'decision' | 'approval' | 'action';
+/** `link`: a suggestion that a captured session belongs to an initiative. */
+export type PanelItemKind = 'decision' | 'approval' | 'action' | 'link';
 export type PanelDecideAction = 'approve' | 'reject';
 
 /** One option the server lets the person choose. */
@@ -567,13 +568,13 @@ function count(value: unknown): number | null {
 }
 
 function itemKind(value: unknown): PanelItemKind | null {
-  return value === 'decision' || value === 'approval' || value === 'action' ? value : null;
+  return value === 'decision' || value === 'approval' || value === 'action' || value === 'link' ? value : null;
 }
 
-/** The pending list's `type`: agent-run approvals and gateway actions ride along with decisions. */
+/** The pending list's `type`: agent-run approvals, gateway actions and link suggestions ride along with decisions. */
 function kindFromType(record: Record<string, unknown>): PanelItemKind {
   const type = typeof record.type === 'string' ? record.type.trim().toLowerCase() : '';
-  return type === 'approval' ? 'approval' : type === 'action' ? 'action' : 'decision';
+  return type === 'approval' ? 'approval' : type === 'action' ? 'action' : type === 'link' ? 'link' : 'decision';
 }
 
 function contractOptions(value: unknown): PanelActionOption[] {
@@ -832,6 +833,9 @@ export function panelDecisionSignals(
 function decisionUrl(decision: NormalizedDecision): string {
   if (decision.kind === 'approval' && decision.runId) return buildEntityLink('run', decision.runId).url;
   if (decision.kind === 'action') return 'https://useorgx.com/decisions?status=pending';
+  if (decision.kind === 'link') {
+    return decision.initiativeId ? buildEntityLink('initiative', decision.initiativeId).url : 'https://useorgx.com/decisions?status=pending';
+  }
   return buildEntityLink('decision', decision.id, {
     initiativeId: decision.initiativeId ?? undefined,
   }).url;
