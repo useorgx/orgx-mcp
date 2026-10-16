@@ -42,6 +42,9 @@
       syncedAt: null,
       tokens: {},
       mode: params.get('mode') === 'thread' ? 'thread' : 'global',
+      // True once the panel has bound itself to the conversation it was opened
+      // beside; an explicit ?mode= in the URL always wins over the binding.
+      threadBound: params.has('mode'),
       listOpen: false,
       evidenceOpen: false,
       composer: null,
@@ -355,12 +358,13 @@
       'allow once': 'Allowed once', 'allow and continue': 'Allowed', 'send answer': 'Answer sent', 'send guidance and retry': 'Guidance sent',
       'confirm and continue': 'Confirmed', 'confirm selection': 'Confirmed', confirm: 'Confirmed', 'accept plan': 'Plan accepted',
       'apply edit': 'Edit applied', retry: 'Retry approved', 'retry and continue': 'Retry approved', acknowledge: 'Acknowledged',
+      link: 'Linked', 'not this': 'Not linked',
       'send back': 'Sent back', deny: 'Denied', decline: 'Declined', reject: 'Rejected', 'request changes': 'Changes requested', 'stop here': 'Stopped',
     };
     function pastTense(label, action) {
       return PAST[String(label || '').toLowerCase()] || (action === 'approve' ? 'Approved' : 'Sent back');
     }
-    var KINDS = ['decision', 'approval', 'action'];
+    var KINDS = ['decision', 'approval', 'action', 'link'];
     var TEXT_MAX = 2000;
     function has(list, value) { return Array.isArray(list) && list.indexOf(value) !== -1; }
     function kindOf(f) {
@@ -1084,7 +1088,7 @@
     }
 
     function packetHtml(f, headingTag) {
-      var metaBits = [askerPhrase(f), f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
+      var metaBits = [askerPhrase(f), f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : f.kind === 'link' ? 'Session link' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
       var askerAvatarHtml = '<span class="pn-asker" aria-hidden="true">' + askerAvatar(f.asker_kind, f.asker, 'inline') + '</span>';
       var error = ui.actionError && ui.actionError.id === f.id ? actionErrorHtml() : '';
       var changed = ui.changedSince
@@ -1167,7 +1171,7 @@
           '<button type="button" class="mini approve" data-action="approve" data-id="' + esc(item.id) + '" aria-label="' + esc(c.approve.label + ': ' + item.title) + '">' + esc(c.approve.label) + '</button></div>';
       }
       var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
-      var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : '';
+      var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : item.kind === 'link' ? 'Session link · ' : '';
       var arrived = ui.seenRows && !ui.seenRows[item.id];
       if (grouped) {
         // Inside a group the title is the group's; the line is what differs.
@@ -1268,6 +1272,12 @@
       } else if (calm) {
         html += '<p class="proof-quiet">No output has been accepted yet.</p>';
       }
+      (s.awaiting_acceptance || []).forEach(function awaitingRow(a) {
+        html += '<p class="proof-sub proof-await"><span>' + esc(a.title) + ' is ready for you</span> ' +
+          '<button type="button" class="text-btn" data-action="review-artifact" data-prompt="' +
+          esc('Open the OrgX review for the artifact "' + a.title + '" (' + a.artifact_id + ') so I can accept it or ask for changes.') +
+          '">Review here</button></p>';
+      });
       if (p.completed_unaccepted > 0) {
         html += '<p class="proof-sub">' + p.completed_unaccepted.toLocaleString() + (p.completed_unaccepted === 1 ? ' finished output waits' : ' finished outputs wait') + ' for acceptance' +
           ' <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.workLedger({ center: s.workspace && s.workspace.id, range: '30d' })) + '">Review in OrgX ↗</button></p>';
@@ -1471,9 +1481,48 @@
     }
 
     function launchContext(s) {
-      var initiative = null;
+      var initiative = s && s.thread && s.thread.initiative_title ? s.thread.initiative_title : null;
+      if (initiative) return { initiative: initiative };
       (s && s.queue || []).some(function pick(item) { initiative = item.initiative_title || null; return Boolean(initiative); });
       return { initiative: initiative };
+    }
+
+    var BRIEF_SOURCES = { chatgpt: 'ChatGPT', 'claude-code': 'Claude Code', claude_code: 'Claude Code', claude: 'Claude', cursor: 'Cursor', codex: 'Codex', managed: 'Managed run', console: 'OrgX', orgx: 'OrgX' };
+    var BRIEF_KINDS = { run: 'run', session: 'chat', decision: 'ruling' };
+    function briefSource(e) {
+      var raw = String(e.source || '').toLowerCase();
+      if (raw === 'you') return 'Your ' + BRIEF_KINDS[e.kind];
+      var named = BRIEF_SOURCES[raw] || (raw ? raw.charAt(0).toUpperCase() + raw.slice(1).replace(/[_-]+/g, ' ') : 'OrgX');
+      return named + ' ' + BRIEF_KINDS[e.kind];
+    }
+
+    /**
+     * What OrgX already knows about the initiative this chat is bound to, and
+     * where each part came from. Full when nothing needs a decision; one line
+     * under an open decision, so the decision stays the interface.
+     */
+    function briefHtml(s, compact) {
+      var b = s.brief;
+      if (!b) return '';
+      var title = (s.thread && s.thread.initiative_title) || 'this initiative';
+      var counts = [];
+      if (b.decisions) counts.push(b.decisions + (b.decisions === 1 ? ' ruling' : ' rulings') + ' in effect');
+      if (b.precedents) counts.push(b.precedents + (b.precedents === 1 ? ' precedent' : ' precedents'));
+      var url = window.OrgXLinks.initiative ? window.OrgXLinks.initiative(b.initiative_id) : ORGX_HOME;
+      if (compact) {
+        var latest = b.events[0];
+        var bits = counts.slice();
+        if (latest) bits.push('latest: ' + briefSource(latest) + ', ' + agoLong(latest.at));
+        return bits.length ? '<p class="brief-line">' + esc('Brief · ' + bits.join(' · ')) + '</p>' : '';
+      }
+      var rows = b.events.map(function ev(e) {
+        return '<li class="brief-ev"><span class="brief-src">' + esc(briefSource(e)) + ' · ' + esc(agoLong(e.at)) + '</span><span class="brief-t">' + esc(e.title) + '</span></li>';
+      }).join('');
+      return '<section class="brief" aria-labelledby="brief-h"><h2 class="brief-h" id="brief-h">' + esc('What OrgX knows about ' + title) + '</h2>' +
+        (rows ? '<ul class="brief-evs">' + rows + '</ul>' : '<p class="proof-quiet">No runs, linked chats or rulings recorded on it yet.</p>') +
+        '<p class="proof-sub">' + esc(counts.join(' · ')) + (counts.length ? ' ' : '') +
+        '<button type="button" class="text-btn" data-action="open" data-url="' + esc(url) + '">Open initiative ↗</button></p>' +
+        (b.degraded ? '<p class="proof-sub">Some sources could not be read.</p>' : '') + '</section>';
     }
 
     function threadHtml(s) {
@@ -1503,10 +1552,10 @@
           '<button type="button" class="secondary-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>' + foot;
       }
       if (!s.focus) {
-        return '<h1 class="lede">Nothing needs your decision.</h1>' + html + proofHtml(s, true) +
+        return '<h1 class="lede">Nothing needs your decision.</h1>' + html + briefHtml(s, false) + proofHtml(s, true) +
           (Launch ? Launch.sectionHtml('calm', launchContext(s), { limit: 3 }) : '') + foot;
       }
-      html += packetHtml(s.focus, 'h1');
+      html += packetHtml(s.focus, 'h1') + briefHtml(s, true);
       if (s.queue.length > 1) {
         html += '<div class="thread-foot"><button type="button" class="text-btn choose" data-action="choose">Choose another item ›</button>' +
           '<span class="foot-sync"><span class="sync">' + syncLabel + '</span><button type="button" class="quiet-btn" data-action="refresh">Refresh</button></span></div>';
@@ -1926,21 +1975,30 @@
     /** The work behind the open decision: the ledger's receipts for its PR, read once per decision. */
     function maybeFetchBehind(focus) {
       if (!Receipts || !focus || ui.behind[focus.id] !== undefined) return;
-      var pr = Receipts.prOf([focus.title, focus.question, focus.detail].filter(Boolean).join('\n'));
-      if (!pr) { ui.behind[focus.id] = null; return; }
+      // Join by id first: the run the decision came from is the run its
+      // receipt names. A pull request number read from the text is only the
+      // fallback for decisions that carry no run.
+      var queries = Receipts.behindQueries(focus);
+      if (!queries.length) { ui.behind[focus.id] = null; return; }
       ui.behind[focus.id] = 'loading';
-      if (isGallery) { ui.behind[focus.id] = gallery.behind(pr); rememberRows(ui.behind[focus.id]); later(render, 0); return; }
+      if (isGallery) { ui.behind[focus.id] = gallery.behind(Receipts.prOf([focus.title, focus.question, focus.detail].filter(Boolean).join('\n'))); rememberRows(ui.behind[focus.id]); later(render, 0); return; }
       var gen = ui.generation;
-      observeRead('behind', 'open', R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: 'pr:' + pr }))).then(function onBehind(result) {
-        if (gen !== ui.generation) return;
-        var data = result && result.data;
-        ui.behind[focus.id] = Receipts.normalizeList(data, 'pr:' + pr);
-        rememberRows(ui.behind[focus.id]);
-        if (ui.tab === 'needs' && ui.snapshot && ui.snapshot.focus && ui.snapshot.focus.id === focus.id) render();
-      }, function onBehindError() {
-        if (gen !== ui.generation) return;
-        ui.behind[focus.id] = null;
-      });
+      function attempt(i) {
+        var query = queries[i];
+        observeRead('behind', 'open', R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: query }))).then(function onBehind(result) {
+          if (gen !== ui.generation) return;
+          var list = Receipts.normalizeList(result && result.data, query);
+          if ((!list || list.status !== 'ok' || !list.items || !list.items.length) && i + 1 < queries.length) { attempt(i + 1); return; }
+          ui.behind[focus.id] = list;
+          rememberRows(ui.behind[focus.id]);
+          if (ui.tab === 'needs' && ui.snapshot && ui.snapshot.focus && ui.snapshot.focus.id === focus.id) render();
+        }, function onBehindError() {
+          if (gen !== ui.generation) return;
+          if (i + 1 < queries.length) { attempt(i + 1); return; }
+          ui.behind[focus.id] = null;
+        });
+      }
+      attempt(0);
     }
 
     /** In progress is read only when opened: the same snapshot with view "work". */
@@ -2034,6 +2092,13 @@
       }
       ui.snapshot = snapshot;
       ui.syncedAt = new Date(snapshot.generated_at);
+      // The thread entrypoint: OrgX named the conversation this panel sits
+      // beside, so open on this chat's view rather than the sidebar's. A
+      // fullscreen panel is the sidebar (global) entrypoint and stays global.
+      if (!ui.threadBound && snapshot.thread && snapshot.thread.conversation_id) {
+        ui.threadBound = true;
+        if (!(Host && Host.displayMode() === 'fullscreen')) ui.mode = 'thread';
+      }
       ui.auth = null;
       if (!openedTracked) {
         openedTracked = true;
@@ -2301,6 +2366,7 @@
         if (!status) return 'recorded; status not available yet';
         if (agreeing) return action === 'approve' ? 'agents start; every receipt is judged against this bar' : 'OrgX redrafts it and asks again';
         if (c.kind === 'action') return action === 'approve' ? 'the action can run' : 'the action does not run';
+        if (c.kind === 'link') return action === 'approve' ? 'its work now counts toward this initiative' : 'OrgX stops suggesting it';
         if (c.kind === 'approval') return action === 'approve' ? 'the run continues' : 'the run stops at this step';
         return action === 'approve' ? 'the agent can continue' : 'the agent reworks it';
       }
@@ -2331,7 +2397,7 @@
       R.callTool('orgx_widget_decide', args).then(function onDecided(result) {
         if (gen !== ui.generation) return;
         if (c.kind !== 'decision') {
-          // Agent-run approvals and actions settle in the call itself; there is no decision status to read.
+          // Approvals, actions and links settle in the call itself; there is no decision status to read.
           var data = R.extractStructuredWidgetData ? R.extractStructuredWidgetData(result, true) : null;
           settle({ state: 'succeeded', status: data && data.status });
           return;
@@ -2503,6 +2569,7 @@
           }
           break;
         case 'share': doShare(id); break;
+        case 'review-artifact': launchPrompt(el); break;
         case 'stop-share': stopShare(); break;
         case 'tab': setTab(el.getAttribute('data-tab')); break;
         case 'launch': launchPrompt(el); break;

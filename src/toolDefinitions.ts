@@ -747,11 +747,11 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'orgx_widget_decide',
     title: 'Decide from the decisions widget',
     description:
-      'Widget-only: settles one pending item (a decision of any type, an agent-run approval, or an action awaiting approval) after the person clicks in the decisions widget or the OrgX panel. Sends what the item\'s widget_actions ask for: an option, several options, a typed answer or a reason. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the item as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.',
+      'Widget-only: settles one pending item (a decision of any type, an agent-run approval, an action awaiting approval, or a suggestion to link a captured session to an initiative) after the person clicks in the decisions widget or the OrgX panel. Sends what the item\'s widget_actions ask for: an option, several options, a typed answer or a reason. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the item as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.',
     inputSchema: {
-      decision_id: z.string().min(1).describe('Pending item being settled (decision, agent-run approval or action id)'),
+      decision_id: z.string().min(1).describe('Pending item being settled (decision, agent-run approval, action or session id)'),
       kind: z
-        .enum(['decision', 'approval', 'action'])
+        .enum(['decision', 'approval', 'action', 'link'])
         .optional()
         .describe("The item's widget_actions.kind. Defaults to decision."),
       action: z.enum(['approve', 'reject']).describe('approve or reject'),

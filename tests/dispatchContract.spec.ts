@@ -169,6 +169,14 @@ describe('normalizeDispatchContract', () => {
     );
   });
 
+  it('keeps an empty effects declaration distinct from an absent one', () => {
+    // The effect gate fails closed: absent means no external effects and an
+    // effect_scope_missing refusal; an empty list means "declared, none".
+    expect(normalizeDispatchContract({ effects: { allowed: [] } }, NOW).contract?.effects).toEqual({ allowed: [], approval_required: [] });
+    expect(normalizeDispatchContract({ effects: {} }, NOW).contract?.effects).toEqual({ allowed: [], approval_required: [] });
+    expect(normalizeDispatchContract({}, NOW).contract?.effects).toBeNull();
+  });
+
   it('accepts an empty payload — every contract field is optional', () => {
     const result = normalizeDispatchContract({}, NOW);
     expect(result.ok).toBe(true);

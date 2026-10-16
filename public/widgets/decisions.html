@@ -900,6 +900,7 @@
       // Agent-run approvals open their run; actions waiting on approval open the decision queue.
       if (kind === 'approval' && UUID_RE.test(firstString(refs.run_id))) return links.run(refs.run_id);
       if (kind === 'action') return buildDecisionsUrl();
+      if (kind === 'link') return UUID_RE.test(firstString(decision.context && decision.context.initiative_id)) ? links.initiative(decision.context.initiative_id) : buildDecisionsUrl();
       return links.decision(decision.id);
     };
 
@@ -1166,14 +1167,14 @@
     // options (one or several, each maybe implying approve or reject, maybe needing a reason),
     // a typed answer, and whether rejecting needs a reason. Older payloads still render: the
     // provisional list of actions, or options without widget_actions (two or more are buttons).
-    var ITEM_KINDS = ['decision', 'approval', 'action'];
+    var ITEM_KINDS = ['decision', 'approval', 'action', 'link'];
     var DECIDE_ACTIONS = ['approve', 'reject'];
     var OPTION_LIMIT = 12;
     var OPTION_ID_MAX = 120;
     var TEXT_MAX = 2000;
     var kindFromType = (decision) => {
       const type = firstString(decision && decision.type).toLowerCase();
-      return type === 'approval' ? 'approval' : type === 'action' ? 'action' : 'decision';
+      return type === 'approval' ? 'approval' : type === 'action' ? 'action' : type === 'link' ? 'link' : 'decision';
     };
     var normalizeOption = (item, index) => {
       if (typeof item === 'string') return item.trim() ? { id: 'option-' + (index + 1), label: item.trim(), description: '', recommended: false, implied: null, requiresReason: false } : null;
@@ -1413,6 +1414,7 @@
       const kind = kindFromType(decision);
       if (kind === 'approval') return 'Agent run approval';
       if (kind === 'action') return 'Action approval';
+      if (kind === 'link') return 'Session link';
       if (!type || ['decision', 'decision_queue', 'decision_request'].includes(type.toLowerCase())) return '';
       return /[_-]/.test(type) && type === type.toLowerCase() ? humanizeDecisionKey(type).replace(/^./, (c) => c.toUpperCase()) : type;
     };
@@ -1642,6 +1644,7 @@
       if (d.expectations) return action === 'approve' ? 'agents start; every receipt is judged against this bar' : 'OrgX redrafts it and asks again';
       const kind = choicesFor(d).kind;
       if (kind === 'action') return action === 'approve' ? 'the action can run' : 'the action does not run';
+      if (kind === 'link') return action === 'approve' ? 'its work now counts toward this initiative' : 'OrgX stops suggesting it';
       if (kind === 'approval') return action === 'approve' ? who + ' continues the run' : who + ' stops at this step';
       return action === 'approve' ? who + ' continues' : who + ' reworks it against your note';
     };

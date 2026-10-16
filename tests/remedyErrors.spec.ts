@@ -126,7 +126,7 @@ describe('typed remedy suggestions', () => {
   });
 
   it('every literal suggestion in the remedy sources names a v2 tool', () => {
-    const sources = ['src/remedyErrors.ts', 'src/agentErgonomics.ts', 'src/typedToolErrors.ts', 'src/idempotencyKeys.ts'];
+    const sources = ['src/remedyErrors.ts', 'src/agentErgonomics.ts', 'src/typedToolErrors.ts', 'src/idempotencyKeys.ts', 'src/clientActivationExperience.ts', 'src/clientHookCoverage.ts'];
     for (const file of sources) {
       const text = readFileSync(resolve(__dirname, '..', file), 'utf8');
       for (const [, tool] of text.matchAll(/tool:\s*'([a-z_]+)'/g)) {
@@ -142,7 +142,7 @@ describe('typed remedy suggestions', () => {
       for (const status of [402, 403, 404, 409, 412, 423, 429, 500, 502, 503, 504]) {
         corpus.push({ toolId: id, args, mutating: true, error: new OrgXApiError('Upstream said no', 'internal', status) });
       }
-      for (const backendCode of ['approval_required', 'version_conflict', 'lease_expired', 'budget_cap_exceeded', 'rate_limit_exceeded', 'permission_denied', 'idempotency_conflict']) {
+      for (const backendCode of ['approval_required', 'version_conflict', 'lease_expired', 'budget_cap_exceeded', 'rate_limit_exceeded', 'permission_denied', 'idempotency_conflict', 'effect_scope_missing', 'effect_scope_invalid']) {
         corpus.push({ toolId: id, args, mutating: true, error: new OrgXApiError('x', 'internal', 400, { backendCode, backendDetails: { decision_id: UUID, approver_role: 'admin', operation_id: `run:${UUID}` } }) });
       }
       corpus.push({ toolId: id, args, mutating: true, error: markTransportFailure(new OrgXApiError('The request took too long. Please try again.', 'timeout'), 'timeout') });
@@ -218,6 +218,26 @@ describe('typed remedy classification', () => {
     const diagnostic = diagnoseToolFailure({ toolId: 'orgx_create_task', mutating: true, args: SAMPLE_ARGS.orgx_create_task,
       error: new OrgXApiError('Access denied. Please check your authentication.', 'internal', 403, { backendDetails: { required_scope: 'initiatives:write' } }) });
     expect(diagnostic).toMatchObject({ code: 'forbidden', safe_to_retry: false, requested_scope: 'initiatives:write', suggested_next_calls: [] });
+  });
+
+  it('maps the fail-closed effect gate to re-dispatch with an explicit scope, never an alternative route', () => {
+    for (const [backendCode, code] of [['effect_scope_missing', 'effect_scope_missing'], ['effect_scope_invalid', 'effect_scope_invalid']] as const) {
+      for (const toolId of ['orgx_start_agent_task', 'orgx_handoff_task']) {
+        const error = new OrgXApiError('Effect refused', 'internal', 403, { backendCode, backendDetails: { requested_scope: ['repo.push'] } });
+        const diagnostic = diagnoseToolFailure({ toolId, error, args: SAMPLE_ARGS[toolId], mutating: true });
+        expect(diagnostic).toMatchObject({ code, safe_to_retry: false, required_field: 'effects', requested_scope: ['repo.push'] });
+        expect(diagnostic.valid_values).toEqual(expect.arrayContaining(['email.send', 'repo.push', 'deploy']));
+        expect(diagnostic.remedy).toMatch(/re-dispatch/i);
+        expect(diagnostic.remedy).toMatch(/explicit effects scope/);
+        expect(diagnostic.remedy).toMatch(/Do not route the effect through another tool/);
+        // Only a read-back of the work; no other write is offered as a way around the gate.
+        expect(diagnostic.suggested_next_calls).toEqual([{ tool: 'orgx_inspect', args: { type: 'task', id: UUID } }]);
+      }
+    }
+    expect(diagnoseToolFailure({ toolId: 'orgx_start_agent_task', error: 'effect_scope_missing: no effects scope declared', mutating: true }).code).toBe('effect_scope_missing');
+    const upgraded = withTypedRemedy({ isError: true, content: [{ type: 'text', text: 'Effect refused' }],
+      structuredContent: { error: { code: 'unknown_effect', status: 400, message: 'Effect refused', details: {} } } }, { toolId: 'orgx_start_agent_task', args: SAMPLE_ARGS.orgx_start_agent_task });
+    expect((upgraded.structuredContent as any).error).toMatchObject({ code: 'effect_scope_invalid', details: { upstream_code: 'unknown_effect', retryable: false } });
   });
 
   it('uses message matching only when nothing structured identifies the failure', () => {
@@ -361,5 +381,6 @@ describe('required idempotency keys', () => {
 const _exhaustive: Record<RemedyCode, true> = {
   approval_required: true, stale_version: true, stale_lease: true, budget_exhausted: true, rate_limited: true,
   outcome_unknown: true, forbidden: true, idempotency_key_required: true, idempotency_key_conflict: true,
+  effect_scope_missing: true, effect_scope_invalid: true,
 };
 void _exhaustive;

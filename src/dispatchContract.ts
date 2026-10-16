@@ -102,13 +102,13 @@ export const dispatchEffectsSchema = z.object({
     .array(z.string().min(1))
     .optional()
     .describe(
-      `Effects the work may perform without further approval. One of: ${DISPATCH_EFFECT_NAMES.join(', ')}. Internal work (editing files, running tests) is not an effect and needs no declaration.`
+      `Effects the work may perform without further approval. One of: ${DISPATCH_EFFECT_NAMES.join(', ')}. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration.`
     ),
   approval_required: z
     .array(z.string().min(1))
     .optional()
     .describe(
-      `Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing.`
+      `Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing.`
     ),
 });
 
@@ -154,7 +154,7 @@ export const DISPATCH_CONTRACT_SHAPE = {
   effects: dispatchEffectsSchema
     .optional()
     .describe(
-      'Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority.'
+      'Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { "allowed": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run\'s scope is intersected with its parent\'s, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool.'
     ),
   acceptance: z
     .array(acceptanceCheckSchema)
@@ -420,11 +420,13 @@ export function normalizeAcceptance(
 function normalizeEffects(
   value: unknown
 ): { allowed: string[]; approval_required: string[] } | null {
+  // Only an absent scope is null. The effect gate fails closed, so an empty
+  // declaration ("declared, none") is a different contract from no
+  // declaration and must survive normalization as such.
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
   const allowed = readStringArray(raw.allowed);
   const approvalRequired = readStringArray(raw.approval_required);
-  if (allowed.length === 0 && approvalRequired.length === 0) return null;
   return { allowed, approval_required: approvalRequired };
 }
 

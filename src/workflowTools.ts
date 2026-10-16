@@ -280,7 +280,7 @@ const legacyScaffoldInput = {
 /** Default host-independent workflow catalog, excluding receipt tools (receiptTools.ts). */
 export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   operation('orgx_get_workspace_context', 'orgx_bootstrap', 'Read OrgX Workspace Context',
-    'Read the authorized workspace, optional initiative context, and typed references. Does not select a workspace or create a session.',
+    'Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, and capture health (which clients reported recently and how many sessions are unlinked). Does not select a workspace or create a session.',
     { workspace_id: workspaceId, initiative_id: id.optional() }, {
       annotations: readOnly, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
       backendRequest: (args) => ({ method: 'GET', path: query('/api/v1/workflows/workspace-context', args) }),
@@ -385,7 +385,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       fixedArgs: { operation: 'update' }, annotations: modifiesRecords, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
   operation('orgx_estimate_agent_task', 'orgx_spawn', 'Estimate OrgX Agent Task',
-    'Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run.',
+    'Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run. An estimate grants no effects: the dispatch that follows must declare its effects scope, or the run gets no external effects (effect_scope_missing).',
     { task: z.union([z.object({ task_id: id }).strict(), z.object({ title: createTitle, instructions: z.string().min(1).optional() }).strict()]),
       ...project('orgx_spawn', ['initiative_id', 'workspace_id', 'agent_type', 'model_tier', 'model', 'provider', 'runtime', 'budget_mode', 'max_cost_usd']) }, {
       fixedArgs: { action: 'estimate' }, annotations: readOnly, securitySchemes: SECURITY_SCHEMES.agentReadRequiresAuth,

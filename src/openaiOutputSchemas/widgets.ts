@@ -30,7 +30,7 @@ import {
 } from './presentation';
 
 const decideActionSchema = z.enum(['approve', 'reject']);
-const panelItemKindSchema = z.enum(['decision', 'approval', 'action']);
+const panelItemKindSchema = z.enum(['decision', 'approval', 'action', 'link']);
 const panelReceiptRowSchema = z
   .object({
     id: z.string(),
@@ -114,7 +114,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
   orgx_widget_decide: z
     .object({
       decision_id: z.string().optional(),
-      kind: z.enum(['decision', 'approval', 'action']).optional(),
+      kind: z.enum(['decision', 'approval', 'action', 'link']).optional(),
       action: z.enum(['approved', 'rejected']).optional(),
       status: z.string().optional(),
       route: z.string().optional(),
@@ -163,6 +163,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             title: z.string(),
             urgency: z.enum(['low', 'medium', 'high', 'critical']),
             waiting_since: z.string().nullable(),
+            initiative_id: z.string().nullable().optional(),
             initiative_title: z.string().nullable(),
             blocked: z.boolean(),
             decide_in_orgx_reason: z.string().nullable(),
@@ -187,7 +188,9 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           question: z.string(),
           urgency: z.enum(['low', 'medium', 'high', 'critical']),
           waiting_since: z.string().nullable(),
+          initiative_id: z.string().nullable().optional(),
           initiative_title: z.string().nullable(),
+          run_id: z.string().nullable().optional(),
           recommendation: z
             .object({
               status: z.enum(['ready', 'unverified', 'unavailable']),
@@ -248,6 +251,38 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           completed_unaccepted: z.number(),
         })
         .strict(),
+      brief: z
+        .object({
+          initiative_id: z.string(),
+          events: z.array(
+            z
+              .object({
+                at: z.string(),
+                kind: z.enum(['run', 'session', 'decision']),
+                title: z.string(),
+                source: z.string().nullable(),
+              })
+              .strict()
+          ),
+          decisions: z.number(),
+          precedents: z.number(),
+          degraded: z.boolean(),
+        })
+        .strict()
+        .optional(),
+      awaiting_acceptance: z
+        .array(
+          z
+            .object({
+              artifact_id: z.string(),
+              title: z.string(),
+              status: z.enum(['in_review', 'eval_passed']),
+              updated_at: z.string().nullable(),
+              url: z.string(),
+            })
+            .strict()
+        )
+        .optional(),
       degraded: z.array(z.string()),
       work: z
         .object({
@@ -342,6 +377,16 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         .optional(),
       // The panel's own live feed (see src/live/panelFeed.ts).
       live: streamGrantSchema.optional(),
+      // The conversation the panel was opened beside (thread entrypoint).
+      thread: z
+        .object({
+          conversation_id: z.string(),
+          source: z.enum(['client_context', 'host_session']),
+          initiative_id: z.string().nullable(),
+          initiative_title: z.string().nullable(),
+        })
+        .strict()
+        .optional(),
     })
     .strict(),
 

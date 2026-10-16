@@ -266,16 +266,28 @@ function canonicalizeOperationAlias(tool: string, args: JsonRecord): { tool: str
   }
 }
 
-function callSatisfiesAdvertisedSchema(tool: string, args: JsonRecord, profile: GuidanceProfile): boolean {
+function callSatisfiesAdvertisedSchema(
+  tool: string,
+  args: JsonRecord,
+  profile: GuidanceProfile,
+  requiredInputs: readonly string[] = []
+): boolean {
   const adapter = profileName(profile) === 'claude-directory-legacy' ? getClaudeDirectoryToolContract(tool) : undefined;
   const contract = adapter ?? getPublicOperationContract(tool) ?? getKnownToolContract(tool);
-  if (!contract?.inputSchema) return false;
-  const schema = z.object(contract.inputSchema);
+  const inputSchema = contract?.inputSchema;
+  if (!inputSchema) return false;
+  // A template breadcrumb names the advertised fields its caller must still
+  // supply (`required_inputs`). Those fields are left to the caller; every
+  // argument the breadcrumb does carry is still validated.
+  const templated = requiredInputs.filter((key) => Object.hasOwn(inputSchema, key) && args[key] === undefined);
+  if (templated.length !== requiredInputs.length) return false;
+  const shape: z.ZodRawShape = Object.fromEntries(Object.entries(inputSchema).filter(([key]) => !templated.includes(key)));
+  const schema = z.object(shape);
   if (tool === 'orgx_get_operation_status' && !args.operation_id && !(args.kind && args.id)) return false;
   const strict = adapter || !('source' in contract);
   // A continuation is a template: the caller mints the required retry key for
   // each intended write, so a breadcrumb never carries one of its own.
-  const keyed = requiresIdempotencyKey(contract.inputSchema) && isMissingIdempotencyKey(args)
+  const keyed = requiresIdempotencyKey(inputSchema) && isMissingIdempotencyKey(args)
     ? { ...args, idempotency_key: IDEMPOTENCY_KEY_PLACEHOLDER }
     : args;
   return (strict ? schema.strict() : schema.passthrough()).safeParse(keyed).success;
@@ -289,6 +301,9 @@ export function canonicalizeToolCallGuidance(
   const record = asRecord(value);
   if (!record || typeof record.tool !== 'string') return null;
   const rawArgs = asRecord(record.args) ?? asRecord(record.arguments) ?? {};
+  const requiredInputs = Array.isArray(record.required_inputs)
+    ? record.required_inputs.filter((key): key is string => typeof key === 'string')
+    : [];
   const candidates = [
     { tool: record.tool, args: rawArgs },
     canonicalizeOperationAlias(record.tool, rawArgs),
@@ -296,7 +311,7 @@ export function canonicalizeToolCallGuidance(
   ];
   const canonical = candidates.find((candidate) => candidate &&
     isAvailable(candidate.tool, visibleTools, profile) &&
-    callSatisfiesAdvertisedSchema(candidate.tool, candidate.args, profile));
+    callSatisfiesAdvertisedSchema(candidate.tool, candidate.args, profile, requiredInputs));
   if (!canonical) return null;
 
   const { arguments: _arguments, args: _args, tool: _tool, ...rest } = record;
