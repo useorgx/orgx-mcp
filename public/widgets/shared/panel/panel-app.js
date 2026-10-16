@@ -1481,6 +1481,44 @@
       return { initiative: initiative };
     }
 
+    var BRIEF_SOURCES = { chatgpt: 'ChatGPT', 'claude-code': 'Claude Code', claude_code: 'Claude Code', claude: 'Claude', cursor: 'Cursor', codex: 'Codex', managed: 'Managed run', console: 'OrgX', orgx: 'OrgX' };
+    var BRIEF_KINDS = { run: 'run', session: 'chat', decision: 'ruling' };
+    function briefSource(e) {
+      var raw = String(e.source || '').toLowerCase();
+      if (raw === 'you') return 'Your ' + BRIEF_KINDS[e.kind];
+      var named = BRIEF_SOURCES[raw] || (raw ? raw.charAt(0).toUpperCase() + raw.slice(1).replace(/[_-]+/g, ' ') : 'OrgX');
+      return named + ' ' + BRIEF_KINDS[e.kind];
+    }
+
+    /**
+     * What OrgX already knows about the initiative this chat is bound to, and
+     * where each part came from. Full when nothing needs a decision; one line
+     * under an open decision, so the decision stays the interface.
+     */
+    function briefHtml(s, compact) {
+      var b = s.brief;
+      if (!b) return '';
+      var title = (s.thread && s.thread.initiative_title) || 'this initiative';
+      var counts = [];
+      if (b.decisions) counts.push(b.decisions + (b.decisions === 1 ? ' ruling' : ' rulings') + ' in effect');
+      if (b.precedents) counts.push(b.precedents + (b.precedents === 1 ? ' precedent' : ' precedents'));
+      var url = window.OrgXLinks.initiative ? window.OrgXLinks.initiative(b.initiative_id) : ORGX_HOME;
+      if (compact) {
+        var latest = b.events[0];
+        var bits = counts.slice();
+        if (latest) bits.push('latest: ' + briefSource(latest) + ', ' + agoLong(latest.at));
+        return bits.length ? '<p class="brief-line">' + esc('Brief · ' + bits.join(' · ')) + '</p>' : '';
+      }
+      var rows = b.events.map(function ev(e) {
+        return '<li class="brief-ev"><span class="brief-src">' + esc(briefSource(e)) + ' · ' + esc(agoLong(e.at)) + '</span><span class="brief-t">' + esc(e.title) + '</span></li>';
+      }).join('');
+      return '<section class="brief" aria-labelledby="brief-h"><h2 class="brief-h" id="brief-h">' + esc('What OrgX knows about ' + title) + '</h2>' +
+        (rows ? '<ul class="brief-evs">' + rows + '</ul>' : '<p class="proof-quiet">No runs, linked chats or rulings recorded on it yet.</p>') +
+        '<p class="proof-sub">' + esc(counts.join(' · ')) + (counts.length ? ' ' : '') +
+        '<button type="button" class="text-btn" data-action="open" data-url="' + esc(url) + '">Open initiative ↗</button></p>' +
+        (b.degraded ? '<p class="proof-sub">Some sources could not be read.</p>' : '') + '</section>';
+    }
+
     function threadHtml(s) {
       var html = noticeHtml();
       var syncLabel = esc(ui.syncedAt ? 'OrgX · synced ' + clock(ui.syncedAt) : 'OrgX');
@@ -1508,10 +1546,10 @@
           '<button type="button" class="secondary-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>' + foot;
       }
       if (!s.focus) {
-        return '<h1 class="lede">Nothing needs your decision.</h1>' + html + proofHtml(s, true) +
+        return '<h1 class="lede">Nothing needs your decision.</h1>' + html + briefHtml(s, false) + proofHtml(s, true) +
           (Launch ? Launch.sectionHtml('calm', launchContext(s), { limit: 3 }) : '') + foot;
       }
-      html += packetHtml(s.focus, 'h1');
+      html += packetHtml(s.focus, 'h1') + briefHtml(s, true);
       if (s.queue.length > 1) {
         html += '<div class="thread-foot"><button type="button" class="text-btn choose" data-action="choose">Choose another item ›</button>' +
           '<span class="foot-sync"><span class="sync">' + syncLabel + '</span><button type="button" class="quiet-btn" data-action="refresh">Refresh</button></span></div>';

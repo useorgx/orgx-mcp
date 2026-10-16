@@ -389,6 +389,24 @@
         default:
           break;
       }
+      // Thread-mode brief: ?mode=thread&brief=populated|empty|degraded|long.
+      if (params.get('mode') === 'thread') ui.mode = 'thread';
+      var briefState = params.get('brief');
+      if (briefState) {
+        var briefInit = briefState === 'long' ? 'European billing consolidation and provider migration program' : 'Launch the new pricing page';
+        s.thread = Object.assign({}, s.thread || {}, { initiative_id: IDS.init, initiative_title: briefInit });
+        s.brief = { initiative_id: IDS.init, events: [], decisions: 0, precedents: 0, degraded: briefState === 'degraded' };
+        if (briefState === 'populated' || briefState === 'long' || briefState === 'degraded') {
+          s.brief.events = [
+            { at: isoAgo(35 * 60 * 1000), kind: 'run', title: briefState === 'long' ? 'Reconciled 1,284 EU accounts against the new provider export and flagged three contract mismatches for finance review before cut-over' : 'Built the pricing table component', source: 'claude-code' },
+            { at: isoAgo(3 * H), kind: 'session', title: 'Planned the launch checklist', source: 'chatgpt' },
+            { at: isoAgo(26 * H), kind: 'decision', title: 'Ship annual plans at a 20% discount', source: 'you' },
+            { at: isoAgo(3 * D), kind: 'run', title: 'Drafted the pricing FAQ', source: 'codex' },
+          ];
+          s.brief.decisions = 3;
+          s.brief.precedents = 2;
+        }
+      }
       if (params.get('caps') === 'share') {
         ui.caps.modelContext = true;
         var share = ctx.useShare({ update: function noop() { return Promise.resolve(undefined); } });
