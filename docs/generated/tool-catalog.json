@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-16T14:28:49.747Z",
-  "sourceHash": "8707368e79b5e215",
+  "generatedAt": "2026-10-16T14:52:49.237Z",
+  "sourceHash": "c1d952ace42dc421",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -16073,7 +16073,7 @@
     {
       "id": "orgx_get_workspace_context",
       "title": "Read OrgX Workspace Context",
-      "description": "Read the authorized workspace, optional initiative context, and typed references. Does not select a workspace or create a session.",
+      "description": "Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, and capture health (which clients reported recently and how many sessions are unlinked). Does not select a workspace or create a session.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -16378,6 +16378,12 @@
             "minimum": 1000,
             "maximum": 50000,
             "description": "Approximate maximum hydrated context characters"
+          },
+          "relations": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Work-graph depth around the initiative in the brief: 0 skips it, 1 (default) adds edges that touch it"
           },
           "session_id": {
             "type": "string",

@@ -93,7 +93,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_inspect',
     title: 'Inspect OrgX Entity',
     description:
-      'Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_search for related records or orgx_recommend for a read-only next-step assessment. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.',
+      'Use when the user names a specific task, milestone, initiative, decision, artifact, or plan session and you need its real state — decisions, owners, linked proof — before acting. Hydrates one OrgX entity with execution context; for initiative, workstream and task it returns the brief with dated sources (runs, linked chats, rulings), precedents in effect and graph relations. Also known as: Inspect OrgX Entity, inspect initiative, get full entity context. USE WHEN: continuing work on a named entity or verifying state before a lifecycle change. NEXT: use orgx_search for related records or orgx_recommend for a read-only next-step assessment. DO NOT USE WHEN: browsing or searching many records; use orgx_search. Read-only.',
     inputSchema: {
       type: z
         .enum(entityTypeEnum.options)
@@ -101,6 +101,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       id: z.string().min(1).describe('Entity UUID or accepted short ID prefix'),
       hydrate_context: z.boolean().optional().describe('Include linked context where available; default true'),
       max_chars: z.number().int().min(1000).max(50000).optional().describe('Approximate maximum hydrated context characters'),
+      relations: z.number().int().min(0).max(1).optional().describe('Work-graph depth around the initiative in the brief: 0 skips it, 1 (default) adds edges that touch it'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
