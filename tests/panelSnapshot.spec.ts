@@ -12,6 +12,7 @@ import {
   PANEL_OPTION_LABEL_MAX,
   PANEL_TITLE_MAX,
   normalizeAppProof,
+  normalizePanelBrief,
   summarizePanelProof,
   type PanelSnapshot,
   type PanelSurfaceHost,
@@ -876,5 +877,61 @@ describe('panel asker and work view', () => {
     expect(snap.state).toBe('ok');
     expect(snap.queue.length).toBeGreaterThan(0);
     expect(snap.work).toEqual({ status: 'unavailable', items: [], total: 0 });
+  });
+});
+
+const BRIEF_INIT = 'c9d8e7f6-a5b4-4c3d-9e2f-1a0b9c8d7e6f';
+const BRIEF_PACK = {
+  frame: { decisions: [{ id: 'r1' }, { id: 'r2' }] },
+  brief_sources: {
+    events: [
+      { at: '2026-10-16T10:00:00.000Z', kind: 'run', title: 'Built the pricing table', source: 'claude-code', ref: 'run:1' },
+      { at: 'not a date', kind: 'run', title: 'Dropped', source: 'codex' },
+      { at: '2026-10-16T09:00:00.000Z', kind: 'telepathy', title: 'Dropped too', source: 'x' },
+      { at: '2026-10-16T08:00:00.000Z', kind: 'session', title: 'Planned the launch', source: 'chatgpt' },
+      { at: '2026-10-16T07:00:00.000Z', kind: 'decision', title: 'Annual plans at 20% off', source: 'you' },
+      { at: '2026-10-16T06:00:00.000Z', kind: 'run', title: 'Drafted the FAQ', source: 'codex' },
+      { at: '2026-10-16T05:00:00.000Z', kind: 'run', title: 'Past the limit', source: 'codex' },
+    ],
+    precedents: [{ ref: 'p1' }],
+    relations: [],
+    degraded: false,
+  },
+};
+
+describe('initiative brief', () => {
+  it('keeps valid events up to the limit and counts rulings and precedents', () => {
+    const brief = normalizePanelBrief(BRIEF_PACK, BRIEF_INIT)!;
+    expect(brief.events.map((e) => e.title)).toEqual(['Built the pricing table', 'Planned the launch', 'Annual plans at 20% off', 'Drafted the FAQ']);
+    expect(brief).toMatchObject({ initiative_id: BRIEF_INIT, decisions: 2, precedents: 1, degraded: false });
+  });
+
+  it('is absent when the app returned no sources', () => {
+    expect(normalizePanelBrief({ frame: {} }, BRIEF_INIT)).toBeNull();
+    expect(normalizePanelBrief(null, BRIEF_INIT)).toBeNull();
+  });
+
+  it('reads the brief only for a bound initiative on the default view', async () => {
+    const fetchInitiativeBrief = vi.fn(async () => BRIEF_PACK);
+    const unbound = await handlePanelSnapshot(fakeHost({ fetchInitiativeBrief, sessionInitiative: () => null }), {});
+    expect(fetchInitiativeBrief).not.toHaveBeenCalled();
+    expect((unbound.structuredContent as Record<string, unknown>).brief).toBeUndefined();
+
+    const host = fakeHost({ fetchInitiativeBrief, sessionInitiative: () => BRIEF_INIT });
+    await handlePanelSnapshot(host, { view: 'history' });
+    expect(fetchInitiativeBrief).not.toHaveBeenCalled();
+
+    const snap = (await handlePanelSnapshot(host, {})).structuredContent as unknown as PanelSnapshot;
+    expect(fetchInitiativeBrief).toHaveBeenCalledWith(BRIEF_INIT);
+    expect(snap.brief).toMatchObject({ initiative_id: BRIEF_INIT, decisions: 2 });
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(snap).success).toBe(true);
+  });
+
+  it('keeps the queue when the brief read fails', async () => {
+    const host = fakeHost({ fetchInitiativeBrief: vi.fn(async () => { throw new Error('down'); }), sessionInitiative: () => BRIEF_INIT });
+    const snap = (await handlePanelSnapshot(host, {})).structuredContent as unknown as PanelSnapshot;
+    expect(snap.state).toBe('ok');
+    expect(snap.queue.length).toBeGreaterThan(0);
+    expect(snap.brief).toBeUndefined();
   });
 });

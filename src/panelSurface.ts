@@ -404,6 +404,8 @@ export interface PanelSnapshot {
     } | null;
     completed_unaccepted: number;
   };
+  /** What OrgX knows about the bound initiative, with where each part came from. */
+  brief?: PanelBrief;
   /** Finished outputs waiting on a person's acceptance, newest first. */
   awaiting_acceptance?: PanelAwaitingArtifact[];
   degraded: string[];
@@ -1006,6 +1008,69 @@ export function summarizePanelProof(
 
 const UUID_ANY_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export const PANEL_BRIEF_EVENT_LIMIT = 4;
+export const PANEL_BRIEF_TIMEOUT_MS = 2500;
+
+export interface PanelBriefEvent {
+  at: string;
+  kind: 'run' | 'session' | 'decision';
+  title: string;
+  /** The client or runtime that produced it, or "you" for a ruling. */
+  source: string | null;
+}
+
+export interface PanelBrief {
+  initiative_id: string;
+  events: PanelBriefEvent[];
+  /** Rulings in effect on the initiative. */
+  decisions: number;
+  /** Precedents agents are held to in this workspace. */
+  precedents: number;
+  /** True when one of the sources could not be read. */
+  degraded: boolean;
+}
+
+const BRIEF_KINDS = new Set(['run', 'session', 'decision']);
+
+/**
+ * The brief strip for a bound initiative, from the context pack's
+ * `brief_sources`. Null when the app did not return sources (an older app,
+ * or a failed read), so the panel shows nothing rather than an empty claim.
+ */
+export function normalizePanelBrief(pack: unknown, initiativeId: string): PanelBrief | null {
+  const record = asRecord(pack);
+  const sources = asRecord(record?.brief_sources);
+  if (!record || !sources || !Array.isArray(sources.events)) return null;
+  const events: PanelBriefEvent[] = [];
+  for (const raw of sources.events) {
+    const event = asRecord(raw);
+    const at = str(event?.at);
+    const kind = str(event?.kind);
+    if (!event || !at || !kind || !BRIEF_KINDS.has(kind) || !Number.isFinite(Date.parse(at))) continue;
+    events.push({
+      at,
+      kind: kind as PanelBriefEvent['kind'],
+      title: clipText(event.title, PANEL_TITLE_MAX) ?? 'Untitled',
+      source: clipText(event.source, 40) ?? null,
+    });
+    if (events.length >= PANEL_BRIEF_EVENT_LIMIT) break;
+  }
+  const frame = asRecord(record.frame);
+  return {
+    initiative_id: initiativeId,
+    events,
+    decisions: Array.isArray(frame?.decisions) ? frame.decisions.length : 0,
+    precedents: Array.isArray(sources.precedents) ? sources.precedents.length : 0,
+    degraded: sources.degraded === true,
+  };
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export const PANEL_AWAITING_LIMIT = 3;
 
 export interface PanelAwaitingArtifact {
@@ -1417,6 +1482,11 @@ export interface PanelSurfaceHost {
   sessionWorkspace(): { id: string; name: string | null } | null;
   /** The initiative this MCP session is bound to, if any. */
   sessionInitiative?(): string | null;
+  /**
+   * The initiative's context pack with brief sources (POST /api/v1/context-pack
+   * with brief_sources). Null when the read fails or the app predates sources.
+   */
+  fetchInitiativeBrief?(initiativeId: string): Promise<unknown | null>;
   /** Read-only inference of the caller's active workspace. Never persisted. */
   inferWorkspace(): Promise<{ id: string; name: string | null } | null>;
   /**
@@ -1466,9 +1536,9 @@ export type PanelSnapshotObservation = {
   view: 'panel' | 'work' | 'workspaces' | 'history' | 'receipts' | 'receipt';
   hasWorkspace: boolean;
   /** Milliseconds per source that was read. */
-  timings: Partial<Record<'decisions' | 'artifacts' | 'work' | 'history' | 'ledger' | 'receipt' | 'workspaces' | 'live', number>>;
+  timings: Partial<Record<'decisions' | 'artifacts' | 'work' | 'history' | 'ledger' | 'receipt' | 'workspaces' | 'live' | 'brief', number>>;
   /** Sources that failed, with the error, so the worker can report it. */
-  failures: Array<{ source: 'decisions' | 'artifacts' | 'work' | 'history' | 'ledger' | 'receipt' | 'workspaces' | 'live'; error: unknown }>;
+  failures: Array<{ source: 'decisions' | 'artifacts' | 'work' | 'history' | 'ledger' | 'receipt' | 'workspaces' | 'live' | 'brief'; error: unknown }>;
   degraded: string[];
   totalMs: number;
 };
@@ -1556,6 +1626,15 @@ export async function handlePanelSnapshot(
     const parsedFocus = PANEL_FOCUS_SCHEMA.safeParse(args?.focus);
     const focus = parsedFocus.success ? parsedFocus.data : null;
     const wantsWork = args?.view === 'work';
+    // Read the bound initiative's brief alongside the queue, never after it.
+    const briefInitiative = !args?.view ? host.sessionInitiative?.() ?? null : null;
+    const briefRead =
+      briefInitiative && host.fetchInitiativeBrief
+        ? withTimeout(
+            timedSource(observation, 'brief', () => host.fetchInitiativeBrief!(briefInitiative)),
+            PANEL_BRIEF_TIMEOUT_MS
+          ).catch(() => null)
+        : null;
     const wantsWorkspaces = args?.view === 'workspaces';
     const wantsHistory = args?.view === 'history';
     const range: PanelHistoryRange = (PANEL_HISTORY_RANGES as readonly string[]).includes(String(args?.range))
@@ -1617,6 +1696,10 @@ export async function handlePanelSnapshot(
       queue: snapshot.queue,
     });
     if (thread) snapshot.thread = thread;
+    if (briefRead && briefInitiative) {
+      const brief = normalizePanelBrief(await briefRead, briefInitiative);
+      if (brief) snapshot.brief = brief;
+    }
     if (wantsHistory && workspace) {
       let records: unknown[] | null = null;
       let reason: string | null = null;

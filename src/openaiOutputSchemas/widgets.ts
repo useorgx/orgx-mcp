@@ -251,6 +251,25 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           completed_unaccepted: z.number(),
         })
         .strict(),
+      brief: z
+        .object({
+          initiative_id: z.string(),
+          events: z.array(
+            z
+              .object({
+                at: z.string(),
+                kind: z.enum(['run', 'session', 'decision']),
+                title: z.string(),
+                source: z.string().nullable(),
+              })
+              .strict()
+          ),
+          decisions: z.number(),
+          precedents: z.number(),
+          degraded: z.boolean(),
+        })
+        .strict()
+        .optional(),
       awaiting_acceptance: z
         .array(
           z

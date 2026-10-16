@@ -3195,6 +3195,13 @@ export class OrgXMcp extends McpAgent<
             }
           : null,
       sessionInitiative: () => this.sessionContext?.initiativeId ?? null,
+      fetchInitiativeBrief: (initiativeId) =>
+        fetchContextPack(
+          this.env,
+          userId(),
+          { type: 'initiative', id: initiativeId },
+          { briefSources: true, relations: 0 }
+        ),
       inferWorkspace: () => this.inferSessionWorkspace(userId()),
       fetchPendingDecisions: async ({ workspaceId, limit }) => {
         const id = userId();
