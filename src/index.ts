@@ -5726,10 +5726,12 @@ export class OrgXMcp extends McpAgent<
             ),
             args.hydrate_context === false
               ? Promise.resolve(null)
-              : fetchContextPack(this.env, resolvedUserId, {
-                  type: String(args.type),
-                  id: String(args.id),
-                }),
+              : fetchContextPack(
+                  this.env,
+                  resolvedUserId,
+                  { type: String(args.type), id: String(args.id) },
+                  { briefSources: true, relations: args.relations === 0 ? 0 : 1 }
+                ),
             // A run's answer lives in its outputs, not its row.
             args.type === 'run'
               ? fetchRunOutputs(this.env, String(args.id), {
