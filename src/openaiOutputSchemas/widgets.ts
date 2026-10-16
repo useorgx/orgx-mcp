@@ -251,6 +251,19 @@ export const WIDGET_OUTPUT_SCHEMAS = {
           completed_unaccepted: z.number(),
         })
         .strict(),
+      awaiting_acceptance: z
+        .array(
+          z
+            .object({
+              artifact_id: z.string(),
+              title: z.string(),
+              status: z.enum(['in_review', 'eval_passed']),
+              updated_at: z.string().nullable(),
+              url: z.string(),
+            })
+            .strict()
+        )
+        .optional(),
       degraded: z.array(z.string()),
       work: z
         .object({
