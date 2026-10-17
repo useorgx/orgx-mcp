@@ -660,6 +660,7 @@ describe('panel: the per-item contract and every refusal', () => {
     ['artifact_reference_invalid', 'The artifact under review could not be opened here. Review it in OrgX.'],
     ['specialized_lifecycle', 'This type runs its own review in OrgX.'],
     ['requester_cannot_approve', 'You requested this action, so another approver decides it.'],
+    ['action_review_incomplete', 'The complete action could not be verified. Approval is unavailable. Open OrgX to inspect the request.'],
     ['widget_approvals_disabled', 'Deciding from chat is off for this workspace.'],
   ];
   it.each(reasons)('says why %s is decided in OrgX', async (reason, copy) => {

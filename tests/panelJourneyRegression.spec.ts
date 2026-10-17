@@ -15,6 +15,24 @@ async function open() {
 }
 
 describe('observed ChatGPT panel journey regressions', () => {
+  it('describes queued work as tasks in the Start picker without claiming it is running', async () => {
+    const m = await open();
+    m.calls.callServerTool.mockResolvedValueOnce({ structuredContent: snapshot({ work: { status: 'ok', total: 3, items: [
+      { id: 'q1', agent: 'Dana', title: 'Queued one', state: 'queued' },
+      { id: 'q2', agent: 'Dana', title: 'Queued two', state: 'queued' },
+      { id: 'q3', agent: 'Mark', title: 'Queued three', state: 'queued' },
+    ] } }) });
+    const doc = m.dom.window.document;
+    (doc.querySelector('[data-tab="work"]') as HTMLElement).click();
+    await m.flush(); await m.flush();
+    (doc.querySelector('[data-tab="start"]') as HTMLElement).click();
+    (doc.querySelector('[data-action="start-who"]') as HTMLElement).click();
+    expect(doc.querySelector('.st-opt[data-id="dana"] .st-or')?.textContent).toContain('2 tasks');
+    expect(doc.querySelector('.st-opt[data-id="mark"] .st-or')?.textContent).toContain('1 task');
+    expect(doc.querySelector('#st-menu')?.textContent).not.toContain('running');
+    expect(m.calls.sendMessage).not.toHaveBeenCalled();
+  });
+
   it('shows Start prompts when the tour introduces starting work, without sending anything', async () => {
     const m = await open();
     const doc = m.dom.window.document;

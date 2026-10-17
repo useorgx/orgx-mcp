@@ -113,7 +113,7 @@
           var n = busy[a.name] || 0;
           return '<button type="button" class="st-opt" role="radio" data-action="start-agent" data-id="' + esc(a.key) + '" aria-checked="' + (!!picked && picked.key === a.key) + '">' +
             '<span class="st-face">' + avatar(a.name) + '</span><span class="st-on">' + esc(a.name) + '</span>' +
-            '<span class="st-or">' + esc(a.role) + (n ? ' · ' + n + ' running' : '') + '</span></button>';
+            '<span class="st-or">' + esc(a.role) + (n ? ' · ' + n + (n === 1 ? ' task' : ' tasks') : '') + '</span></button>';
         }).join('') + '</div>'
       : '';
 
