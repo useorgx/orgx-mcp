@@ -103,7 +103,7 @@
       title: 'Every decision leaves a receipt',
       body: 'Done keeps what you settled since opening the panel, each with what OrgX recorded.',
       tip: 'Your full history is one tap away: Decision history and the work ledger in OrgX.' },
-    { id: 'launch', tab: 'done', vis: 'launch', target: ['.pn-done .pn-launch'],
+    { id: 'launch', tab: 'start', vis: 'launch', target: ['.pn-start'],
       title: 'Start new work with a sentence',
       body: 'Each prompt shows the exact words it sends. {Host} turns them into OrgX actions: planning, starting an initiative, handing work to an agent.',
       tip: 'Type the same kind of sentence anywhere in {host}, for example “What should I do next in OrgX?”' },

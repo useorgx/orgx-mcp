@@ -67,7 +67,7 @@
   var ROWS_PER_AGENT = 4;
 
   function workChip(i) {
-    if (i.stale) return '<ox-state-chip state="stale" label="' + esc(i.updated_at && ago(i.updated_at) ? 'No update in ' + ago(i.updated_at).replace(/\s*ago$/, '') : 'No recent update') + '"></ox-state-chip>';
+    if (i.stale) return '<ox-state-chip state="stale" label="' + esc(i.updated_at && ago(i.updated_at) ? 'Last update ' + ago(i.updated_at) : 'No recent update') + '"></ox-state-chip>';
     return '<ox-state-chip state="' + WORK_CHIP[i.state] + '"></ox-state-chip>';
   }
 
@@ -97,7 +97,7 @@
     if (!item) return '';
     var meta = [item.agent + (item.domain ? ' · ' + item.domain : ''), item.updated_at ? 'Updated ' + ago(item.updated_at) : ''].filter(Boolean);
     var stateLine = item.stale
-      ? 'Marked in progress, but nothing has been reported for ' + (ago(item.updated_at) || 'a while') + '. It may be stalled.'
+      ? 'Marked in progress. ' + (ago(item.updated_at) ? 'Last update ' + ago(item.updated_at) + '.' : 'No recent update.') + ' It may be stalled.'
       : item.state === 'blocked' ? 'Waiting on something before it can continue.'
       : item.state === 'running' ? 'An agent is working on this now.'
       : 'Assigned and waiting its turn.';
