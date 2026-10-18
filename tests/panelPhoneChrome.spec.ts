@@ -140,6 +140,19 @@ describe.each([
     } finally { await close(); }
   }, 30000);
 
+  it('keeps every tab on screen when the device font is wider than ours', async () => {
+    const { page, close } = await open(host);
+    try {
+      // CI's fallback font is wider than Inter; that once pushed Done past the edge of the row.
+      await page.addStyleTag({ content: '* { font-family: "DejaVu Sans", sans-serif !important; }' });
+      await page.waitForTimeout(100);
+      for (const sel of ['#pn-tab-needs', '#pn-tab-work', '#pn-tab-outputs', '#pn-tab-goals', '#pn-tab-done']) {
+        const r = await hitAtCenter(page, sel);
+        expect(r.hitsSelf, `${sel} is covered by ${r.hit}`).toBe(true);
+      }
+    } finally { await close(); }
+  }, 30000);
+
   it('keeps the header pinned and the tabs reachable after the view has scrolled', async () => {
     const { page, close } = await open(host);
     try {

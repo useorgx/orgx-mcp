@@ -1123,11 +1123,14 @@
   .st-kbd { display: none; }
   .st-try { justify-content: flex-start; }
 }
-/* Four tabs on a phone: tighter spacing so Start is never off the edge. */
+/* Five tabs on a phone: they share the row and shrink before any falls off the edge,
+   whatever font the device has (a wider fallback font pushed Done out of reach). */
 @container pn (max-width: 420px) {
-  .pn-tab { padding: 0 7px; gap: 4px; font-size: 12.5px; }
-  .pn-tab::after { left: 7px; right: 7px; }
-  .pn-tab-n { padding: 3px 5px; }
+  .pn-tabs { gap: 0; }
+  .pn-tab { flex: 1 1 auto; min-width: 0; justify-content: center; padding: 0 4px; gap: 4px; font-size: 12.5px; }
+  .pn-tab > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .pn-tab-n { flex: none; padding: 3px 5px; }
+  .pn-ink { left: 4px; right: 4px; }
 }
 
 /* ── Needs you: the whole queue, the open decision marked in place ─────── */
