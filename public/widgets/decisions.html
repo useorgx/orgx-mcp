@@ -878,12 +878,19 @@
       token_mismatch: 'This view belongs to another account or workspace. Open it in OrgX.',
       lifecycle_required: 'This one finishes in OrgX.',
       chat_unavailable: 'This chat can’t settle it right now, so nothing was sent.',
+      answer_in_panel: 'It asks several things in turn. Answer it in the OrgX panel or in OrgX.',
       // Older servers.
       critical: 'Critical decisions are made in OrgX.',
       choice_required: 'Choose between the options in OrgX.',
       agent_run_approval: 'Agent run approvals are made in OrgX.',
       protected_decision_type: 'This one needs the full review in OrgX.',
       artifact_review_lifecycle: 'This one needs the full review in OrgX.',
+    };
+    var asksInTurn = (decision) => {
+      const raw = decision && decision.widget_actions;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false;
+      return Boolean((raw.questions && Array.isArray(raw.questions.fields) && raw.questions.fields.length) ||
+        (raw.items && Array.isArray(raw.items.items) && raw.items.items.length));
     };
     var decideInOrgxDetail = (decision) => DECIDE_IN_ORGX_COPY[decision && decision.decide_in_orgx_reason] ||
       (chatCannotDecide ? DECIDE_IN_ORGX_COPY.chat_unavailable : 'Open it in OrgX to decide.');
@@ -2550,7 +2557,9 @@
       const isRejecting = rejectComposerId === d.id;
       const noteLocked = Boolean(actionStates[d.id]);
       const rejectValue = rejectDrafts[d.id] || '';
-      const canDecideHere = isOgDecisionEmbed || Boolean(getApprovalToken(d.id));
+      // Several questions or a one-by-one review are answered in the OrgX panel, which asks them in turn.
+      if (asksInTurn(d) && !d.decide_in_orgx_reason) d.decide_in_orgx_reason = 'answer_in_panel';
+      const canDecideHere = !asksInTurn(d) && (isOgDecisionEmbed || Boolean(getApprovalToken(d.id)));
       const evidence = d.evidence_items || [];
       const shownEvidence = evidence.slice(0, 2);
       // The body, sorted: lede, facts and commands here; what approving does and a stated

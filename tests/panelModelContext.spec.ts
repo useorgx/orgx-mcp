@@ -358,7 +358,7 @@ describe('panel buttons come from the server', () => {
     return { structuredContent: snapshot() };
   };
 
-  it('renders one button per option and sends the option_id with one click', async () => {
+  it('renders one button per option; a tap picks it and the primary, naming the pick, sends the option_id', async () => {
     const { dom, app, calls, flush } = await mountPanel({}, {});
     calls.callServerTool.mockImplementation(decideResult);
     const options = [
@@ -375,13 +375,20 @@ describe('panel buttons come from the server', () => {
     expect(doc.querySelector('.packet [data-action="sendback"]')).not.toBeNull();
     (buttons[1] as HTMLButtonElement).click();
     await flush();
+    // A tap never settles a decision on its own.
+    expect(decided(calls)).toEqual([]);
+    const footer = doc.querySelector('.packet ox-footer')!;
+    expect(footer.getAttribute('primary-label')).toBe('Go with Monday');
+    expect(doc.querySelector('.opt[data-option="monday"]')!.getAttribute('aria-pressed')).toBe('true');
+    footer.dispatchEvent(new dom.window.CustomEvent('ox-primary', { bubbles: true, composed: true, detail: {} }));
+    await flush();
     expect(decided(calls)[0]).toEqual({
       name: 'orgx_widget_decide',
       arguments: { decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'decision', option_id: 'monday' },
     });
   });
 
-  it('turns a multiselect decision into toggles plus Confirm N with option_ids', async () => {
+  it('turns a multiselect decision into toggles plus a primary that names the picks, with option_ids', async () => {
     const { dom, app, calls, flush } = await mountPanel({}, {});
     calls.callServerTool.mockImplementation(decideResult);
     const options = [
@@ -397,7 +404,7 @@ describe('panel buttons come from the server', () => {
     (doc.querySelector('.opt[data-option="us"]') as HTMLButtonElement).click();
     (doc.querySelector('.opt[data-option="eu"]') as HTMLButtonElement).click();
     expect(doc.querySelector('.opt[data-option="eu"]')!.getAttribute('aria-pressed')).toBe('true');
-    expect(footer().getAttribute('primary-label')).toBe('Confirm 2');
+    expect(footer().getAttribute('primary-label')).toBe('Go with these 2');
     expect(decided(calls)).toEqual([]);
     footer().dispatchEvent(new dom.window.CustomEvent('ox-primary', { bubbles: true, composed: true, detail: {} }));
     await flush();
@@ -518,7 +525,12 @@ describe('panel: the per-item contract and every refusal', () => {
     expect(p.footer()!.getAttribute('heading')).toBe('Choose 1–2');
     for (const id of ['eu', 'us', 'apac']) (p.doc.querySelector(`.opt[data-option="${id}"]`) as HTMLButtonElement).click();
     expect(p.doc.querySelector('.opt[data-option="apac"]')!.getAttribute('aria-pressed')).toBe('false');
-    expect(p.footer()!.getAttribute('primary-label')).toBe('Confirm selection');
+    // The blocked tap says why instead of only dimming.
+    expect(p.doc.querySelector('.opts-limit')!.textContent).toBe('You can pick 2. Uncheck one to add “APAC”.');
+    expect(p.footer()!.getAttribute('primary-label')).toBe('Go with these 2');
+    (p.doc.querySelector('.opt[data-option="us"]') as HTMLButtonElement).click();
+    expect(p.doc.querySelector('.opts-limit')).toBeNull();
+    (p.doc.querySelector('.opt[data-option="us"]') as HTMLButtonElement).click();
     p.press();
     await p.settle();
     expect(decided(p.calls)[0]!.arguments).toEqual({ decision_id: D1, action: 'approve', approval_token: 'tok-1', kind: 'decision', option_ids: ['eu', 'us'] });

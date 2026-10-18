@@ -7,6 +7,12 @@
     var Brand = window.OrgXPanelBrand || null;
     var Launch = window.OrgXPanelLaunch || null;
     var Views = window.OrgXPanelViews || null;
+    var Forms = window.OrgXPanelForms || null;
+    var Icons = window.OrgXPanelIcons || null;
+    /** The initiative a decision belongs to, marked with its level icon. */
+    function initiativeHtml(title) {
+      return title ? '<span class="pn-lv">' + (Icons ? Icons.level('initiative', 12) : '') + esc(title) + '</span>' : '';
+    }
     var Tour = window.OrgXPanelTour || null;
     var Start = window.OrgXPanelStart || null;
     var Receipts = window.OrgXPanelReceipts || null;
@@ -52,6 +58,11 @@
       rejectPicks: {},
       answers: {},
       notes: {},
+      // Several questions asked in turn, and outputs reviewed one by one (panel-forms.js).
+      forms: {},
+      reviews: {},
+      limitHits: {},
+      remember: {},
       fieldErrors: {},
       rulings: {},
       lastRuling: null,
@@ -377,6 +388,7 @@
         id: o.id, label: o.label, description: o.description || '',
         implied: o.implied_action === 'approve' || o.implied_action === 'reject' ? o.implied_action : null,
         requiresReason: o.requires_reason === true,
+        recommended: o.recommended === true,
       };
     }
     /** The bar on an "Agree on done" decision (expectation_agreement), or null. */
@@ -408,10 +420,20 @@
           reject: has(raw.actions, 'reject') ? { label: labels.reject || 'Send back' } : null,
           rejectRequiresReason: raw.reject_requires_reason === true,
           answer: raw.answer && (has(raw.answer.required_for, 'approve') || has(raw.answer.required_for, 'reject'))
-            ? { approve: has(raw.answer.required_for, 'approve'), reject: has(raw.answer.required_for, 'reject'), max: Math.min(TEXT_MAX, Number(raw.answer.max_length) || TEXT_MAX) }
+            ? { approve: has(raw.answer.required_for, 'approve'), reject: has(raw.answer.required_for, 'reject'), max: Math.min(TEXT_MAX, Number(raw.answer.max_length) || TEXT_MAX), saveAsPrecedent: raw.answer.save_as_precedent === true }
             : null,
           selection: null,
+          questions: null,
+          items: null,
         };
+        if (Forms && raw.questions) {
+          var fields = Forms.fieldsOf(raw.questions);
+          if (fields.length) spec.questions = fields;
+        }
+        if (Forms && raw.items) {
+          var reviewItems = Forms.itemsOf(raw.items);
+          if (reviewItems.length >= 2) spec.items = reviewItems;
+        }
         if (options.length) {
           var multiple = rs.mode === 'multiple';
           var min = multiple ? Math.min(options.length, Math.max(0, Number(rs.min) || 0) || 1) : 1;
@@ -433,7 +455,7 @@
           .map(function opt(a) { return { id: a.option_id, label: a.label, description: '', implied: null, requiresReason: false }; });
         var approveAction = raw.filter(function isApprove(a) { return a && a.kind === 'approve'; })[0];
         var rejectAction = raw.filter(function isReject(a) { return a && a.kind === 'reject'; })[0];
-        var legacy = { kind: kind, approve: null, reject: rejectAction ? { label: rejectAction.label } : null, rejectRequiresReason: true, answer: null, selection: null };
+        var legacy = { kind: kind, approve: null, reject: rejectAction ? { label: rejectAction.label } : null, rejectRequiresReason: true, answer: null, selection: null, questions: null, items: null };
         if (legacyOptions.length === 1 && !approveAction) legacy.approve = { label: legacyOptions[0].label, optionId: legacyOptions[0].id };
         else {
           legacy.approve = { label: approveAction ? approveAction.label : 'Approve', optionId: '' };
@@ -449,13 +471,46 @@
         reject: { label: 'Send back' },
         rejectRequiresReason: true,
         answer: null,
+        questions: null,
+        items: null,
         selection: fallback.length >= 2
           ? { mode: multi ? 'multiple' : 'single', options: fallback, min: 1, max: multi ? fallback.length : 1, requiredFor: { approve: true, reject: false } }
           : null,
       };
     }
     function selectedFor(id) {
-      return Array.isArray(ui.selections[id]) ? ui.selections[id] : [];
+      if (Array.isArray(ui.selections[id])) return ui.selections[id];
+      // The asker's recommendation starts picked; nothing is sent until the person confirms.
+      var item = findItem(id);
+      var sel = item ? choicesFor(item).selection : null;
+      if (!sel) return [];
+      var recommended = sel.options.filter(function rec(o) { return o.recommended && o.implied !== 'reject'; }).map(function oid(o) { return o.id; });
+      return recommended.slice(0, sel.mode === 'multiple' ? sel.max : 1);
+    }
+    function hasDraft(id) {
+      return Boolean((ui.forms[id] && ui.forms[id].touched) || (ui.reviews[id] && ui.reviews[id].touched) ||
+        Array.isArray(ui.selections[id]) && ui.selections[id].length || String(ui.answers[id] || '').trim());
+    }
+    function formFor(f, c) {
+      if (!c.questions) return null;
+      if (!ui.forms[f.id]) ui.forms[f.id] = Forms.newForm(c.questions);
+      return ui.forms[f.id];
+    }
+    function reviewFor(f, c) {
+      if (!c.items) return null;
+      if (!ui.reviews[f.id]) ui.reviews[f.id] = Forms.newReview(c.items);
+      return ui.reviews[f.id];
+    }
+    /** "Approve selected" says nothing; the primary names what happens. */
+    function outcomeLabel(f, c, picked) {
+      var generic = /^(approve selected|approve|confirm selection|confirm|choose)$/i.test(c.approve.label);
+      if (!generic || !picked.length) return c.approve.label;
+      if (picked.length === 1) return 'Go with ' + clipLabel(optionLabel(f, picked[0]), 30);
+      return 'Go with these ' + picked.length;
+    }
+    function clipLabel(text, max) {
+      var chars = Array.from(String(text || ''));
+      return chars.length <= max ? chars.join('') : chars.slice(0, max - 1).join('').trimEnd() + '…';
     }
     function optionById(f, optionId) {
       var sel = choicesFor(f).selection;
@@ -509,12 +564,29 @@
         var answer = String(ui.answers[id] || '').trim();
         if (answer) args.answer = answer.slice(0, c.answer.max);
         else missing.push('answer');
+        if (answer && action === 'approve' && c.answer.saveAsPrecedent && ui.remember[id]) args.remember = true;
+      }
+      var form = formFor(f, c);
+      if (form) {
+        var fd = Forms.formDraft(c.questions, form);
+        if (Object.keys(fd.answers).length) args.answers = fd.answers;
+        if (action === 'approve' && (fd.missing.length || !fd.onReview)) missing.push('answers');
+      }
+      var review = reviewFor(f, c);
+      if (review) {
+        var rd = Forms.reviewDraft(c.items, review);
+        args.item_reviews = rd.itemReviews;
+        // The verdicts decide the action: any kept means approve, all back means reject.
+        if (rd.action !== action) missing.push('items');
+        if (rd.missing.length) missing.push('notes');
       }
       return { action: action, args: args, missing: missing, picked: picked, reasonNeeded: reasonNeeded, answerNeeded: answerNeeded };
     }
     function missingCopy(draft, sel) {
       if (draft.missing.indexOf('options') !== -1) return sel && sel.mode === 'multiple' ? 'choose ' + rangeCopy(sel) + ' first' : 'choose an option first';
       if (draft.missing.indexOf('answer') !== -1) return 'type your answer first';
+      if (draft.missing.indexOf('answers') !== -1) return 'answer the questions first';
+      if (draft.missing.indexOf('notes') !== -1) return 'add a note to each one going back';
       if (draft.missing.indexOf('reason') !== -1) return draft.action === 'reject' ? 'write a note first' : 'say why first';
       return '';
     }
@@ -522,7 +594,7 @@
       // Agreeing on done means reading the bar first: the row opens it.
       if (isAgreementItem(item)) return false;
       var c = choicesFor(item);
-      return Boolean(c.approve && !c.selection && !(c.answer && c.answer.approve));
+      return Boolean(c.approve && !c.selection && !c.questions && !c.items && !(c.answer && c.answer.approve));
     }
     function tokenFor(id) {
       if (ui.chatCannotDecide) return null;
@@ -895,16 +967,19 @@
         list.map(function optionButton(o) {
           var toggle = sel.mode === 'multiple' || forAction === 'reject';
           var on = forAction === 'reject' && sel.mode === 'single' ? ui.rejectPicks[f.id] === o.id : picked.indexOf(o.id) !== -1;
-          var tag = forAction === 'approve' && o.implied === 'reject' && c.reject ? c.reject.label : o.requiresReason ? 'Asks why' : '';
+          var tag = forAction === 'approve' && o.implied === 'reject' && c.reject ? c.reject.label : o.requiresReason ? 'Asks why' : o.recommended && forAction === 'approve' ? 'Recommended' : '';
           var action = forAction === 'reject' ? 'reject-option' : sel.mode === 'multiple' ? 'toggle-option' : 'option';
           var atMax = sel.mode === 'multiple' && !on && picked.length >= sel.max;
           return '<button type="button" class="opt" data-action="' + action + '" data-id="' + esc(f.id) + '" data-option="' + esc(o.id) + '"' +
             (toggle || on ? ' aria-pressed="' + (on ? 'true' : 'false') + '"' : '') + (atMax ? ' data-at-max' : '') + '>' +
             (toggle ? '<span class="opt-box" aria-hidden="true">✓</span>' : '') +
             '<span class="opt-text">' + esc(o.label) + (o.description ? '<span class="opt-desc">' + esc(o.description) + '</span>' : '') + '</span>' +
-            (tag ? '<span class="opt-tag">' + esc(tag) + '</span>' : '') +
-            (toggle ? '' : '<span class="opt-go" aria-hidden="true">›</span>') + '</button>';
-        }).join('') + fieldErrorHtml(f.id, 'options', forAction) + '</div>';
+            (tag ? '<span class="opt-tag' + (tag === 'Recommended' ? ' rec' : '') + '">' + esc(tag) + '</span>' : '') +
+            (toggle ? '' : '<span class="opt-go" aria-hidden="true">' + (on ? '✓' : '›') + '</span>') + '</button>';
+        }).join('') +
+        (sel.mode === 'multiple' && ui.limitHits[f.id]
+          ? '<p class="opts-limit" role="status">You can pick ' + sel.max + '. Uncheck one to add “' + esc(clipLabel(ui.limitHits[f.id], 40)) + '”.</p>'
+          : '') + fieldErrorHtml(f.id, 'options', forAction) + '</div>';
     }
 
     function composerHtml(f) {
@@ -930,15 +1005,23 @@
       var c = choicesFor(f);
       var sel = c.selection;
       if (!c.approve) return { heading: 'Decide here', detail: 'recorded in OrgX', primary: '', disabled: false };
+      if (c.items) {
+        var rp = Forms.reviewPrimary(c.items, reviewFor(f, c));
+        return { heading: rp.heading, detail: rp.detail, primary: rp.label, disabled: false };
+      }
+      if (c.questions) {
+        var fp = Forms.formPrimary(c.questions, formFor(f, c), c.approve.label);
+        return { heading: fp.heading, detail: fp.detail, primary: fp.label, disabled: fp.disabled };
+      }
       var draft = draftFor(f, 'approve');
       var ready = !draft.missing.length;
       var detail = ready ? 'recorded in OrgX' : missingCopy(draft, sel);
       if (sel && sel.mode === 'multiple') {
         var n = draft.picked.length;
-        return { heading: n ? n + ' chosen' : 'Choose ' + rangeCopy(sel), detail: n || ready ? detail : 'recorded in OrgX', primary: c.approve.label === 'Confirm' && n ? 'Confirm ' + n : c.approve.label, disabled: !ready };
+        return { heading: n ? n + ' chosen' : 'Choose ' + rangeCopy(sel), detail: n || ready ? detail : 'recorded in OrgX', primary: outcomeLabel(f, c, draft.picked), disabled: !ready };
       }
       if (sel && !draft.picked.length && sel.requiredFor.approve) return { heading: 'Choose one', detail: 'recorded in OrgX', primary: '', disabled: false };
-      if (sel && draft.picked.length) return { heading: 'You picked ' + optionLabel(f, draft.picked[0]), detail: detail, primary: c.approve.label, disabled: !ready };
+      if (sel && draft.picked.length) return { heading: 'You picked ' + optionLabel(f, draft.picked[0]), detail: detail, primary: outcomeLabel(f, c, draft.picked), disabled: !ready };
       if (isAgreementItem(f)) return { heading: 'Agree on done', detail: ready ? 'agents start when you agree' : detail, primary: c.approve.label, disabled: !ready };
       return { heading: 'Decide here', detail: detail, primary: c.approve.label, disabled: !ready };
     }
@@ -995,14 +1078,21 @@
       if (ui.composer && ui.composer.id === f.id) return composerHtml(f);
       if (tokenFor(f.id)) {
         var c = choicesFor(f);
-        var sendBack = c.reject
+        // Each output carries its own verdict, so there is no separate Send back.
+        var sendBack = c.reject && !c.items
           ? '<button type="button" slot="action" class="ft-action" data-action="sendback" data-id="' + esc(f.id) + '">' + esc(c.reject.label) + '</button>'
           : '';
         var body = '';
+        if (c.questions) body += Forms.questionsHtml(f.id, c.questions, formFor(f, c), { dir: ui.formDir && ui.formDir.id === f.id ? ui.formDir.dir : '', limitHit: ui.limitHits[f.id] }) + fieldErrorHtml(f.id, 'answers');
+        if (c.items) body += Forms.itemsHtml(f.id, c.items, reviewFor(f, c)) + fieldErrorHtml(f.id, 'items');
         if (c.selection && c.approve) body += optionButtonsHtml(f, c, 'approve');
         var draft = c.approve ? draftFor(f, 'approve') : null;
         if (draft && draft.answerNeeded) {
           body += textFieldHtml(f.id, 'answer', 'Your answer · required', ui.answers[f.id], c.answer.max, 'Type the answer the agent needs to continue.') + fieldErrorHtml(f.id, 'answer', 'approve');
+          if (c.answer.saveAsPrecedent) {
+            body += '<label class="remember"><input type="checkbox" data-action="remember" data-id="' + esc(f.id) + '"' + (ui.remember[f.id] ? ' checked' : '') + '>' +
+              '<span>Save as an approved answer<span class="remember-hint">OrgX asks you to confirm it as a rule before agents use it.</span></span></label>';
+          }
         }
         if (draft && draft.reasonNeeded) {
           var pickedLabel = draft.picked.length ? optionLabel(f, draft.picked[0]) : '';
@@ -1124,7 +1214,9 @@
         // "Normal · Blocking work" says two things at once; blocking is the one that matters.
         (f.blocked && (f.urgency === 'medium' || f.urgency === 'low') ? '' : '<span class="urgency" data-u="' + esc(f.urgency) + '">' + esc(urgencyLabel(f.urgency)) + '</span>') +
         (f.blocked ? (f.urgency === 'medium' || f.urgency === 'low' ? '' : '<span aria-hidden="true">·</span>') + '<span class="blocked-tag">Blocking work</span>' : '') +
-        (metaBits.length ? '<span aria-hidden="true">·</span><span class="meta-text" title="' + esc(metaBits.join(' · ')) + '">' + esc(metaBits.join(' · ')) + '</span>' : '<span class="meta-text"></span>') +
+        (metaBits.length ? '<span aria-hidden="true">·</span><span class="meta-text" title="' + esc(metaBits.join(' · ')) + '">' +
+          esc(metaBits.filter(function notInit(b) { return b !== f.initiative_title; }).join(' · ')) +
+          (f.initiative_title ? (metaBits.length > 1 ? ' · ' : '') + initiativeHtml(f.initiative_title) : '') + '</span>' : '<span class="meta-text"></span>') +
         (tokenFor(f.id) || ui.rulings[f.id] ? '<button type="button" class="ox-open" data-action="open" data-url="' + esc(f.url) + '" aria-label="Open this decision in OrgX">Open in OrgX</button>' : '') + '</p>' +
         '<' + headingTag + ' id="pk-q" tabindex="-1" class="q' + (ui.wholeQ === f.id ? ' is-whole' : '') + '">' + esc(head.headline) + '</' + headingTag + '>' +
         '<button type="button" class="q-more" data-action="whole-q" data-id="' + esc(f.id) + '" hidden>Show the whole question</button>' +
@@ -1146,6 +1238,10 @@
       });
       var calmUrgency = item.urgency === 'medium' || item.urgency === 'low';
       var meta = [item.blocked && calmUrgency ? 'Blocking work' : urgencyLabel(item.urgency), ago(item.waiting_since), item.initiative_title].filter(Boolean).join(' · ');
+      var metaLead = [item.blocked && calmUrgency ? 'Blocking work' : urgencyLabel(item.urgency), ago(item.waiting_since)].filter(Boolean).join(' · ');
+      var metaHtml = function metaLine(prefix) {
+        return esc(prefix + metaLead) + (item.initiative_title ? (prefix + metaLead ? ' · ' : '') + initiativeHtml(item.initiative_title) : '');
+      };
       var acts = '';
       var opening = ui.readState.phase === 'loading' && ui.readState.focusId === item.id;
       var current = Boolean(ui.snapshot.focus && ui.snapshot.focus.id === item.id && !ruling);
@@ -1162,7 +1258,7 @@
         acts = '<div class="row-acts"><ox-state-chip state="' + chip + '" label="' + esc(label) + '"></ox-state-chip></div>';
       } else if (tokenFor(item.id) && (!quickDecide(item) || repeatedTitle)) {
         var c0 = choicesFor(item);
-        var open = repeatedTitle ? 'Review' : c0.selection ? 'Choose' : c0.answer ? 'Answer' : 'Open';
+        var open = repeatedTitle ? 'Review' : c0.items ? 'Review ' + c0.items.length : c0.questions ? (c0.questions.length > 1 ? c0.questions.length + ' questions' : 'Answer') : c0.selection ? 'Choose' : c0.answer ? 'Answer' : 'Open';
         acts = '<div class="row-acts"><button type="button" class="mini' + (repeatedTitle ? ' ghost' : ' approve') + '" data-action="select" data-id="' + esc(item.id) + '" aria-label="' + esc(open + ': ' + item.title) + '">' + open + '</button></div>';
       } else if (tokenFor(item.id) && !(ui.composer && ui.composer.id === item.id)) {
         var c = choicesFor(item);
@@ -1172,11 +1268,13 @@
       }
       var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
       var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : item.kind === 'link' ? 'Session link · ' : '';
+      // Started but not sent: the answers wait here, and the row says so.
+      if (!ruling && hasDraft(item.id)) kindTag = 'Draft · ' + kindTag;
       var arrived = ui.seenRows && !ui.seenRows[item.id];
       if (grouped) {
         // Inside a group the title is the group's; the line is what differs.
         return '<li class="row grow' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + ' ' + (item.detail || '') + '. ' + meta) + '">' +
-          (opts.sub || distinguisherHtml(item)) + '<span class="row-meta"><span>' + esc(meta) + '</span></span></button>' + acts +
+          (opts.sub || distinguisherHtml(item)) + '<span class="row-meta"><span>' + metaHtml('') + '</span></span></button>' + acts +
           (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
       }
       return '<li class="row' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
@@ -1185,7 +1283,7 @@
         (repeatedTitle && distinguisherHtml(item)
           ? distinguisherHtml(item) + '<span class="row-title is-repeat">' + esc(splitHeadline(item.title).headline) + '</span>'
           : '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span>') +
-        '<span class="row-meta"><span>' + esc(kindTag + meta) + '</span></span></button>' + acts +
+        '<span class="row-meta"><span>' + metaHtml(kindTag) + '</span></span></button>' + acts +
         (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
     }
 
@@ -1680,10 +1778,16 @@
         transition('boot', function firstPaint() { try { render(); } finally { bootLeaving = false; } });
         return;
       }
-      var focusKey = document.activeElement && document.activeElement.getAttribute
-        ? document.activeElement.getAttribute('data-action') + '|' + (document.activeElement.getAttribute('data-id') || '') +
-          '|' + (document.activeElement.getAttribute('data-option') || '')
+      var active = document.activeElement;
+      var focusKey = active && active.getAttribute
+        ? active.getAttribute('data-action') + '|' + (active.getAttribute('data-id') || '') +
+          '|' + (active.getAttribute('data-option') || '')
         : null;
+      // Question picks and item verdicts are told apart by their own keys.
+      var focusExtra = active && active.getAttribute
+        ? ['data-field', 'data-value', 'data-item', 'data-verdict'].filter(function has(k) { return active.hasAttribute(k); })
+          .map(function pair(k) { return '[' + k + '="' + (window.CSS && CSS.escape ? CSS.escape(active.getAttribute(k)) : active.getAttribute(k)) + '"]'; }).join('')
+        : '';
       root.setAttribute('data-mode', ui.mode);
       if (ui.auth) {
         root.setAttribute('data-tone', 'none');
@@ -1701,7 +1805,7 @@
       if (focusKey && focusKey !== 'null||') {
         var parts = focusKey.split('|');
         var selector = '[data-action="' + parts[0] + '"]' + (parts[1] ? '[data-id="' + parts[1] + '"]' : '') +
-          (parts[2] ? '[data-option="' + (window.CSS && CSS.escape ? CSS.escape(parts[2]) : parts[2]) + '"]' : '');
+          (parts[2] ? '[data-option="' + (window.CSS && CSS.escape ? CSS.escape(parts[2]) : parts[2]) + '"]' : '') + focusExtra;
         var again = root.querySelector(selector);
         if (again && again.focus) again.focus({ preventScroll: true });
       }
@@ -2282,7 +2386,10 @@
     }
 
     var VALIDATION_CODES = ['reason_required', 'answer_required', 'answer_not_accepted', 'option_required', 'options_not_accepted',
-      'option_unavailable', 'option_action_mismatch', 'selection_out_of_range', 'invalid_decision_option_material'];
+      'option_unavailable', 'option_action_mismatch', 'selection_out_of_range', 'invalid_decision_option_material',
+      'answers_required', 'answers_not_accepted', 'answer_invalid',
+      'item_reviews_required', 'item_reviews_not_accepted', 'item_review_invalid', 'item_note_required', 'item_action_mismatch',
+      'remember_not_accepted'];
     var VALIDATION_COPY = {
       reason_required: 'Say what should change.',
       answer_required: 'Type an answer to send.',
@@ -2293,6 +2400,15 @@
       option_action_mismatch: 'That option goes with the other button.',
       selection_out_of_range: 'Choose a number of options the decision allows.',
       invalid_decision_option_material: 'That choice is not valid for this decision. Choose again.',
+      answers_required: 'Answer the required questions first.',
+      answers_not_accepted: 'The questions changed. Answer them again.',
+      answer_invalid: 'One answer is not one OrgX accepts. Check it and try again.',
+      item_reviews_required: 'Keep or send back each one first.',
+      item_reviews_not_accepted: 'The list changed. Review it again.',
+      item_review_invalid: 'The list changed. Review it again.',
+      item_note_required: 'Each one going back needs a note.',
+      item_action_mismatch: 'The verdicts changed. Review them again.',
+      remember_not_accepted: 'This answer cannot be saved for next time. Send it without saving.',
     };
     var STALE_COPY = {
       widget_approval_token_expired: 'This view is out of date. Refresh to decide.',
@@ -2326,6 +2442,29 @@
       ui.selections[id] = selectedFor(id).filter(function keep(oid) { return ids.indexOf(oid) !== -1; });
       if (ui.rejectPicks[id] && ids.indexOf(ui.rejectPicks[id]) === -1) delete ui.rejectPicks[id];
       if (!c.answer) delete ui.answers[id];
+      // Keep what still fits a changed set of questions or items; drop the rest.
+      var form = ui.forms[id];
+      if (form) {
+        if (!c.questions) delete ui.forms[id];
+        else {
+          var fieldIds = c.questions.map(function fid(q) { return q.id; });
+          Object.keys(form.values).forEach(function drop(k) { if (fieldIds.indexOf(k) === -1) delete form.values[k]; });
+          form.step = Math.min(form.step, c.questions.length);
+        }
+      }
+      var review = ui.reviews[id];
+      if (review) {
+        if (!c.items) delete ui.reviews[id];
+        else {
+          var fresh = Forms.newReview(c.items);
+          c.items.forEach(function carry(it) {
+            if (review.verdicts[it.id]) fresh.verdicts[it.id] = review.verdicts[it.id];
+            if (review.notes[it.id]) fresh.notes[it.id] = review.notes[it.id];
+          });
+          fresh.touched = review.touched;
+          ui.reviews[id] = fresh;
+        }
+      }
     }
 
     function rule(id, action) {
@@ -2389,6 +2528,10 @@
         }
         delete ui.answers[id];
         delete ui.notes[id];
+        delete ui.forms[id];
+        delete ui.reviews[id];
+        delete ui.remember[id];
+        delete ui.limitHits[id];
         announce(pastTense(action === 'approve' ? ui.rulings[id].approveLabel : ui.rulings[id].rejectLabel, action) + ': ' + title);
         if (Host) Host.haptic('success');
         render();
@@ -2420,7 +2563,9 @@
             eachCopy(id, function adopt(copy) { copy.widget_actions = details.widget_actions; });
             pruneDrafts(id);
           }
-          var field = code === 'reason_required' ? 'reason' : code === 'answer_required' ? 'answer' : code === 'answer_not_accepted' ? 'form' : 'options';
+          var field = code === 'reason_required' ? 'reason' : code === 'answer_required' ? 'answer' : code === 'answer_not_accepted' || code === 'remember_not_accepted' ? 'form'
+            : /^answers?_/.test(code) ? 'answers' : /^item_/.test(code) ? 'items' : 'options';
+          if (code === 'remember_not_accepted') delete ui.remember[id];
           ui.fieldErrors[id] = { action: action, field: field, message: refusalCopy(error, VALIDATION_COPY[code]) };
           if (action === 'reject') ui.composer = { id: id, draft: note, focus: field === 'reason', opener: id };
           render();
@@ -2483,8 +2628,8 @@
       if (!c.approve) return;
       var already = selectedFor(id)[0] === optionId;
       ui.selections[id] = already ? [] : [optionId];
-      if (!already && !draftFor(item, 'approve').missing.length) { rule(id, 'approve'); return; }
-      render();
+      // A tap picks; the footer's primary, which names the pick, sends it.
+      keepScroll(render);
       if (!already) focusFirst('textarea[data-field][data-id="' + id + '"]');
     }
 
@@ -2531,7 +2676,7 @@
       var action = el.getAttribute('data-action');
       var id = el.getAttribute('data-id');
       // During the tour only the practice press is live; picks and send-back wait.
-      if (tour && tour.active() && ['approve', 'option', 'toggle-option', 'reject-option', 'sendback', 'submit-sendback'].indexOf(action) !== -1) return;
+      if (tour && tour.active() && ['approve', 'option', 'toggle-option', 'reject-option', 'sendback', 'submit-sendback', 'q-pick', 'item-verdict'].indexOf(action) !== -1) return;
       switch (action) {
         case 'workspaces': transition('menu', function toggleWs() { if (ui.wsOpen) closeWorkspaces(true); else openWorkspaces(); }); break;
         case 'workspaces-retry': ui.workspaces = null; ui.wsPhase = 'idle'; openWorkspaces(); break;
@@ -2547,6 +2692,17 @@
         case 'option': chooseOption(id, el.getAttribute('data-option')); break;
         case 'toggle-option': toggleOption(id, el.getAttribute('data-option')); break;
         case 'reject-option': pickRejectOption(id, el.getAttribute('data-option')); break;
+        case 'q-pick': pickAnswer(id, el.getAttribute('data-field'), el.getAttribute('data-value')); break;
+        case 'q-back': { var backItem = findItem(id); var backForm = backItem && ui.forms[id]; if (backForm) stepForm(id, backForm.step - 1); break; }
+        case 'q-goto': stepForm(id, Number(el.getAttribute('data-step')) || 0); break;
+        case 'item-verdict': setVerdict(id, el.getAttribute('data-item'), el.getAttribute('data-verdict')); break;
+        case 'item-copy-note': {
+          var copyItem = findItem(id);
+          var copyChoices = copyItem ? choicesFor(copyItem) : null;
+          if (copyChoices && copyChoices.items && Forms.copyNote(copyChoices.items, reviewFor(copyItem, copyChoices))) { keepScroll(render); announce('Note copied to the others going back.'); }
+          break;
+        }
+        case 'remember': ui.remember[id] = el.checked === true; break;
         case 'sendback': ui.composer = { id: id, draft: '', focus: true, opener: id }; ui.actionError = null; render(); break;
         case 'cancel-sendback': closeComposer(); break;
         case 'submit-sendback': {
@@ -2710,6 +2866,22 @@
         id = area.getAttribute('data-reason');
         if (ui.composer && ui.composer.id === id) ui.composer.draft = area.value;
         if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'reason') clearFieldError(id);
+      } else if (area.matches('textarea[data-qfield]')) {
+        id = area.getAttribute('data-id');
+        var qItem = findItem(id);
+        var qChoices = qItem ? choicesFor(qItem) : null;
+        if (qChoices && qChoices.questions) { var qForm = formFor(qItem, qChoices); qForm.values[area.getAttribute('data-qfield')] = area.value; qForm.touched = true; }
+        if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'answers') clearFieldError(id);
+      } else if (area.matches('textarea[data-item-note]')) {
+        id = area.getAttribute('data-id');
+        var nItem = findItem(id);
+        var nChoices = nItem ? choicesFor(nItem) : null;
+        if (nChoices && nChoices.items) {
+          var nReview = reviewFor(nItem, nChoices);
+          nReview.notes[area.getAttribute('data-item-note')] = area.value;
+          nReview.touched = true;
+          syncReviewCopy(id, nChoices.items, nReview);
+        }
       } else if (area.matches('textarea[data-field]')) {
         id = area.getAttribute('data-id');
         var field = area.getAttribute('data-field');
@@ -2747,6 +2919,27 @@
         if (again) { again.focus(); try { again.setSelectionRange(caret, caret); } catch (_) { /* not a text input */ } }
       }
     });
+    /** The copy-note link appears once one note exists and others are empty, without re-rendering the typing. */
+    function syncReviewCopy(id, items, review) {
+      var section = root.querySelector('[data-review="' + cssId(id) + '"]');
+      if (!section) return;
+      var missing = Forms.missingNotes(items, review).length;
+      var hasNote = items.some(function written(it) { return review.verdicts[it.id] === 'send_back' && String(review.notes[it.id] || '').trim(); });
+      var link = section.querySelector('.fi-copy');
+      if (missing && hasNote) {
+        if (!link) {
+          link = document.createElement('button');
+          link.type = 'button';
+          link.className = 'text-btn fi-copy';
+          link.setAttribute('data-action', 'item-copy-note');
+          link.setAttribute('data-id', id);
+          section.appendChild(link);
+        }
+        link.textContent = 'Use the first note for the ' + missing + ' without one';
+      } else if (link) {
+        link.remove();
+      }
+    }
     function clearFieldError(id) {
       if (ui.fieldErrors[id]) ui.fieldErrors[id].message = '';
       Array.prototype.forEach.call(root.querySelectorAll('[data-error-for="' + id + '"]'), function drop(node) { node.remove(); });
@@ -2757,8 +2950,72 @@
       var footer = event.target.closest('ox-footer');
       var id = footer && footer.getAttribute('data-id');
       if (!id || footer.getAttribute('state') !== 'needs-you') return;
+      var item = findItem(id);
+      var c = item ? choicesFor(item) : null;
+      if (c && c.questions) {
+        var form = formFor(item, c);
+        if (form.step < c.questions.length) { stepForm(id, form.step + 1); return; }
+      }
+      if (c && c.items) {
+        var review = reviewFor(item, c);
+        var rd = Forms.reviewDraft(c.items, review);
+        if (rd.missing.length) { focusFirst('textarea[data-item-note="' + cssId(rd.missing[0].id) + '"][data-id="' + cssId(id) + '"]'); return; }
+        rule(id, rd.action);
+        return;
+      }
       rule(id, 'approve');
     });
+    function cssId(value) { return window.CSS && CSS.escape ? CSS.escape(value) : String(value).replace(/"/g, '\\"'); }
+    /** Move a question form to step k, sliding the way the person is going. */
+    function stepForm(id, k) {
+      var item = findItem(id);
+      var c = item ? choicesFor(item) : null;
+      if (!c || !c.questions) return;
+      var form = formFor(item, c);
+      var to = Math.max(0, Math.min(c.questions.length, k));
+      if (to === form.step) return;
+      ui.formDir = { id: id, dir: to > form.step ? 'fwd' : 'back' };
+      form.step = to;
+      delete ui.limitHits[id];
+      keepScroll(render);
+      ui.formDir = null;
+      var next = root.querySelector('[data-form="' + cssId(id) + '"] textarea[data-qfield], [data-form="' + cssId(id) + '"] [data-action="q-pick"][aria-pressed="true"], [data-form="' + cssId(id) + '"] [data-action="q-pick"]');
+      if (next) next.focus({ preventScroll: true });
+    }
+    function pickAnswer(id, fieldId, value) {
+      var item = findItem(id);
+      if (!item || ui.rulings[id]) return;
+      var c = choicesFor(item);
+      if (!c.questions) return;
+      var form = formFor(item, c);
+      var f = c.questions.filter(function byId(x) { return x.id === fieldId; })[0];
+      var changed = Forms.pick(c.questions, form, fieldId, value);
+      if (changed === 'limit') {
+        var o = f ? f.options.filter(function byId(x) { return x.id === value; })[0] : null;
+        ui.limitHits[id] = o ? o.label : '';
+      } else {
+        delete ui.limitHits[id];
+      }
+      if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'answers') delete ui.fieldErrors[id];
+      keepScroll(render);
+      // One answer moves on by itself, after the pick has shown.
+      if (changed === 'advance') {
+        var at = form.step;
+        later(function autoAdvance() { if (ui.forms[id] === form && form.step === at && !ui.rulings[id]) stepForm(id, at + 1); }, reducedMotion() ? 0 : 320);
+      }
+    }
+    function setVerdict(id, itemId, verdict) {
+      var item = findItem(id);
+      if (!item || ui.rulings[id]) return;
+      var c = choicesFor(item);
+      if (!c.items) return;
+      var review = reviewFor(item, c);
+      review.verdicts[itemId] = verdict === 'send_back' ? 'send_back' : 'keep';
+      review.touched = true;
+      if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'items') delete ui.fieldErrors[id];
+      keepScroll(render);
+      if (verdict === 'send_back' && !String(review.notes[itemId] || '').trim()) focusFirst('textarea[data-item-note="' + cssId(itemId) + '"][data-id="' + cssId(id) + '"]');
+    }
 
     function approve(id) {
       rule(id, 'approve');
@@ -2770,11 +3027,18 @@
       if (!sel) return;
       var current = selectedFor(id);
       var next = current.indexOf(optionId) === -1 ? current.concat(optionId) : current.filter(function keep(x) { return x !== optionId; });
-      if (next.length > sel.max) return;
+      if (next.length > sel.max) {
+        // Say why the tap did nothing instead of only dimming the rest.
+        var full = optionById(item, optionId);
+        ui.limitHits[id] = full ? full.label : '';
+        keepScroll(render);
+        return;
+      }
+      delete ui.limitHits[id];
       ui.selections[id] = sel.options.map(function ids(o) { return o.id; })
         .filter(function picked(oid) { return next.indexOf(oid) !== -1; });
       if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'options') delete ui.fieldErrors[id];
-      render();
+      keepScroll(render);
     }
     function pickRejectOption(id, optionId) {
       var item = findItem(id);
@@ -2806,6 +3070,13 @@
       var back = opener ? root.querySelector('[data-action="sendback"][data-id="' + opener + '"]') : null;
       if (back) back.focus();
     }
+    /** Re-render in place: a pick should not move the page under the finger. */
+    function keepScroll(fn) {
+      var scroller = document.scrollingElement || document.documentElement;
+      var top = scroller ? scroller.scrollTop : 0;
+      fn();
+      if (scroller && scroller.scrollTop !== top) scroller.scrollTop = top;
+    }
     function focusFirst(selector) {
       var el = root.querySelector(selector) || (sheetHost ? sheetHost.querySelector(selector) : null);
       if (el) el.focus({ preventScroll: true });
@@ -2819,6 +3090,13 @@
         var next = event.key === 'Home' ? 0 : event.key === 'End' ? order.length - 1 : (at + (event.key === 'ArrowRight' ? 1 : -1) + order.length) % order.length;
         event.preventDefault();
         setTab(order[next]);
+        return;
+      }
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.target && event.target.matches && event.target.matches('textarea.fq-text[rows="1"]')) {
+        event.preventDefault();
+        var qid = event.target.getAttribute('data-id');
+        var qf = ui.forms[qid];
+        if (qf) stepForm(qid, qf.step + 1);
         return;
       }
       if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.target && event.target.id === 'st-text') {
@@ -2874,6 +3152,7 @@
       ui.readState = { phase: 'idle' };
       ui.tokens = {}; ui.receiptTokens = {}; ui.rulings = {}; ui.lastRuling = null; ui.composer = null;
       ui.selections = {}; ui.rejectPicks = {}; ui.answers = {}; ui.notes = {}; ui.fieldErrors = {};
+      ui.forms = {}; ui.reviews = {}; ui.limitHits = {}; ui.remember = {};
       ui.actionError = null; ui.changedSince = null; ui.chatCannotDecide = false;
       ui.listOpen = false; ui.evidenceOpen = false; ui.wholeQ = null;
       ui.tab = 'needs'; ui.work = null; ui.workPhase = 'idle'; ui.session = []; ui.openReceipt = null;

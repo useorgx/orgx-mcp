@@ -340,6 +340,79 @@
           });
           ui.selections[IDS.d1] = ['eu', 'us'];
           break;
+        case 'option-recommended':
+          s.queue[0].title = s.focus.question = 'When should release 4.2 go out?';
+          s.focus.recommendation = { status: 'ready', action: 'Monday morning' };
+          s.focus.consequence_if_approved = 'Eli schedules the release for the time you pick.';
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.queue[0].option_count = 3;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Approve selected', reject: 'Request changes' },
+            selection: {
+              mode: 'single', min: 1, max: 1, required_for: ['approve'],
+              options: [
+                { id: 'tonight', label: 'Tonight, 9 pm', description: 'Fastest; on-call is one person', implied_action: null, requires_reason: false, recommended: false },
+                { id: 'monday', label: 'Monday morning', description: 'Full team on hand; two days later', implied_action: null, requires_reason: false, recommended: true },
+                { id: 'hold', label: 'Hold for 4.2.1', description: 'Waits on the billing fix', implied_action: null, requires_reason: true, recommended: false },
+              ],
+            },
+          });
+          break;
+        case 'questions':
+          s.queue[0].title = s.focus.question = 'Three things before the launch posts are written';
+          s.focus.recommendation = null;
+          s.focus.consequence_if_approved = 'Pace writes the posts to your answers.';
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Send answers', reject: 'Send back' },
+            questions: { fields: [
+              { id: 'tone', step_title: 'Voice', type: 'single_select', label: 'Which tone fits this launch?', description: 'It sets every post’s opening line.', placeholder: null, required: true, min_select: null, max_select: null, max_length: 2000,
+                options: [
+                  { id: 'calm', label: 'Calm and specific', description: 'Lead with what changed', recommended: true },
+                  { id: 'bold', label: 'Bold', description: 'Lead with the outcome', recommended: false },
+                ] },
+              { id: 'channels', step_title: 'Reach', type: 'multi_select', label: 'Where should it go?', description: null, placeholder: null, required: true, min_select: 1, max_select: 2, max_length: 2000,
+                options: [
+                  { id: 'x', label: 'X', description: null, recommended: false },
+                  { id: 'linkedin', label: 'LinkedIn', description: null, recommended: true },
+                  { id: 'blog', label: 'Blog', description: null, recommended: false },
+                ] },
+              { id: 'avoid', step_title: null, type: 'text', label: 'Anything to avoid?', description: null, placeholder: 'For example: no pricing numbers', required: false, min_select: null, max_select: null, max_length: 2000, options: [] },
+            ] },
+          });
+          if (params.get('step')) ui.forms[IDS.d1] = Object.assign(window.OrgXPanelForms.newForm(window.OrgXPanelForms.fieldsOf(s.focus.widget_actions.questions)), { step: Number(params.get('step')) || 0 });
+          break;
+        case 'items':
+          s.queue[0].title = s.focus.question = 'Review the six launch posts';
+          s.focus.recommendation = null;
+          s.focus.consequence_if_approved = 'Kept posts are scheduled; the rest go back to Pace with your notes.';
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Keep all', reject: 'Send all back' }, reject_requires_reason: false,
+            items: { note_required_for_send_back: true, items: [
+              { id: 'p1', label: 'Teaser: “4.2 lands Monday”', description: 'X · 212 characters', url: 'https://useorgx.com/live', type: 'social_post', flagged: false, flag_note: null },
+              { id: 'p2', label: 'What changed in billing', description: 'LinkedIn · 4 paragraphs', url: null, type: 'social_post', flagged: true, flag_note: 'Claims 40% faster; the benchmark says 22%' },
+              { id: 'p3', label: 'Customer quote card', description: 'Image · 1080×1080', url: null, type: 'image', flagged: false, flag_note: null },
+              { id: 'p4', label: 'Release notes post', description: 'Blog · 900 words', url: null, type: 'doc', flagged: false, flag_note: null },
+              { id: 'p5', label: 'Launch thread', description: 'X · 5 posts', url: null, type: 'social_post', flagged: false, flag_note: null },
+              { id: 'p6', label: '30-second demo', description: 'Video · 0:31', url: null, type: 'video', flagged: false, flag_note: null },
+            ] },
+          });
+          break;
+        case 'saved-answer':
+          s.queue[0].title = s.focus.question = 'Which bucket should exports go to?';
+          s.focus.recommendation = { status: 'ready', action: 'The staging bucket' };
+          s.focus.consequence_if_approved = 'Orion writes exports there and continues.';
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Send answer', reject: 'Decline' }, reject_requires_reason: false,
+            answer: { required_for: ['approve'], max_length: 2000, save_as_precedent: true },
+          });
+          break;
         case 'access-request':
           s.queue[0].title = s.focus.question = 'Mara Lin asks for edit access to Billing hardening.';
           s.focus.recommendation = null;

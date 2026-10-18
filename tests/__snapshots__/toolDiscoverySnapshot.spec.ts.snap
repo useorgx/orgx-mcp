@@ -320,7 +320,7 @@ exports[`tool discovery snapshot > full tool catalog description hashes are lock
   "orgx_validate_studio_content": "09b9c4c534a1",
   "orgx_validate_work_receipt": "8ab7b6219192",
   "orgx_widget_approve_artifact": "0e780e29a492",
-  "orgx_widget_decide": "42c39251bf52",
+  "orgx_widget_decide": "6f280adbf4db",
   "orgx_widget_receipt_call": "2fb6bb611b10",
   "orgx_widget_request_artifact_changes": "a418cb95e46e",
   "orgx_widget_select_workspace": "98accdc4e686",

@@ -26,7 +26,9 @@
     "shared/panel-interaction-state.js",
     "shared/panel/panel-app.js",
     "shared/panel/panel-brand.js",
+    "shared/panel/panel-forms.js",
     "shared/panel/panel-host.js",
+    "shared/panel/panel-icons.js",
     "shared/panel/panel-launch.js",
     "shared/panel/panel-live.js",
     "shared/panel/panel-receipts.js",
@@ -138,8 +140,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 171921,
-      "hash": "8e4e0fb3c9ab",
+      "bytes": 172614,
+      "hash": "6394adbf1cf7",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -305,8 +307,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 1857,
-      "hash": "3aba9c5345eb",
+      "bytes": 1965,
+      "hash": "6285d2c0a6a4",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -325,7 +327,9 @@
         "shared/panel-interaction-state.js",
         "shared/panel/panel-app.js",
         "shared/panel/panel-brand.js",
+        "shared/panel/panel-forms.js",
         "shared/panel/panel-host.js",
+        "shared/panel/panel-icons.js",
         "shared/panel/panel-launch.js",
         "shared/panel/panel-live.js",
         "shared/panel/panel-receipts.js",

@@ -79,6 +79,10 @@ export const PANEL_OPTION_LABEL_MAX = 80;
 export const PANEL_OPTION_ID_MAX = 120;
 export const PANEL_OPTION_DESCRIPTION_MAX = 140;
 export const PANEL_ACTION_LABEL_MAX = 40;
+/** Questions one decision can ask in sequence, and outputs it can review one by one. */
+export const PANEL_QUESTION_LIMIT = 12;
+export const PANEL_REVIEW_ITEM_LIMIT = 20;
+export const PANEL_QUESTION_LABEL_MAX = 200;
 /** The longest typed answer or reason the app accepts. */
 export const PANEL_ANSWER_MAX = 2000;
 /** Pending decisions read per snapshot: enough to find a selected item. */
@@ -264,6 +268,37 @@ export interface PanelActionOption {
   implied_action: PanelDecideAction | null;
   /** Choosing it needs a reason. */
   requires_reason: boolean;
+  /** The asker recommends it; the panel pre-selects it. */
+  recommended: boolean;
+}
+
+export type PanelQuestionType = 'text' | 'textarea' | 'boolean' | 'single_select' | 'multi_select';
+
+/** One question of a multi-part decision; the panel asks them one at a time. */
+export interface PanelQuestionField {
+  id: string;
+  step_title: string | null;
+  type: PanelQuestionType;
+  label: string;
+  description: string | null;
+  placeholder: string | null;
+  required: boolean;
+  options: Array<{ id: string; label: string; description: string | null; recommended: boolean }>;
+  min_select: number | null;
+  max_select: number | null;
+  max_length: number;
+}
+
+/** One output the person keeps or sends back on its own. */
+export interface PanelReviewItem {
+  id: string;
+  label: string;
+  description: string | null;
+  url: string | null;
+  /** The output's artifact type, when known; the panel draws its icon. */
+  type: string | null;
+  flagged: boolean;
+  flag_note: string | null;
 }
 
 /**
@@ -276,7 +311,7 @@ export interface PanelWidgetActions {
   actions: PanelDecideAction[];
   labels: { approve: string; reject: string };
   reject_requires_reason: boolean;
-  answer: { required_for: PanelDecideAction[]; max_length: number } | null;
+  answer: { required_for: PanelDecideAction[]; max_length: number; save_as_precedent: boolean } | null;
   selection: {
     mode: 'single' | 'multiple';
     options: PanelActionOption[];
@@ -284,6 +319,8 @@ export interface PanelWidgetActions {
     max: number;
     required_for: PanelDecideAction[];
   } | null;
+  questions: { fields: PanelQuestionField[] } | null;
+  items: { items: PanelReviewItem[]; note_required_for_send_back: boolean } | null;
 }
 
 export interface PanelFocus {
@@ -598,10 +635,76 @@ function contractOptions(value: unknown): PanelActionOption[] {
       description: clipText(record.description, PANEL_OPTION_DESCRIPTION_MAX),
       implied_action: implied === 'approve' || implied === 'reject' ? implied : null,
       requires_reason: record.requires_reason === true,
+      recommended: record.recommended === true,
     });
     if (options.length >= PANEL_OPTION_LIMIT) break;
   }
   return options;
+}
+
+const QUESTION_TYPES: PanelQuestionType[] = ['text', 'textarea', 'boolean', 'single_select', 'multi_select'];
+
+/** The contract's questions, or null when any field is one the panel cannot ask. */
+function contractQuestions(value: unknown): PanelWidgetActions['questions'] {
+  const record = asRecord(value);
+  const raw = record && Array.isArray(record.fields) ? record.fields : null;
+  if (!raw || !raw.length || raw.length > PANEL_QUESTION_LIMIT) return null;
+  const seen = new Set<string>();
+  const fields: PanelQuestionField[] = [];
+  for (const entry of raw) {
+    const field = asRecord(entry);
+    const id = field ? str(field.id) : null;
+    const type = field && QUESTION_TYPES.find((t) => t === field.type);
+    const label = field ? clipText(field.label, PANEL_QUESTION_LABEL_MAX) : null;
+    if (!field || !id || id.length > PANEL_OPTION_ID_MAX || seen.has(id) || !type || !label) return null;
+    seen.add(id);
+    const options = type === 'single_select' || type === 'multi_select'
+      ? contractOptions(field.options).map(({ id: oid, label: olabel, description, recommended }) => ({ id: oid, label: olabel, description, recommended }))
+      : [];
+    if ((type === 'single_select' || type === 'multi_select') && options.length < 2) return null;
+    fields.push({
+      id,
+      step_title: clipText(field.step_title, PANEL_QUESTION_LABEL_MAX),
+      type,
+      label,
+      description: clipText(field.description, PANEL_DETAIL_MAX),
+      placeholder: clipText(field.placeholder, PANEL_OPTION_LABEL_MAX),
+      required: field.required === true,
+      options,
+      min_select: type === 'multi_select' ? count(field.min_select) : null,
+      max_select: type === 'multi_select' ? count(field.max_select) : null,
+      max_length: Math.min(PANEL_ANSWER_MAX, count(field.max_length) || PANEL_ANSWER_MAX),
+    });
+  }
+  return { fields };
+}
+
+/** The contract's review items, or null when fewer than two survive. */
+function contractItems(value: unknown): PanelWidgetActions['items'] {
+  const record = asRecord(value);
+  const raw = record && Array.isArray(record.items) ? record.items : null;
+  if (!raw) return null;
+  const seen = new Set<string>();
+  const items: PanelReviewItem[] = [];
+  for (const entry of raw) {
+    const item = asRecord(entry);
+    const id = item ? str(item.id) : null;
+    const label = item ? clipText(item.label, PANEL_QUESTION_LABEL_MAX) : null;
+    if (!item || !id || id.length > PANEL_OPTION_ID_MAX || seen.has(id) || !label) continue;
+    seen.add(id);
+    const url = str(item.url);
+    items.push({
+      id,
+      label,
+      description: clipText(item.description, PANEL_DETAIL_MAX),
+      url: url && /^https:\/\//i.test(url) ? url : null,
+      type: clipText(item.type, 40),
+      flagged: item.flagged === true,
+      flag_note: clipText(item.flag_note, PANEL_TEXT_MAX),
+    });
+    if (items.length >= PANEL_REVIEW_ITEM_LIMIT) break;
+  }
+  return items.length >= 2 ? { items, note_required_for_send_back: record?.note_required_for_send_back !== false } : null;
 }
 
 /** The app contract: { kind, actions: ['approve','reject'], labels, ... }. */
@@ -625,11 +728,17 @@ function fromContract(record: Record<string, unknown>, fallbackKind: PanelItemKi
     },
     reject_requires_reason: record.reject_requires_reason === true,
     answer: answerFor.length
-      ? { required_for: answerFor, max_length: Math.min(PANEL_ANSWER_MAX, count(answer?.max_length) || PANEL_ANSWER_MAX) }
+      ? {
+          required_for: answerFor,
+          max_length: Math.min(PANEL_ANSWER_MAX, count(answer?.max_length) || PANEL_ANSWER_MAX),
+          save_as_precedent: answer?.save_as_precedent === true,
+        }
       : null,
     selection: options.length
       ? { mode: multiple ? 'multiple' : 'single', options, min, max, required_for: decideActions(selection?.required_for) }
       : null,
+    questions: contractQuestions(record.questions),
+    items: contractItems(record.items),
   };
 }
 
@@ -654,7 +763,7 @@ function fromProvisional(list: unknown[], fallbackKind: PanelItemKind, multisele
       const id = optionId ?? str(record.id);
       if (!id || id.length > PANEL_OPTION_ID_MAX || !label || options.some((o) => o.id === id)) continue;
       if (options.length < PANEL_OPTION_LIMIT) {
-        options.push({ id, label, description: null, implied_action: null, requires_reason: false });
+        options.push({ id, label, description: null, implied_action: null, requires_reason: false, recommended: false });
       }
     } else if (/approve|accept|confirm/.test(verb)) {
       approve = approve ?? label ?? 'Approve';
@@ -680,6 +789,8 @@ function fromProvisional(list: unknown[], fallbackKind: PanelItemKind, multisele
           required_for: options.length >= 2 || !approve ? ['approve'] : [],
         }
       : null,
+    questions: null,
+    items: null,
   };
 }
 

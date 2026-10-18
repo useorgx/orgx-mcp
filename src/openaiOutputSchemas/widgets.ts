@@ -57,7 +57,7 @@ const panelWidgetActionsSchema = z
     labels: z.object({ approve: z.string(), reject: z.string() }).strict(),
     reject_requires_reason: z.boolean(),
     answer: z
-      .object({ required_for: z.array(decideActionSchema), max_length: z.number() })
+      .object({ required_for: z.array(decideActionSchema), max_length: z.number(), save_as_precedent: z.boolean() })
       .strict()
       .nullable(),
     selection: z
@@ -71,12 +71,56 @@ const panelWidgetActionsSchema = z
               description: z.string().nullable(),
               implied_action: decideActionSchema.nullable(),
               requires_reason: z.boolean(),
+              recommended: z.boolean(),
             })
             .strict()
         ),
         min: z.number(),
         max: z.number(),
         required_for: z.array(decideActionSchema),
+      })
+      .strict()
+      .nullable(),
+    questions: z
+      .object({
+        fields: z.array(
+          z
+            .object({
+              id: z.string(),
+              step_title: z.string().nullable(),
+              type: z.enum(['text', 'textarea', 'boolean', 'single_select', 'multi_select']),
+              label: z.string(),
+              description: z.string().nullable(),
+              placeholder: z.string().nullable(),
+              required: z.boolean(),
+              options: z.array(
+                z.object({ id: z.string(), label: z.string(), description: z.string().nullable(), recommended: z.boolean() }).strict()
+              ),
+              min_select: z.number().nullable(),
+              max_select: z.number().nullable(),
+              max_length: z.number(),
+            })
+            .strict()
+        ),
+      })
+      .strict()
+      .nullable(),
+    items: z
+      .object({
+        items: z.array(
+          z
+            .object({
+              id: z.string(),
+              label: z.string(),
+              description: z.string().nullable(),
+              url: z.string().nullable(),
+              type: z.string().nullable(),
+              flagged: z.boolean(),
+              flag_note: z.string().nullable(),
+            })
+            .strict()
+        ),
+        note_required_for_send_back: z.boolean(),
       })
       .strict()
       .nullable(),
@@ -121,6 +165,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       surface: z.string().optional(),
       option_id: z.string().nullable().optional(),
       option_ids: z.array(z.string()).nullable().optional(),
+      remembered: z.boolean().optional(),
       message: z.string().optional(),
     })
     .strict(),

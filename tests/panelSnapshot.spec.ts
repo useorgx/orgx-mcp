@@ -237,11 +237,13 @@ describe('buildPanelSnapshot', () => {
       answer: null,
       selection: {
         mode: 'single',
-        options: [{ id: 'ship', label: 'Ship it', description: null, implied_action: null, requires_reason: false }],
+        options: [{ id: 'ship', label: 'Ship it', description: null, implied_action: null, requires_reason: false, recommended: false }],
         min: 1,
         max: 1,
         required_for: ['approve'],
       },
+      questions: null,
+      items: null,
     });
     expect(second.focus!.multiselect).toBe(false);
   });
@@ -256,7 +258,7 @@ describe('buildPanelSnapshot', () => {
       selection: {
         mode: 'multiple',
         options: [
-          { id: 'eu', label: 'EU', description: 'd'.repeat(400), implied_action: null, requires_reason: false },
+          { id: 'eu', label: 'EU', description: 'd'.repeat(400), implied_action: null, requires_reason: false, recommended: true },
           { id: 'us', label: 'US', description: null, implied_action: 'approve', requires_reason: true },
           { id: 'x'.repeat(121), label: 'Too long an id', description: null, implied_action: null, requires_reason: false },
           { id: 'stop', label: 'Stop', description: null, implied_action: 'reject', requires_reason: false },
@@ -275,14 +277,75 @@ describe('buildPanelSnapshot', () => {
     expect(snapshot.focus!.kind).toBe('decision');
     expect(actions.labels.approve).toBe('Confirm selection');
     expect(Array.from(actions.labels.reject).length).toBeLessThanOrEqual(40);
-    expect(actions.answer).toEqual({ required_for: ['approve'], max_length: 2000 });
+    expect(actions.answer).toEqual({ required_for: ['approve'], max_length: 2000, save_as_precedent: false });
     expect(actions.selection!.options.map((o) => o.id)).toEqual(['eu', 'us', 'stop']);
     expect(Array.from(actions.selection!.options[0]!.description!).length).toBeLessThanOrEqual(140);
     expect(actions.selection!.options[1]).toMatchObject({ implied_action: 'approve', requires_reason: true });
+    expect(actions.selection!.options.map((o) => o.recommended)).toEqual([true, false, false]);
     expect(actions.selection).toMatchObject({ mode: 'multiple', min: 1, max: 3, required_for: ['approve', 'reject'] });
     expect(snapshot.queue[0]!.widget_actions).toEqual(actions);
     expect(snapshot.queue[0]!.option_count).toBe(3);
     expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(snapshot).success).toBe(true);
+  });
+
+  it('carries sequential questions, item-by-item review and saved answers from the contract', () => {
+    const base = { kind: 'decision', actions: ['approve', 'reject'], labels: { approve: 'Send answers', reject: 'Send back' }, reject_requires_reason: true, selection: null };
+    const questions = {
+      ...base,
+      answer: null,
+      questions: {
+        fields: [
+          { id: 'tone', step_title: 'Launch', type: 'single_select', label: 'Which tone?', required: true,
+            options: [{ id: 'calm', label: 'Calm', recommended: true }, { id: 'bold', label: 'Bold' }] },
+          { id: 'notes', type: 'textarea', label: 'Anything to avoid?', placeholder: 'Optional', required: false, max_length: 9000 },
+        ],
+      },
+      items: null,
+    };
+    const items = {
+      ...base,
+      labels: { approve: 'Keep all', reject: 'Send all back' },
+      reject_requires_reason: false,
+      answer: null,
+      questions: null,
+      items: {
+        items: [
+          { id: 'p1', label: 'Post 1', description: 'Launch teaser', url: 'https://useorgx.com/a/p1', flagged: false },
+          { id: 'p2', label: 'Post 2', url: 'javascript:alert(1)', flagged: true, flag_note: 'Claims a number we cannot back' },
+          { id: 'p2', label: 'Duplicate' },
+        ],
+        note_required_for_send_back: true,
+      },
+    };
+    const saved = { ...base, labels: { approve: 'Send answer', reject: 'Decline' }, reject_requires_reason: false, answer: { required_for: ['approve'], max_length: 2000, save_as_precedent: true } };
+    const snapshot = buildPanelSnapshot({
+      workspace: { id: SESSION_WS, name: 'Acme' },
+      decisions: [
+        decision(D1, 'critical', '2026-09-30T10:00:00.000Z', { widget_actions: questions }),
+        decision(D2, 'high', '2026-09-29T10:00:00.000Z', { widget_actions: items }),
+        decision(D3, 'medium', '2026-09-28T10:00:00.000Z', { widget_actions: saved }),
+      ],
+      artifacts: [],
+    });
+    const [q, i, a] = snapshot.queue.map((row) => row.widget_actions!);
+    expect(q.questions!.fields.map((f) => [f.id, f.type, f.required])).toEqual([['tone', 'single_select', true], ['notes', 'textarea', false]]);
+    expect(q.questions!.fields[0]!.options.map((o) => o.recommended)).toEqual([true, false]);
+    expect(q.questions!.fields[0]!.step_title).toBe('Launch');
+    expect(q.questions!.fields[1]!.max_length).toBe(2000);
+    expect(i.items!.items.map((it) => it.id)).toEqual(['p1', 'p2']);
+    expect(i.items!.items[1]).toMatchObject({ url: null, flagged: true, flag_note: 'Claims a number we cannot back' });
+    expect(a.answer!.save_as_precedent).toBe(true);
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(snapshot).success).toBe(true);
+
+    // A field the panel cannot ask (a secret) means the whole set stays in OrgX.
+    const secret = buildPanelSnapshot({
+      workspace: { id: SESSION_WS, name: 'Acme' },
+      decisions: [decision(D1, 'critical', '2026-09-30T10:00:00.000Z', {
+        widget_actions: { ...questions, questions: { fields: [{ id: 'key', type: 'secret', label: 'API key' }] } },
+      })],
+      artifacts: [],
+    });
+    expect(secret.focus!.widget_actions!.questions).toBeNull();
   });
 
   it('includes agent-run approvals and gateway actions with their own kind and link', () => {
