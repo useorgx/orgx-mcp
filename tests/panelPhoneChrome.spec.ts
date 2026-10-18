@@ -140,6 +140,19 @@ describe.each([
     } finally { await close(); }
   }, 30000);
 
+  it('keeps every tab on screen when the device font is wider than ours', async () => {
+    const { page, close } = await open(host);
+    try {
+      // CI's fallback font is wider than Inter; that once pushed Done past the edge of the row.
+      await page.addStyleTag({ content: '* { font-family: "DejaVu Sans", sans-serif !important; }' });
+      await page.waitForTimeout(100);
+      for (const sel of ['#pn-tab-needs', '#pn-tab-work', '#pn-tab-outputs', '#pn-tab-goals', '#pn-tab-done']) {
+        const r = await hitAtCenter(page, sel);
+        expect(r.hitsSelf, `${sel} is covered by ${r.hit}`).toBe(true);
+      }
+    } finally { await close(); }
+  }, 30000);
+
   it('keeps the header pinned and the tabs reachable after the view has scrolled', async () => {
     const { page, close } = await open(host);
     try {
@@ -151,8 +164,10 @@ describe.each([
       // Pinned: the header sits at the top of the open area, not scrolled away.
       expect(header.top).toBeLessThanOrEqual((host.barOverView ? BAR : 0) + 24);
       const r = await hitAtCenter(page, '#pn-tab-start');
-      expect(r.hitsSelf, `Start tab is covered by ${r.hit}`).toBe(true);
+      expect(r.hitsSelf, `Start button is covered by ${r.hit}`).toBe(true);
+      // + opens a sheet of ways to start; the chat option opens Start itself.
       await page.locator('#pn-tab-start').tap();
+      await page.locator('[data-action="start-pick"][data-id="chat"]').tap();
       await page.locator('.pn-start').waitFor();
     } finally { await close(); }
   }, 30000);

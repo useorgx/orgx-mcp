@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-16T15:29:55.627Z",
-  "sourceHash": "8d7dea82134d9ba8",
+  "generatedAt": "2026-10-18T06:48:31.606Z",
+  "sourceHash": "49c6ec25d2585b11",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -1910,10 +1910,12 @@
             "type": "string",
             "enum": [
               "work",
+              "outputs",
+              "goals",
               "workspaces",
               "history"
             ],
-            "description": "Optional panel view: running work, authorized workspace membership, or settled decisions."
+            "description": "Optional panel view: running work, outputs agents made, goals and their progress, authorized workspace membership, or settled decisions."
           },
           "range": {
             "type": "string",
@@ -7424,10 +7426,197 @@
             "maxLength": 120,
             "description": "Recommended option when the agent can justify one"
           },
+          "recommended_option_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "maxItems": 10,
+            "description": "Recommended options for multi_select; pre-checked for the owner"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "textarea",
+                    "boolean",
+                    "single_select",
+                    "multi_select"
+                  ]
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "placeholder": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      },
+                      "description": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "recommended": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "label"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "maxItems": 10
+                },
+                "min_select": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "max_select": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 12,
+            "description": "Several questions the owner answers one at a time; use instead of options when one answer is not enough"
+          },
+          "review_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "maxLength": 2000
+                },
+                "type": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "Artifact type, e.g. social_post, doc, image"
+                },
+                "flagged": {
+                  "type": "boolean"
+                },
+                "flag_note": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 2,
+            "maxItems": 20,
+            "description": "Outputs the owner keeps or sends back one by one, each sent-back item with its own note"
+          },
           "recommended_action": {
             "type": "string",
             "maxLength": 1000,
             "description": "Concise recommendation and why it is safest or highest leverage"
+          },
+          "suggested_answers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "maxItems": 6,
+            "description": "Ready answers to a free-text question; the owner can pick one and edit it before sending"
+          },
+          "consequences": {
+            "type": "object",
+            "properties": {
+              "approve": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "What happens if the owner goes ahead"
+              },
+              "reject": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "What happens if the owner sends it back"
+              },
+              "defer": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "What happens if nobody decides"
+              },
+              "not_covered": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "What this decision does not settle"
+              }
+            },
+            "additionalProperties": false,
+            "description": "What each outcome does, shown beside the question before the owner decides"
           },
           "blocking": {
             "type": "boolean",
@@ -8045,7 +8234,7 @@
     {
       "id": "orgx_widget_decide",
       "title": "Decide from the decisions widget",
-      "description": "Widget-only: settles one pending item (a decision of any type, an agent-run approval, an action awaiting approval, or a suggestion to link a captured session to an initiative) after the person clicks in the decisions widget or the OrgX panel. Sends what the item's widget_actions ask for: an option, several options, a typed answer or a reason. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the item as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.",
+      "description": "Widget-only: settles one pending item (a decision of any type, an agent-run approval, an action awaiting approval, or a suggestion to link a captured session to an initiative) after the person clicks in the decisions widget or the OrgX panel. Sends what the item's widget_actions ask for: an option, several options, a typed answer, answers to several questions, a verdict per item or a reason. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the item as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
@@ -8099,6 +8288,66 @@
             "minItems": 1,
             "maxItems": 12,
             "description": "The options the person chose, when widget_actions.selection.mode is multiple"
+          },
+          "answers": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "maxItems": 10
+                }
+              ]
+            },
+            "description": "Answers by field id, when widget_actions.questions lists fields"
+          },
+          "item_reviews": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "verdict": {
+                  "type": "string",
+                  "enum": [
+                    "keep",
+                    "send_back"
+                  ]
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "id",
+                "verdict"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 20,
+            "description": "Keep or send back each item, when widget_actions.items lists items; a sent-back item needs a note"
+          },
+          "remember": {
+            "type": "boolean",
+            "description": "Propose the typed answer as a rule for next time, when widget_actions.answer.save_as_precedent"
           },
           "approval_token": {
             "type": "string",

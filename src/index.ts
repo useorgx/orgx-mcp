@@ -3323,6 +3323,13 @@ export class OrgXMcp extends McpAgent<
         const response = await callOrgxApiJson(this.env, `/api/v1/work-ledger/receipts/${encodeURIComponent(id)}?${qs.toString()}`, undefined, actor(userId()));
         return response.json();
       },
+      // Read only when the person opens Goals: each goal's recorded progress,
+      // the initiatives under it, and the workspace's quality bars.
+      fetchGoalProgress: async ({ workspaceId }) => {
+        const qs = new URLSearchParams({ workspace_id: workspaceId });
+        const response = await callOrgxApiJson(this.env, `/api/v1/objectives/progress?${qs.toString()}`, undefined, actor(userId()));
+        return response.json();
+      },
       // Read only when the person opens the workspace switcher.
       fetchWorkspaces: async () => {
         try {

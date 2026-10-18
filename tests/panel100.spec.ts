@@ -289,9 +289,15 @@ describe('links land where they promise', () => {
 });
 
 describe('Start: setting work going from the panel', () => {
-  it('is its own tab, and the other views lead to it instead of repeating prompt lists', async () => {
+  it('opens from the header’s +, and the other views lead to it instead of repeating prompt lists', async () => {
     const m = await openWith(snapshot());
-    expect(Array.from(doc(m).querySelectorAll('.pn-tab')).map((t) => t.getAttribute('data-tab'))).toEqual(['needs', 'work', 'done', 'start']);
+    expect(Array.from(doc(m).querySelectorAll('.pn-tab')).map((t) => t.getAttribute('data-tab'))).toEqual(['needs', 'work', 'outputs', 'goals', 'done']);
+    // + offers a task, an initiative, a goal, or the words in the chat.
+    click(m, '[data-action="pop"][data-id="start"]');
+    await m.flush();
+    expect(Array.from(doc(m).querySelectorAll('#pn-pop-start .pn-pop-o')).map((o) => o.textContent)).toEqual(['A task', 'An initiative', 'A goal', 'Describe it in chat']);
+    click(m, '[data-action="pop-close"]');
+    await m.flush();
     click(m, '[data-tab="done"]');
     await m.flush();
     expect(doc(m).querySelector('.pn-done .pn-section, .pn-done .pn-prompt')).toBeNull();
@@ -302,7 +308,7 @@ describe('Start: setting work going from the panel', () => {
 
   it('shows the exact sentence, hands it to the chosen agent, and sends exactly that', async () => {
     const m = await openWith(snapshot());
-    click(m, '[data-tab="start"]');
+    click(m, '[data-action="pop"][data-id="start"]'); await m.flush(); click(m, '[data-action="start-pick"][data-id="chat"]');
     await m.flush();
     const send = doc(m).querySelector('[data-action="start-send"]') as HTMLButtonElement;
     expect(send.disabled).toBe(true);
@@ -329,7 +335,7 @@ describe('Start: setting work going from the panel', () => {
 
   it('plans first or starts an initiative in plain words', async () => {
     const m = await openWith(snapshot());
-    click(m, '[data-tab="start"]');
+    click(m, '[data-action="pop"][data-id="start"]'); await m.flush(); click(m, '[data-action="start-pick"][data-id="chat"]');
     await m.flush();
     const ta = doc(m).querySelector('#st-text') as HTMLTextAreaElement;
     ta.value = 'Launch the pricing page by Friday.';
@@ -344,7 +350,7 @@ describe('Start: setting work going from the panel', () => {
 
   it('fills the composer from a starter instead of sending it', async () => {
     const m = await openWith(snapshot());
-    click(m, '[data-tab="start"]');
+    click(m, '[data-action="pop"][data-id="start"]'); await m.flush(); click(m, '[data-action="start-pick"][data-id="chat"]');
     await m.flush();
     const starter = doc(m).querySelector('[data-action="start-fill"]') as HTMLElement;
     const text = starter.getAttribute('data-text')!;
@@ -356,7 +362,7 @@ describe('Start: setting work going from the panel', () => {
 
   it('sends on Enter, keeps Shift+Enter for a new line, and closes the who menu on Escape', async () => {
     const m = await openWith(snapshot());
-    click(m, '[data-tab="start"]');
+    click(m, '[data-action="pop"][data-id="start"]'); await m.flush(); click(m, '[data-action="start-pick"][data-id="chat"]');
     await m.flush();
     const ta = doc(m).querySelector('#st-text') as HTMLTextAreaElement;
     ta.value = 'Write a PRD for team workspaces';

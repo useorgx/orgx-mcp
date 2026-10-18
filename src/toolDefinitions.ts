@@ -747,7 +747,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     id: 'orgx_widget_decide',
     title: 'Decide from the decisions widget',
     description:
-      'Widget-only: settles one pending item (a decision of any type, an agent-run approval, an action awaiting approval, or a suggestion to link a captured session to an initiative) after the person clicks in the decisions widget or the OrgX panel. Sends what the item\'s widget_actions ask for: an option, several options, a typed answer or a reason. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the item as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.',
+      'Widget-only: settles one pending item (a decision of any type, an agent-run approval, an action awaiting approval, or a suggestion to link a captured session to an initiative) after the person clicks in the decisions widget or the OrgX panel. Sends what the item\'s widget_actions ask for: an option, several options, a typed answer, answers to several questions, a verdict per item or a reason. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the item as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.',
     inputSchema: {
       decision_id: z.string().min(1).describe('Pending item being settled (decision, agent-run approval, action or session id)'),
       kind: z
@@ -772,6 +772,26 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .max(12)
         .optional()
         .describe('The options the person chose, when widget_actions.selection.mode is multiple'),
+      answers: z
+        .record(z.union([z.string().max(2000), z.boolean(), z.array(z.string().min(1).max(120)).max(10)]))
+        .optional()
+        .describe('Answers by field id, when widget_actions.questions lists fields'),
+      item_reviews: z
+        .array(
+          z.object({
+            id: z.string().min(1).max(120),
+            verdict: z.enum(['keep', 'send_back']),
+            note: z.string().max(2000).optional(),
+          })
+        )
+        .min(1)
+        .max(20)
+        .optional()
+        .describe('Keep or send back each item, when widget_actions.items lists items; a sent-back item needs a note'),
+      remember: z
+        .boolean()
+        .optional()
+        .describe('Propose the typed answer as a rule for next time, when widget_actions.answer.save_as_precedent'),
       approval_token: z.string().min(1).max(2048).describe('Widget approval token'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
@@ -1421,6 +1441,38 @@ const externalQuestionOptionSchema = z.union([
   }),
 ]);
 
+const attentionQuestionFieldSchema = z.object({
+  id: z.string().min(1).max(120),
+  type: z.enum(['text', 'textarea', 'boolean', 'single_select', 'multi_select']),
+  label: z.string().min(1).max(500),
+  description: z.string().max(2000).optional(),
+  placeholder: z.string().max(200).optional(),
+  required: z.boolean().optional(),
+  options: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(120),
+        label: z.string().min(1).max(500),
+        description: z.string().max(2000).optional(),
+        recommended: z.boolean().optional(),
+      })
+    )
+    .max(10)
+    .optional(),
+  min_select: z.number().int().min(0).max(10).optional(),
+  max_select: z.number().int().min(1).max(10).optional(),
+});
+
+const attentionReviewItemSchema = z.object({
+  id: z.string().min(1).max(120),
+  label: z.string().min(1).max(500),
+  description: z.string().max(2000).optional(),
+  url: z.string().url().max(2000).optional(),
+  type: z.string().max(40).optional().describe('Artifact type, e.g. social_post, doc, image'),
+  flagged: z.boolean().optional(),
+  flag_note: z.string().max(500).optional(),
+});
+
 const applyChangesetOperationSchema = z.union([
   z
     .object({
@@ -1727,11 +1779,43 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .max(120)
         .optional()
         .describe('Recommended option when the agent can justify one'),
+      recommended_option_ids: z
+        .array(z.string().min(1).max(120))
+        .max(10)
+        .optional()
+        .describe('Recommended options for multi_select; pre-checked for the owner'),
+      questions: z
+        .array(attentionQuestionFieldSchema)
+        .min(1)
+        .max(12)
+        .optional()
+        .describe('Several questions the owner answers one at a time; use instead of options when one answer is not enough'),
+      review_items: z
+        .array(attentionReviewItemSchema)
+        .min(2)
+        .max(20)
+        .optional()
+        .describe('Outputs the owner keeps or sends back one by one, each sent-back item with its own note'),
       recommended_action: z
         .string()
         .max(1000)
         .optional()
         .describe('Concise recommendation and why it is safest or highest leverage'),
+      suggested_answers: z
+        .array(z.string().min(1).max(200))
+        .max(6)
+        .optional()
+        .describe('Ready answers to a free-text question; the owner can pick one and edit it before sending'),
+      consequences: z
+        .object({
+          approve: z.string().min(1).max(500).optional().describe('What happens if the owner goes ahead'),
+          reject: z.string().min(1).max(500).optional().describe('What happens if the owner sends it back'),
+          defer: z.string().min(1).max(500).optional().describe('What happens if nobody decides'),
+          not_covered: z.string().min(1).max(500).optional().describe('What this decision does not settle'),
+        })
+        .strict()
+        .optional()
+        .describe('What each outcome does, shown beside the question before the owner decides'),
       blocking: z.boolean().optional().describe('Whether linked work is gated; default true'),
       urgency: z
         .enum(['low', 'medium', 'high', 'urgent'])

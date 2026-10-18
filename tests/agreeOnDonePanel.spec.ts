@@ -290,7 +290,7 @@ describe('Start: the teaser', () => {
     mounted.push(m);
     m.app().ontoolresult({ structuredContent: snapshot(), _meta: { 'orgx/widgetApproval': { approval_tokens: {} } } });
     await m.flush();
-    click(m, '[data-tab="start"]');
+    click(m, '[data-action="pop"][data-id="start"]'); await m.flush(); click(m, '[data-action="start-pick"][data-id="chat"]');
     await m.flush();
     expect(doc(m).querySelector('.pn-start .st-done')!.textContent).toBe('Before work starts, OrgX asks you to agree on what done means.');
   });

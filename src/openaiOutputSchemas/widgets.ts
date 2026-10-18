@@ -49,6 +49,99 @@ const panelReceiptRowSchema = z
   })
   .strict();
 const panelAskerKindSchema = z.enum(['agent', 'floor', 'unnamed', 'system']);
+const panelLevelSchema = z.object({ id: z.string(), title: z.string().nullable() }).strict().nullable();
+/** The Outputs view (src/panelInsights.ts). */
+const panelOutputsSchema = z
+  .object({
+    status: z.enum(['ok', 'unavailable']),
+    items: z.array(
+      z
+        .object({
+          id: z.string(),
+          title: z.string(),
+          type: z.string().nullable(),
+          family: z.enum(['code', 'writing', 'media', 'routine', 'other']),
+          status: z.string(),
+          has_preview: z.boolean(),
+          external_url: z.string().nullable(),
+          initiative_id: z.string().nullable(),
+          task_id: z.string().nullable(),
+          made_at: z.string().nullable(),
+          made_by: z.string().nullable(),
+          accepted: z
+            .object({
+              state: z.enum(['accepted', 'waiting', 'sent_back', 'not_reviewed', 'unknown']),
+              at: z.string().nullable(),
+              by: z.enum(['you', 'workspace_member']).nullable(),
+            })
+            .strict(),
+          landed: z.object({ label: z.string(), at: z.string() }).strict().nullable(),
+          moved: z.object({ objective_id: z.string().nullable(), label: z.string() }).strict().nullable(),
+          checks: z.array(z.object({ label: z.string(), met: z.boolean() }).strict()),
+          checks_source: z.string().nullable(),
+          eval_score: z.number().nullable(),
+          decision_id: z.string().nullable(),
+          url: z.string(),
+        })
+        .strict()
+    ),
+    total: z.number(),
+  })
+  .strict();
+const panelGoalInitiativeSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    status: z.string().nullable(),
+    risk: z.string().nullable(),
+    milestones_total: z.number(),
+    milestones_done: z.number(),
+    url: z.string(),
+  })
+  .strict();
+/** The Goals view (src/panelInsights.ts). */
+const panelGoalsSchema = z
+  .object({
+    status: z.enum(['ok', 'unavailable']),
+    items: z.array(
+      z
+        .object({
+          id: z.string(),
+          title: z.string(),
+          status: z.string().nullable(),
+          unit: z.string().nullable(),
+          due: z.string().nullable(),
+          target: z.number().nullable(),
+          current: z.number().nullable(),
+          baseline: z.number().nullable(),
+          history: z.array(z.object({ at: z.string(), value: z.number() }).strict()),
+          moves: z.array(
+            z
+              .object({
+                at: z.string(),
+                from: z.number(),
+                to: z.number(),
+                delta: z.number(),
+                has_reason: z.boolean(),
+                decision_id: z.string().nullable(),
+              })
+              .strict()
+          ),
+          initiatives: z.array(panelGoalInitiativeSchema),
+          initiative_total: z.number(),
+          url: z.string(),
+        })
+        .strict()
+    ),
+    total: z.number(),
+    unlinked: z.array(panelGoalInitiativeSchema),
+    unlinked_total: z.number(),
+    quality_bars: z
+      .array(z.object({ id: z.string(), name: z.string(), domain: z.string(), criteria: z.number() }).strict())
+      .nullable(),
+    reason: z.string().nullable().optional(),
+  })
+  .strict();
 /** The app's per-item widget_actions contract, as the panel carries it (clipped). */
 const panelWidgetActionsSchema = z
   .object({
@@ -57,7 +150,7 @@ const panelWidgetActionsSchema = z
     labels: z.object({ approve: z.string(), reject: z.string() }).strict(),
     reject_requires_reason: z.boolean(),
     answer: z
-      .object({ required_for: z.array(decideActionSchema), max_length: z.number() })
+      .object({ required_for: z.array(decideActionSchema), max_length: z.number(), save_as_precedent: z.boolean(), suggestions: z.array(z.string()).optional() })
       .strict()
       .nullable(),
     selection: z
@@ -71,12 +164,60 @@ const panelWidgetActionsSchema = z
               description: z.string().nullable(),
               implied_action: decideActionSchema.nullable(),
               requires_reason: z.boolean(),
+              recommended: z.boolean(),
             })
             .strict()
         ),
         min: z.number(),
         max: z.number(),
         required_for: z.array(decideActionSchema),
+      })
+      .strict()
+      .nullable(),
+    questions: z
+      .object({
+        fields: z.array(
+          z
+            .object({
+              id: z.string(),
+              step_title: z.string().nullable(),
+              type: z.enum(['text', 'textarea', 'boolean', 'single_select', 'multi_select', 'number']),
+              label: z.string(),
+              description: z.string().nullable(),
+              placeholder: z.string().nullable(),
+              required: z.boolean(),
+              options: z.array(
+                z.object({ id: z.string(), label: z.string(), description: z.string().nullable(), recommended: z.boolean() }).strict()
+              ),
+              min_select: z.number().nullable(),
+              max_select: z.number().nullable(),
+              max_length: z.number(),
+              number: z
+                .object({ min: z.number(), max: z.number(), step: z.number(), unit: z.string().nullable(), recommended: z.number().nullable() })
+                .strict()
+                .optional(),
+            })
+            .strict()
+        ),
+      })
+      .strict()
+      .nullable(),
+    items: z
+      .object({
+        items: z.array(
+          z
+            .object({
+              id: z.string(),
+              label: z.string(),
+              description: z.string().nullable(),
+              url: z.string().nullable(),
+              type: z.string().nullable(),
+              flagged: z.boolean(),
+              flag_note: z.string().nullable(),
+            })
+            .strict()
+        ),
+        note_required_for_send_back: z.boolean(),
       })
       .strict()
       .nullable(),
@@ -121,6 +262,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       surface: z.string().optional(),
       option_id: z.string().nullable().optional(),
       option_ids: z.array(z.string()).nullable().optional(),
+      remembered: z.boolean().optional(),
       message: z.string().optional(),
     })
     .strict(),
@@ -175,6 +317,8 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             session_label: z.string().nullable().optional(),
             detail: z.string().nullable().optional(),
             agreement: z.boolean().optional(),
+            task_id: z.string().nullable().optional(),
+            artifact_id: z.string().nullable().optional(),
             url: z.string(),
           })
           .strict()
@@ -200,12 +344,30 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             .nullable(),
           evidence: z.array(
             z
-              .object({ title: z.string(), source_url: z.string().nullable() })
+              .object({
+                title: z.string(),
+                source_url: z.string().nullable(),
+                pointer: z.string().nullable().optional(),
+                confidence: z.number().nullable().optional(),
+                freshness: z.string().nullable().optional(),
+              })
               .strict()
           ),
           evidence_total: z.number(),
           consequence_if_approved: z.string().nullable(),
           consequence_if_rejected: z.string().nullable(),
+          consequence_if_deferred: z.string().nullable().optional(),
+          consequence_not_covered: z.string().nullable().optional(),
+          levels: z
+            .object({
+              goal: panelLevelSchema,
+              initiative: panelLevelSchema,
+              workstream: panelLevelSchema,
+              milestone: panelLevelSchema,
+              task: panelLevelSchema,
+            })
+            .strict()
+            .optional(),
           blocked: z.boolean(),
           decide_in_orgx_reason: z.string().nullable(),
           options: z.array(z.object({ id: z.string(), label: z.string() }).strict()),
@@ -298,6 +460,13 @@ export const WIDGET_OUTPUT_SCHEMAS = {
                 domain: z.string().nullable().optional(),
                 updated_at: z.string().nullable().optional(),
                 stale: z.boolean().optional(),
+                initiative_id: z.string().nullable().optional(),
+                workstream_id: z.string().nullable().optional(),
+                milestone_id: z.string().nullable().optional(),
+                blocker: z.string().nullable().optional(),
+                steps: z
+                  .array(z.object({ title: z.string(), state: z.enum(['done', 'live', 'pending']) }).strict())
+                  .optional(),
               })
               .strict()
           ),
@@ -305,6 +474,8 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         })
         .strict()
         .optional(),
+      outputs: panelOutputsSchema.optional(),
+      goals: panelGoalsSchema.optional(),
       workspaces: z
         .object({
           status: z.enum(['ok', 'unavailable']),
