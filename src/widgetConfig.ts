@@ -394,6 +394,9 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   'shared/panel/panel-start.js',
   'shared/panel/panel-receipts.js',
   'shared/panel/panel-forms.js',
+  'shared/panel/panel-packet.js',
+  'shared/panel/panel-outputs.js',
+  'shared/panel/panel-goals.js',
   'shared/panel/panel-app.js',
 ];
 

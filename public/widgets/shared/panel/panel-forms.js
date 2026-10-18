@@ -39,8 +39,33 @@
         options: options.map(function opt(o) { return { id: String(o.id), label: String(o.label), description: o.description || '', recommended: o.recommended === true }; }),
         min: multi ? Math.min(max, Math.max(0, Number(f.min_select) || 0)) : 0, max: max,
         maxLength: Math.min(2000, Number(f.max_length) || 2000),
+        range: f.type === 'number' ? numberRange(f.number) : null,
       };
-    });
+    }).filter(function askable(f) { return f.type !== 'number' || f.range; });
+  }
+
+  /** A number field's slider: only with a real range from the asker; never a guessed one. */
+  function numberRange(raw) {
+    if (!raw || typeof raw.min !== 'number' || typeof raw.max !== 'number' || !(raw.max > raw.min)) return null;
+    var step = typeof raw.step === 'number' && raw.step > 0 ? raw.step : 1;
+    var rec = typeof raw.recommended === 'number' && raw.recommended >= raw.min && raw.recommended <= raw.max ? raw.recommended : null;
+    return { min: raw.min, max: raw.max, step: step, unit: raw.unit || '', recommended: rec };
+  }
+  function numberText(f, value) {
+    var n = Number(value);
+    if (!isFinite(n)) return '';
+    var u = f.range && f.range.unit ? f.range.unit : '';
+    var shown = n.toLocaleString();
+    return u === '$' ? '$' + shown : u ? shown + ' ' + u : shown;
+  }
+  /** One step up or down, kept on the field's grid and inside its range. */
+  function stepNumber(f, value, delta) {
+    var r = f.range;
+    var n = Number(value);
+    if (!isFinite(n)) n = r.recommended !== null ? r.recommended : r.min;
+    n = Math.min(r.max, Math.max(r.min, n + delta * r.step));
+    var digits = (String(r.step).split('.')[1] || '').length;
+    return String(Number(n.toFixed(digits)));
   }
 
   /** A fresh form: recommended choices pre-filled, nothing sent until the person confirms. */
@@ -50,6 +75,8 @@
       var picks = f.options.filter(function rec(o) { return o.recommended; }).map(function id(o) { return o.id; });
       if (f.type === 'single_select' && picks.length) values[f.id] = picks[0];
       if (f.type === 'multi_select' && picks.length) values[f.id] = picks.slice(0, f.max);
+      // The asker's recommended amount starts set; moving it is the answer.
+      if (f.type === 'number' && f.range && f.range.recommended !== null) values[f.id] = String(f.range.recommended);
     });
     return { step: 0, values: values, touched: false };
   }
@@ -57,6 +84,7 @@
   function answered(f, value) {
     if (f.type === 'boolean') return value === true || value === false;
     if (f.type === 'multi_select') return Array.isArray(value) && value.length >= Math.max(1, f.min);
+    if (f.type === 'number') return typeof value === 'string' && value.trim() !== '' && isFinite(Number(value));
     return typeof value === 'string' && value.trim().length > 0;
   }
 
@@ -64,6 +92,7 @@
   function answerText(f, value) {
     if (!answered(f, value)) return '';
     if (f.type === 'boolean') return value ? 'Yes' : 'No';
+    if (f.type === 'number') return numberText(f, value);
     if (f.type === 'single_select' || f.type === 'multi_select') {
       var ids = Array.isArray(value) ? value : [value];
       return f.options.filter(function on(o) { return ids.indexOf(o.id) !== -1; }).map(function label(o) { return o.label; }).join(', ');
@@ -78,7 +107,7 @@
     fields.forEach(function collect(f) {
       var value = form.values[f.id];
       if (answered(f, value)) {
-        answers[f.id] = typeof value === 'string' ? value.trim().slice(0, f.maxLength) : Array.isArray(value) ? value.slice() : value;
+        answers[f.id] = f.type === 'number' ? String(Number(value)) : typeof value === 'string' ? value.trim().slice(0, f.maxLength) : Array.isArray(value) ? value.slice() : value;
       } else if (f.required) {
         missing.push(f.id);
       }
@@ -139,6 +168,17 @@
         (multi ? '<p class="opts-label">' + esc(f.min > 1 ? 'Choose ' + f.min + '–' + f.max : 'Choose up to ' + f.max) + '</p>' : '') +
         f.options.map(function opt(o) { return choiceHtml(id, f, o, picked.indexOf(o.id) !== -1, o.recommended ? 'Recommended' : '', multi); }).join('') +
         (multi && limitHit ? '<p class="opts-limit" role="status">You can pick ' + f.max + '. Uncheck one to add “' + esc(clip(limitHit, 40)) + '”.</p>' : '') + '</div>';
+    } else if (f.type === 'number') {
+      var r = f.range;
+      var cur = answered(f, value) ? Number(value) : r.recommended !== null ? r.recommended : r.min;
+      var isRec = r.recommended !== null && cur === r.recommended;
+      control = '<div class="fq-amt" data-amt="' + esc(f.id) + '">' +
+        '<p class="fq-amt-v"><output id="' + labelId + '-v" data-amt-out="' + esc(f.id) + '">' + esc(numberText(f, cur)) + '</output>' +
+        (r.recommended !== null ? '<span class="opt-tag rec" data-amt-rec' + (isRec ? '' : ' hidden') + '>Recommended</span>' : '') + '</p>' +
+        '<div class="fq-amt-row"><button type="button" class="fq-amt-b" data-action="q-step" data-id="' + esc(id) + '" data-field="' + esc(f.id) + '" data-delta="-1" aria-label="Less">−</button>' +
+        '<input type="range" class="fq-amt-r" data-qnum="' + esc(f.id) + '" data-id="' + esc(id) + '" min="' + r.min + '" max="' + r.max + '" step="' + r.step + '" value="' + cur + '" aria-labelledby="' + labelId + '" aria-valuetext="' + esc(numberText(f, cur)) + '">' +
+        '<button type="button" class="fq-amt-b" data-action="q-step" data-id="' + esc(id) + '" data-field="' + esc(f.id) + '" data-delta="1" aria-label="More">+</button></div>' +
+        '<p class="fq-amt-scale" aria-hidden="true"><span>' + esc(numberText(f, r.min)) + '</span>' + (r.recommended !== null ? '<span>Recommended ' + esc(numberText(f, r.recommended)) + '</span>' : '') + '<span>' + esc(numberText(f, r.max)) + '</span></p></div>';
     } else if (f.type === 'boolean') {
       control = '<div class="opts fq-yn" role="group" aria-labelledby="' + labelId + '">' +
         choiceHtml(id, f, { id: 'true', label: 'Yes' }, value === true, '', false) +
@@ -279,7 +319,7 @@
 
   global.OrgXPanelForms = {
     fieldsOf: fieldsOf, newForm: newForm, formDraft: formDraft, formPrimary: formPrimary, questionsHtml: questionsHtml,
-    pick: pick, answered: answered, answerText: answerText,
+    pick: pick, answered: answered, answerText: answerText, stepNumber: stepNumber, numberText: numberText,
     itemsOf: itemsOf, newReview: newReview, reviewDraft: reviewDraft, reviewPrimary: reviewPrimary, itemsHtml: itemsHtml,
     missingNotes: missingNotes, copyNote: copyNote,
   };

@@ -28,7 +28,13 @@
     return '';
   }
 
-  var TABS = [['needs', 'Needs you'], ['work', 'In progress'], ['done', 'Done'], ['start', 'Start']];
+  // Start is not a tab: it opens from the header's + (the Start menu), and its view stays reachable.
+  var TABS = [['needs', 'Needs you'], ['work', 'In progress'], ['outputs', 'Outputs'], ['goals', 'Goals'], ['done', 'Done']];
+  var TAB_MODULE = { outputs: 'OrgXPanelOutputs', goals: 'OrgXPanelGoals' };
+  /** The tabs this build can open, in order: a tab that cannot open is worse than none. */
+  function tabOrder() {
+    return TABS.filter(function present(t) { return !TAB_MODULE[t[0]] || Boolean(global[TAB_MODULE[t[0]]]); }).map(function key(t) { return t[0]; });
+  }
 
   /**
    * opts: { active, counts: { needs, work, done }, tones: { needs, work, done }, changed: { [tab]: true } }.
@@ -37,8 +43,8 @@
   function tabsHtml(opts) {
     var counts = opts.counts || {};
     var tones = opts.tones || {};
-    // Start only exists when its module loaded; a tab that cannot open is worse than none.
-    var tabs = TABS.filter(function present(t) { return t[0] !== 'start' || Boolean(global.OrgXPanelStart); });
+    var order = tabOrder();
+    var tabs = TABS.filter(function present(t) { return order.indexOf(t[0]) !== -1; });
     return '<div class="pn-tabs" role="tablist" aria-label="Panel views">' + tabs.map(function tab(t) {
       var on = opts.active === t[0];
       var n = counts[t[0]];
@@ -58,6 +64,35 @@
     return out;
   }
 
+  var CARET = '<svg class="pn-tok-c" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CHECK = '<svg class="pn-pop-ck" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 8.4l2.9 2.9 6-6.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var MORE = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="12.5" cy="8" r="1.3" fill="currentColor"/></svg>';
+
+  /**
+   * A scope token and its menu. The menu is a popover beside the token on a
+   * wide panel and a sheet from the bottom on a narrow one (CSS decides).
+   * kind names the menu; items: { label, action, id, value, on, lead, sep, url }.
+   */
+  function tokHtml(kind, label, opts) {
+    opts = opts || {};
+    var open = opts.open === kind;
+    var btn = '<button type="button" class="pn-tok' + (opts.on ? ' is-on' : '') + (opts.icon ? ' is-icon' : '') + '" data-action="pop" data-id="' + esc(kind) + '" aria-haspopup="menu" aria-expanded="' + open + '" aria-controls="pn-pop-' + esc(kind) + '"' +
+      (opts.icon ? ' aria-label="' + esc(label) + '" title="' + esc(label) + '">' + (opts.icon === 'more' ? MORE : opts.icon) : '>' + (opts.lead || '') + '<span class="pn-tok-t">' + esc(label) + '</span>' + CARET) + '</button>';
+    return '<span class="pn-tokw">' + btn + (open ? popHtml(kind, opts.title || label, opts.items || []) : '') + '</span>';
+  }
+  function popHtml(kind, title, items) {
+    return '<button type="button" class="pn-pop-scrim" data-action="pop-close" aria-label="Close menu" tabindex="-1"></button>' +
+      '<div class="pn-pop" id="pn-pop-' + esc(kind) + '" role="menu" aria-label="' + esc(title) + '"><p class="pn-pop-h" aria-hidden="true">' + esc(title) + '</p>' +
+      items.map(function item(o) {
+        if (o.sep) return '<hr class="pn-pop-sep">';
+        var radio = typeof o.on === 'boolean';
+        return '<button type="button" class="pn-pop-o" role="' + (radio ? 'menuitemradio' : 'menuitem') + '"' + (radio ? ' aria-checked="' + o.on + '"' : '') +
+          ' data-action="' + esc(o.action) + '" data-id="' + esc(o.id || '') + '"' + (o.value !== undefined ? ' data-value="' + esc(o.value) + '"' : '') + (o.url ? ' data-url="' + esc(o.url) + '"' : '') + '>' +
+          (o.lead ? '<span class="pn-pop-l">' + o.lead + '</span>' : '') + '<span class="pn-pop-t">' + esc(o.label) + '</span>' + (radio ? CHECK : '') + '</button>';
+      }).join('') + '</div>';
+  }
+  function levelIcon(kind, size) { var I = global.OrgXPanelIcons; return I ? I.level(kind, size || 12) : ''; }
+
   function runsUrl() { var l = links(); return l && l.run ? l.run() : 'https://useorgx.com/runs'; }
   function ago(iso) { var t = global.OrgXTime; return iso && t && t.relative ? t.relative(iso) : ''; }
   function count(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
@@ -65,6 +100,12 @@
   var STATE_ORDER = ['blocked', 'running', 'queued'];
   var STATE_NAME = { blocked: 'Blocked', running: 'Running', queued: 'Queued' };
   var ROWS_PER_AGENT = 4;
+
+  /** Close on a wide panel (×); Back on a narrow one, where the detail replaces the list. */
+  function backHtml(action, label) {
+    return '<button type="button" class="md-close" data-action="' + action + '" data-id="" aria-label="' + esc(label) + '"><span class="md-x" aria-hidden="true">×</span>' +
+      '<span class="md-back" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</span></button>';
+  }
 
   function workChip(i) {
     if (i.stale) return '<ox-state-chip state="stale" label="' + esc(i.updated_at && ago(i.updated_at) ? 'No update in ' + ago(i.updated_at).replace(/\s*ago$/, '') : 'No recent update') + '"></ox-state-chip>';
@@ -87,14 +128,66 @@
     });
   }
 
+  /** Work by the initiative it belongs to; a task that names none is grouped as such, never guessed. */
+  function groupByInitiative(items, nameOf) {
+    var order = [];
+    var by = {};
+    items.forEach(function bucket(i) {
+      var key = i.initiative_id || '';
+      if (!by[key]) {
+        var name = key && nameOf ? nameOf(key) : null;
+        by[key] = { key: key || 'none', label: key ? name || 'Initiative not named here' : 'No initiative named', named: Boolean(key), items: [], n: { blocked: 0, running: 0, queued: 0 } };
+        order.push(key);
+      }
+      by[key].items.push(i);
+      by[key].n[i.state] += 1;
+    });
+    return order.map(function get(k) { return by[k]; }).sort(function rank(a, b) {
+      return (Number(b.named) - Number(a.named)) || (b.n.blocked - a.n.blocked) || (b.items.length - a.items.length);
+    });
+  }
+
   function stateCounts(n) {
     return STATE_ORDER.filter(function has(s) { return n[s]; }).map(function c(s) {
       return '<span class="ag-n" data-s="' + s + '" title="' + esc(count(n[s], STATE_NAME[s].toLowerCase(), STATE_NAME[s].toLowerCase())) + '">' + n[s] + '<span class="sr-only"> ' + STATE_NAME[s].toLowerCase() + '</span></span>';
     }).join('');
   }
 
-  function workDetailHtml(item, onClose) {
+  var STEP_WORD = { done: 'Done', live: 'Now', pending: 'Next' };
+  var SEND_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+
+  /** Where the task sits, from what the agent status names. Nothing named, nothing shown. */
+  function workCrumbs(item, opts) {
+    var name = item.initiative_id && opts.initiativeName ? opts.initiativeName(item.initiative_id) : null;
+    if (!name) return '';
+    return '<nav class="crumbs" aria-label="Where this sits"><span class="crumb">' + levelIcon('initiative') + esc(name) + '</span>' +
+      '<span class="crumb-sep" aria-hidden="true">/</span><span class="crumb is-here">' + levelIcon('task') + 'This task</span></nav>';
+  }
+  function stepsHtml(steps) {
+    if (!steps || !steps.length) return '';
+    return '<ol class="steps" aria-label="Steps">' + steps.map(function step(x) {
+      return '<li data-s="' + esc(x.state) + '"><span class="sd" aria-hidden="true"></span><span class="sd-t">' + esc(x.title) + '</span><span class="sr-only"> (' + STEP_WORD[x.state] + ')</span></li>';
+    }).join('') + '</ol>';
+  }
+  /** A note to the running agent, through the chat: the panel never steers on its own. */
+  function steerHtml(item, steer) {
+    if (item.state === 'queued') return '';
+    var who = item.agent || 'the agent';
+    if (steer && steer.id === item.id && steer.status) {
+      var said = steer.status === 'sent' ? 'Sent to the chat for ' + who + '. It lands at the next step.'
+        : steer.status === 'copied' ? 'Copied. Paste it into the chat to send it.' : 'Couldn’t send it from here. Type it in the chat.';
+      return '<p class="steer-ok" role="status" data-outcome="' + esc(steer.status) + '">' + esc(said) + '</p>';
+    }
+    var text = steer && steer.id === item.id ? steer.text || '' : '';
+    return '<div class="steer"><label class="sr-only" for="steer-' + esc(item.id) + '">Note for ' + esc(who) + '</label>' +
+      '<input id="steer-' + esc(item.id) + '" class="steer-in" type="text" data-action="steer-text" data-id="' + esc(item.id) + '" maxlength="500" autocomplete="off" placeholder="Tell ' + esc(who) + ' what to change" value="' + esc(text) + '">' +
+      '<button type="button" class="steer-go" data-action="steer-send" data-id="' + esc(item.id) + '" aria-label="Send to ' + esc(who) + ' through the chat"' + (text.trim() ? '' : ' disabled') + '>' + SEND_ICON + '</button></div>' +
+      '<p class="steer-hint">' + (item.state === 'running' ? 'Lands at the next step.' : 'Goes with the next run.') + ' Same as saying it in chat.</p>';
+  }
+
+  function workDetailHtml(item, onClose, opts) {
     if (!item) return '';
+    opts = opts || {};
     var meta = [item.agent + (item.domain ? ' · ' + item.domain : ''), item.updated_at ? 'Updated ' + ago(item.updated_at) : ''].filter(Boolean);
     var stateLine = item.stale
       ? 'Marked in progress, but nothing has been reported for ' + (ago(item.updated_at) || 'a while') + '. It may be stalled.'
@@ -102,12 +195,18 @@
       : item.state === 'running' ? 'An agent is working on this now.'
       : 'Assigned and waiting its turn.';
     var ask = 'In OrgX, what is ' + (item.state === 'blocked' || item.stale ? 'holding up' : 'the status of') + ' “' + item.title.slice(0, 120) + '”?';
+    var waiting = opts.waiting && opts.waiting[item.id];
     return '<div class="md-card" role="region" aria-label="Task details">' +
-      (onClose ? '<button type="button" class="md-close" data-action="work-select" data-id="" aria-label="Close details">×</button>' : '') +
+      (onClose ? backHtml('work-select', 'Back to In progress') : '') +
       '<p class="md-kicker">' + workChip(item) + '</p>' +
-      '<h3 class="md-title">' + esc(item.title) + '</h3>' +
+      '<h3 class="md-title">' + esc(item.title) + '</h3>' + workCrumbs(item, opts) +
       '<p class="md-who"><span class="md-av">' + avatar(item.agent, 'inline') + '</span>' + esc(meta.join(' · ')) + '</p>' +
       '<p class="md-text">' + esc(stateLine) + '</p>' +
+      (item.state === 'blocked' && item.blocker ? '<p class="md-block"><b>Blocked on</b> ' + esc(item.blocker) + '</p>' : '') +
+      stepsHtml(item.steps) +
+      (waiting ? '<div class="md-wait" role="group" aria-label="Waiting on you"><span class="md-wait-t"><b>Waiting on you</b><span>' + esc(waiting.title) + '</span></span>' +
+        '<button type="button" class="pn-btn" data-action="work-decide" data-id="' + esc(waiting.id) + '">Decide</button></div>' : '') +
+      steerHtml(item, opts.steer) +
       '<div class="md-acts"><button type="button" class="pn-btn" data-action="open" data-url="' + esc(item.url) + '">Open in OrgX ↗</button>' +
       '<button type="button" class="pn-btn ghost" data-action="launch" data-prompt="' + esc(ask) + '">' + esc(global.OrgXPanelHost ? global.OrgXPanelHost.ask() : 'Ask in chat') + '</button></div></div>';
   }
@@ -154,29 +253,46 @@
       return (filter === 'all' || i.state === filter) &&
         (!q || (i.title + ' ' + i.agent + ' ' + (i.domain || '')).toLowerCase().indexOf(q) !== -1);
     });
-    var groups = groupByAgent(visible);
+    var byInit = opts.group === 'initiative';
+    var groups = byInit ? groupByInitiative(visible, opts.initiativeName) : groupByAgent(visible);
     var filters = '<div class="seg" role="group" aria-label="Filter by state">' +
       [['all', 'All', work.items.length]].concat(STATE_ORDER.map(function f(s) { return [s, STATE_NAME[s], totals[s]]; }))
         .filter(function nonzero(f) { return f[0] === 'all' || f[2] > 0; })
         .map(function btn(f) {
           return '<button type="button" class="seg-b" data-action="work-filter" data-id="' + f[0] + '" aria-pressed="' + (filter === f[0]) + '"' + (f[0] !== 'all' ? ' data-s="' + f[0] + '"' : '') + '>' + f[1] + '<span class="seg-n">' + f[2] + '</span></button>';
         }).join('') + '</div>';
+    var view = tokHtml('wview', 'View options', {
+      open: opts.pop, icon: 'more', title: 'Group by',
+      items: [
+        { label: 'Agent', action: 'work-group', id: 'agent', on: !byInit },
+        { label: 'Initiative', action: 'work-group', id: 'initiative', on: byInit },
+        { sep: true },
+        { label: 'Every status', action: 'work-filter', id: 'all', on: filter === 'all' },
+        { sep: true },
+        { label: 'All runs in OrgX ↗', action: 'open', url: runsUrl() },
+      ],
+    });
     var search = work.items.length > 12
       ? '<label class="pn-search"><span class="sr-only">Search tasks</span><input type="search" data-action="work-query" placeholder="Search tasks or agents" value="' + esc(opts.query || '') + '" autocomplete="off"></label>' : '';
     var selected = null;
     var list = groups.map(function agentGroup(g) {
-      var open = opts.expanded && opts.expanded[g.agent];
+      var gkey = g.key || g.agent;
+      var open = opts.expanded && opts.expanded[gkey];
       var shown = open ? g.items : g.items.slice(0, ROWS_PER_AGENT);
       var rows = shown.map(function row(i) {
         var on = opts.sel === i.id;
         if (on) selected = i;
         return '<li><button type="button" class="wk-row' + (i.stale ? ' is-stale' : '') + '" data-action="work-select" data-id="' + esc(i.id) + '" aria-pressed="' + on + '">' +
-          '<span class="wk-t">' + esc(i.title) + '</span>' +
+          '<span class="wk-t">' + esc(i.title) + (byInit ? '<span class="wk-who">' + esc(i.agent) + '</span>' : '') + '</span>' +
           '<span class="wk-m">' + esc(i.updated_at ? ago(i.updated_at) : STATE_NAME[i.state]) + '</span>' +
           '<span class="wk-s">' + workChip(i) + '</span></button></li>';
       }).join('');
       var more = g.items.length > ROWS_PER_AGENT
-        ? '<button type="button" class="text-btn ag-more" data-action="agent-expand" data-id="' + esc(g.agent) + '" aria-expanded="' + Boolean(open) + '">' + (open ? 'Show fewer' : 'Show ' + (g.items.length - ROWS_PER_AGENT) + ' more') + '</button>' : '';
+        ? '<button type="button" class="text-btn ag-more" data-action="agent-expand" data-id="' + esc(gkey) + '" aria-expanded="' + Boolean(open) + '">' + (open ? 'Show fewer' : 'Show ' + (g.items.length - ROWS_PER_AGENT) + ' more') + '</button>' : '';
+      if (byInit) {
+        return '<section class="ag" data-initiative="' + esc(gkey) + '"><h3 class="ag-h"><span class="ag-lv">' + levelIcon(g.named ? 'initiative' : 'task', 14) + '</span>' +
+          '<span class="ag-name">' + esc(g.label) + '</span><span class="ag-c">' + stateCounts(g.n) + '</span></h3><ul class="wk-rows" role="list">' + rows + '</ul>' + more + '</section>';
+      }
       return '<section class="ag" data-agent="' + esc(g.agent) + '"><h3 class="ag-h"><span class="md-av">' + avatar(g.agent, 'inline') + '</span>' +
         '<span class="ag-name">' + esc(g.agent) + (g.domain ? '<span class="ag-dom">' + esc(g.domain) + '</span>' : '') + '</span>' +
         '<span class="ag-c">' + stateCounts(g.n) + '</span></h3><ul class="wk-rows" role="list">' + rows + '</ul>' + more + '</section>';
@@ -186,9 +302,9 @@
     var more = work.total > work.items.length
       ? '<p class="sub">Showing ' + work.items.length + ' of ' + work.total + '. <button type="button" class="text-btn" data-action="open" data-url="' + esc(runsUrl()) + '">All runs in OrgX ↗</button></p>' : '';
     return '<section class="pn-work" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-work"' + (phase === 'loading' ? ' aria-busy="true"' : '') + '>' + head +
-      '<div class="pn-tools">' + filters + search + '</div>' +
-      '<div class="pn-md' + (selected ? ' has-sel' : '') + '"><div class="pn-md-list">' + list + empty + more + '</div>' +
-      '<aside class="pn-md-detail">' + (selected ? workDetailHtml(selected, true) : workOverviewHtml(groupByAgent(work.items), work)) + '</aside></div>' +
+      '<div class="pn-tools">' + filters + search + view + '</div>' +
+      '<div class="pn-md is-push' + (selected ? ' has-sel' : '') + '"><div class="pn-md-list">' + list + empty + more + '</div>' +
+      '<aside class="pn-md-detail">' + (selected ? workDetailHtml(selected, true, opts) : workOverviewHtml(groupByAgent(work.items), work)) + '</aside></div>' +
       (launch || '') + '</section>';
   }
 
@@ -409,5 +525,9 @@
       (opts.launch || '') + '</section>';
   }
 
-  global.OrgXPanelViews = { tabsHtml: tabsHtml, workHtml: workHtml, doneHtml: doneHtml, receiptHtml: receiptHtml, trailMarks: trailMarks, trailOf: trailOf, avatar: avatar, groupByAgent: groupByAgent };
+  global.OrgXPanelViews = {
+    tabsHtml: tabsHtml, tabOrder: tabOrder, workHtml: workHtml, doneHtml: doneHtml, receiptHtml: receiptHtml, trailMarks: trailMarks, trailOf: trailOf,
+    avatar: avatar, groupByAgent: groupByAgent, groupByInitiative: groupByInitiative, tokHtml: tokHtml, popHtml: popHtml, backHtml: backHtml,
+    skeletonRows: skeletonRows, stepsHtml: stepsHtml,
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1801,6 +1801,21 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .max(1000)
         .optional()
         .describe('Concise recommendation and why it is safest or highest leverage'),
+      suggested_answers: z
+        .array(z.string().min(1).max(200))
+        .max(6)
+        .optional()
+        .describe('Ready answers to a free-text question; the owner can pick one and edit it before sending'),
+      consequences: z
+        .object({
+          approve: z.string().min(1).max(500).optional().describe('What happens if the owner goes ahead'),
+          reject: z.string().min(1).max(500).optional().describe('What happens if the owner sends it back'),
+          defer: z.string().min(1).max(500).optional().describe('What happens if nobody decides'),
+          not_covered: z.string().min(1).max(500).optional().describe('What this decision does not settle'),
+        })
+        .strict()
+        .optional()
+        .describe('What each outcome does, shown beside the question before the owner decides'),
       blocking: z.boolean().optional().describe('Whether linked work is gated; default true'),
       urgency: z
         .enum(['low', 'medium', 'high', 'urgent'])

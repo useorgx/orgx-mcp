@@ -68,7 +68,7 @@ describe('ways in when nothing needs you', () => {
     expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('needs');
     click(m, '.pn-calm .cm-rail .st-idea');
     await m.flush();
-    expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('start');
+    expect(doc(m).querySelector('.pn-start')).not.toBeNull();
     expect((doc(m).querySelector('#st-text') as HTMLTextAreaElement).value).toBe('Draft the launch post for the new pricing');
     expect(doc(m).querySelector('.st-preview')!.textContent).toContain('In OrgX, hand this to Mark (Marketing) and start it now: Draft the launch post for the new pricing.');
   });
@@ -119,7 +119,7 @@ describe('on a phone', () => {
     mounted.push(m);
     m.app().ontoolresult({ structuredContent: snapshot() });
     await m.flush();
-    click(m, '[data-tab="start"]');
+    click(m, '[data-action="pop"][data-id="start"]'); await m.flush(); click(m, '[data-action="start-pick"][data-id="chat"]');
     await m.flush();
     click(m, '[data-action="start-who"]');
     await m.flush();
@@ -141,7 +141,7 @@ describe('on a phone', () => {
     mounted.push(m);
     m.app().ontoolresult({ structuredContent: snapshot() });
     await m.flush();
-    click(m, '[data-tab="start"]');
+    click(m, '[data-action="pop"][data-id="start"]'); await m.flush(); click(m, '[data-action="start-pick"][data-id="chat"]');
     await m.flush();
     click(m, '[data-action="start-who"]');
     await m.flush();
@@ -156,7 +156,7 @@ describe('on a phone', () => {
     mounted.push(m);
     m.app().ontoolresult({ structuredContent: snapshot() });
     await m.flush();
-    click(m, '[data-tab="start"]');
+    click(m, '[data-action="pop"][data-id="start"]'); await m.flush(); click(m, '[data-action="start-pick"][data-id="chat"]');
     await m.flush();
     expect(doc(m).querySelector('.st-who-n')!.textContent).toBe('Dana');
     expect(doc(m).querySelector('.st-verb[aria-checked="true"]')!.textContent).toBe('Hand to Dana');

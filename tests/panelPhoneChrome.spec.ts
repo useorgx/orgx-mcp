@@ -151,8 +151,10 @@ describe.each([
       // Pinned: the header sits at the top of the open area, not scrolled away.
       expect(header.top).toBeLessThanOrEqual((host.barOverView ? BAR : 0) + 24);
       const r = await hitAtCenter(page, '#pn-tab-start');
-      expect(r.hitsSelf, `Start tab is covered by ${r.hit}`).toBe(true);
+      expect(r.hitsSelf, `Start button is covered by ${r.hit}`).toBe(true);
+      // + opens a sheet of ways to start; the chat option opens Start itself.
       await page.locator('#pn-tab-start').tap();
+      await page.locator('[data-action="start-pick"][data-id="chat"]').tap();
       await page.locator('.pn-start').waitFor();
     } finally { await close(); }
   }, 30000);

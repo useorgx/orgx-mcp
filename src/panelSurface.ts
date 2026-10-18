@@ -53,6 +53,18 @@ import {
   type PanelReceiptDetail,
   type PanelReceipts,
 } from './panelReceipts';
+import {
+  buildPanelGoals,
+  buildPanelGoalsWithReasons,
+  buildPanelOutputs,
+  goalsFailure,
+  PANEL_PREVIEW_META_KEY,
+  PANEL_GOAL_REASONS_META_KEY,
+  type PanelGoalReasons,
+  type PanelGoals,
+  type PanelOutputPreview,
+  type PanelOutputs,
+} from './panelInsights';
 
 export const PANEL_SNAPSHOT_SCHEMA = 'orgx.panel.v1' as const;
 export const PANEL_TOOL_ID = 'orgx_panel_snapshot' as const;
@@ -120,7 +132,7 @@ export const PANEL_SNAPSHOT_TOOL_CONTRACT = {
       .string()
       .max(32)
       .optional()
-      .describe('Optional extra view. "work" adds what agents are running and what waits on you; "workspaces" adds the workspaces the panel can switch to; "history" adds decisions settled in the range; "receipts" adds the Work Ledger receipts for the range (or for `query`); "receipt" adds one receipt in full with each criterion\'s verdict.'),
+      .describe('Optional extra view. "work" adds what agents are running and what waits on you; "outputs" adds what agents made with where each stands (made, accepted, landed); "goals" adds the workspace goals with their recorded progress and the initiatives under each; "workspaces" adds the workspaces the panel can switch to; "history" adds decisions settled in the range; "receipts" adds the Work Ledger receipts for the range (or for `query`); "receipt" adds one receipt in full with each criterion\'s verdict.'),
     range: z
       .enum(PANEL_HISTORY_RANGES)
       .optional()
@@ -196,7 +208,7 @@ export const CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT = {
   description: PANEL_SNAPSHOT_TOOL_CONTRACT.description + ' Work receipts are read with orgx_list_work_receipts and orgx_get_work_receipt.',
   inputSchema: {
     focus: PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema.focus,
-    view: z.enum(['work', 'workspaces', 'history']).optional().describe('Optional panel view: running work, authorized workspace membership, or settled decisions.'),
+    view: z.enum(['work', 'outputs', 'goals', 'workspaces', 'history']).optional().describe('Optional panel view: running work, outputs agents made, goals and their progress, authorized workspace membership, or settled decisions.'),
     range: PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema.range.describe('For decision history: today, 7d or 30d. Defaults to 7d.'),
   },
   _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
@@ -246,6 +258,10 @@ export interface PanelQueueItem {
   detail?: string | null;
   /** An "Agree on done" decision: the row opens the bar rather than approving in one tap. */
   agreement?: boolean;
+  /** The task this decision holds up, when OrgX names it: In progress shows "Waiting on you" on it. */
+  task_id?: string | null;
+  /** The output this decision is about, when OrgX names it: Outputs reviews it with the same decision. */
+  artifact_id?: string | null;
   url: string;
 }
 
@@ -272,7 +288,7 @@ export interface PanelActionOption {
   recommended: boolean;
 }
 
-export type PanelQuestionType = 'text' | 'textarea' | 'boolean' | 'single_select' | 'multi_select';
+export type PanelQuestionType = 'text' | 'textarea' | 'boolean' | 'single_select' | 'multi_select' | 'number';
 
 /** One question of a multi-part decision; the panel asks them one at a time. */
 export interface PanelQuestionField {
@@ -287,6 +303,8 @@ export interface PanelQuestionField {
   min_select: number | null;
   max_select: number | null;
   max_length: number;
+  /** Only on a `number` field: the range the slider covers, and the asker's recommended value. */
+  number?: { min: number; max: number; step: number; unit: string | null; recommended: number | null };
 }
 
 /** One output the person keeps or sends back on its own. */
@@ -311,7 +329,7 @@ export interface PanelWidgetActions {
   actions: PanelDecideAction[];
   labels: { approve: string; reject: string };
   reject_requires_reason: boolean;
-  answer: { required_for: PanelDecideAction[]; max_length: number; save_as_precedent: boolean } | null;
+  answer: { required_for: PanelDecideAction[]; max_length: number; save_as_precedent: boolean; suggestions?: string[] } | null;
   selection: {
     mode: 'single' | 'multiple';
     options: PanelActionOption[];
@@ -340,10 +358,16 @@ export interface PanelFocus {
     status: 'ready' | 'unverified' | 'unavailable';
     action: string | null;
   } | null;
-  evidence: Array<{ title: string; source_url: string | null }>;
+  evidence: PanelEvidence[];
   evidence_total: number;
   consequence_if_approved: string | null;
   consequence_if_rejected: string | null;
+  /** What happens if nobody decides, when the packet says. */
+  consequence_if_deferred?: string | null;
+  /** What this decision does not settle, when the packet says. */
+  consequence_not_covered?: string | null;
+  /** Where the decision sits, each level only when OrgX names it. */
+  levels?: PanelLevels;
   blocked: boolean;
   decide_in_orgx_reason: string | null;
   /** The decision's options (buttons when there are two or more). */
@@ -363,6 +387,31 @@ export interface PanelFocus {
 }
 
 export type PanelAskerKind = 'agent' | 'floor' | 'unnamed' | 'system';
+
+/** One piece of evidence: its title, and what the packet recorded about it. */
+export interface PanelEvidence {
+  title: string;
+  source_url: string | null;
+  /** Where in the source it points ("response:run-1", "src/app.ts:42"). */
+  pointer?: string | null;
+  /** 0..1, as the packet recorded it. */
+  confidence?: number | null;
+  freshness?: string | null;
+}
+
+export interface PanelLevel {
+  id: string;
+  title: string | null;
+}
+
+/** Goal → initiative → workstream → milestone → task, each null when not named. */
+export interface PanelLevels {
+  goal: PanelLevel | null;
+  initiative: PanelLevel | null;
+  workstream: PanelLevel | null;
+  milestone: PanelLevel | null;
+  task: PanelLevel | null;
+}
 
 export interface PanelWhy {
   /** Why only a person can answer (the packet's authority reason). */
@@ -388,6 +437,14 @@ export interface PanelWorkItem {
   updated_at?: string | null;
   /** Marked in progress but not updated in a day: say so rather than "Running". */
   stale?: boolean;
+  /** Where the task sits, when the agent status names it. */
+  initiative_id?: string | null;
+  workstream_id?: string | null;
+  milestone_id?: string | null;
+  /** What it is blocked on, in the agent's words. */
+  blocker?: string | null;
+  /** The task's own step list, only when the agent reports one. */
+  steps?: Array<{ title: string; state: 'done' | 'live' | 'pending' }>;
 }
 
 export interface PanelHistoryItem {
@@ -448,6 +505,10 @@ export interface PanelSnapshot {
   degraded: string[];
   /** Present only when the snapshot was asked for view "work". */
   work?: PanelWork;
+  /** Present only when the snapshot was asked for view "outputs". */
+  outputs?: PanelOutputs;
+  /** Present only when the snapshot was asked for view "goals". */
+  goals?: PanelGoals;
   /** Present only when the snapshot was asked for view "workspaces". */
   workspaces?: PanelWorkspaces;
   /** Present only when the snapshot was asked for view "history". */
@@ -555,6 +616,31 @@ interface NormalizedDecision {
   packet: Record<string, unknown> | null;
   agreement: boolean;
   expectations: ExpectationSet | null;
+  levels: PanelLevels;
+  artifactId: string | null;
+}
+
+/** A level the packet or the decision's context names; never one it does not. */
+function levelOf(ref: Record<string, unknown> | undefined, contextId: unknown, contextTitle?: unknown): PanelLevel | null {
+  const id = str(ref?.id) ?? str(contextId);
+  if (!id || id.length > 120) return null;
+  return { id, title: clipText(ref?.label ?? contextTitle, PANEL_TITLE_MAX) };
+}
+
+function packetLevels(
+  references: unknown[],
+  context: Record<string, unknown>,
+  metadata: Record<string, unknown>,
+  initiative: PanelLevel | null
+): PanelLevels {
+  const ref = (type: string) => references.map(asRecord).find((r) => r?.type === type) ?? undefined;
+  return {
+    goal: levelOf(ref('objective'), context.objective_id ?? metadata.objective_id, metadata.objective_title),
+    initiative,
+    workstream: levelOf(ref('workstream'), context.workstream_id ?? metadata.workstream_id, metadata.workstream_title ?? metadata.workstream_name),
+    milestone: levelOf(ref('milestone'), context.milestone_id ?? metadata.milestone_id, metadata.milestone_title),
+    task: levelOf(ref('task'), context.task_id ?? metadata.task_id, metadata.task_title),
+  };
 }
 
 /** Options as the pending list carries them (strings or {id,label}). */
@@ -642,7 +728,36 @@ function contractOptions(value: unknown): PanelActionOption[] {
   return options;
 }
 
-const QUESTION_TYPES: PanelQuestionType[] = ['text', 'textarea', 'boolean', 'single_select', 'multi_select'];
+const QUESTION_TYPES: PanelQuestionType[] = ['text', 'textarea', 'boolean', 'single_select', 'multi_select', 'number'];
+
+/** A number field's range; null when the range is missing or makes no sense. */
+function numberRange(field: Record<string, unknown>): PanelQuestionField['number'] | null {
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() && Number.isFinite(Number(v)) ? Number(v) : null);
+  const min = num(field.min);
+  const max = num(field.max);
+  if (min === null || max === null || !(max > min)) return null;
+  const step = num(field.step);
+  const recommended = num(field.recommended_value ?? field.default);
+  return {
+    min,
+    max,
+    step: step && step > 0 ? step : 1,
+    unit: clipText(field.unit, 16),
+    recommended: recommended !== null && recommended >= min && recommended <= max ? recommended : null,
+  };
+}
+
+/** The asker's ready answers, deduped and clipped. */
+function answerSuggestions(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const entry of value) {
+    const text = clipText(entry, PANEL_OPTION_LABEL_MAX * 2);
+    if (text && !out.includes(text)) out.push(text);
+    if (out.length >= 6) break;
+  }
+  return out;
+}
 
 /** The contract's questions, or null when any field is one the panel cannot ask. */
 function contractQuestions(value: unknown): PanelWidgetActions['questions'] {
@@ -662,7 +777,10 @@ function contractQuestions(value: unknown): PanelWidgetActions['questions'] {
       ? contractOptions(field.options).map(({ id: oid, label: olabel, description, recommended }) => ({ id: oid, label: olabel, description, recommended }))
       : [];
     if ((type === 'single_select' || type === 'multi_select') && options.length < 2) return null;
+    const range = type === 'number' ? numberRange(field) : null;
+    if (type === 'number' && !range) return null;
     fields.push({
+      ...(range ? { number: range } : {}),
       id,
       step_title: clipText(field.step_title, PANEL_QUESTION_LABEL_MAX),
       type,
@@ -732,6 +850,7 @@ function fromContract(record: Record<string, unknown>, fallbackKind: PanelItemKi
           required_for: answerFor,
           max_length: Math.min(PANEL_ANSWER_MAX, count(answer?.max_length) || PANEL_ANSWER_MAX),
           save_as_precedent: answer?.save_as_precedent === true,
+          ...(answerSuggestions(answer?.suggestions).length ? { suggestions: answerSuggestions(answer?.suggestions) } : {}),
         }
       : null,
     selection: options.length
@@ -883,7 +1002,14 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
   const runId = str(context.run_id);
   const asker = panelAsker(record, current);
   const question = str(packet?.question) ?? summary;
+  const metadata = asRecord(record.metadata) ?? {};
+  const cleanInitiative = initiativeId && UUID_RE.test(initiativeId) ? initiativeId : null;
+  const initiativeTitle = clipText(initiativeRef?.label, PANEL_TITLE_MAX);
+  const artifactRef = references.map(asRecord).find((ref) => ref?.type === 'artifact');
+  const artifactId = str(artifactRef?.id) ?? str(context.artifact_id) ?? str(metadata.artifact_id);
   return {
+    levels: packetLevels(references, context, metadata, cleanInitiative ? { id: cleanInitiative, title: initiativeTitle } : null),
+    artifactId: artifactId && UUID_RE.test(artifactId) ? artifactId : null,
     asker,
     askerKind: askerKindOf(record, asker, question),
     sessionLabel: clipText(/\bin an? ([\w.-]{2,40}) session\b/i.exec(question)?.[1], 40)?.concat(' session') ?? null,
@@ -894,8 +1020,8 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
     question,
     urgency: normalizeUrgency(record.urgency),
     createdAt,
-    initiativeId: initiativeId && UUID_RE.test(initiativeId) ? initiativeId : null,
-    initiativeTitle: clipText(initiativeRef?.label, PANEL_TITLE_MAX),
+    initiativeId: cleanInitiative,
+    initiativeTitle,
     blocked: current.blocked === true,
     decideInOrgxReason: str(record.decide_in_orgx_reason),
     options: normalizePanelOptions(
@@ -981,8 +1107,27 @@ function toQueueItem(decision: NormalizedDecision): PanelQueueItem {
       ? clipText(decision.question, PANEL_DETAIL_MAX)
       : null,
     ...(decision.agreement ? { agreement: true } : {}),
+    ...(decision.levels.task ? { task_id: decision.levels.task.id } : {}),
+    ...(decision.artifactId ? { artifact_id: decision.artifactId } : {}),
     url: decisionUrl(decision),
   };
+}
+
+/** Evidence as the packet recorded it; only the parts it has, and no bodies. */
+function panelEvidence(item: Record<string, unknown>): PanelEvidence {
+  const out: PanelEvidence = {
+    title: clipText(item.title, PANEL_EVIDENCE_TITLE_MAX) ?? 'Evidence',
+    source_url: httpsUrlOrNull(item.sourceUrl ?? item.source_url),
+  };
+  // The evidence body (summary) never enters the snapshot: the model reads this result.
+  const pointer = clipText(item.sourcePointer ?? item.source_pointer, PANEL_OPTION_LABEL_MAX);
+  const raw = typeof item.confidence === 'number' && Number.isFinite(item.confidence) ? item.confidence : null;
+  const confidence = raw === null ? null : raw > 1 ? Math.min(1, raw / 100) : Math.max(0, raw);
+  const freshness = str(item.freshness);
+  if (pointer) out.pointer = pointer;
+  if (confidence !== null) out.confidence = Math.round(confidence * 100) / 100;
+  if (freshness && Number.isFinite(Date.parse(freshness))) out.freshness = freshness;
+  return out;
 }
 
 function toFocus(decision: NormalizedDecision): PanelFocus {
@@ -1013,13 +1158,13 @@ function toFocus(decision: NormalizedDecision): PanelFocus {
           action: clipText(rec.action, PANEL_TITLE_MAX),
         }
       : null,
-    evidence: evidence.slice(0, PANEL_EVIDENCE_LIMIT).map((item) => ({
-      title: clipText(item.title, PANEL_EVIDENCE_TITLE_MAX) ?? 'Evidence',
-      source_url: httpsUrlOrNull(item.sourceUrl ?? item.source_url),
-    })),
+    evidence: evidence.slice(0, PANEL_EVIDENCE_LIMIT).map(panelEvidence),
     evidence_total: evidence.length,
     consequence_if_approved: clipText(consequences.approve, PANEL_TEXT_MAX),
     consequence_if_rejected: clipText(consequences.reject, PANEL_TEXT_MAX),
+    consequence_if_deferred: clipText(consequences.defer, PANEL_TEXT_MAX),
+    consequence_not_covered: clipText(consequences.notCovered ?? consequences.not_covered, PANEL_TEXT_MAX),
+    levels: decision.levels,
     blocked: decision.blocked,
     decide_in_orgx_reason: decision.decideInOrgxReason,
     options: decision.options,
@@ -1292,6 +1437,39 @@ function agentLiveUrl(task: Record<string, unknown>, agent: Record<string, unkno
   return buildEntityLink('agent', str(agent.agent_id) ?? str(agent.agent_name) ?? '').url;
 }
 
+const STEP_STATE: Record<string, 'done' | 'live' | 'pending'> = {
+  done: 'done', completed: 'done', complete: 'done', succeeded: 'done', passed: 'done',
+  running: 'live', in_progress: 'live', active: 'live', live: 'live', current: 'live',
+  pending: 'pending', queued: 'pending', todo: 'pending', not_started: 'pending', planned: 'pending',
+};
+
+/** Where a task sits and what holds it, only from what the agent status names. */
+function workPlace(task: Record<string, unknown>, agent: Record<string, unknown>, state: PanelWorkState): Partial<PanelWorkItem> {
+  const out: Partial<PanelWorkItem> = {};
+  const id = (v: unknown) => { const s = str(v); return s && UUID_RE.test(s) ? s : null; };
+  const initiative = id(task.initiative_id) ?? id(agent.initiative_id);
+  const workstream = id(task.workstream_id);
+  const milestone = id(task.milestone_id);
+  if (initiative) out.initiative_id = initiative;
+  if (workstream) out.workstream_id = workstream;
+  if (milestone) out.milestone_id = milestone;
+  const blocker = state === 'blocked' ? clipText(task.blocker, PANEL_TEXT_MAX) : null;
+  if (blocker) out.blocker = blocker;
+  const rawSteps = Array.isArray(task.steps) ? task.steps : Array.isArray(task.checklist) ? task.checklist : null;
+  if (rawSteps) {
+    const steps = rawSteps
+      .map(asRecord)
+      .flatMap((step) => {
+        const title = clipText(step?.title ?? step?.label, PANEL_TITLE_MAX);
+        const stepState = STEP_STATE[String(step?.status ?? step?.state ?? '').toLowerCase().replace(/[\s-]+/g, '_')];
+        return title && stepState ? [{ title, state: stepState }] : [];
+      })
+      .slice(0, 12);
+    if (steps.length) out.steps = steps;
+  }
+  return out;
+}
+
 export function buildPanelWork(data: Record<string, unknown> | null): PanelWork {
   if (!data || !Array.isArray(data.agents)) return { status: 'unavailable', items: [], total: 0 };
   const items: PanelWorkItem[] = [];
@@ -1326,6 +1504,7 @@ export function buildPanelWork(data: Record<string, unknown> | null): PanelWork 
         domain,
         updated_at: updatedAt,
         stale: state === 'running' && (agentStale || isOlderThan(updatedAt, STALE_WORK_MS)),
+        ...workPlace(task, agent, state),
       });
     }
     if (!tasks.length && agentState) {
@@ -1628,6 +1807,8 @@ export interface PanelSurfaceHost {
   recordReceiptCall?(params: { workspaceId: string | null; receiptId: string; status: (typeof RECEIPT_CALL_STATUSES)[number]; approvalToken: string }): Promise<void>;
   /** The viewer's workspaces, asked for only when the panel opens its switcher. */
   fetchWorkspaces?(): Promise<unknown[] | null>;
+  /** GET /api/v1/objectives/progress payload, asked for only when the panel opens Goals. Throws when the read fails. */
+  fetchGoalProgress?(params: { workspaceId: string }): Promise<unknown>;
   /** A live-feed grant for this workspace, or null when live is unavailable. */
   liveGrant?(workspaceId: string): Promise<StreamGrant | null>;
   /** A UX telemetry grant for the widget (src/widgetTelemetry.ts), or null when telemetry is off. */
@@ -1644,12 +1825,12 @@ export interface PanelSurfaceHost {
 }
 
 export type PanelSnapshotObservation = {
-  view: 'panel' | 'work' | 'workspaces' | 'history' | 'receipts' | 'receipt';
+  view: 'panel' | 'work' | 'outputs' | 'goals' | 'workspaces' | 'history' | 'receipts' | 'receipt';
   hasWorkspace: boolean;
   /** Milliseconds per source that was read. */
-  timings: Partial<Record<'decisions' | 'artifacts' | 'work' | 'history' | 'ledger' | 'receipt' | 'workspaces' | 'live' | 'brief', number>>;
+  timings: Partial<Record<'decisions' | 'artifacts' | 'work' | 'goals' | 'history' | 'ledger' | 'receipt' | 'workspaces' | 'live' | 'brief', number>>;
   /** Sources that failed, with the error, so the worker can report it. */
-  failures: Array<{ source: 'decisions' | 'artifacts' | 'work' | 'history' | 'ledger' | 'receipt' | 'workspaces' | 'live' | 'brief'; error: unknown }>;
+  failures: Array<{ source: 'decisions' | 'artifacts' | 'work' | 'goals' | 'history' | 'ledger' | 'receipt' | 'workspaces' | 'live' | 'brief'; error: unknown }>;
   degraded: string[];
   totalMs: number;
 };
@@ -1718,7 +1899,7 @@ export async function handlePanelSnapshot(
 
   const startedAt = Date.now();
   const observation: PanelSnapshotObservation = {
-    view: args?.view === 'work' || args?.view === 'workspaces' || args?.view === 'history' || args?.view === 'receipts' || args?.view === 'receipt'
+    view: ['work', 'outputs', 'goals', 'workspaces', 'history', 'receipts', 'receipt'].includes(String(args?.view))
       ? (args.view as PanelSnapshotObservation['view'])
       : 'panel',
     hasWorkspace: false,
@@ -1800,6 +1981,27 @@ export async function handlePanelSnapshot(
       viewerUserIds: host.viewerUserIds(),
     });
     if (work) snapshot.work = work;
+    let outputPreviews: Record<string, PanelOutputPreview> | null = null;
+    let goalReasons: PanelGoalReasons | null = null;
+    if (args?.view === 'outputs' && workspace) {
+      // The same artifact read the snapshot made, projected per output; a
+      // pending decision that names an output reviews it from Outputs too.
+      const decisionByArtifact = new Map<string, string>();
+      for (const item of snapshot.queue) if (item.artifact_id) decisionByArtifact.set(item.artifact_id, item.id);
+      const built = buildPanelOutputs(artifacts, { viewerIds: host.viewerUserIds(), decisionByArtifact });
+      snapshot.outputs = built.outputs;
+      outputPreviews = built.previews;
+    }
+    if (args?.view === 'goals' && workspace) {
+      try {
+        const payload = host.fetchGoalProgress ? await timedSource(observation, 'goals', () => host.fetchGoalProgress!({ workspaceId: workspace!.id })) : null;
+        const built = buildPanelGoalsWithReasons(payload);
+        snapshot.goals = built.goals;
+        goalReasons = built.reasons;
+      } catch (error) {
+        snapshot.goals = buildPanelGoals(null, goalsFailure(error));
+      }
+    }
     const thread = buildPanelThread({
       context: args?._context,
       requestMeta,
@@ -1875,6 +2077,8 @@ export async function handlePanelSnapshot(
     const meta: Record<string, unknown> = {};
     if (widgetMeta || receiptApprovalMeta) meta[WIDGET_APPROVAL_META_KEY] = { ...widgetMeta, ...receiptApprovalMeta };
     if (telemetry) meta[WIDGET_TELEMETRY_META_KEY] = telemetry;
+    if (outputPreviews && Object.keys(outputPreviews).length) meta[PANEL_PREVIEW_META_KEY] = outputPreviews;
+    if (goalReasons && Object.keys(goalReasons).length) meta[PANEL_GOAL_REASONS_META_KEY] = goalReasons;
     return {
       content: [{ type: 'text', text: summarizePanelSnapshot(snapshot) }],
       structuredContent: snapshot as unknown as Record<string, unknown>,

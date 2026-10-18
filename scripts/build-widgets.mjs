@@ -128,6 +128,9 @@ const SHARED_ALLOWLIST = new Set([
   'shared/panel/panel-start.js',
   'shared/panel/panel-receipts.js',
   'shared/panel/panel-forms.js',
+  'shared/panel/panel-packet.js',
+  'shared/panel/panel-outputs.js',
+  'shared/panel/panel-goals.js',
   'shared/panel/panel-app.js',
   'shared/demo-data.js',
 ]);
@@ -172,6 +175,9 @@ const RUNTIME_INLINED_PATHS = new Set([
   'shared/panel/panel-start.js',
   'shared/panel/panel-receipts.js',
   'shared/panel/panel-forms.js',
+  'shared/panel/panel-packet.js',
+  'shared/panel/panel-outputs.js',
+  'shared/panel/panel-goals.js',
   'shared/panel/panel-app.js',
 ]);
 

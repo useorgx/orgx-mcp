@@ -7,7 +7,7 @@
  * (keep it off MCP_APPS_SHARED_COMPONENT_PATHS and the build allowlists).
  *
  *   OrgXPanelGallery.boot(ctx) -> { run, work, history, focus, workspaces,
- *                                   receipts, receipt, behind }
+ *                                   receipts, receipt, behind, outputs, goals }
  *
  * ctx is the panel's own state and functions: ui, params, render, accept,
  * clock, and useShare(modelContext), which swaps in a share controller.
@@ -32,7 +32,19 @@
       d2: '7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d',
       d3: 'b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e',
       art: 'e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b',
+      billing: 'a7b6c5d4-e3f2-4a1b-8c9d-0e1f2a3b4c5d',
+      activation: 'd4c3b2a1-f0e9-4d8c-9b7a-6f5e4d3c2b1a',
+      docs: 'f9e8d7c6-b5a4-4f3e-8d2c-1b0a9f8e7d6c',
+      g1: '11111111-2222-4333-8444-555555555555',
+      g2: '66666666-7777-4888-8999-000000000000',
+      d4: 'c0ffee00-1234-4567-89ab-cdef01234567',
     };
+    // Where the fixture decisions sit, for the states that place them.
+    var PLACED = {};
+    PLACED[IDS.d1] = { initiative_id: IDS.init, task_id: 'w9' };
+    PLACED[IDS.d2] = { initiative_id: IDS.billing, task_id: null };
+    PLACED[IDS.d3] = { initiative_id: IDS.activation, task_id: 'w1' };
+    function place(s) { s.queue.forEach(function p(item) { Object.assign(item, PLACED[item.id] || {}); }); if (s.focus && PLACED[s.focus.id]) s.focus.initiative_id = PLACED[s.focus.id].initiative_id; }
     function decisionUrl(id) { return window.OrgXLinks.decision(id); }
     var FIXTURE_QUEUE = [
       { id: IDS.d1, version: isoAgo(2 * D), title: 'Ship release 4.2 to production?', urgency: 'critical', waiting_since: isoAgo(2 * D), initiative_title: 'Release initiative', blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', widget_actions: null, asker: 'Eli - Engineering', url: decisionUrl(IDS.d1) },
@@ -459,6 +471,130 @@
           s.focus.evidence_total = 0;
           delete tokens[IDS.d1];
           break;
+        // ── The redesign's views ──
+        case 'ladder':
+          place(s);
+          s.focus.levels = {
+            goal: null, initiative: { id: IDS.init, title: 'Release initiative' },
+            workstream: { id: 'ws-rollout', title: 'Rollout' }, milestone: { id: 'ms-42', title: '4.2 in production' }, task: null,
+          };
+          s.focus.consequence_if_rejected = 'Eli holds the deploy and reworks the rollout plan with your note.';
+          s.focus.consequence_if_deferred = 'The release window closes Friday; 4.2 waits for next week’s train.';
+          s.focus.consequence_not_covered = 'The marketing announcement. That is its own decision.';
+          s.focus.evidence[0] = Object.assign({}, s.focus.evidence[0], { pointer: 'ci:run-1182', confidence: 0.95, freshness: isoAgo(12 * 60 * 1000) });
+          s.focus.evidence[1] = Object.assign({}, s.focus.evidence[1], { pointer: 'docs/rollback.md:14', confidence: 0.8 });
+          ui.ladderOpen[IDS.d1] = true;
+          ui.evidenceRaw = params.get('raw') !== '0';
+          ui.goals = galleryGoals(); ui.goalReasons = galleryGoalReasons();
+          ui.goalsPhase = 'ready';
+          break;
+        case 'suggestions':
+          s.queue[0].title = s.focus.question = 'Which bucket should exports go to?';
+          s.focus.recommendation = null;
+          s.focus.consequence_if_approved = 'Orion writes exports there and continues.';
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Send answer', reject: 'Decline' }, reject_requires_reason: false,
+            answer: { required_for: ['approve'], max_length: 2000, save_as_precedent: false, suggestions: ['s3://acme-exports-staging', 's3://acme-exports', 'Hold exports until Monday'] },
+          });
+          if (params.get('picked') === '1') ui.answers[IDS.d1] = 's3://acme-exports-staging';
+          break;
+        case 'number':
+          s.queue[0].title = s.focus.question = 'How much can Mark spend on the launch ads?';
+          s.focus.recommendation = null;
+          s.focus.consequence_if_approved = 'Mark books the ads up to this amount and reports spend daily.';
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Set budget', reject: 'Send back' },
+            questions: { fields: [
+              { id: 'budget', step_title: 'Budget', type: 'number', label: 'Ad budget for launch week', description: 'Mark stops booking at this amount.', placeholder: null, required: true, min_select: null, max_select: null, max_length: 2000, options: [],
+                number: { min: 500, max: 10000, step: 250, unit: '$', recommended: 2500 } },
+            ] },
+          });
+          break;
+        case 'own-answer':
+          s.queue[0].title = s.focus.question = 'When does release 4.2 go to production?';
+          s.queue[0].option_count = 3;
+          s.focus.recommendation = { status: 'ready', action: 'Tonight after the freeze' };
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Choose', reject: 'Send back' }, reject_requires_reason: true,
+            selection: { mode: 'single', min: 1, max: 1, required_for: ['approve'], options: [
+              { id: 'opt-tonight', label: 'Tonight, 22:00 UTC', description: null, recommended: true, implied_action: null, requires_reason: false },
+              { id: 'opt-tomorrow', label: 'Tomorrow, 09:00 UTC', description: null, recommended: false, implied_action: null, requires_reason: false },
+              { id: 'opt-monday', label: 'Monday, after the change review', description: null, recommended: false, implied_action: null, requires_reason: false },
+            ] },
+          });
+          if (params.get('open') === '1') ui.composer = { id: IDS.d1, draft: 'Wednesday 14:00 UTC, after the billing freeze lifts', focus: false, opener: IDS.d1, own: true };
+          break;
+        case 'bulk':
+        case 'bulk-undo':
+        case 'bulk-note': {
+          place(s);
+          var plain = function plain(item) { item.widget_actions = galleryActions({ reject_requires_reason: false }); return item; };
+          s.queue.forEach(plain);
+          s.queue.push(plain({ id: IDS.d4, version: isoAgo(8 * H), title: 'Renew the status page domain?', urgency: 'low', waiting_since: isoAgo(8 * H), initiative_title: 'Billing hardening', initiative_id: IDS.billing, blocked: false, decide_in_orgx_reason: null, option_count: 0, kind: 'decision', widget_actions: null, asker: 'Orion - Operations', url: decisionUrl(IDS.d4) }));
+          s.queue.push({ id: 'ab12cd34-0000-4000-8000-00000000beef', version: isoAgo(30 * H), title: 'Which launch date should Mark announce?', urgency: 'medium', waiting_since: isoAgo(30 * H), initiative_title: 'Activation', initiative_id: IDS.activation, blocked: false, decide_in_orgx_reason: null, option_count: 2, kind: 'decision',
+            widget_actions: galleryActions({ selection: { mode: 'single', min: 1, max: 1, required_for: ['approve'], options: [{ id: 'mon', label: 'Monday', description: null, recommended: true, implied_action: null, requires_reason: false }, { id: 'tue', label: 'Tuesday', description: null, recommended: false, implied_action: null, requires_reason: false }] } }),
+            asker: 'Mark - Marketing', url: decisionUrl('ab12cd34') });
+          s.attention.pending = s.queue.length;
+          s.focus.widget_actions = s.queue[0].widget_actions;
+          tokens = allTokens(s);
+          if (name === 'bulk-undo') {
+            ui.bulkPending = { ids: [IDS.d2, IDS.d3], action: 'approve', note: '', until: Date.now() + 3200, window: 5000 };
+          } else {
+            ui.bulkMode = true;
+            ui.bulkSel[IDS.d2] = true;
+            ui.bulkSel[IDS.d3] = true;
+            if (name === 'bulk-note') ui.bulkNote = { text: 'Hold until the billing freeze lifts on Wednesday.' };
+          }
+          break;
+        }
+        case 'outputs':
+        case 'outputs-empty':
+        case 'outputs-unavailable':
+        case 'outputs-filtered':
+          place(s);
+          ui.tab = 'outputs';
+          ui.outputs = name === 'outputs-empty' ? { status: 'ok', items: [], total: 0 } : name === 'outputs-unavailable' ? { status: 'unavailable', items: [], total: 0, reason: 'Outputs could not be read right now.' } : galleryOutputs();
+          ui.outputsPhase = 'ready';
+          ui.outPreviews = galleryPreviews();
+          ui.goals = galleryGoals(); ui.goalReasons = galleryGoalReasons();
+          ui.goalsPhase = 'ready';
+          if (name === 'outputs') ui.outSel = params.get('sel') || 'out-pr';
+          if (name === 'outputs-filtered') { ui.outRange = 'today'; ui.outFamily = 'media'; }
+          if (params.get('pop')) ui.pop = params.get('pop');
+          break;
+        case 'goals':
+        case 'goals-first':
+        case 'goals-unlinked':
+        case 'goals-unavailable':
+        case 'goals-new':
+          place(s);
+          ui.tab = 'goals';
+          ui.goals = name === 'goals-first' ? { status: 'ok', items: [], total: 0, unlinked: [], unlinked_total: 0, quality_bars: [] }
+            : name === 'goals-unavailable' ? { status: 'unavailable', items: [], total: 0, unlinked: [], unlinked_total: 0, quality_bars: null, reason: 'Goals could not be read right now.' } : galleryGoals();
+          ui.goalReasons = galleryGoalReasons();
+          ui.goalsPhase = 'ready';
+          if (name === 'goals-unlinked') ui.goalSel = 'none';
+          if (name === 'goals-new') ui.goalForm = { open: true, text: '40 paid workspaces by Dec 31', status: null };
+          break;
+        case 'work-detail':
+        case 'work-initiative':
+          place(s);
+          ui.tab = 'work';
+          ui.work = galleryWork();
+          ui.workPhase = 'ready';
+          ui.goals = galleryGoals(); ui.goalReasons = galleryGoalReasons();
+          ui.goalsPhase = 'ready';
+          if (name === 'work-detail') { ui.workSel = params.get('sel') || 'w9'; if (params.get('steer')) ui.steer = { id: ui.workSel, text: params.get('steer') === 'sent' ? '' : 'Lead with the rollback plan, not the timeline', status: params.get('steer') === 'sent' ? 'sent' : null }; }
+          if (name === 'work-initiative') ui.workGroup = 'initiative';
+          if (params.get('pop')) ui.pop = params.get('pop');
+          break;
+        case 'start-menu':
+          ui.pop = 'start';
+          break;
         default:
           break;
       }
@@ -486,7 +622,12 @@
         if (name === 'stale') share.restore({ status: 'match', entity: { id: IDS.d1, version: 'older' } }, IDS.ws);
       }
       ui.tokens = tokens;
-      if (params.get('tab') === 'work' || params.get('tab') === 'done') { ui.tab = params.get('tab'); if (ui.tab === 'work') { ui.work = galleryWork(); ui.workPhase = 'ready'; } }
+      if (['work', 'done', 'outputs', 'goals'].indexOf(params.get('tab')) !== -1) {
+        ui.tab = params.get('tab');
+        if (ui.tab === 'work' && !ui.work) { ui.work = galleryWork(); ui.workPhase = 'ready'; }
+        if (ui.tab === 'outputs' && !ui.outputs) { ui.outputs = galleryOutputs(); ui.outputsPhase = 'ready'; ui.outPreviews = galleryPreviews(); }
+        if ((ui.tab === 'outputs' || ui.tab === 'goals') && !ui.goals) { ui.goals = galleryGoals(); ui.goalReasons = galleryGoalReasons(); ui.goalsPhase = 'ready'; }
+      }
       accept(s, undefined, 'host');
       ui.syncedAt = new Date(NOW - 4 * 60 * 1000);
       if (failed) ui.readState = { phase: 'failed', focusId: null };
@@ -541,6 +682,15 @@
     function galleryWork() {
       var live = window.OrgXLinks.live();
       var h = function hoursAgo(n) { return new Date(Date.now() - n * 3600 * 1000).toISOString(); };
+      var extra = {
+        w1: { initiative_id: IDS.activation, blocker: 'Waiting on your call on the onboarding checklist.' },
+        w2: { initiative_id: IDS.init, steps: [{ title: 'Pulled the event schema from production', state: 'done' }, { title: 'Matched 41 of 44 fields', state: 'done' }, { title: 'Reconciling the last three fields', state: 'live' }, { title: 'Open the PR', state: 'pending' }] },
+        w3: { initiative_id: IDS.init },
+        w8: { initiative_id: IDS.activation, steps: [{ title: 'Pulled objections from 31 sales calls', state: 'done' }, { title: 'Outlined the page', state: 'done' }, { title: 'Drafting the plans section, 2 of 4 tiers', state: 'live' }, { title: 'Check claims against the product', state: 'pending' }, { title: 'Hand to Dana for layout', state: 'pending' }] },
+        w9: { initiative_id: IDS.init, blocker: 'Release 4.2 needs your go-ahead before the deploy job can start.', steps: [{ title: 'Built the release', state: 'done' }, { title: 'Ran the checks', state: 'done' }, { title: 'Waiting on your decision', state: 'live' }, { title: 'Deploy to production', state: 'pending' }] },
+        w10: { initiative_id: IDS.billing, blocker: 'Needs production read access to collect proof.' },
+        w11: { initiative_id: IDS.docs },
+      };
       var items = [
         ['w1', 'Dana', 'Design', 'Design plan for OrgX Live', 'blocked', 3],
         ['w2', 'Eli', 'Engineering', 'Reconcile launch telemetry fields', 'running', 0.2],
@@ -557,8 +707,78 @@
       return {
         status: 'ok', total: items.length,
         items: items.map(function row(x) {
-          return { id: x[0], agent: x[1], domain: x[2], title: x[3], state: x[4], url: live, updated_at: h(x[5]), stale: x[4] === 'running' && x[5] > 24 };
+          return Object.assign({ id: x[0], agent: x[1], domain: x[2], title: x[3], state: x[4], url: live, updated_at: h(x[5]), stale: x[4] === 'running' && x[5] > 24 }, extra[x[0]] || {});
         }),
+      };
+    }
+
+    // Widget-only previews, as the read's _meta carries them.
+    var PREVIEWS = {
+      'out-pr': { summary: null, preview: '-  permissions: DEFAULT_GRANTS\n+  permissions: owner.autopilotPermissions ?? []\n+  // nothing is granted until an owner turns it on' },
+      'out-post': { summary: 'You can now tell a running agent what to change, from the panel or straight from chat.', preview: null },
+      'out-routine': { summary: 'Checks billing, uptime and agent queues. Posts to #ops only if something failed.', preview: null },
+    };
+    function galleryPreviews() { return PREVIEWS; }
+    function galleryOutputs() {
+      var L = window.OrgXLinks;
+      var o = function out(id, title, type, family, by, hoursAgo, extra) {
+        return Object.assign({
+          id: id, title: title, type: type, family: family, status: 'draft', has_preview: Boolean(PREVIEWS[id]), external_url: null, initiative_id: IDS.init, task_id: null,
+          made_at: isoAgo(hoursAgo * H), made_by: by, accepted: { state: 'not_reviewed', at: null, by: null }, landed: null, moved: null,
+          checks: [], checks_source: null, eval_score: null, decision_id: null, url: L.artifact(id),
+        }, extra || {});
+      };
+      var items = [
+        o('out-pr', 'Autopilot grants nothing until an owner turns it on', 'pull_request', 'code', 'Eli', 2, {
+          status: 'in_review', accepted: { state: 'waiting', at: null, by: null }, decision_id: IDS.d1, external_url: 'https://github.com/useorgx/orgx/pull/3620',
+          checks: [{ label: 'Every PR is reviewed by a person', met: true }, { label: 'The checkout e2e suite passes ten runs in a row', met: true }, { label: 'No regression in billing tests', met: false }],
+          checks_source: 'Code',
+        }),
+        o('out-post', 'October in OrgX: steer work while it runs', 'blog', 'writing', 'Mark', 5, {
+          status: 'approved', accepted: { state: 'accepted', at: isoAgo(3 * H), by: 'you' }, landed: { label: 'Published', at: isoAgo(2 * H) }, initiative_id: IDS.activation,
+          checks: [{ label: 'Ends with one clear call to action', met: true }, { label: 'No claim without a source', met: true }], checks_source: 'Launch post',
+        }),
+        o('out-email', 'Onboarding email sequence', 'email', 'writing', 'Sage', 30, {
+          status: 'approved', accepted: { state: 'accepted', at: isoAgo(28 * H), by: 'workspace_member' }, landed: { label: 'Sending', at: isoAgo(26 * H) },
+          moved: { objective_id: IDS.g2, label: '+6 pts on trial activation' }, initiative_id: IDS.activation,
+        }),
+        o('out-video', '30-second demo', 'video', 'media', 'Dana', 50, { accepted: { state: 'sent_back', at: isoAgo(40 * H), by: 'you' }, initiative_id: IDS.activation }),
+        o('out-routine', 'Monday ops check', 'routine', 'routine', 'Orion', 72, {
+          status: 'approved', accepted: { state: 'accepted', at: isoAgo(70 * H), by: 'you' }, landed: { label: 'Running every Monday', at: isoAgo(70 * H) }, initiative_id: IDS.billing,
+        }),
+        o('out-sheet', 'ICP list: 50 founder-led SaaS companies', 'spreadsheet', 'code', 'Sage', 140, { initiative_id: IDS.docs }),
+        o('out-deck', 'Q4 board update', 'deck', 'writing', 'Pace', 400, { initiative_id: null }),
+      ];
+      return { status: 'ok', items: items, total: items.length };
+    }
+
+    /** What the widget-only _meta carries for the goals read: why each move happened. */
+    function galleryGoalReasons() {
+      var out = {};
+      out[IDS.g1] = ['Two trials converted after the pricing page landed'];
+      out[IDS.g2] = ['Onboarding email sequence landed'];
+      return out;
+    }
+
+    function galleryGoals() {
+      var L = window.OrgXLinks;
+      var init = function i(id, title, done, total, risk) { return { id: id, title: title, status: 'active', risk: risk || null, milestones_total: total, milestones_done: done, url: L.initiative(id) }; };
+      var hist = function series(values, daysBack) { return values.map(function p(v, k) { return { at: isoAgo((daysBack - k * (daysBack / (values.length - 1))) * D), value: v }; }); };
+      return {
+        status: 'ok', total: 2,
+        items: [
+          { id: IDS.g1, title: '40 paid workspaces by Dec 31', status: 'active', unit: 'workspaces', due: new Date(NOW + 74 * D).toISOString().slice(0, 10), target: 40, current: 23, baseline: 12,
+            history: hist([12, 14, 15, 18, 19, 21, 23], 60), moves: [{ at: isoAgo(4 * D), from: 21, to: 23, delta: 2, has_reason: true, decision_id: null }],
+            initiatives: [init(IDS.init, 'Release initiative', 3, 5), init(IDS.billing, 'Billing hardening', 1, 4, 'at_risk')], initiative_total: 2, url: L.goal(IDS.g1) },
+          { id: IDS.g2, title: 'Trial activation to 45%', status: 'active', unit: '%', due: 'Q4 2026', target: 45, current: 32, baseline: null,
+            history: hist([24, 26, 26, 32], 30), moves: [{ at: isoAgo(9 * D), from: 26, to: 32, delta: 6, has_reason: true, decision_id: IDS.d3 }],
+            initiatives: [init(IDS.activation, 'Activation', 2, 6)], initiative_total: 1, url: L.goal(IDS.g2) },
+        ],
+        unlinked: [init(IDS.docs, 'Docs refresh', 0, 0)], unlinked_total: 1,
+        quality_bars: [
+          { id: 'qb-code', name: 'Code', domain: 'engineering', criteria: 6, version: 4, updated_at: isoAgo(3 * D) },
+          { id: 'qb-post', name: 'Launch post', domain: 'marketing', criteria: 4, version: 2, updated_at: isoAgo(9 * D) },
+        ],
       };
     }
 
@@ -572,7 +792,7 @@
 
     return {
       run: runGallery, work: galleryWork, history: galleryHistory, focus: galleryFocus, workspaces: galleryWorkspaces,
-      receipts: galleryReceipts, receipt: galleryReceipt, behind: galleryBehind,
+      receipts: galleryReceipts, receipt: galleryReceipt, behind: galleryBehind, outputs: galleryOutputs, previews: galleryPreviews, goals: galleryGoals, goalReasons: galleryGoalReasons,
     };
   }
 

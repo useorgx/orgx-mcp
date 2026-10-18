@@ -9,6 +9,9 @@
     var Views = window.OrgXPanelViews || null;
     var Forms = window.OrgXPanelForms || null;
     var Icons = window.OrgXPanelIcons || null;
+    var Outputs = window.OrgXPanelOutputs || null;
+    var Goals = window.OrgXPanelGoals || null;
+    var Packet = window.OrgXPanelPacket || null;
     /** The initiative a decision belongs to, marked with its level icon. */
     function initiativeHtml(title) {
       return title ? '<span class="pn-lv">' + (Icons ? Icons.level('initiative', 12) : '') + esc(title) + '</span>' : '';
@@ -38,6 +41,8 @@
     var params = new URLSearchParams(window.location.search);
     var isGallery = params.get('gallery') === 'true';
     var APPROVAL_META_KEY = 'orgx/widgetApproval';
+    var PREVIEW_META_KEY = 'orgx/panelPreviews';
+    var GOAL_REASONS_META_KEY = 'orgx/panelGoalReasons';
     var ORGX_HOME = window.OrgXLinks.command();
     var EVIDENCE_VISIBLE = 2;
 
@@ -122,6 +127,35 @@
       wsPhase: 'idle',
       workspaces: null,
       wsError: null,
+      // Outputs: what agents made, read on first open; its range, type, goal and the open one.
+      outputs: null,
+      outputsPhase: 'idle',
+      outSel: null,
+      // What each output says (summary, preview): widget-only, from the read's _meta, never the snapshot.
+      outPreviews: {},
+      goalReasons: {},
+      outRange: '7d',
+      outFamily: 'all',
+      outGoal: 'all',
+      // Goals: read on first open (and warmed, since other views join on it).
+      goals: null,
+      goalsPhase: 'idle',
+      goalSel: null,
+      goalForm: { open: false, text: '', status: null },
+      goalLinks: {},
+      // The one open scope menu (a popover, or a sheet on a phone).
+      pop: null,
+      // In progress: grouped by agent or by initiative, and the note to the agent being written.
+      workGroup: 'agent',
+      steer: null,
+      // Needs you: the ladder of levels per decision, the evidence detail, the bulk selection and its undo window.
+      ladderOpen: {},
+      evidenceRaw: false,
+      bulkMode: false,
+      bulkSel: {},
+      bulkNote: null,
+      bulkPending: null,
+      bulkNotes: {},
     };
     // Who takes it and how are the person's own settings: they survive the host
     // re-creating the widget (ChatGPT does after every send).
@@ -420,7 +454,8 @@
           reject: has(raw.actions, 'reject') ? { label: labels.reject || 'Send back' } : null,
           rejectRequiresReason: raw.reject_requires_reason === true,
           answer: raw.answer && (has(raw.answer.required_for, 'approve') || has(raw.answer.required_for, 'reject'))
-            ? { approve: has(raw.answer.required_for, 'approve'), reject: has(raw.answer.required_for, 'reject'), max: Math.min(TEXT_MAX, Number(raw.answer.max_length) || TEXT_MAX), saveAsPrecedent: raw.answer.save_as_precedent === true }
+            ? { approve: has(raw.answer.required_for, 'approve'), reject: has(raw.answer.required_for, 'reject'), max: Math.min(TEXT_MAX, Number(raw.answer.max_length) || TEXT_MAX), saveAsPrecedent: raw.answer.save_as_precedent === true,
+              suggestions: Array.isArray(raw.answer.suggestions) ? raw.answer.suggestions.filter(function s(x) { return typeof x === 'string' && x.trim(); }).slice(0, 6) : [] }
             : null,
           selection: null,
           questions: null,
@@ -556,7 +591,7 @@
       var err = ui.fieldErrors[id];
       var reasonNeeded = picked.some(function asks(oid) { var o = optionById(f, oid); return Boolean(o && o.requiresReason); }) ||
         (action === 'reject' && c.rejectRequiresReason) || Boolean(err && err.action === action && err.field === 'reason');
-      var reason = String((action === 'reject' ? (ui.composer && ui.composer.id === id ? ui.composer.draft : '') : ui.notes[id]) || '').trim();
+      var reason = String((action === 'reject' ? (ui.composer && ui.composer.id === id ? ui.composer.draft : ui.bulkNotes[id] || '') : ui.notes[id]) || '').trim();
       if (reason) args.reason = reason.slice(0, TEXT_MAX);
       else if (reasonNeeded) missing.push('reason');
       var answerNeeded = Boolean(c.answer && c.answer[action]);
@@ -659,10 +694,26 @@
       var mark = Brand ? '<span class="pn-mark-slot">' + Brand.mark(22) + '</span>' : '';
       var tabs = tabsHtml();
       var help = tabs ? '<button type="button" class="quiet-btn pn-help" data-action="tour" aria-label="How OrgX works here">?</button>' : '';
+      // Start lives behind +: a task, an initiative, a goal, or the words in the chat.
+      var plus = tabs && Start ? startMenuHtml() : '';
       var display = displayButtonHtml();
       return '<header class="top' + (tabs ? ' has-tabs' : '') + '">' + mark + '<div class="top-id"><span class="brand" aria-hidden="' + (name ? 'false' : 'true') + '">OrgX</span>' +
         (name ? '<span aria-hidden="true">·</span>' : '') + nameHtml + '</div>' + tabs +
-        (synced ? '<span class="sync" data-live="' + esc(ui.live) + '"' + (ui.live === 'live' ? ' role="img" aria-label="Live: updates as they happen" title="Updates as they happen"' : '') + '>' + esc(synced) + '</span>' : '') + refresh + display + help + '</header>';
+        (synced ? '<span class="sync" data-live="' + esc(ui.live) + '"' + (ui.live === 'live' ? ' role="img" aria-label="Live: updates as they happen" title="Updates as they happen"' : '') + '>' + esc(synced) + '</span>' : '') + refresh + plus + display + help + '</header>';
+    }
+
+    function startMenuHtml() {
+      var open = ui.pop === 'start';
+      var lv = function lv(kind) { return Icons ? Icons.level(kind, 14) : ''; };
+      return '<span class="pn-tokw pn-plus-w"><button type="button" class="quiet-btn pn-plus" id="pn-tab-start" data-action="pop" data-id="start" aria-haspopup="menu" aria-expanded="' + open + '" aria-controls="pn-pop-start" aria-label="Start work"' + (ui.tab === 'start' ? ' aria-current="page"' : '') + '>' +
+        '<svg class="pn-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span class="pn-plus-t">Start</span></button>' +
+        (open ? Views.popHtml('start', 'Start', [
+          { label: 'A task', action: 'start-pick', id: 'delegate', lead: lv('task') },
+          { label: 'An initiative', action: 'start-pick', id: 'initiative', lead: lv('initiative') },
+          { label: 'A goal', action: 'start-pick', id: 'goal', lead: lv('goal') },
+          { sep: true },
+          { label: 'Describe it in chat', action: 'start-pick', id: 'chat', lead: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>' },
+        ]) : '') + '</span>';
     }
 
     /**
@@ -824,7 +875,8 @@
         : Boolean(ui.liveWork && ui.liveWork.blocked);
       var workCount = workRead ? ui.work.total : ui.liveWork ? ui.liveWork.total : null;
       // Done counts what was settled here; a zero would read as nothing done, so it waits until there is one.
-      var counts = { needs: s.attention.pending, work: workCount, done: ui.session.length || undefined };
+      var toReview = Outputs ? Outputs.toReviewCount(ui.outputs) : null;
+      var counts = { needs: s.attention.pending, work: workCount, outputs: toReview || undefined, done: ui.session.length || undefined };
       ui.countChanged = {};
       Object.keys(counts).forEach(function diff(k) {
         if (ui.lastCounts && ui.lastCounts[k] !== undefined && ui.lastCounts[k] !== null && counts[k] !== ui.lastCounts[k]) ui.countChanged[k] = true;
@@ -834,7 +886,7 @@
         changed: ui.countChanged,
         active: ui.tab,
         counts: counts,
-        tones: { needs: s.attention.pending ? (s.attention.blocking ? 'red' : 'amber') : '', work: blocked ? 'red' : '', done: ui.session.length ? 'teal' : '' },
+        tones: { needs: s.attention.pending ? (s.attention.blocking ? 'red' : 'amber') : '', work: blocked ? 'red' : '', outputs: toReview ? 'amber' : '', done: ui.session.length ? 'teal' : '' },
       });
     }
 
@@ -902,12 +954,16 @@
         : (f.evidence_total > f.evidence.length
           ? '<button type="button" class="text-btn" data-action="open" data-url="' + esc(f.url) + '">All evidence (' + f.evidence_total + ') ↗</button>'
           : '');
+      var raw = Packet && Packet.hasRaw(f.evidence);
       var items = f.evidence.map(function evidenceItem(e) {
         return '<li class="ev-item">' + ICON.doc + '<span class="ev-title">' + esc(e.title) + '</span>' +
-          (e.source_url ? '<button type="button" class="ev-open" data-action="open" data-url="' + esc(e.source_url) + '" aria-label="Open ' + esc(e.title) + ' (opens in a new tab)">' + ICON.ext + '</button>' : '') + '</li>';
+          (e.source_url ? '<button type="button" class="ev-open" data-action="open" data-url="' + esc(e.source_url) + '" aria-label="Open ' + esc(e.title) + ' (opens in a new tab)">' + ICON.ext + '</button>' : '') +
+          (raw && ui.evidenceRaw ? Packet.evidenceRawHtml(e) : '') + '</li>';
       }).join('');
       var count = evidenceCountLabel(shown.length, f.evidence_total);
-      return '<div class="evidence"><p class="evidence-head"><span data-evidence-count>' + count + '</span>' + more + '</p><ul class="ev-list" id="ev-list">' + items + '</ul></div>';
+      // What each piece recorded (summary, pointer, confidence, freshness), one press away.
+      var details = raw ? '<button type="button" class="text-btn ev-raw-t" data-action="ev-raw" aria-expanded="' + ui.evidenceRaw + '" aria-controls="ev-list">' + (ui.evidenceRaw ? 'Hide details' : 'Details') + '</button>' : '';
+      return '<div class="evidence"><p class="evidence-head"><span data-evidence-count>' + count + '</span>' + details + more + '</p><ul class="ev-list' + (ui.evidenceRaw ? ' is-raw' : '') + '" id="ev-list">' + items + '</ul></div>';
     }
 
     function evidenceToggleLabel(open, total) {
@@ -979,6 +1035,10 @@
         }).join('') +
         (sel.mode === 'multiple' && ui.limitHits[f.id]
           ? '<p class="opts-limit" role="status">You can pick ' + sel.max + '. Uncheck one to add “' + esc(clipLabel(ui.limitHits[f.id], 40)) + '”.</p>'
+          : '') +
+        // None of these: the person's own words go back to the agent as a send back.
+        (forAction === 'approve' && sel.mode === 'single' && c.reject && !c.items
+          ? '<button type="button" class="opt opt-own" data-action="own-open" data-id="' + esc(f.id) + '"><span class="opt-text">Write my own<span class="opt-desc">Goes back to the agent as ' + esc(c.reject.label.toLowerCase()) + ', in your words</span></span><span class="opt-go" aria-hidden="true">›</span></button>'
           : '') + fieldErrorHtml(f.id, 'options', forAction) + '</div>';
     }
 
@@ -992,13 +1052,14 @@
       var options = sel && (sel.requiredFor.reject || optionsFor(c, 'reject').some(function implied(o) { return o.implied === 'reject'; }))
         ? optionButtonsHtml(f, c, 'reject') : '';
       var answer = draft.answerNeeded ? textFieldHtml(id, 'answer', 'Your answer · required', ui.answers[id], c.answer.max) + fieldErrorHtml(id, 'answer', 'reject') : '';
-      return '<div class="composer" data-composer="' + esc(id) + '">' + options + answer +
-        '<label for="reason-' + esc(id) + '">What should change?' + (draft.reasonNeeded ? ' · required' : ' · optional') + '</label>' +
-        '<textarea id="reason-' + esc(id) + '" data-reason="' + esc(id) + '" maxlength="' + TEXT_MAX + '" placeholder="Tell the agent what to fix or do instead."' +
+      var own = Boolean(ui.composer && ui.composer.id === id && ui.composer.own);
+      return '<div class="composer" data-composer="' + esc(id) + '">' + (own ? '' : options) + answer +
+        '<label for="reason-' + esc(id) + '">' + (own ? 'Your own answer' : 'What should change?') + (draft.reasonNeeded || own ? ' · required' : ' · optional') + '</label>' +
+        '<textarea id="reason-' + esc(id) + '" data-reason="' + esc(id) + '" maxlength="' + TEXT_MAX + '" placeholder="' + (own ? 'Write what you want instead. It goes back to the agent.' : 'Tell the agent what to fix or do instead.') + '"' +
         (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'reason' && ui.fieldErrors[id].message ? ' aria-invalid="true"' : '') + '>' + esc(value) + '</textarea>' +
         fieldErrorHtml(id, 'reason', 'reject') +
         '<div class="composer-row"><button type="button" class="secondary-btn" data-action="cancel-sendback" data-id="' + esc(id) + '">Cancel</button>' +
-        '<button type="button" class="secondary-btn" data-action="submit-sendback" data-id="' + esc(id) + '"' + (draft.missing.length ? ' disabled' : '') + '>' + esc(label) + '</button></div></div>';
+        '<button type="button" class="secondary-btn" data-action="submit-sendback" data-id="' + esc(id) + '"' + (draft.missing.length || (own && !value.trim()) ? ' disabled' : '') + '>' + esc(own ? 'Send my answer' : label) + '</button></div></div>';
     }
 
     function footerSpec(f) {
@@ -1089,6 +1150,12 @@
         var draft = c.approve ? draftFor(f, 'approve') : null;
         if (draft && draft.answerNeeded) {
           body += textFieldHtml(f.id, 'answer', 'Your answer · required', ui.answers[f.id], c.answer.max, 'Type the answer the agent needs to continue.') + fieldErrorHtml(f.id, 'answer', 'approve');
+          // Answers the asker offered: a tap puts one in the box to edit; nothing is sent until the footer is pressed.
+          if (c.answer.suggestions && c.answer.suggestions.length) {
+            body += '<div class="sugg" role="group" aria-label="Suggested answers"><span class="sugg-l">Suggested</span>' + c.answer.suggestions.map(function chip(x) {
+              return '<button type="button" class="pn-chip sugg-c" data-action="answer-suggest" data-id="' + esc(f.id) + '" data-value="' + esc(x) + '" aria-pressed="' + (String(ui.answers[f.id] || '').trim() === x) + '">' + esc(x) + '</button>';
+            }).join('') + '</div>';
+          }
           if (c.answer.saveAsPrecedent) {
             body += '<label class="remember"><input type="checkbox" data-action="remember" data-id="' + esc(f.id) + '"' + (ui.remember[f.id] ? ' checked' : '') + '>' +
               '<span>Save as an approved answer<span class="remember-hint">OrgX asks you to confirm it as a rule before agents use it.</span></span></label>';
@@ -1177,6 +1244,9 @@
         (refs.length ? '<div class="why-refs">' + refs.join('') + '</div>' : '') + '</div></div>';
     }
 
+    /** The goal an initiative counts toward, once Goals has been read (undefined until then). */
+    function goalOf(initiativeId) { return Goals ? Goals.goalOfInitiative(ui.goals, initiativeId) : undefined; }
+
     function packetHtml(f, headingTag) {
       var metaBits = [askerPhrase(f), f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : f.kind === 'link' ? 'Session link' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
       var askerAvatarHtml = '<span class="pn-asker" aria-hidden="true">' + askerAvatar(f.asker_kind, f.asker, 'inline') + '</span>';
@@ -1197,7 +1267,8 @@
         // Said, quietly: no recommendation is information for a decision.
         facts.push('<div class="fact"><dt>Recommendation</dt><dd class="quiet">No recommendation yet</dd></div>');
       }
-      if (f.consequence_if_approved || body.ifApproved) {
+      var outs = Packet ? Packet.outsHtml(f, { approved: f.consequence_if_approved || body.ifApproved, inline: inline }) : '';
+      if ((f.consequence_if_approved || body.ifApproved) && !outs) {
         facts.push('<div class="fact"><dt>If approved</dt><dd>' + inline(f.consequence_if_approved || body.ifApproved) + '</dd></div>');
       }
       var bar = agreementOf(f);
@@ -1220,9 +1291,10 @@
         (tokenFor(f.id) || ui.rulings[f.id] ? '<button type="button" class="ox-open" data-action="open" data-url="' + esc(f.url) + '" aria-label="Open this decision in OrgX">Open in OrgX</button>' : '') + '</p>' +
         '<' + headingTag + ' id="pk-q" tabindex="-1" class="q' + (ui.wholeQ === f.id ? ' is-whole' : '') + '">' + esc(head.headline) + '</' + headingTag + '>' +
         '<button type="button" class="q-more" data-action="whole-q" data-id="' + esc(f.id) + '" hidden>Show the whole question</button>' +
+        (Packet ? Packet.crumbsHtml(f, { open: Boolean(ui.ladderOpen[f.id]), goalOf: goalOf, linkStatus: f.initiative_id ? ui.goalLinks[f.initiative_id] : null }) : '') +
         (body.lede.length ? '<p class="q-body">' + inline(body.lede.join(' ')) + '</p>' : '') +
         body.commands.map(function cmd(c) { return '<div class="q-cmd"><span>Command</span><pre><code>' + esc(c) + '</code></pre></div>'; }).join('') +
-        (facts.length ? '<dl class="facts">' + facts.join('') + '</dl>' : '') +
+        (facts.length ? '<dl class="facts">' + facts.join('') + '</dl>' : '') + (bar ? '' : outs) +
         (evidenceSlot || evidenceHtml(f)) + whyHtml(f) +
         // The work this decision would let through, read before deciding, not after.
         behindFor(f) +
@@ -1472,7 +1544,19 @@
       if (ui.tab === 'work' && Views) {
         var wv = workView();
         return html + Views.workHtml(wv.work, wv.phase, startLinkHtml(wv.work && wv.work.items.length ? 'Start or delegate more work' : 'Start work'),
-          { sel: ui.workSel, filter: ui.workFilter, query: ui.workQuery, expanded: ui.workExpanded });
+          { sel: ui.workSel, filter: ui.workFilter, query: ui.workQuery, expanded: ui.workExpanded, group: ui.workGroup, pop: ui.pop,
+            initiativeName: initiativeName, waiting: waitingOnYou(s), steer: ui.steer });
+      }
+      if (ui.tab === 'outputs' && Outputs) {
+        return html + Outputs.html(ui.outputs, ui.outputsPhase, {
+          sel: ui.outSel, range: ui.outRange, family: ui.outFamily, goal: ui.outGoal, goals: ui.goals, pop: ui.pop, decision: outputDecision,
+          previewFor: function previewFor(id) { var p = ui.outPreviews[id]; return p && typeof p === 'object' ? p : null; },
+        });
+      }
+      if (ui.tab === 'goals' && Goals) {
+        return html + Goals.html(ui.goals, ui.goalsPhase, {
+          sel: ui.goalSel, needs: needsByInitiative(s), links: ui.goalLinks, form: ui.goalForm, qualityUrl: ORGX_HOME, reasons: ui.goalReasons,
+        });
       }
       if (ui.tab === 'done' && Views) {
         var workRange = workRangeOf(ui.doneRange);
@@ -1500,13 +1584,129 @@
       // The whole queue, with the open decision marked in place: the list's
       // count is the attention line's count, never one short of it.
       var hidden = Math.max(0, s.attention.pending - s.queue.length);
-      html += '<div class="pn-split">' +
+      var eligible = bulkEligible(s);
+      if (ui.bulkMode && eligible.length < 2) { ui.bulkMode = false; ui.bulkSel = {}; ui.bulkNote = null; }
+      var picked = eligible.filter(function on(item) { return ui.bulkSel[item.id]; });
+      var selectBtn = eligible.length >= 2 && !ui.bulkPending
+        ? '<button type="button" class="text-btn queue-sel" data-action="bulk-mode" aria-pressed="' + ui.bulkMode + '">' + (ui.bulkMode ? (picked.length === eligible.length ? 'Select none' : 'Select all ' + eligible.length) : 'Select') + '</button>' : '';
+      var queueList = ui.bulkMode ? bulkRowsHtml(s, eligible) : queueRowsHtml(shownQueueItems(s));
+      html += '<div class="pn-split' + (ui.bulkMode ? ' is-selecting' : '') + '">' +
         '<div class="pn-att">' + attentionLine(s) + '</div>' +
-        '<div class="pn-detail">' + (s.focus ? packetHtml(s.focus, 'h2') : '') + '</div>' +
-        (s.queue.length > 1 || !s.focus ? '<div class="pn-list"><h2 class="queue-head">Your queue <span class="queue-n">' + s.attention.pending + '</span></h2><ul class="queue">' + queueRowsHtml(s.queue) + '</ul>' +
+        '<div class="pn-detail">' + (s.focus && !(ui.bulkPending && ui.bulkPending.ids.indexOf(s.focus.id) !== -1) ? packetHtml(s.focus, 'h2') : '') + '</div>' +
+        (s.queue.length > 1 || !s.focus ? '<div class="pn-list"><h2 class="queue-head">Your queue <span class="queue-n">' + s.attention.pending + '</span>' + selectBtn + '</h2><ul class="queue">' + queueList + '</ul>' +
+          (ui.bulkMode && picked.length && Packet ? Packet.bulkBarHtml(picked.length, ui.bulkNote ? { note: true, text: ui.bulkNote.text } : null) : '') +
           (hidden ? '<p class="sub">' + hidden + ' more in OrgX. <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.decisions({ status: 'pending' })) + '">All decisions ↗</button></p>' : '') + '</div>' : '') +
         '</div>';
       return html;
+    }
+
+    // ── Bulk: several plain approvals at once, each one ticked by the person ──
+    var BULK_WINDOW_MS = 5000;
+    var bulkTimer = null;
+    /**
+     * What may be decided together: plain approvals the person can decide
+     * here, not critical, not already settling. Anything that asks for a
+     * choice, an answer or a read stays one at a time.
+     */
+    function bulkEligible(s) {
+      return s.queue.filter(function plain(item) {
+        return quickDecide(item) && Boolean(tokenFor(item.id)) && item.urgency !== 'critical' && !ui.rulings[item.id] &&
+          !(ui.bulkPending && ui.bulkPending.ids.indexOf(item.id) !== -1);
+      });
+    }
+    /** The queue minus what is waiting out its undo window. */
+    function shownQueueItems(s) {
+      if (!ui.bulkPending) return s.queue;
+      return s.queue.filter(function pending(item) { return ui.bulkPending.ids.indexOf(item.id) === -1; });
+    }
+    function bulkRowsHtml(s, eligible) {
+      var ids = eligible.map(function id(x) { return x.id; });
+      var rest = shownQueueItems(s).filter(function own(item) { return ids.indexOf(item.id) === -1; });
+      var row = function check(item) {
+        var on = Boolean(ui.bulkSel[item.id]);
+        var c = choicesFor(item);
+        var meta = [urgencyLabel(item.urgency), ago(item.waiting_since)].filter(Boolean).join(' · ');
+        return '<li class="row is-check" data-row="' + esc(item.id) + '"><button type="button" class="row-main" role="checkbox" aria-checked="' + on + '" data-action="bulk-check" data-id="' + esc(item.id) + '">' +
+          '<span class="row-av row-chk" aria-hidden="true">' + askerAvatar(item.asker_kind, item.asker, 'row') + '<span class="chk">✓</span></span>' +
+          '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span><span class="row-meta"><span>' + esc(meta) +
+          (item.initiative_title ? ' · ' + initiativeHtml(item.initiative_title) : '') + (c.approve ? ' · ' + esc(c.approve.label) : '') + '</span></span></button></li>';
+      };
+      return eligible.map(row).join('') +
+        (rest.length ? '<li class="qcap" aria-hidden="false"><h3 class="pn-cap">Needs its own look</h3></li>' + rest.map(function one(item) { return rowHtml(item); }).join('') : '');
+    }
+    /** Start the undo window. Nothing reaches OrgX until it runs out. */
+    function bulkStart(action) {
+      var s = ui.snapshot;
+      if (!s || ui.bulkPending) return;
+      var ids = bulkEligible(s).filter(function on(item) { return ui.bulkSel[item.id]; }).map(function id(item) { return item.id; });
+      if (!ids.length) return;
+      var note = action === 'reject' ? String(ui.bulkNote && ui.bulkNote.text || '').trim() : '';
+      if (action === 'reject' && !note) return;
+      ui.bulkPending = { ids: ids, action: action, note: note, until: Date.now() + BULK_WINDOW_MS, window: BULK_WINDOW_MS };
+      ui.bulkMode = false; ui.bulkSel = {}; ui.bulkNote = null;
+      if (bulkTimer) window.clearTimeout(bulkTimer);
+      bulkTimer = window.setTimeout(bulkSend, BULK_WINDOW_MS);
+      announce((action === 'approve' ? 'Approving ' : 'Sending back ') + ids.length + '. Undo within 5 seconds.');
+      render();
+      focusFirst('[data-action="bulk-undo"]');
+    }
+    function bulkUndo() {
+      if (!ui.bulkPending) return;
+      if (bulkTimer) window.clearTimeout(bulkTimer);
+      bulkTimer = null;
+      var n = ui.bulkPending.ids.length;
+      ui.bulkPending = null;
+      announce('Undone. Nothing was sent for those ' + n + '.');
+      render();
+      focusFirst('[data-action="bulk-mode"], .row-main');
+    }
+    /** The window ran out: each one goes through the same path as a single tap. */
+    function bulkSend() {
+      bulkTimer = null;
+      var p = ui.bulkPending;
+      if (!p) return;
+      // A read in flight holds every decision; send as soon as it lands, without reopening the window.
+      if (ui.readState.phase !== 'idle') { p.sending = true; bulkTimer = window.setTimeout(bulkSend, 400); render(); return; }
+      ui.bulkPending = null;
+      p.ids.forEach(function send(id) {
+        if (!findItem(id) || !tokenFor(id) || ui.rulings[id]) return;
+        if (p.action === 'reject') ui.bulkNotes[id] = p.note;
+        rule(id, p.action, { bulk: true });
+      });
+      render();
+    }
+
+    /** An initiative's name: from the Goals read, else from a decision that names it. */
+    function initiativeName(id) {
+      if (!id) return null;
+      var joined = Goals ? Goals.goalOfInitiative(ui.goals, id) : undefined;
+      if (joined && joined.initiative && joined.initiative.title) return joined.initiative.title;
+      var s = ui.snapshot;
+      var item = s && s.queue.filter(function same(q) { return q.initiative_id === id && q.initiative_title; })[0];
+      return item ? item.initiative_title : null;
+    }
+    /** Work items a decision in the queue is holding, by task id. */
+    function waitingOnYou(s) {
+      var by = {};
+      (s && s.queue || []).forEach(function each(item) { if (item.task_id && !ui.rulings[item.id]) by[item.task_id] = { id: item.id, title: splitHeadline(item.title).headline }; });
+      return by;
+    }
+    function needsByInitiative(s) {
+      var by = {};
+      (s && s.queue || []).forEach(function each(item) { if (item.initiative_id && !ui.rulings[item.id]) (by[item.initiative_id] = by[item.initiative_id] || []).push(item.id); });
+      return by;
+    }
+    /** The decision behind an output, as Needs you has it, for the Outputs view's buttons. */
+    function outputDecision(id) {
+      var item = findItem(id);
+      if (!item) return null;
+      var c = choicesFor(item);
+      var r = ui.rulings[id];
+      var ruling = r ? {
+        chip: r.phase === 'confirmed' ? 'confirmed' : r.phase === 'rejected' ? 'rejected' : r.phase === 'elsewhere' ? 'superseded' : r.phase === 'failed' ? 'failed' : r.phase === 'recorded' ? 'stale' : 'sending',
+        label: r.phase === 'confirmed' ? pastTense(r.approveLabel, 'approve') : r.phase === 'rejected' ? pastTense(r.rejectLabel, 'reject') : r.phase === 'elsewhere' ? 'Settled in OrgX' : r.phase === 'failed' ? 'Could not continue' : r.phase === 'recorded' ? 'Check receipt' : 'Recording',
+      } : null;
+      return { quick: quickDecide(item), canDecide: Boolean(tokenFor(id)), approveLabel: c.approve ? c.approve.label : '', rejectLabel: c.reject ? c.reject.label : '', ruling: ruling };
     }
 
     /**
@@ -1756,6 +1956,39 @@
       var safe = Host.safeArea();
       sheetHost.style.setProperty('--pn-float-bottom', Math.max(safe.bottom || 0, 0) + 'px');
     }
+    /**
+     * The undo toast, and a narrow panel's menu as a sheet, sit on the page
+     * rather than in the panel's layout (the panel is a layout container, so
+     * a fixed child would pin to the panel's box, not the screen).
+     */
+    var toastHost = null;
+    var popHost = null;
+    function bodyLayer(id) {
+      var el = document.createElement('div');
+      el.id = id;
+      el.className = id;
+      el.addEventListener('click', onClick);
+      document.body.appendChild(el);
+      return el;
+    }
+    function floatLayers() {
+      var pending = ui.mode === 'global' && ui.snapshot && Packet ? ui.bulkPending : null;
+      var key = pending ? String(pending.until) + (pending.sending ? 's' : '') : '';
+      if (pending || toastHost) {
+        if (!toastHost) toastHost = bodyLayer('pn-toast-host');
+        if (toastHost.getAttribute('data-key') !== key) {
+          toastHost.setAttribute('data-key', key);
+          toastHost.innerHTML = pending ? Packet.toastHtml(pending) : '';
+        }
+      }
+      var pop = ui.pop && root.clientWidth && root.clientWidth <= 560 ? root.querySelector('.pn-pop') : null;
+      if (!pop) { if (popHost) popHost.innerHTML = ''; return; }
+      if (!popHost) popHost = bodyLayer('pn-pop-sheet');
+      popHost.innerHTML = '<button type="button" class="pn-pop-scrim" data-action="pop-close" aria-label="Close menu" tabindex="-1"></button>';
+      popHost.appendChild(pop);
+      var safe = Host ? Host.safeArea() : { bottom: 0 };
+      popHost.style.setProperty('--pn-float-bottom', Math.max(safe.bottom || 0, 0) + 'px');
+    }
     var floatQueued = false;
     function queueFloat() {
       if (floatQueued) return;
@@ -1785,7 +2018,7 @@
         : null;
       // Question picks and item verdicts are told apart by their own keys.
       var focusExtra = active && active.getAttribute
-        ? ['data-field', 'data-value', 'data-item', 'data-verdict'].filter(function has(k) { return active.hasAttribute(k); })
+        ? ['data-field', 'data-value', 'data-item', 'data-verdict', 'data-tab'].filter(function has(k) { return active.hasAttribute(k); })
           .map(function pair(k) { return '[' + k + '="' + (window.CSS && CSS.escape ? CSS.escape(active.getAttribute(k)) : active.getAttribute(k)) + '"]'; }).join('')
         : '';
       root.setAttribute('data-mode', ui.mode);
@@ -1824,6 +2057,7 @@
       window.requestAnimationFrame(fitQuestion);
       window.requestAnimationFrame(floatFooter);
       sheetMenu();
+      floatLayers();
       if (R && R.reportSize) R.reportSize();
       if (tour) tour.refresh();
       maybeStartTour();
@@ -1856,6 +2090,7 @@
       later(startTour, 600);
     }
 
+    var TAB_NAMES = { needs: 'Needs you', work: 'In progress', outputs: 'Outputs', goals: 'Goals', done: 'Done', start: 'Start' };
     // Where each tab was scrolled to, so coming back lands where you left.
     var scrollMemo = {};
     function rememberScroll() { try { scrollMemo[ui.tab] = window.scrollY || window.pageYOffset || 0; } catch (_) { /* no scroll */ } }
@@ -1863,15 +2098,22 @@
       var y = scrollMemo[tab] || 0;
       try { if (typeof window.scrollTo === 'function') window.scrollTo({ top: y, left: 0, behavior: 'instant' }); } catch (_) { try { window.scrollTo(0, y); } catch (__) { /* no scroll */ } }
     }
+    /** The tabs in order, then Start (opened from +, not a tab). */
+    function viewOrder() {
+      var tabs = Views && Views.tabOrder ? Views.tabOrder() : ['needs', 'work', 'done'];
+      return Start ? tabs.concat(['start']) : tabs;
+    }
     function setTab(tab, quiet, after) {
-      if (['needs', 'work', 'done', 'start'].indexOf(tab) === -1 || (tab === 'start' && !Start)) return;
+      if (viewOrder().indexOf(tab) === -1) return;
       var changed = ui.tab !== tab;
       if (changed) rememberScroll();
-      var order = ['needs', 'work', 'done', 'start'];
+      var order = viewOrder();
       var dir = order.indexOf(tab) >= order.indexOf(ui.tab) ? 'fwd' : 'back';
       var from = ui.tab;
       var tapped = performance.now();
       var warm = tab === 'work' ? Boolean(ui.work && ui.work.status === 'ok')
+        : tab === 'outputs' ? Boolean(ui.outputs && ui.outputs.status === 'ok')
+        : tab === 'goals' ? Boolean(ui.goals && ui.goals.status === 'ok')
         : tab === 'done' ? Boolean(ui.doneLens === 'work' ? ui.receipts[workRangeOf(ui.doneRange)] : ui.doneRange === 'session' || ui.history[ui.doneRange])
         : true;
       function apply() {
@@ -1879,7 +2121,10 @@
         if (changed) window.requestAnimationFrame(function painted() { track('panel_tab_switched', { panel_from_tab: from, panel_tab: tab, latency_ms: performance.now() - tapped, warm: warm }); });
         ui.composer = changed ? null : ui.composer;
         ui.startWhoOpen = false;
+        ui.pop = null;
         if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); if (changed) restoreScroll(tab); return; }
+        if (tab === 'outputs' && (!ui.outputs || ui.outputsPhase === 'failed')) { fetchOutputs(); if (!ui.goals && ui.goalsPhase === 'idle') fetchGoals(); if (changed) restoreScroll(tab); if (after) after(); return; }
+        if (tab === 'goals' && (!ui.goals || ui.goalsPhase === 'failed')) { fetchGoals(); if (changed) restoreScroll(tab); if (after) after(); return; }
         // Done › Work reads its receipts the first time it opens; the read renders the loading rows.
         if (tab === 'done' && ui.doneLens === 'work' && Receipts && !ui.receipts[workRangeOf(ui.doneRange)]) fetchReceipts(workRangeOf(ui.doneRange));
         else render();
@@ -1888,7 +2133,7 @@
           if (Host) Host.haptic('tap');
           var t = root.querySelector('#pn-tab-' + tab);
           if (t) t.focus({ preventScroll: true });
-          announce(tab === 'needs' ? 'Needs you.' : tab === 'work' ? 'In progress.' : tab === 'done' ? 'Done.' : 'Start.');
+          announce(TAB_NAMES[tab] + '.');
         }
         if (after) after();
       }
@@ -2131,6 +2376,61 @@
         if (gen !== ui.generation) return;
         ui.workPhase = 'failed';
         render();
+      });
+    }
+
+    /**
+     * Outputs and Goals: one read each through the snapshot (view: outputs,
+     * view: goals), on first open; the gallery's fixtures stand in for both.
+     */
+    function fetchView(kind) {
+      var key = kind === 'outputs' ? 'outputs' : 'goals';
+      var phase = key + 'Phase';
+      if (isGallery) {
+        ui[key] = gallery[key] ? gallery[key]() : { status: 'unavailable', items: [], total: 0 };
+        if (key === 'outputs' && gallery.previews) ui.outPreviews = gallery.previews();
+        if (key === 'goals' && gallery.goalReasons) ui.goalReasons = gallery.goalReasons();
+        ui[phase] = 'ready';
+        render();
+        return;
+      }
+      if (ui[phase] === 'loading') return;
+      ui[phase] = 'loading';
+      if (ui.tab === key) render();
+      var gen = ui.generation;
+      observeRead(key, ui.tab === key ? 'tab' : 'warm', R.callToolResult('orgx_panel_snapshot', { view: key })).then(function onView(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        if (isSnapshot(data)) accept(data, result.meta || null, 'refresh');
+        ui[key] = data && data[key] ? data[key] : { status: 'unavailable', items: [], total: 0 };
+        if (key === 'outputs') {
+          var said = result && result.meta && result.meta[PREVIEW_META_KEY];
+          ui.outPreviews = said && typeof said === 'object' ? said : {};
+        } else {
+          var why = result && result.meta && result.meta[GOAL_REASONS_META_KEY];
+          ui.goalReasons = why && typeof why === 'object' ? why : {};
+        }
+        ui[phase] = 'ready';
+        render();
+      }, function onViewError(error) {
+        if (gen !== ui.generation) return;
+        ui[key] = { status: 'unavailable', items: [], total: 0, reason: safeErrorText(error, (key === 'outputs' ? 'Outputs' : 'Goals') + ' could not be read right now.', 160) };
+        ui[phase] = 'failed';
+        render();
+      });
+    }
+    function fetchOutputs() { fetchView('outputs'); }
+    function fetchGoals() { fetchView('goals'); }
+
+    /** Say a sentence in the chat for the person: the panel's way to do what it has no button of its own for. */
+    function sendSentence(text, button, done) {
+      if (!Launch || !text) return;
+      if (button) button.setAttribute('aria-busy', 'true');
+      Launch.send(text).then(function sent(outcome) {
+        if (button && button.isConnected) button.removeAttribute('aria-busy');
+        if (Host && outcome === 'sent') Host.haptic('tap');
+        announce(outcome === 'sent' ? 'Sent to the chat.' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send it. Type it in the chat.');
+        done(outcome);
       });
     }
 
@@ -2528,6 +2828,7 @@
         }
         delete ui.answers[id];
         delete ui.notes[id];
+        delete ui.bulkNotes[id];
         delete ui.forms[id];
         delete ui.reviews[id];
         delete ui.remember[id];
@@ -2556,6 +2857,7 @@
         if (VALIDATION_CODES.indexOf(code) === -1) track('panel_error', { panel_error_code: 'decide_failed', error_code: errorCodeOf(error) });
         var details = error && error.details && typeof error.details === 'object' ? error.details : {};
         delete ui.rulings[id];
+        delete ui.bulkNotes[id];
         if (VALIDATION_CODES.indexOf(code) !== -1) {
           // Still open, same token: put the message on the field and render the item's current contract.
           ui.tokens[id] = token;
@@ -2672,7 +2974,7 @@
     function onClick(event) {
       if (ui.startWhoOpen && !event.target.closest('.st-menu, [data-action="start-who"]')) transition('menu', function dismiss() { ui.startWhoOpen = false; render(); });
       var el = event.target.closest('[data-action]');
-      if (!el || !(root.contains(el) || (sheetHost && sheetHost.contains(el))) || el.disabled) return;
+      if (!el || !(root.contains(el) || (sheetHost && sheetHost.contains(el)) || (popHost && popHost.contains(el)) || (toastHost && toastHost.contains(el))) || el.disabled) return;
       var action = el.getAttribute('data-action');
       var id = el.getAttribute('data-id');
       // During the tour only the practice press is live; picks and send-back wait.
@@ -2708,6 +3010,7 @@
         case 'submit-sendback': {
           var area = root.querySelector('textarea[data-reason="' + id + '"]');
           if (ui.composer && ui.composer.id === id && area) ui.composer.draft = area.value;
+          if (ui.composer && ui.composer.own && !String(ui.composer.draft || '').trim()) { focusFirst('textarea[data-reason="' + cssId(id) + '"]'); break; }
           rule(id, 'reject');
           break;
         }
@@ -2853,6 +3156,120 @@
           break;
         }
         case 'why': transition('expand', function why() { ui.whyOpen = ui.whyOpen === id ? null : id; render(); focusFirst('[data-action="why"]'); }); break;
+        // ── Scope menus: one open at a time ──
+        case 'pop':
+          transition('menu', function togglePop() {
+            ui.pop = ui.pop === id ? null : id;
+            render();
+            focusFirst(ui.pop ? '#pn-pop-' + cssId(id) + ' [aria-checked="true"], #pn-pop-' + cssId(id) + ' .pn-pop-o' : '[data-action="pop"][data-id="' + cssId(id) + '"]');
+          });
+          break;
+        case 'pop-close': closePop(true); break;
+        case 'start-pick':
+          ui.pop = null;
+          if (id === 'goal') { ui.goalForm = { open: true, text: ui.goalForm.text, status: null }; setTab('goals', true, function focusGoal() { focusFirst('#gl-goal'); }); break; }
+          if (id === 'delegate' || id === 'initiative') { ui.startVerb = id; ui.startStatus = null; rememberStart(); }
+          setTab('start', true, function focusComposer() { render(); focusFirst('#st-text'); });
+          break;
+        // ── Outputs ──
+        case 'out-select':
+          transition('detail', function openOut() {
+            ui.outSel = !id || ui.outSel === id ? null : id;
+            render();
+            focusFirst(ui.outSel ? '.pn-md-detail .md-close' : '.oc-row');
+          });
+          break;
+        case 'out-range': ui.outRange = id || '7d'; closePop(false); focusFirst('[data-action="pop"][data-id="orange"]'); break;
+        case 'out-family': ui.outFamily = id || 'all'; closePop(false); focusFirst('[data-action="pop"][data-id="ofam"]'); break;
+        case 'out-goal': ui.outGoal = id || 'all'; closePop(false); focusFirst('[data-action="pop"][data-id="ogoal"]'); break;
+        case 'out-clear': ui.outRange = '30d'; ui.outFamily = 'all'; ui.outGoal = 'all'; render(); focusFirst('.oc-row'); break;
+        case 'outputs-retry': ui.outputsPhase = 'failed'; fetchOutputs(); break;
+        case 'out-decide': {
+          // The same decision, in Needs you: opened there, or with its send-back note open.
+          var mode = el.getAttribute('data-mode');
+          setTab('needs', true, function openThere() {
+            selectDecision(id);
+            if (mode === 'sendback' && findItem(id) && tokenFor(id)) { ui.composer = { id: id, draft: '', focus: true, opener: id }; render(); }
+          });
+          break;
+        }
+        // ── Goals ──
+        case 'goal-open':
+          ui.goalForm = { open: false, text: ui.goalForm.text, status: null };
+          if (ui.tab !== 'goals') { ui.goalSel = id || null; setTab('goals'); break; }
+          transition('detail', function openGoal() { if (id) ui.goalSel = id; render(); focusFirst('.gl-row[aria-pressed="true"]'); });
+          break;
+        case 'goal-new': ui.goalForm = { open: true, text: ui.goalForm.text, status: null }; render(); focusFirst('#gl-goal'); break;
+        case 'goals-retry': ui.goalsPhase = 'failed'; fetchGoals(); break;
+        case 'goal-send': {
+          var goalSentence = Goals ? Goals.sentence(ui.goalForm.text) : '';
+          if (!goalSentence) break;
+          sendSentence(goalSentence, el, function goalSent(outcome) {
+            ui.goalForm = { open: ui.goalForm.open, text: outcome === 'sent' ? '' : ui.goalForm.text, status: outcome };
+            render();
+          });
+          break;
+        }
+        case 'goal-link': {
+          var initTitle = el.getAttribute('data-title') || initiativeName(id) || 'this initiative';
+          sendSentence(Goals ? Goals.linkSentence(initTitle, ui.goals) : '', el, function linked(outcome) { ui.goalLinks[id] = outcome; render(); });
+          break;
+        }
+        case 'goal-needs': setTab('needs', true, function openNeed() { selectDecision(id); }); break;
+        // ── In progress ──
+        case 'work-group': ui.workGroup = id === 'initiative' ? 'initiative' : 'agent'; ui.workExpanded = {}; closePop(false); if (ui.workGroup === 'initiative' && !ui.goals && ui.goalsPhase === 'idle') fetchGoals(); focusFirst('[data-action="pop"][data-id="wview"]'); break;
+        case 'work-decide': setTab('needs', true, function decideThere() { selectDecision(id); }); break;
+        case 'steer-send': {
+          var steerItem = (workView().work || { items: [] }).items.filter(function same(i) { return i.id === id; })[0];
+          var steerText = ui.steer && ui.steer.id === id ? String(ui.steer.text || '').trim() : '';
+          if (!steerItem || !steerText) break;
+          var steerSentence = 'In OrgX, tell ' + (steerItem.agent || 'the agent') + ' working on “' + steerItem.title.slice(0, 120) + '”: ' + steerText.replace(/[.。]+$/, '') + '.';
+          sendSentence(steerSentence, el, function steered(outcome) {
+            ui.steer = { id: id, text: outcome === 'sent' ? '' : steerText, status: outcome };
+            render();
+            later(function clearSteer() { if (ui.steer && ui.steer.id === id && ui.steer.status) { ui.steer.status = null; if (ui.tab === 'work') liveRender(); } }, 4000);
+          });
+          break;
+        }
+        // ── Needs you: levels, evidence detail, own answer, suggestions, numbers, bulk ──
+        case 'ladder': transition('expand', function ladder() { ui.ladderOpen[id] = !ui.ladderOpen[id]; render(); focusFirst('[data-action="ladder"][data-id="' + cssId(id) + '"]'); if (ui.ladderOpen[id] && !ui.goals && ui.goalsPhase === 'idle') fetchGoals(); }); break;
+        case 'ev-raw': ui.evidenceRaw = !ui.evidenceRaw; if (ui.evidenceRaw) ui.evidenceOpen = true; keepScroll(render); focusFirst('[data-action="ev-raw"]'); break;
+        case 'own-open': ui.composer = { id: id, draft: '', focus: true, opener: id, own: true }; ui.actionError = null; render(); break;
+        case 'answer-suggest': {
+          ui.answers[id] = el.getAttribute('data-value') || '';
+          clearFieldError(id);
+          keepScroll(render);
+          var answerBox = root.querySelector('textarea[data-field="answer"][data-id="' + cssId(id) + '"]');
+          if (answerBox) { answerBox.focus({ preventScroll: true }); try { answerBox.setSelectionRange(answerBox.value.length, answerBox.value.length); } catch (_) { /* not a text field */ } }
+          break;
+        }
+        case 'q-step': {
+          var stepItem = findItem(id);
+          var stepChoices = stepItem ? choicesFor(stepItem) : null;
+          var stepField = stepChoices && stepChoices.questions ? stepChoices.questions.filter(function byId(x) { return x.id === el.getAttribute('data-field'); })[0] : null;
+          if (!stepField || ui.rulings[id]) break;
+          var stepForm0 = formFor(stepItem, stepChoices);
+          stepForm0.values[stepField.id] = Forms.stepNumber(stepField, stepForm0.values[stepField.id], Number(el.getAttribute('data-delta')) || 0);
+          stepForm0.touched = true;
+          keepScroll(render);
+          break;
+        }
+        case 'bulk-mode': {
+          var all = bulkEligible(ui.snapshot);
+          if (!ui.bulkMode) { ui.bulkMode = true; ui.bulkSel = {}; }
+          else if (all.every(function on(x) { return ui.bulkSel[x.id]; })) { ui.bulkMode = false; ui.bulkSel = {}; ui.bulkNote = null; }
+          else all.forEach(function pick(x) { ui.bulkSel[x.id] = true; });
+          render();
+          focusFirst('[data-action="bulk-mode"]');
+          break;
+        }
+        case 'bulk-check': ui.bulkSel[id] = !ui.bulkSel[id]; keepScroll(render); break;
+        case 'bulk-clear': ui.bulkMode = false; ui.bulkSel = {}; ui.bulkNote = null; render(); focusFirst('[data-action="bulk-mode"]'); break;
+        case 'bulk-approve': bulkStart('approve'); break;
+        case 'bulk-sendback': ui.bulkNote = { text: '' }; render(); focusFirst('#bulk-note'); break;
+        case 'bulk-note-cancel': ui.bulkNote = null; render(); focusFirst('[data-action="bulk-sendback"]'); break;
+        case 'bulk-reject': bulkStart('reject'); break;
+        case 'bulk-undo': bulkUndo(); break;
         default: break;
       }
     }
@@ -2901,6 +3318,47 @@
         if (go) { go.disabled = !said; if (said) go.removeAttribute('aria-disabled'); else go.setAttribute('aria-disabled', 'true'); }
         var st = root.querySelector('.st-status');
         if (st) st.remove();
+        return;
+      }
+      if (area.matches('input[data-qnum]')) {
+        var nid = area.getAttribute('data-id');
+        var nItem0 = findItem(nid);
+        var nCh = nItem0 ? choicesFor(nItem0) : null;
+        var nField = nCh && nCh.questions ? nCh.questions.filter(function byId(x) { return x.id === area.getAttribute('data-qnum'); })[0] : null;
+        if (nField) {
+          var nForm = formFor(nItem0, nCh);
+          nForm.values[nField.id] = String(Number(area.value));
+          nForm.touched = true;
+          var said = Forms.numberText(nField, area.value);
+          var out = root.querySelector('[data-amt-out="' + cssId(nField.id) + '"]');
+          if (out) out.textContent = said;
+          area.setAttribute('aria-valuetext', said);
+          var rec = area.closest('.fq-amt') ? area.closest('.fq-amt').querySelector('[data-amt-rec]') : null;
+          if (rec) rec.hidden = Number(area.value) !== nField.range.recommended;
+          syncFooter(nid);
+        }
+        return;
+      }
+      if (area.matches('input[data-action="steer-text"]')) {
+        var sid = area.getAttribute('data-id');
+        ui.steer = { id: sid, text: area.value, status: null };
+        var go0 = root.querySelector('[data-action="steer-send"][data-id="' + cssId(sid) + '"]');
+        if (go0) go0.disabled = !area.value.trim();
+        return;
+      }
+      if (area.matches('input[data-action="goal-text"]')) {
+        ui.goalForm.text = area.value;
+        ui.goalForm.status = null;
+        var gsend = root.querySelector('[data-action="goal-send"]');
+        if (gsend) gsend.disabled = !area.value.trim();
+        var ghint = area.closest('.gl-form') ? area.closest('.gl-form').querySelector('.steer-hint') : null;
+        if (ghint && Goals) ghint.textContent = 'Goes to the chat as “' + (Goals.sentence(area.value || '…')) + '”';
+        return;
+      }
+      if (area.matches('textarea[data-action="bulk-note"]')) {
+        if (ui.bulkNote) ui.bulkNote.text = area.value;
+        var bgo = root.querySelector('[data-action="bulk-reject"]');
+        if (bgo) bgo.disabled = !area.value.trim();
         return;
       }
       if (area.matches('input[data-action="ws-query"]')) {
@@ -3063,6 +3521,13 @@
       openUrl(event.detail && event.detail.href);
     });
 
+    function closePop(restore) {
+      var was = ui.pop;
+      if (!was) return;
+      ui.pop = null;
+      render();
+      if (restore) focusFirst('[data-action="pop"][data-id="' + cssId(was) + '"]');
+    }
     function closeComposer() {
       var opener = ui.composer && ui.composer.opener;
       ui.composer = null;
@@ -3078,14 +3543,15 @@
       if (scroller && scroller.scrollTop !== top) scroller.scrollTop = top;
     }
     function focusFirst(selector) {
-      var el = root.querySelector(selector) || (sheetHost ? sheetHost.querySelector(selector) : null);
+      var el = root.querySelector(selector) || (sheetHost ? sheetHost.querySelector(selector) : null) ||
+        (popHost ? popHost.querySelector(selector) : null) || (toastHost ? toastHost.querySelector(selector) : null);
       if (el) el.focus({ preventScroll: true });
     }
 
     document.addEventListener('keydown', function onKey(event) {
       var tabEl = event.target && event.target.closest ? event.target.closest('.pn-tab') : null;
       if (tabEl && (event.key === 'ArrowRight' || event.key === 'ArrowLeft' || event.key === 'Home' || event.key === 'End')) {
-        var order = Start ? ['needs', 'work', 'done', 'start'] : ['needs', 'work', 'done'];
+        var order = Views && Views.tabOrder ? Views.tabOrder() : ['needs', 'work', 'done'];
         var at = order.indexOf(tabEl.getAttribute('data-tab'));
         var next = event.key === 'Home' ? 0 : event.key === 'End' ? order.length - 1 : (at + (event.key === 'ArrowRight' ? 1 : -1) + order.length) % order.length;
         event.preventDefault();
@@ -3105,7 +3571,17 @@
         if (goBtn && !goBtn.disabled) goBtn.click();
         return;
       }
+      if (event.key === 'Enter' && !event.isComposing && event.target && event.target.matches && event.target.matches('input[data-action="steer-text"], input[data-action="goal-text"]')) {
+        event.preventDefault();
+        var enterGo = event.target.matches('[data-action="steer-text"]')
+          ? root.querySelector('[data-action="steer-send"][data-id="' + cssId(event.target.getAttribute('data-id')) + '"]')
+          : root.querySelector('[data-action="goal-send"]');
+        if (enterGo && !enterGo.disabled) enterGo.click();
+        return;
+      }
       if (event.key !== 'Escape') return;
+      if (ui.pop) { event.preventDefault(); transition('menu', function escPop() { closePop(true); }); return; }
+      if (ui.bulkPending) { event.preventDefault(); bulkUndo(); return; }
       if (ui.startWhoOpen) { event.preventDefault(); transition('menu', function esc() { ui.startWhoOpen = false; render(); focusFirst('[data-action="start-who"]'); }); return; }
       if (ui.wsOpen) { event.preventDefault(); transition('menu', function escWs() { closeWorkspaces(true); }); return; }
       if (ui.composer) { event.preventDefault(); closeComposer(); return; }
@@ -3132,6 +3608,13 @@
       }
     }, true);
 
+    document.addEventListener('pointerdown', function closePopOutside(event) {
+      if (!ui.pop) return;
+      var t = event.target;
+      if (t && t.closest && (t.closest('.pn-pop') || t.closest('[data-action="pop"]'))) return;
+      ui.pop = null;
+      render();
+    });
     document.addEventListener('pointerdown', function closeOnOutside(event) {
       if (!ui.wsOpen) return;
       var t = event.target;
@@ -3163,6 +3646,13 @@
       ui.startStatus = null; ui.startWhoOpen = false;
       ui.wsOpen = false; ui.wsPhase = 'idle'; ui.workspaces = null; ui.wsError = null; ui.wsSwitchingTo = null;
       ui.seenRows = null; ui.lastCounts = null;
+      ui.outputs = null; ui.outputsPhase = 'idle'; ui.outSel = null; ui.outGoal = 'all'; ui.outPreviews = {};
+      ui.goals = null; ui.goalsPhase = 'idle'; ui.goalSel = null; ui.goalForm = { open: false, text: '', status: null }; ui.goalLinks = {}; ui.goalReasons = {};
+      ui.pop = null; ui.steer = null; ui.ladderOpen = {}; ui.evidenceRaw = false;
+      ui.bulkMode = false; ui.bulkSel = {}; ui.bulkNote = null; ui.bulkNotes = {};
+      // A workspace change drops a pending bulk send: those decisions belong to the old scope.
+      if (bulkTimer) { window.clearTimeout(bulkTimer); bulkTimer = null; }
+      ui.bulkPending = null;
       share = X.createShareController({ modelContext: ext.modelContext });
       handledHint = { deepLink: null, context: null };
     }
@@ -3225,7 +3715,7 @@
 
     function typingInPanel() {
       var el = document.activeElement;
-      return Boolean(el && root.contains(el) && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'radio')));
+      return Boolean(el && root.contains(el) && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'radio' && el.type !== 'range')));
     }
     function liveRender() {
       if (typingInPanel()) { ui.renderPending = true; return; }
@@ -3456,7 +3946,7 @@
       if (ui.mode !== 'global' || !ui.snapshot || ui.auth) return false;
       if ((tour && tour.active()) || ui.wsOpen || ui.startWhoOpen || ui.composer) return false;
       if (!root.querySelector('.pn-tabs')) return false;
-      return !target.closest('textarea, input, select, .pn-tabs, .pn-asks, .st-try, .ws-menu, .st-menu, pre, [data-swipe="off"]');
+      return !ui.pop && !target.closest('textarea, input, select, .pn-tabs, .pn-asks, .st-try, .ws-menu, .st-menu, .pn-pop, .goalswitch, pre, [data-swipe="off"]');
     }
     root.addEventListener('pointerdown', function onSwipeStart(event) {
       swipe = null;
@@ -3468,7 +3958,7 @@
       var dx = event.clientX - swipe.x, dy = event.clientY - swipe.y, dt = Date.now() - swipe.at;
       swipe = null;
       if (dt > 800 || Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-      var order = ['needs', 'work', 'done', 'start'].filter(function has(t) { return Boolean(root.querySelector('#pn-tab-' + t)); });
+      var order = (Views && Views.tabOrder ? Views.tabOrder() : ['needs', 'work', 'done']).filter(function has(t) { return Boolean(root.querySelector('#pn-tab-' + t)); });
       var at = order.indexOf(ui.tab);
       var next = at === -1 ? null : order[dx < 0 ? at + 1 : at - 1];
       if (!next) return;
