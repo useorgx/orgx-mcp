@@ -279,3 +279,16 @@ describe('quality bar operations', () => {
     expect(resolveWorkflowInvocationSecuritySchemes('orgx_draft_quality_bar', { kind_key: 'code_pr' })).toEqual(SECURITY_SCHEMES.entityWriteRequiresAuth);
   });
 });
+
+describe('workspace profile operation', () => {
+  it('edits only name and description', () => {
+    const tool = adapter('orgx_update_workspace_profile');
+    expect(tool.backendRequest!(parseRaw(tool.id, { name: 'OrgX Business', workspace_id: UUID }))).toEqual({
+      method: 'PATCH', path: '/api/v1/workspaces/profile', body: { name: 'OrgX Business', workspace_id: UUID },
+    });
+    expect(() => parseRaw(tool.id, { is_default: true })).toThrow();
+    expect(() => parseRaw(tool.id, { metadata: {} })).toThrow();
+    expect(() => tool.backendRequest!(parseRaw(tool.id, { workspace_id: UUID }))).toThrow(/name or description/);
+    expect(WORKFLOW_TOOL_ADAPTERS.some((t) => t.id === tool.id)).toBe(false);
+  });
+});

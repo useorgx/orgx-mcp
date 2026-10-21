@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-21T02:52:21.739Z",
-  "sourceHash": "a59e79cf8c1396c2",
+  "generatedAt": "2026-10-21T04:02:44.270Z",
+  "sourceHash": "76e04e3c93221142",
   "version": "1.0.0",
-  "totalTools": 169,
+  "totalTools": 170,
   "categories": [
     "Agents",
     "Billing",
@@ -19433,6 +19433,61 @@
         "extended",
         "chatgpt",
         "claude-directory"
+      ]
+    },
+    {
+      "id": "orgx_update_workspace_profile",
+      "title": "Update OrgX Workspace Name and Description",
+      "description": "Rename the workspace or edit its description (empty string clears it). The workspace owner only. Members, billing, connectors and the default workspace are not editable here.",
+      "category": "Workflow Operations",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "securitySchemes": [
+        {
+          "type": "oauth2",
+          "scopes": [
+            "initiatives:write"
+          ]
+        }
+      ],
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
+      "readOnly": false,
+      "source": "workflow_operation",
+      "profiles": [
+        "extended"
       ]
     },
     {

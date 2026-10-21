@@ -549,6 +549,16 @@ export const EXTENDED_WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   exactWorkAction('reassign_streams', ['initiative'], 'Reassign OrgX Initiative Workstreams', 'Recompute or apply supported workstream agent assignments within an initiative through OrgX policy.'),
   exactWorkAction('ship_batch', ['milestone'], 'Ship OrgX Milestone Task Batch', 'Complete eligible milestone tasks using a shared typed proof artifact and OrgX proof-chain checks.', { artifact: proofArtifactSchema, verification: z.array(z.string()).optional(), quality_score: z.number().min(0).max(5).optional() }),
   exactWorkAction('delete', ['workspace', 'initiative', 'workstream', 'milestone', 'task', 'objective', 'playbook'], 'Permanently Delete OrgX Work', 'Permanently delete an authorized work record. Intended for an explicit administrative profile; dependent-record rules remain enforced by OrgX.', { note: z.string().min(1) }),
+  operation('orgx_update_workspace_profile', 'orgx_act', 'Update OrgX Workspace Name and Description',
+    'Rename the workspace or edit its description (empty string clears it). The workspace owner only. Members, billing, connectors and the default workspace are not editable here.',
+    { name: z.string().trim().min(1).max(120).optional(), description: z.string().trim().max(2000).nullable().optional(), workspace_id: workspaceId }, {
+      annotations: modifiesRecords, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+      transformArgs: (args) => {
+        if (args.name === undefined && args.description === undefined) throw new Error('Provide name or description.');
+        return args;
+      },
+      backendRequest: (args) => ({ method: 'PATCH', path: '/api/v1/workspaces/profile', body: bodyArgs(args) }),
+    }),
   operation('orgx_list_quality_bars', 'orgx_search', 'List OrgX Quality Bars',
     'Read every quality bar in the workspace (one per kind of work: criteria, passing line, checks, ship rule, version) and the open drafts. Read only.',
     { workspace_id: workspaceId }, {
@@ -664,6 +674,10 @@ export const WORKFLOW_OUTPUT_SCHEMAS: Readonly<Record<string, z.AnyZodObject>> =
         workstreams: z.number(), milestones: z.number(), tasks: z.number(), dependency_edges: z.number(), agents_assigned: z.number(),
       }).strict(),
     }).strict(),
+    meta: workflowApiMetaSchema,
+  }).strict(),
+  orgx_update_workspace_profile: z.object({
+    data: z.object({ workspace: z.object({ id: z.string(), name: z.string(), description: z.string().nullable() }).catchall(jsonValueSchema) }).strict(),
     meta: workflowApiMetaSchema,
   }).strict(),
   orgx_list_quality_bars: z.object({
