@@ -5,6 +5,7 @@ import { chromium, type Browser, type Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const consentHtml = readFileSync(resolve('public/consent.html'), 'utf8');
+const consentScript = readFileSync(resolve('public/consent.js'), 'utf8');
 
 const resources = [
   {
@@ -126,6 +127,11 @@ async function openConsent(
       });
       return;
     }
+    if (url.pathname === '/consent.js') {
+      await route.fulfill({ status: 200, contentType: 'application/javascript', body: consentScript });
+      return;
+    }
+
     if (url.pathname === '/oauth/consent-session') {
       await route.fulfill({
         status: 200,

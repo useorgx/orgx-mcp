@@ -43,3 +43,9 @@
   Referrer-Policy: no-referrer
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
+
+# Consent code is versioned with the page; revalidate it on each connection.
+/consent.js
+  Cache-Control: no-cache, no-transform
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
