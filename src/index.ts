@@ -603,6 +603,8 @@ interface OrgXMcpProps extends Record<string, unknown> {
   userId?: string;
   // Internal Supabase user UUID resolved at MCP login. Optional — see SessionAuth.
   orgxUserId?: string;
+  pairingAttemptId?: string;
+  telemetryOptOut?: boolean;
   scope?: string;
   email?: string;
   profile?: string;
@@ -15575,6 +15577,7 @@ function observeVerifiedMcpTransport(handler: typeof profileAwareHttpHandler) {
       const props = (ctx as ExecutionContext & { props?: OrgXMcpProps }).props;
       return handleMcpRequest(request, env, ctx, handler, async () => ({
         userId: props?.userId, orgxUserId: props?.orgxUserId,
+        pairingAttemptId: props?.pairingAttemptId, telemetryOptOut: props?.telemetryOptOut,
         scope: props?.scope, email: props?.email,
       }));
     },

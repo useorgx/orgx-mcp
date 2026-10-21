@@ -54,11 +54,13 @@ import {
 import { buildExecutionGraphHookBundle } from './executionGraphHookBundle';
 import { DEFAULT_TOOL_PROFILE } from './toolProfiles';
 import { SMITHERY_TOOL_PROFILES } from './smitheryConfig';
+import { captureOAuthJourney, captureOAuthIdentityFailure, handleConsentTrace, type OAuthJourney } from './oauthJourney';
+import type { PosthogTelemetryEnv } from './posthogTelemetry';
 
 // Re-export type for use in index.ts
 export type { OAuthHelpers };
 
-interface AuthHandlerEnv {
+interface AuthHandlerEnv extends PosthogTelemetryEnv {
   ORGX_API_URL: string;
   ORGX_API_FALLBACK_URL?: string;
   ORGX_WEB_URL: string;
@@ -94,7 +96,7 @@ function errorRedirect(
   return Response.redirect(errorUrl.toString(), 302);
 }
 
-type OAuthCallbackIdentity = {
+type OAuthCallbackIdentity = OAuthJourney & {
   userId: string;
   userEmail: string;
   // Internal Supabase user UUID resolved + email-cross-checked by the web app at
@@ -176,7 +178,7 @@ type OAuthScopeSource = 'client_request' | 'server_read_default';
 type StoredAuthRequest = AuthRequest & {
   clientPresentation?: ClientPresentation;
   scopeSource?: OAuthScopeSource;
-};
+} & OAuthJourney;
 
 function authStateKey(stateKey: string): string {
   return `auth_state:${stateKey}`;
@@ -482,6 +484,9 @@ async function resolveOAuthCallbackIdentity(params: {
     return {
       userId: verified.payload.sub,
       userEmail: verified.payload.email,
+      pairingAttemptId: typeof verified.payload.pairing_attempt_id === 'string' && ORGX_UUID_RE.test(verified.payload.pairing_attempt_id)
+        ? verified.payload.pairing_attempt_id : undefined,
+      telemetryOptOut: verified.payload.telemetry_opt_out === true,
       orgxUserId:
         typeof claimedOrgxUserId === 'string' &&
         ORGX_UUID_RE.test(claimedOrgxUserId)
@@ -1137,12 +1142,12 @@ export const authHandler = {
 
     // Step 1: /authorize — parse OAuth request, store state in KV, redirect to Clerk
     if (url.pathname === '/authorize' && request.method === 'GET') {
-      return handleAuthorize(request, env, serverUrl, webUrl);
+      return handleAuthorize(request, env, serverUrl, webUrl, ctx);
     }
 
     // Step 2: /oauth/callback — Clerk returns user info, redirect to consent page
     if (url.pathname === '/oauth/callback' && request.method === 'GET') {
-      return handleOAuthCallback(request, env, serverUrl);
+      return handleOAuthCallback(request, env, serverUrl, ctx);
     }
 
     // Consent page display data is resolved from opaque server-side state.
@@ -1150,7 +1155,11 @@ export const authHandler = {
       url.pathname === '/oauth/consent-session' &&
       request.method === 'GET'
     ) {
-      return handleConsentSession(request, env);
+      return handleConsentSession(request, env, ctx);
+    }
+
+    if (url.pathname === '/oauth/consent-trace' && request.method === 'POST') {
+      return handleConsentTrace(request, env, ctx);
     }
 
     // Step 3: /oauth/consent-callback — user approved scopes, complete authorization
@@ -1170,7 +1179,7 @@ export const authHandler = {
           }
         );
       }
-      return handleConsentCallback(request, env, serverUrl);
+      return handleConsentCallback(request, env, serverUrl, ctx);
     }
 
     // =========================================================================
@@ -1845,7 +1854,8 @@ async function handleAuthorize(
   request: Request,
   env: AuthHandlerEnv,
   serverUrl: string,
-  webUrl: string
+  webUrl: string,
+  ctx: ExecutionContext
 ): Promise<Response> {
   const url = new URL(request.url);
   const requestedClientId = url.searchParams.get('client_id');
@@ -1913,6 +1923,9 @@ async function handleAuthorize(
     requestedScope === null && (oauthReqInfo.scope?.length ?? 0) === 0;
   const storedAuthRequest: StoredAuthRequest = {
     ...oauthReqInfo,
+    pairingAttemptId: crypto.randomUUID(),
+    pairingStartedAt: Date.now(),
+    telemetryOptOut: request.headers.get('dnt') === '1',
     // OAuth scope is optional. Claude Code and Cursor can omit it entirely.
     // When neither the URL nor the provider parser resolves client scopes,
     // treat omission as the documented server-side Read preset, while an
@@ -1951,7 +1964,7 @@ async function handleAuthorize(
   // Redirect to Clerk sign-in on the OrgX web app
   const clerkRedirectUrl = `${webUrl}/auth/mcp/callback?state_key=${encodeURIComponent(
     stateKey
-  )}`;
+  )}&pairing_attempt_id=${storedAuthRequest.pairingAttemptId}`;
   const signInUrl = new URL(`${webUrl}/sign-in`);
   signInUrl.searchParams.set('redirect_url', clerkRedirectUrl);
 
@@ -1961,6 +1974,8 @@ async function handleAuthorize(
     scopeSource: storedAuthRequest.scopeSource,
   });
 
+  captureOAuthJourney({ env, ctx, request, journey: storedAuthRequest,
+    stage: 'sign_in_redirect', destination: signInUrl.toString() });
   return Response.redirect(signInUrl.toString(), 302);
 }
 
@@ -1979,7 +1994,8 @@ export function isOAuthAuthorizationServerMetadataPath(
 async function handleOAuthCallback(
   request: Request,
   env: AuthHandlerEnv,
-  serverUrl: string
+  serverUrl: string,
+  ctx: ExecutionContext
 ): Promise<Response> {
   const url = new URL(request.url);
 
@@ -2004,12 +2020,16 @@ async function handleOAuthCallback(
     stateKey,
     serverUrl,
   });
-  if (identity instanceof Response) return identity;
+  if (identity instanceof Response) {
+    ctx.waitUntil(captureOAuthIdentityFailure(request, env, stateKey, ctx));
+    return identity;
+  }
 
-  let oauthReqInfo: AuthRequest;
+  let oauthReqInfo: StoredAuthRequest;
   try {
     const stored = await env.OAUTH_KV.get(authStateKey(stateKey));
     if (!stored) {
+      captureOAuthJourney({ env, ctx, request, identity, stage: 'consent_expired', reason: 'session_expired' });
       return errorRedirect(
         'invalid_request',
         'Authorization session expired. Please start over.',
@@ -2027,12 +2047,17 @@ async function handleOAuthCallback(
   }
 
   try {
+    captureOAuthJourney({ env, ctx, request, journey: oauthReqInfo, identity, stage: 'identity_verified' });
     await env.OAUTH_KV.put(
       authIdentityKey(stateKey),
       JSON.stringify({
         userId: identity.userId,
         userEmail: identity.userEmail,
         ...(identity.orgxUserId ? { orgxUserId: identity.orgxUserId } : {}),
+        pairingAttemptId: oauthReqInfo.pairingAttemptId,
+        pairingStartedAt: oauthReqInfo.pairingStartedAt,
+        ...(oauthReqInfo.telemetryOptOut || identity.telemetryOptOut || request.headers.get('dnt') === '1'
+          ? { telemetryOptOut: true } : {}),
       } satisfies OAuthCallbackIdentity),
       { expirationTtl: OAUTH_STATE_TTL_SECONDS }
     );
@@ -2050,8 +2075,12 @@ async function handleOAuthCallback(
       clientId: oauthReqInfo.clientId,
     });
 
+    captureOAuthJourney({ env, ctx, request, journey: oauthReqInfo, identity,
+      stage: 'consent_redirect', destination: consentUrl.toString() });
     return Response.redirect(consentUrl.toString(), 302);
   } catch (error) {
+    captureOAuthJourney({ env, ctx, request, journey: oauthReqInfo, identity,
+      stage: 'consent_failed', reason: 'consent_prepare_failed' });
     console.error('[auth] Failed to prepare OAuth consent:', error);
     return errorRedirect(
       'server_error',
@@ -2070,7 +2099,8 @@ async function handleOAuthCallback(
  */
 async function handleConsentSession(
   request: Request,
-  env: AuthHandlerEnv
+  env: AuthHandlerEnv,
+  ctx: ExecutionContext
 ): Promise<Response> {
   const url = new URL(request.url);
   const stateKey = url.searchParams.get('state_key');
@@ -2090,6 +2120,10 @@ async function handleConsentSession(
       env.OAUTH_KV.get(authIdentityKey(stateKey)),
     ]);
     if (!storedState || !storedIdentity) {
+      captureOAuthJourney({ env, ctx, request,
+        journey: storedState ? JSON.parse(storedState) as StoredAuthRequest : undefined,
+        identity: storedIdentity ? JSON.parse(storedIdentity) as OAuthCallbackIdentity : undefined,
+        stage: 'consent_expired', reason: 'session_expired' });
       return Response.json(
         {
           error: 'authorization_session_expired',
@@ -2132,6 +2166,7 @@ async function handleConsentSession(
         session: {
           state_key: stateKey,
           expires_in_seconds: OAUTH_STATE_TTL_SECONDS,
+          pairing_attempt_id: oauthReqInfo.pairingAttemptId,
         },
         client: {
           id: oauthReqInfo.clientId,
@@ -2183,7 +2218,8 @@ async function handleConsentSession(
 async function handleConsentCallback(
   request: Request,
   env: AuthHandlerEnv,
-  serverUrl: string
+  serverUrl: string,
+  ctx: ExecutionContext
 ): Promise<Response> {
   const wantsJson = request.headers.get('accept')
     ?.split(',')
@@ -2236,7 +2272,7 @@ async function handleConsentCallback(
 
   // Load the opaque state. It is deleted only after deny or successful grant
   // creation so transient provider failures remain retryable.
-  let oauthReqInfo: AuthRequest;
+  let oauthReqInfo: StoredAuthRequest;
   let identity: OAuthCallbackIdentity;
   try {
     const [storedState, storedIdentity] = await Promise.all([
@@ -2244,12 +2280,17 @@ async function handleConsentCallback(
       env.OAUTH_KV.get(authIdentityKey(stateKey)),
     ]);
     if (!storedIdentity) {
+      captureOAuthJourney({ env, ctx, request,
+        journey: storedState ? JSON.parse(storedState) as StoredAuthRequest : undefined,
+        stage: 'consent_expired', reason: 'session_expired' });
       return consentError(
         'invalid_request',
         'Authorization session identity expired. Please start over.'
       );
     }
     if (!storedState) {
+      captureOAuthJourney({ env, ctx, request, identity: JSON.parse(storedIdentity) as OAuthCallbackIdentity,
+        stage: 'consent_expired', reason: 'session_expired' });
       return consentError(
         'invalid_request',
         'Authorization session expired or already used. Please start over.'
@@ -2299,8 +2340,11 @@ async function handleConsentCallback(
         env.OAUTH_KV.delete(authStateKey(stateKey)),
         env.OAUTH_KV.delete(authIdentityKey(stateKey)),
       ]);
+      captureOAuthJourney({ env, ctx, request, journey: oauthReqInfo, identity, stage: 'consent_denied', reason: 'access_denied' });
+      captureOAuthJourney({ env, ctx, request, journey: oauthReqInfo, identity, stage: 'client_return_issued', destination: redirectUrl.toString() });
       return consentRedirect(redirectUrl.toString());
     } catch (error) {
+      captureOAuthJourney({ env, ctx, request, journey: oauthReqInfo, identity, stage: 'consent_failed', reason: 'provider_error' });
       console.error('[auth] Failed to deny authorization:', error);
       return consentError(
         'invalid_request',
@@ -2327,6 +2371,7 @@ async function handleConsentCallback(
   // originally requested by the client and supported by this server.
   const scope = resolveApprovedScopes(oauthReqInfo.scope, finalScope);
   if (scope.filter((selectedScope) => selectedScope !== 'offline_access').length === 0) {
+    captureOAuthJourney({ env, ctx, request, journey: oauthReqInfo, identity, stage: 'consent_failed', reason: 'invalid_selection' });
     return consentError(
       'invalid_request',
       'Choose at least one resource permission before authorizing.'
@@ -2355,6 +2400,8 @@ async function handleConsentCallback(
         ...(identity.orgxUserId ? { orgxUserId: identity.orgxUserId } : {}),
         scope: scope.join(' '),
         email: identity.userEmail,
+        ...(oauthReqInfo.pairingAttemptId ? { pairingAttemptId: oauthReqInfo.pairingAttemptId } : {}),
+        ...(oauthReqInfo.telemetryOptOut || identity.telemetryOptOut || request.headers.get('dnt') === '1' ? { telemetryOptOut: true } : {}),
       },
     });
 
@@ -2366,10 +2413,13 @@ async function handleConsentCallback(
 
     // Consume the opaque session only after the provider has successfully
     // created the grant. A transient provider failure remains safely retryable.
-    await Promise.all([
+    const cleanup = await Promise.allSettled([
       env.OAUTH_KV.delete(authStateKey(stateKey)),
       env.OAUTH_KV.delete(authIdentityKey(stateKey)),
     ]);
+    if (cleanup.some((result) => result.status === 'rejected')) console.warn('[auth] Consent state cleanup unavailable');
+    captureOAuthJourney({ env, ctx, request, journey: oauthReqInfo, identity, stage: 'consent_approved' });
+    captureOAuthJourney({ env, ctx, request, journey: oauthReqInfo, identity, stage: 'client_return_issued', destination: redirectTo });
 
     // Browser consent requests receive the provider-validated callback so the
     // page can navigate after a same-origin POST. This avoids Chromium applying
@@ -2377,6 +2427,7 @@ async function handleConsentCallback(
     // standard direct 302 response.
     return consentRedirect(redirectTo);
   } catch (error) {
+    captureOAuthJourney({ env, ctx, request, journey: oauthReqInfo, identity, stage: 'consent_failed', reason: 'provider_error' });
     console.error('[auth] Failed to complete authorization:', error);
     return consentError(
       'server_error',

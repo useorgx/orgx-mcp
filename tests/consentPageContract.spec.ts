@@ -3,7 +3,8 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const html = readFileSync(resolve('public/consent.html'), 'utf8');
+const html = readFileSync(resolve('public/consent.html'), 'utf8')
+  + readFileSync(resolve('public/consent.js'), 'utf8');
 const staticHeaders = readFileSync(resolve('public/_headers'), 'utf8');
 
 describe('OAuth consent page contract', () => {

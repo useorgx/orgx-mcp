@@ -29,6 +29,8 @@ import { buildAuthErrorResponse } from './authErrors';
 type AuthResult = {
   userId?: string;
   orgxUserId?: string;
+  pairingAttemptId?: string;
+  telemetryOptOut?: boolean;
   scope?: string;
   email?: string;
   response?: Response;
@@ -118,6 +120,8 @@ export async function authenticateRequest(
       const tokenData = await env.OAUTH_PROVIDER.unwrapToken<{
         userId?: string;
         orgxUserId?: string;
+        pairingAttemptId?: string;
+        telemetryOptOut?: boolean;
         scope?: string;
         email?: string;
       }>(token);
@@ -139,7 +143,12 @@ export async function authenticateRequest(
           path,
         });
 
-        return { userId, orgxUserId, scope, email };
+        const pairingAttemptId = typeof props?.pairingAttemptId === 'string' && ORGX_UUID_RE.test(props.pairingAttemptId)
+          ? props.pairingAttemptId : undefined;
+        return { userId, orgxUserId, scope, email,
+          ...(pairingAttemptId ? { pairingAttemptId } : {}),
+          ...(props?.telemetryOptOut === true ? { telemetryOptOut: true } : {}),
+        };
       }
 
       // `unwrapToken` returns null for both expired and invalid tokens.
