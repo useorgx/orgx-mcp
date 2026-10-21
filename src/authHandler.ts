@@ -2021,7 +2021,13 @@ async function handleOAuthCallback(
     serverUrl,
   });
   if (identity instanceof Response) {
-    ctx.waitUntil(captureOAuthIdentityFailure(request, env, stateKey, ctx));
+    // Optional diagnostics must never replace the identity rejection, including
+    // adapters without a Worker lifecycle or one that no longer accepts work.
+    try {
+      if (typeof ctx?.waitUntil === 'function') {
+        ctx.waitUntil(captureOAuthIdentityFailure(request, env, stateKey, ctx));
+      }
+    } catch { /* Preserve the authentication response when scheduling fails. */ }
     return identity;
   }
 
