@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-18T06:48:31.606Z",
-  "sourceHash": "49c6ec25d2585b11",
+  "generatedAt": "2026-10-21T02:52:21.739Z",
+  "sourceHash": "a59e79cf8c1396c2",
   "version": "1.0.0",
-  "totalTools": 164,
+  "totalTools": 169,
   "categories": [
     "Agents",
     "Billing",
@@ -15789,6 +15789,706 @@
       ]
     },
     {
+      "id": "orgx_discard_quality_bar_draft",
+      "title": "Discard OrgX Quality Bar Draft",
+      "description": "Discard a quality bar draft. Published bar versions do not change.",
+      "category": "Workflow Operations",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_updated_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          }
+        },
+        "required": [
+          "draft_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "securitySchemes": [
+        {
+          "type": "oauth2",
+          "scopes": [
+            "initiatives:write"
+          ]
+        }
+      ],
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
+      "readOnly": false,
+      "source": "workflow_operation",
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
+      "id": "orgx_draft_quality_bar",
+      "title": "Draft OrgX Quality Bar",
+      "description": "Open the draft of the quality bar for one kind of work (OrgX composes one when none is open) and apply up to 8 edits in order. Never publishes: the result names review_path, where a person reviews and publishes the bar.",
+      "category": "Workflow Operations",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "kind_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[a-z0-9_.-]+$",
+            "description": "Kind of work the bar judges, e.g. outreach_email or code_pr."
+          },
+          "work": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "initiative",
+                  "workstream",
+                  "task",
+                  "milestone"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "initiative_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "label": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "title": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "id"
+            ],
+            "additionalProperties": false,
+            "description": "Work item the bar was drafted for."
+          },
+          "patches": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "part": {
+                      "type": "string",
+                      "const": "criteria"
+                    },
+                    "decide": {
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "name": {
+                            "type": "string",
+                            "maxLength": 120
+                          },
+                          "weight": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "question": {
+                            "type": "string",
+                            "maxLength": 600
+                          },
+                          "source": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              "label": {
+                                "type": "string",
+                                "maxLength": 400
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "name",
+                          "weight",
+                          "question",
+                          "source"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "maxItems": 12
+                    },
+                    "checks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          },
+                          "description": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 600
+                          },
+                          "blocking": {
+                            "type": "boolean"
+                          },
+                          "checkerId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          },
+                          "checkerVersion": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                          },
+                          "added": {
+                            "type": "boolean"
+                          },
+                          "source": {
+                            "$ref": "#/properties/patches/items/anyOf/0/properties/items/items/properties/source"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "label",
+                          "description",
+                          "blocking",
+                          "checkerId",
+                          "checkerVersion",
+                          "added",
+                          "source"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "maxItems": 20
+                    }
+                  },
+                  "required": [
+                    "part"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "part": {
+                      "type": "string",
+                      "const": "line"
+                    },
+                    "value": {
+                      "type": "number",
+                      "minimum": 30,
+                      "maximum": 100
+                    },
+                    "decide": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "part"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "part": {
+                      "type": "string",
+                      "const": "references"
+                    },
+                    "pinned": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "boolean"
+                      },
+                      "propertyNames": {
+                        "format": "uuid"
+                      }
+                    },
+                    "decide": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "part"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "part": {
+                      "type": "string",
+                      "const": "calibration"
+                    },
+                    "choice": {
+                      "type": "string",
+                      "enum": [
+                        "after_publish",
+                        "not_now"
+                      ]
+                    },
+                    "decide": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "part"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "part": {
+                      "type": "string",
+                      "const": "shipRule"
+                    },
+                    "choice": {
+                      "type": "string",
+                      "enum": [
+                        "approve_every",
+                        "clear_when_trusted"
+                      ]
+                    },
+                    "decide": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "part"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "part": {
+                      "type": "string",
+                      "const": "reopen"
+                    },
+                    "target": {
+                      "type": "string",
+                      "enum": [
+                        "criteria",
+                        "line",
+                        "references",
+                        "calibration",
+                        "shipRule"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "part",
+                    "target"
+                  ],
+                  "additionalProperties": false
+                }
+              ],
+              "description": "One edit to a draft part, the same edits Settings > Quality makes. decide: true marks the part settled."
+            },
+            "maxItems": 8
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          }
+        },
+        "required": [
+          "kind_key"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "securitySchemes": [
+        {
+          "type": "oauth2",
+          "scopes": [
+            "initiatives:write"
+          ]
+        }
+      ],
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "readOnly": false,
+      "source": "workflow_operation",
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
+      "id": "orgx_edit_quality_bar_draft",
+      "title": "Edit OrgX Quality Bar Draft",
+      "description": "Apply one edit to a quality bar draft. expected_updated_at must match the draft as last read; a stale value returns a conflict carrying the current draft. Does not publish.",
+      "category": "Workflow Operations",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "patch": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "part": {
+                    "type": "string",
+                    "const": "criteria"
+                  },
+                  "decide": {
+                    "type": "boolean"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "name": {
+                          "type": "string",
+                          "maxLength": 120
+                        },
+                        "weight": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "question": {
+                          "type": "string",
+                          "maxLength": 600
+                        },
+                        "source": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "maxLength": 40
+                            },
+                            "label": {
+                              "type": "string",
+                              "maxLength": 400
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "label"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "name",
+                        "weight",
+                        "question",
+                        "source"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 12
+                  },
+                  "checks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 600
+                        },
+                        "blocking": {
+                          "type": "boolean"
+                        },
+                        "checkerId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "checkerVersion": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "added": {
+                          "type": "boolean"
+                        },
+                        "source": {
+                          "$ref": "#/properties/patch/anyOf/0/properties/items/items/properties/source"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "label",
+                        "description",
+                        "blocking",
+                        "checkerId",
+                        "checkerVersion",
+                        "added",
+                        "source"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 20
+                  }
+                },
+                "required": [
+                  "part"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "part": {
+                    "type": "string",
+                    "const": "line"
+                  },
+                  "value": {
+                    "type": "number",
+                    "minimum": 30,
+                    "maximum": 100
+                  },
+                  "decide": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "part"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "part": {
+                    "type": "string",
+                    "const": "references"
+                  },
+                  "pinned": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "boolean"
+                    },
+                    "propertyNames": {
+                      "format": "uuid"
+                    }
+                  },
+                  "decide": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "part"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "part": {
+                    "type": "string",
+                    "const": "calibration"
+                  },
+                  "choice": {
+                    "type": "string",
+                    "enum": [
+                      "after_publish",
+                      "not_now"
+                    ]
+                  },
+                  "decide": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "part"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "part": {
+                    "type": "string",
+                    "const": "shipRule"
+                  },
+                  "choice": {
+                    "type": "string",
+                    "enum": [
+                      "approve_every",
+                      "clear_when_trusted"
+                    ]
+                  },
+                  "decide": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "part"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "part": {
+                    "type": "string",
+                    "const": "reopen"
+                  },
+                  "target": {
+                    "type": "string",
+                    "enum": [
+                      "criteria",
+                      "line",
+                      "references",
+                      "calibration",
+                      "shipRule"
+                    ]
+                  }
+                },
+                "required": [
+                  "part",
+                  "target"
+                ],
+                "additionalProperties": false
+              }
+            ],
+            "description": "One edit to a draft part, the same edits Settings > Quality makes. decide: true marks the part settled."
+          },
+          "expected_updated_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          }
+        },
+        "required": [
+          "draft_id",
+          "patch",
+          "expected_updated_at"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:write"
+      ],
+      "securitySchemes": [
+        {
+          "type": "oauth2",
+          "scopes": [
+            "initiatives:write"
+          ]
+        }
+      ],
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
+      "readOnly": false,
+      "source": "workflow_operation",
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
       "id": "orgx_estimate_agent_task",
       "title": "Estimate OrgX Agent Task",
       "description": "Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run. An estimate grants no effects: the dispatch that follows must declare its effects scope, or the run gets no external effects (effect_scope_missing).",
@@ -16317,6 +17017,52 @@
         "read-only",
         "commander",
         "observer"
+      ]
+    },
+    {
+      "id": "orgx_get_quality_bar_draft",
+      "title": "Read OrgX Quality Bar Draft",
+      "description": "Read one quality bar draft, its updated_at for the next edit, and where a person publishes it. Read only.",
+      "category": "Workflow Operations",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          }
+        },
+        "required": [
+          "draft_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:read"
+      ],
+      "securitySchemes": [
+        {
+          "type": "oauth2",
+          "scopes": [
+            "initiatives:read"
+          ]
+        }
+      ],
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "readOnly": true,
+      "source": "workflow_operation",
+      "profiles": [
+        "extended"
       ]
     },
     {
@@ -16859,6 +17605,45 @@
           }
         }
       }
+    },
+    {
+      "id": "orgx_list_quality_bars",
+      "title": "List OrgX Quality Bars",
+      "description": "Read every quality bar in the workspace (one per kind of work: criteria, passing line, checks, ship rule, version) and the open drafts. Read only.",
+      "category": "Workflow Operations",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "securityScopes": [
+        "initiatives:read"
+      ],
+      "securitySchemes": [
+        {
+          "type": "oauth2",
+          "scopes": [
+            "initiatives:read"
+          ]
+        }
+      ],
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "readOnly": true,
+      "source": "workflow_operation",
+      "profiles": [
+        "extended"
+      ]
     },
     {
       "id": "orgx_open_artifact_review",

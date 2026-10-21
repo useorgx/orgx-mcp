@@ -476,6 +476,21 @@ function exactWorkAction(action: string, targets: readonly [string, ...string[]]
 }
 
 /** Individually discoverable compatibility operations, outside the curated default catalog. */
+const qualityBarSource = z.object({ kind: z.string().max(40), label: z.string().max(400) }).strict();
+const qualityBarPatch = z.union([
+  z.object({ part: z.literal('criteria'), decide: z.boolean().optional(),
+    items: z.array(z.object({ key: z.string().min(1).max(120), name: z.string().max(120), weight: z.number().min(0).max(1), question: z.string().max(600), source: qualityBarSource }).strict()).max(12).optional(),
+    checks: z.array(z.object({ id: z.string().min(1).max(120), label: z.string().min(1).max(160), description: z.string().min(1).max(600), blocking: z.boolean(), checkerId: z.string().min(1).max(160), checkerVersion: z.string().min(1).max(40), added: z.boolean(), source: qualityBarSource }).strict()).max(20).optional(),
+  }).strict(),
+  z.object({ part: z.literal('line'), value: z.number().min(30).max(100).optional(), decide: z.boolean().optional() }).strict(),
+  z.object({ part: z.literal('references'), pinned: z.record(z.string().uuid(), z.boolean()).optional(), decide: z.boolean().optional() }).strict(),
+  z.object({ part: z.literal('calibration'), choice: z.enum(['after_publish', 'not_now']).optional(), decide: z.boolean().optional() }).strict(),
+  z.object({ part: z.literal('shipRule'), choice: z.enum(['approve_every', 'clear_when_trusted']).optional(), decide: z.boolean().optional() }).strict(),
+  z.object({ part: z.literal('reopen'), target: z.enum(['criteria', 'line', 'references', 'calibration', 'shipRule']) }).strict(),
+]).describe('One edit to a draft part, the same edits Settings > Quality makes. decide: true marks the part settled.');
+const qualityBarDraftId = z.string().uuid();
+const qualityBarDraftPath = (args: Record<string, unknown>) => `/api/v1/quality-bars/drafts/${encodeURIComponent(String(args.draft_id))}`;
+
 export const EXTENDED_WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   operation('orgx_create_and_launch_initiative_hierarchy', 'scaffold_initiative', 'Create and Launch OrgX Initiative Hierarchy',
     'Create a rich hierarchy through the existing compatibility batch path and launch follow-up work. May generate missing hierarchy, publish a live link, incur model costs, and synchronize an explicitly configured external tracker. Preserves objectives, references, dependencies, assignments, and proof profiles until atomic OrgX creation has full parity.',
@@ -534,6 +549,38 @@ export const EXTENDED_WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   exactWorkAction('reassign_streams', ['initiative'], 'Reassign OrgX Initiative Workstreams', 'Recompute or apply supported workstream agent assignments within an initiative through OrgX policy.'),
   exactWorkAction('ship_batch', ['milestone'], 'Ship OrgX Milestone Task Batch', 'Complete eligible milestone tasks using a shared typed proof artifact and OrgX proof-chain checks.', { artifact: proofArtifactSchema, verification: z.array(z.string()).optional(), quality_score: z.number().min(0).max(5).optional() }),
   exactWorkAction('delete', ['workspace', 'initiative', 'workstream', 'milestone', 'task', 'objective', 'playbook'], 'Permanently Delete OrgX Work', 'Permanently delete an authorized work record. Intended for an explicit administrative profile; dependent-record rules remain enforced by OrgX.', { note: z.string().min(1) }),
+  operation('orgx_list_quality_bars', 'orgx_search', 'List OrgX Quality Bars',
+    'Read every quality bar in the workspace (one per kind of work: criteria, passing line, checks, ship rule, version) and the open drafts. Read only.',
+    { workspace_id: workspaceId }, {
+      annotations: readOnly, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+      backendRequest: (args) => ({ method: 'GET', path: query('/api/v1/quality-bars/library', args) }),
+    }),
+  operation('orgx_draft_quality_bar', 'orgx_act', 'Draft OrgX Quality Bar',
+    'Open the draft of the quality bar for one kind of work (OrgX composes one when none is open) and apply up to 8 edits in order. Never publishes: the result names review_path, where a person reviews and publishes the bar.',
+    { kind_key: z.string().trim().min(1).max(200).regex(/^[a-z0-9_.-]+$/i).describe('Kind of work the bar judges, e.g. outreach_email or code_pr.'),
+      work: z.object({ type: z.enum(['initiative', 'workstream', 'task', 'milestone']), id: z.string().uuid(), initiative_id: z.string().uuid().nullable().optional(), label: z.string().trim().max(200).nullable().optional(), title: z.string().trim().max(200).nullable().optional() }).strict().optional().describe('Work item the bar was drafted for.'),
+      patches: z.array(qualityBarPatch).max(8).optional(), workspace_id: workspaceId }, {
+      annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+      backendRequest: (args) => ({ method: 'POST', path: '/api/v1/quality-bars/drafts', body: bodyArgs(args) }),
+    }),
+  operation('orgx_get_quality_bar_draft', 'orgx_search', 'Read OrgX Quality Bar Draft',
+    'Read one quality bar draft, its updated_at for the next edit, and where a person publishes it. Read only.',
+    { draft_id: qualityBarDraftId, workspace_id: workspaceId }, {
+      annotations: readOnly, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
+      backendRequest: (args) => ({ method: 'GET', path: query(qualityBarDraftPath(args), { workspace_id: args.workspace_id }) }),
+    }),
+  operation('orgx_edit_quality_bar_draft', 'orgx_act', 'Edit OrgX Quality Bar Draft',
+    'Apply one edit to a quality bar draft. expected_updated_at must match the draft as last read; a stale value returns a conflict carrying the current draft. Does not publish.',
+    { draft_id: qualityBarDraftId, patch: qualityBarPatch, expected_updated_at: z.string().min(1), workspace_id: workspaceId }, {
+      annotations: modifiesRecords, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+      backendRequest: ({ draft_id, ...args }) => ({ method: 'PATCH', path: qualityBarDraftPath({ draft_id }), body: bodyArgs(args) }),
+    }),
+  operation('orgx_discard_quality_bar_draft', 'orgx_act', 'Discard OrgX Quality Bar Draft',
+    'Discard a quality bar draft. Published bar versions do not change.',
+    { draft_id: qualityBarDraftId, expected_updated_at: z.string().min(1).optional(), workspace_id: workspaceId }, {
+      annotations: modifiesRecords, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+      backendRequest: ({ draft_id, ...args }) => ({ method: 'DELETE', path: qualityBarDraftPath({ draft_id }), body: bodyArgs(args) }),
+    }),
   operation('orgx_validate_studio_content', 'orgx_act', 'Validate OrgX Studio Video Specification',
     'Check the required template and structured content of one studio video specification before rendering. Returns the OrgX validation result.',
     { id, spec: z.object({ template: z.string().min(1), version: z.string().optional(), title: z.string().optional(), content: z.record(jsonValueSchema), aspectRatio: z.enum(['9:16', '16:9', '1:1', '4:5']).optional(), metadata: contentMetadataSchema.optional() }).strict(), note: z.string().optional() }, {
@@ -565,6 +612,13 @@ const planEnvelopeSchema = z.object({ data: workflowPlanResultSchema, meta: work
  * the legacy router payload solely because they reuse its widget template.
  * Root registration applies the normal error-compatible transport wrapper.
  */
+const qualityBarDraftEnvelope = z.object({
+  data: z.object({
+    draft: z.object({ id: z.string(), barKey: z.string(), updatedAt: z.string() }).catchall(jsonValueSchema),
+    review_path: z.string(), publish: z.literal('person_only'),
+  }).catchall(jsonValueSchema),
+  meta: workflowApiMetaSchema,
+}).strict();
 export const WORKFLOW_OUTPUT_SCHEMAS: Readonly<Record<string, z.AnyZodObject>> = {
   orgx_start_plan: planEnvelopeSchema,
   orgx_read_plan: planEnvelopeSchema,
@@ -612,6 +666,17 @@ export const WORKFLOW_OUTPUT_SCHEMAS: Readonly<Record<string, z.AnyZodObject>> =
     }).strict(),
     meta: workflowApiMetaSchema,
   }).strict(),
+  orgx_list_quality_bars: z.object({
+    data: z.object({
+      bars: z.array(z.object({ key: z.string(), kind_key: z.string() }).catchall(jsonValueSchema)),
+      open_drafts: z.array(z.record(jsonValueSchema)),
+    }).strict(),
+    meta: workflowApiMetaSchema,
+  }).strict(),
+  orgx_draft_quality_bar: qualityBarDraftEnvelope,
+  orgx_get_quality_bar_draft: qualityBarDraftEnvelope,
+  orgx_edit_quality_bar_draft: qualityBarDraftEnvelope,
+  orgx_discard_quality_bar_draft: qualityBarDraftEnvelope,
 };
 
 export function getWorkflowToolContract(toolId: string): WorkflowToolAdapter | undefined {
