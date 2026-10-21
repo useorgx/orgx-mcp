@@ -6,8 +6,8 @@ Claude Code, etc). If you are a human, see `README.md` instead.
 ## What you're installing
 
 - **Name**: OrgX MCP
-- **Category**: organizational continuity for AI agents
-- **Outcome**: Make AI work resumable, reviewable, and provable across agents.
+- **Category**: proof for AI-delivered work
+- **Outcome**: Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts.
 - **Transport**: Streamable HTTP (primary) · SSE (fallback)
 - **URL**: `https://mcp.useorgx.com/mcp`
 - **Auth**: OAuth 2.0 with PKCE · Dynamic Client Registration (no API key setup)

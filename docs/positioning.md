@@ -7,8 +7,12 @@ this file. Do not paraphrase the canonical lines; copy them.
 
 ## Canonical lines
 
-- **Category (use everywhere, verbatim):** organizational continuity for AI agents
-- **Outcome sentence (use everywhere, verbatim):** Make AI work resumable, reviewable, and provable across agents.
+_Revised 2026-10-21 to match the site's decision of record (orgx
+`lib/marketing/positioning.ts`, revision 2026-09-27): the category is now
+"proof for AI-delivered work". Continuity and memory are mechanisms._
+
+- **Category (use everywhere, verbatim):** proof for AI-delivered work
+- **Outcome sentence (use everywhere, verbatim):** Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts.
 - **Failure moment (the thing we market):** The task outlives the chat.
 - **Elevator:** OrgX lets the next agent continue from the decisions, artifacts,
   approvals, owners, and proof the last agent left behind.
@@ -21,7 +25,7 @@ this file. Do not paraphrase the canonical lines; copy them.
 
 ## Style rules
 
-1. One category phrase everywhere: "organizational continuity for AI agents."
+1. One category phrase everywhere: "proof for AI-delivered work."
    Never present "agent orchestration" or "organizational memory" as the
    category — they are mechanisms and may appear only as such (including as
    search keywords in listing metadata).
