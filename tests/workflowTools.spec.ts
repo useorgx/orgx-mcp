@@ -244,51 +244,22 @@ it('keeps entity lifecycle completion distinct from the versioned ledger command
   expect(() => parse(lifecycle.id, { task_id: UUID, expected_updated_at: '2026-10-08T00:00:00Z', expected_aggregate_version: 1 })).toThrow();
 });
 
-describe('quality bar operations', () => {
-  const DRAFT = '22222222-2222-4222-8222-222222222222';
+describe('orgx_update_work entity types', () => {
+  const tool = () => adapter('orgx_update_work');
 
-  it('drafts and edits bars through the v1 routes and never publishes', () => {
-    const draft = adapter('orgx_draft_quality_bar');
-    const args = parseRaw(draft.id, { kind_key: 'outreach_email', patches: [{ part: 'line', value: 80 }], workspace_id: UUID });
-    expect(draft.backendRequest!(args)).toEqual({ method: 'POST', path: '/api/v1/quality-bars/drafts',
-      body: { kind_key: 'outreach_email', patches: [{ part: 'line', value: 80 }], workspace_id: UUID } });
-    expect(() => parseRaw(draft.id, { kind_key: 'outreach_email', publish: true })).toThrow();
-    expect(() => parseRaw(draft.id, { kind_key: 'outreach_email', patches: [{ part: 'line', value: 10 }] })).toThrow();
-
-    const edit = adapter('orgx_edit_quality_bar_draft');
-    const patch = { part: 'shipRule', choice: 'approve_every', decide: true };
-    expect(edit.backendRequest!(parseRaw(edit.id, { draft_id: DRAFT, patch, expected_updated_at: '2026-10-21T00:00:00Z' }))).toEqual({
-      method: 'PATCH', path: `/api/v1/quality-bars/drafts/${DRAFT}`, body: { patch, expected_updated_at: '2026-10-21T00:00:00Z' },
-    });
-    expect(() => parseRaw(edit.id, { draft_id: DRAFT, patch })).toThrow();
-
-    expect(adapter('orgx_get_quality_bar_draft').backendRequest!({ draft_id: DRAFT, workspace_id: UUID }))
-      .toEqual({ method: 'GET', path: `/api/v1/quality-bars/drafts/${DRAFT}?workspace_id=${UUID}` });
-    expect(adapter('orgx_discard_quality_bar_draft').backendRequest!({ draft_id: DRAFT }))
-      .toEqual({ method: 'DELETE', path: `/api/v1/quality-bars/drafts/${DRAFT}`, body: {} });
-    expect(adapter('orgx_list_quality_bars').backendRequest!({}))
-      .toEqual({ method: 'GET', path: '/api/v1/quality-bars/library' });
+  it('edits a quality bar draft by kind with patches only', () => {
+    const args = parse(tool().id, { type: 'quality_bar', id: 'outreach_email', fields: { patches: [{ part: 'line', value: 80 }] } });
+    expect(tool().toCanonicalArgs(args)).toMatchObject({ type: 'quality_bar', id: 'outreach_email', operation: 'update' });
+    expect(() => parse(tool().id, { type: 'quality_bar', id: 'x', fields: { patches: [{ part: 'publish' }] } })).toThrow();
+    expect(() => parse(tool().id, { type: 'quality_bar', id: 'x', fields: { patches: [] } })).toThrow();
+    expect(() => tool().toCanonicalArgs(parse(tool().id, { type: 'quality_bar', id: 'x', fields: { title: 'x' } }))).toThrow(/quality_bar/);
+    expect(() => tool().toCanonicalArgs(parse(tool().id, { type: 'task', id: UUID, fields: { patches: [{ part: 'line', value: 80 }] } }))).toThrow(/quality_bar/);
   });
 
-  it('stays out of the default directory surface', () => {
-    const ids = ['orgx_list_quality_bars', 'orgx_draft_quality_bar', 'orgx_get_quality_bar_draft', 'orgx_edit_quality_bar_draft', 'orgx_discard_quality_bar_draft'];
-    expect(WORKFLOW_TOOL_ADAPTERS.filter((tool) => ids.includes(tool.id))).toEqual([]);
-    expect(EXTENDED_WORKFLOW_TOOL_ADAPTERS.filter((tool) => ids.includes(tool.id)).map((tool) => tool.id)).toEqual(ids);
-    for (const id of ids) expect(WORKFLOW_OUTPUT_SCHEMAS[id]).toBeDefined();
-    expect(adapter('orgx_list_quality_bars').annotations.readOnlyHint).toBe(true);
-    expect(resolveWorkflowInvocationSecuritySchemes('orgx_draft_quality_bar', { kind_key: 'code_pr' })).toEqual(SECURITY_SCHEMES.entityWriteRequiresAuth);
-  });
-});
-
-describe('workspace profile operation', () => {
-  it('edits only name and description', () => {
-    const tool = adapter('orgx_update_workspace_profile');
-    expect(tool.backendRequest!(parseRaw(tool.id, { name: 'OrgX Business', workspace_id: UUID }))).toEqual({
-      method: 'PATCH', path: '/api/v1/workspaces/profile', body: { name: 'OrgX Business', workspace_id: UUID },
-    });
-    expect(() => parseRaw(tool.id, { is_default: true })).toThrow();
-    expect(() => parseRaw(tool.id, { metadata: {} })).toThrow();
-    expect(() => tool.backendRequest!(parseRaw(tool.id, { workspace_id: UUID }))).toThrow(/name or description/);
-    expect(WORKFLOW_TOOL_ADAPTERS.some((t) => t.id === tool.id)).toBe(false);
+  it('edits only a workspace name and description', () => {
+    expect(tool().toCanonicalArgs(parse(tool().id, { type: 'workspace', id: UUID, fields: { name: 'OrgX Business', description: 'Proof' } })))
+      .toMatchObject({ type: 'workspace', fields: { name: 'OrgX Business', description: 'Proof' } });
+    expect(() => tool().toCanonicalArgs(parse(tool().id, { type: 'workspace', id: UUID, fields: { priority: 'high' } }))).toThrow(/name and description/);
+    expect(() => parse(tool().id, { type: 'workspace', id: UUID, fields: { is_default: true } })).toThrow();
   });
 });
