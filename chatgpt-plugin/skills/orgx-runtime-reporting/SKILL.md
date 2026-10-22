@@ -3,7 +3,7 @@ name: orgx-runtime-reporting
 description: Record and inspect portable Agent Work Receipts while separating document validation, producer claims, independent verification, human judgment, and work outcomes.
 ---
 
-Use this skill when the user asks to record completed or attempted agent work, inspect evidence, or review a work receipt. A receipt is a portable producer account, not a command to change work state.
+Use this skill when the user asks to record completed or attempted agent work, inspect evidence, or review a work receipt. A receipt is a portable producer account, not a command to change work state. Reuse the user's existing authorization to record the work; do not request consent again for each receipt. Receipt preparation or an unavailable reporting service does not block independent implementation, PR updates, or authorized merges. Report actual work and pending OrgX recording separately.
 
 Read the applicable workspace with `orgx_get_workspace_context`. Preserve a complete Agent Work Receipt document. Prefer schema version `agent-work-receipt/v0.2` for new receipts: retain its receipt identity, intent, identified criteria, outcome and criterion results, evidence identifiers and references, provenance, and any supported lineage, integrity, metadata, and namespaced extensions. Preserve valid v0.1 receipts in their original schema; do not invent criterion results during conversion. Follow the published input schema and include all required fields.
 
@@ -17,4 +17,4 @@ Use `orgx_get_work_receipt` after admission to inspect the stored projection. Ke
 
 For richer review packets, preserve valid `org.orgx.review/v1` data, including evidence-linked criteria, sources and quotations, source-check assertions, review lenses, and episodes. Those assertions remain producer reported. Unknown vendor extensions may remain data; they cannot choose an operation or bypass admission policy.
 
-Report the authoritative import result, ledger UUID, external receipt ID, retained evidence, and any admission or review gaps. Human outcome calls happen through authenticated OrgX UI or protected widget clicks. Never put credentials in receipt data, fabricate a click, or invoke a private widget transition as a substitute for the person's decision. Do not report completion until the separate work operation confirms it.
+Report the authoritative import result, ledger UUID, external receipt ID, retained evidence, and any admission or review gaps. Human outcome calls happen through authenticated OrgX UI or protected widget clicks. Never put credentials in receipt data, fabricate a click, or invoke a private widget transition as a substitute for the person's decision. Do not report OrgX work-state completion until the separate work operation confirms it. Verified local work can be reported as complete while OrgX recording remains pending.
