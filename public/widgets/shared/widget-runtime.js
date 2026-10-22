@@ -1195,7 +1195,8 @@
           (event.type === 'ox-open' || linkAnchor(event))) return true;
       if (event) { event.__oxLinkHandled = true; event.preventDefault(); }
       try { global.open(url, '_blank', 'noopener,noreferrer'); }
-      catch (_) { linkRecovery(url); }
+      catch (_) { /* Recovery below also covers blocked popups. */ }
+      linkRecovery(url);
       return false;
     }
 
@@ -1218,14 +1219,11 @@
     try { result = hostOpen(); }
     catch (_) { return browserFallback(); }
     if (event) { event.__oxLinkHandled = true; event.preventDefault(); }
-    var timer = global.setTimeout(function () { linkRecovery(url); }, 5000);
-    Promise.resolve(result).then(function (response) {
-      global.clearTimeout(timer);
-      if (response && (response.isError || response.error)) linkRecovery(url);
-    }, function () {
-      global.clearTimeout(timer);
-      linkRecovery(url);
-    });
+    // Host dispatch (including a void/resolved result) cannot prove that a
+    // browser navigated. Keep a native recovery link for silent no-op hosts.
+    // Never automatically open a second tab or route recovery back to the host.
+    linkRecovery(url);
+    Promise.resolve(result).catch(function () { linkRecovery(url); });
     return false;
   }
 

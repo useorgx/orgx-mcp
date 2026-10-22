@@ -202,6 +202,24 @@ describe('ready answers and a person’s own answer', () => {
 });
 
 describe('Outputs', () => {
+  it('hands a receipt link to the host once and leaves native recovery when no navigation occurs', async () => {
+    const p = await open(null, { outputs: { data: outputsView() } });
+    p.click('[data-tab="outputs"]');
+    await p.settle();
+    p.click(`[data-action="out-select"][data-id="${OUT}"]`);
+    await p.settle();
+    p.click('.pn-md-detail [data-action="open"]');
+    await p.settle();
+    const url = `https://useorgx.com/artifacts/${OUT}`;
+    expect(p.calls.openLink).toHaveBeenCalledExactlyOnceWith({ url });
+    const recovery = p.doc.querySelector('#ox-link-recovery a') as HTMLAnchorElement;
+    expect(recovery.href).toBe(url);
+    expect(recovery.target).toBe('_blank');
+    expect(recovery.hasAttribute('data-ox-link')).toBe(false);
+    expect(decided(p)).toEqual([]);
+    expect(p.calls.updateModelContext).not.toHaveBeenCalled();
+  });
+
   it('reads view outputs once, shows the chain and the widget-only preview, and reviews with the same decision', async () => {
     const p = await open(null, { outputs: { data: outputsView(), meta: { 'orgx/panelPreviews': { [OUT]: { summary: null, preview: PREVIEW } } } } });
     p.click('[data-tab="outputs"]');

@@ -73,6 +73,25 @@ describe('widget link handoff failures', () => {
     expect(document.querySelector('#ox-link-recovery a')?.getAttribute('href')).toBe(url);
   });
 
+  it.each([() => undefined, () => Promise.resolve({})])('keeps recovery visible when a host silently completes without navigation', async (openExternal) => {
+    host.openai = { openExternal };
+    runtime.openWidgetLink(url, click());
+    await Promise.resolve();
+    const anchor = document.querySelector('#ox-link-recovery a') as HTMLAnchorElement;
+    expect(anchor?.href).toBe(url);
+    expect(anchor?.hasAttribute('data-ox-link')).toBe(false);
+    expect(document.querySelector('#ox-link-recovery')?.textContent).toContain('If OrgX didn’t open');
+  });
+
+  it('keeps a recovery anchor when browser fallback produces no window handle', () => {
+    host.openai = {};
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    const event = click();
+    event.preventDefault();
+    runtime.openWidgetLink(url, event);
+    expect(document.querySelector('#ox-link-recovery a')?.getAttribute('href')).toBe(url);
+  });
+
   it('does not route the same component event twice', () => {
     const openExternal = vi.fn();
     host.openai = { openExternal };
