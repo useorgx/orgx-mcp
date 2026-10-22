@@ -92,6 +92,21 @@ describe('widget link handoff failures', () => {
     expect(document.querySelector('#ox-link-recovery a')?.getAttribute('href')).toBe(url);
   });
 
+  it.each([undefined, {}])('retains recovery after a legacy ui/open-link silent response: %j', async (result) => {
+    vi.useFakeTimers();
+    const postMessage = vi.fn();
+    Object.defineProperty(window, 'parent', { configurable: true, value: { postMessage } });
+    runtime.openWidgetLink(url, click());
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    const request = postMessage.mock.calls[0]![0];
+    expect(request).toMatchObject({ jsonrpc: '2.0', method: 'ui/open-link', params: { url } });
+    window.dispatchEvent(new MessageEvent('message', { data: { jsonrpc: '2.0', id: request.id, result } }));
+    await Promise.resolve();
+    expect(document.querySelector('#ox-link-recovery a')?.getAttribute('href')).toBe(url);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    vi.clearAllTimers();
+  });
+
   it('does not route the same component event twice', () => {
     const openExternal = vi.fn();
     host.openai = { openExternal };
