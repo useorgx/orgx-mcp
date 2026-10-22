@@ -179,6 +179,23 @@ export const WORK_CONTENT_PATCH_SCHEMA = z.object({
   metadata: contentMetadataSchema.optional(),
 }).strict().refine((value) => Object.values(value).some((field) => field !== undefined), 'A nonempty content patch is required.');
 
+const qualityBarSource = z.object({ kind: z.string().max(40), label: z.string().max(400) }).strict();
+/** Mirrors the app's DraftPatchSchema: the same edits Settings > Quality makes. */
+const qualityBarPatch = z.union([
+  z.object({ part: z.literal('criteria'), decide: z.boolean().optional(),
+    items: z.array(z.object({ key: z.string().min(1).max(120), name: z.string().max(120), weight: z.number().min(0).max(1), question: z.string().max(600), source: qualityBarSource }).strict()).max(12).optional(),
+    checks: z.array(z.object({ id: z.string().min(1).max(120), label: z.string().min(1).max(160), description: z.string().min(1).max(600), blocking: z.boolean(), checkerId: z.string().min(1).max(160), checkerVersion: z.string().min(1).max(40), added: z.boolean(), source: qualityBarSource }).strict()).max(20).optional(),
+  }).strict(),
+  z.object({ part: z.literal('line'), value: z.number().min(30).max(100).optional(), decide: z.boolean().optional() }).strict(),
+  z.object({ part: z.literal('references'), pinned: z.record(z.string().uuid(), z.boolean()).optional(), decide: z.boolean().optional() }).strict(),
+  z.object({ part: z.literal('calibration'), choice: z.enum(['after_publish', 'not_now']).optional(), decide: z.boolean().optional() }).strict(),
+  z.object({ part: z.literal('shipRule'), choice: z.enum(['approve_every', 'clear_when_trusted']).optional(), decide: z.boolean().optional() }).strict(),
+  z.object({ part: z.literal('reopen'), target: z.enum(['criteria', 'line', 'references', 'calibration', 'shipRule']) }).strict(),
+]);
+export const QUALITY_BAR_PATCH_FIELDS = z.object({
+  patches: z.array(qualityBarPatch).min(1).max(8).describe('Quality bar draft edits, applied in order. decide: true settles a part.'),
+}).strict();
+
 const proofArtifactFields = {
   name: z.string().trim().min(1).max(500).optional(),
   description: z.string().trim().max(4000).optional(),
@@ -380,9 +397,17 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       fixedArgs: { operation: 'create', type: 'task' }, annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
   operation('orgx_update_work', 'orgx_write', 'Update OrgX Work Content',
-    'Apply a nonempty typed content patch to initiative, workstream, milestone, or task. Permits text, priority, dates, objectives, notes, and tags; cannot change workflow status, approvals, ownership authority, or execution policy.',
-    { type: workType, id, fields: WORK_CONTENT_PATCH_SCHEMA, idempotency_key: retryKey, session_id: id.optional() }, {
+    'Apply a nonempty typed content patch to initiative, workstream, milestone, or task. Permits text, priority, dates, objectives, notes, and tags; cannot change workflow status, approvals, ownership authority, or execution policy. type workspace edits only its name and description (owner only). type quality_bar takes the kind of work as id (e.g. outreach_email) and fields.patches: the edits go into that bar\'s open draft, never a published bar; a person publishes it from the returned review_path. Current bars are in orgx_get_workspace_context.',
+    { type: z.enum([...workType.options, 'workspace', 'quality_bar']), id, fields: z.union([WORK_CONTENT_PATCH_SCHEMA, QUALITY_BAR_PATCH_FIELDS]), idempotency_key: retryKey, session_id: id.optional() }, {
       fixedArgs: { operation: 'update' }, annotations: modifiesRecords, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+      transformArgs: (args) => {
+        const keys = Object.keys((args.fields ?? {}) as Record<string, unknown>);
+        if (args.type === 'quality_bar' ? !keys.includes('patches') : keys.includes('patches'))
+          throw new Error('fields.patches applies to type quality_bar only, and quality_bar takes only fields.patches.');
+        if (args.type === 'workspace' && keys.some((key) => key !== 'name' && key !== 'description'))
+          throw new Error('A workspace accepts only name and description.');
+        return args;
+      },
     }),
   operation('orgx_estimate_agent_task', 'orgx_spawn', 'Estimate OrgX Agent Task',
     'Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run. An estimate grants no effects: the dispatch that follows must declare its effects scope, or the run gets no external effects (effect_scope_missing).',

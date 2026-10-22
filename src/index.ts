@@ -7955,6 +7955,28 @@ export class OrgXMcp extends McpAgent<
           if (!canonicalArgs.kind || !canonicalArgs.id) return this.toolError('Supply a typed operation_id or kind and id.', { code: 'invalid_operation_reference', status: 400 });
           return this.executeChatGPTTool(tool.canonicalToolId, canonicalArgs, schemes);
         }
+        // Quality bars and the workspace profile are entity types of the same
+        // update operation, served by their own v1 routes.
+        if (tool.id === 'orgx_update_work' && (canonicalArgs.type === 'quality_bar' || canonicalArgs.type === 'workspace')) return this.withOrgx(async () => {
+          const fields = canonicalArgs.fields as Record<string, unknown>;
+          const workspaceId = this.sessionContext?.workspaceId;
+          const request = canonicalArgs.type === 'quality_bar'
+            ? { path: '/api/v1/quality-bars/drafts', method: 'POST', body: { kind_key: canonicalArgs.id, patches: fields.patches, ...(workspaceId ? { workspace_id: workspaceId } : {}) } }
+            : { path: '/api/v1/workspaces/profile', method: 'PATCH', body: { ...fields, workspace_id: canonicalArgs.id } };
+          const raw = await this.requestPublicOperation(request.path, { method: request.method, body: JSON.stringify(request.body) });
+          const data = (raw.data ?? {}) as Record<string, unknown>;
+          const draft = (data.draft ?? null) as Record<string, unknown> | null;
+          const payload = {
+            _v2_tool: 'orgx_write' as const, operation: 'update' as const, ok: true, updated: true,
+            type: String(canonicalArgs.type), id: String(canonicalArgs.id),
+            data: draft
+              ? { id: String(draft.id), type: 'quality_bar', name: String(canonicalArgs.id), status: String(draft.status ?? 'open'), review_path: data.review_path, publish: data.publish, draft }
+              : (data.workspace as Record<string, unknown>),
+            message: draft ? `Draft saved. A person publishes it at ${String(data.review_path)}.` : 'Workspace updated.',
+            ...(raw.meta ? { meta: raw.meta } : {}),
+          };
+          return { content: [{ type: 'text', text: JSON.stringify(payload) }], structuredContent: payload };
+        }, tool.id, effective);
         const implementation = privateOperations.get(tool.canonicalToolId);
         if (!implementation) return this.toolError(`Operation implementation unavailable: ${tool.id}`, { code: 'operation_unavailable', status: 503 });
         const result = await implementation.handler(canonicalArgs, extra) as CallToolResult;
