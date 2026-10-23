@@ -895,6 +895,41 @@ describe('explicit operations through the live MCP registry', () => {
     } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
   }, 30000);
 
+  it('attaches an output through the existing OAuth operation without completing or accepting it', async () => {
+    const { client, worker } = await connectProfile('claude-code');
+    const original = apiMocks.callOrgxApiJson.getMockImplementation();
+    const artifactId = '09d480e6-2b5e-4bb9-a374-6bbbc2b3b2d7';
+    apiMocks.callOrgxApiJson.mockReset();
+    apiMocks.callOrgxApiJson.mockResolvedValue(Response.json({ data: { artifact: { id: artifactId }, duplicate: false, review_url: `/artifacts/${artifactId}`, accepted: false, completed: false } }));
+    try {
+      const result = await client.callTool({ name: 'orgx_update_work', arguments: {
+        type: 'task', id: INITIATIVE_ID, workspace_id: WORKSPACE_ID, idempotency_key: 'output:once:v1',
+        artifact: { name: 'Client plan', artifact_type: 'product.report', location: { external_url: 'https://example.com/plan.pdf' }, output_front_door: { answer: 'Confirm the launch date.' } },
+      } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({ id: artifactId, type: 'artifact', data: { accepted: false, completed: false } });
+      expect(apiMocks.callOrgxApiJson).toHaveBeenCalledOnce();
+      const [, path, init, actor] = apiMocks.callOrgxApiJson.mock.calls[0]!;
+      expect(path).toBe('/api/v1/workflows/attach-output');
+      expect(init?.headers).toEqual({ 'Idempotency-Key': 'output:once:v1' });
+      expect(JSON.parse(String(init?.body))).toMatchObject({ type: 'task', id: INITIATIVE_ID, workspace_id: WORKSPACE_ID });
+      expect(JSON.parse(String(init?.body))).not.toHaveProperty('operation');
+      expect(actor).toMatchObject({ userId: 'surface-contract-user', allowFallback: false });
+    } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('keeps output attachment unavailable to a read-only OAuth grant on the Claude Code profile', async () => {
+    const { client, worker } = await connectProfile('claude-code', 'read-only-client', AUTHORIZATION_PRESETS.read.scopes);
+    apiMocks.callOrgxApiJson.mockClear();
+    try {
+      const listed = await client.listTools();
+      expect(listed.tools.map((tool) => tool.name)).not.toContain('orgx_update_work');
+      const result = await client.callTool({ name: 'orgx_update_work', arguments: { type: 'task', id: INITIATIVE_ID, artifact: { name: 'Output' }, idempotency_key: 'unauthorized-output' } });
+      expect(result.isError).toBe(true);
+      expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+    } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
   it('cannot turn the create-task operation into launch or update by adding hidden router arguments', async () => {
     const { client, worker } = await connectProfile('chatgpt');
     const execute = vi.spyOn(worker, 'executeContractTool').mockResolvedValue({ isError: true, content: [{ type: 'text', text: 'Fixture stopped after operation routing.' }] });

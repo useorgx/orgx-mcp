@@ -89,7 +89,7 @@ export function installToolResultGuidanceWrapper(
         : {}),
       _meta: withConsistentToolVisibility(
         name,
-        profile === 'claude-code-legacy'
+        profile === 'claude-code-legacy' || profile === 'claude-code'
           ? withoutWidgetPresentation(config._meta as Record<string, unknown> | undefined)
           : includeDirectoryMetadata
           ? directoryToolMeta(name, config._meta as Record<string, unknown> | undefined)
