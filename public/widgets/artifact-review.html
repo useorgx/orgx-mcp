@@ -1012,7 +1012,7 @@
         }
 
         if (type.includes('markdown') || type.includes('doc') || type.includes('report') || type.includes('brief') || content) {
-          return '<div class="artifact-preview__markdown ox-markdown">' + window.OrgXMarkdown.render(content, { linkAllowed: isAllowedArtifactLinkUrl }) + '</div>';
+          return '<div class="artifact-preview__markdown ox-markdown">' + window.OrgXMarkdown.render(humanizeCodes(content), { linkAllowed: isAllowedArtifactLinkUrl }) + '</div>';
         }
 
         if (payload) return renderStructured(payload);
