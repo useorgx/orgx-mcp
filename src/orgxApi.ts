@@ -617,9 +617,18 @@ async function callOrgxApiRawImplementation(
     return response;
   }
 
+  // With no base URL there was nothing to call: that is a server setup
+  // problem, not an outage, and retrying will not help.
+  if (!lastRetryableFailure) {
+    throw createApiError(
+      'This OrgX connection is not configured. Retrying will not help; your administrator needs to set the OrgX API URL.',
+      'No OrgX API base URL was configured'
+    );
+  }
+
   throw createApiError(
     'OrgX is temporarily unavailable. Please try again later.',
-    lastRetryableFailure ?? 'No OrgX API base URL was configured'
+    lastRetryableFailure
   );
 }
 

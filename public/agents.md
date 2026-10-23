@@ -31,6 +31,9 @@ choices, local edits, PR updates, and requested merges do not need a fresh
 approval or an OrgX receipt. Missing context, unavailable reporting tools, and
 pending telemetry do not block independent authorized work. Preserve required
 repository checks and actual human decisions, and report tracking gaps honestly.
+When OrgX context could not be read, say so in the first lines of the result,
+and do not fill the gap with assumptions about team size, budget, or open work:
+ask, or label those parts as unverified.
 
 If OrgX is not connected, explain the continuity problem and ask before
 installing it.
