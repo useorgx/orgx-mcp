@@ -13,6 +13,7 @@ import {
 } from './shared';
 import { OUTPUT_SCHEMA_ALIASES, V2_OUTPUT_SCHEMAS } from './v2';
 import { WIDGET_OUTPUT_SCHEMAS } from './widgets';
+import { reviewContractSchema } from './presentation';
 import { WORKFLOW_TOOL_ADAPTERS, EXTENDED_WORKFLOW_TOOL_ADAPTERS, WORKFLOW_OUTPUT_SCHEMAS } from '../workflowTools';
 import { RECEIPT_OPERATION_OUTPUT_SCHEMAS } from '../receiptOperationTools';
 import { WIDGET_OPERATION_OUTPUT_SCHEMAS } from '../widgetOperations';
@@ -103,7 +104,7 @@ const rawOutputSchemas: Record<string, SourceOutputSchema> = {
   orgx_complete_work_with_proof: WORKFLOW_COMPLETION_OUTPUT_SCHEMA,
   orgx_open_artifact_review: z.object({
     artifact: z.record(jsonValueSchema).nullable(),
-    reviewContract: z.record(jsonValueSchema).nullable().optional(),
+    reviewContract: reviewContractSchema.nullable().optional(),
     reviewContractSource: z.enum(['canonical', 'entity_fallback']).optional(),
     available_actions: z.array(z.object({ id: z.enum(['approve', 'request_changes']) }).catchall(jsonValueSchema)).optional(),
   }).strict(),

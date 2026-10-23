@@ -1,0 +1,167 @@
+{
+  "schemaVersion": "artifact_review_contract.v1",
+  "purpose": {
+    "kind": "deliverable",
+    "label": "Deliverable",
+    "reviewRequired": true,
+    "reviewAction": "sign"
+  },
+  "modality": {
+    "kind": "document",
+    "label": "Document"
+  },
+  "modalityGate": {
+    "state": "not_required",
+    "label": "No modality-specific gate",
+    "blocksAdvance": false,
+    "reason": "No additional modality-specific proof is required.",
+    "missingFields": []
+  },
+  "lifecycle": {
+    "state": "in_review",
+    "label": "In review",
+    "terminal": false
+  },
+  "quality": {
+    "state": "unscored",
+    "required": false,
+    "score": null,
+    "previousScore": null,
+    "threshold": 0.85,
+    "thresholdSource": {
+      "kind": "system_default",
+      "profileName": null,
+      "profileScope": null,
+      "profileVersion": null
+    },
+    "isFresh": false,
+    "blocksAdvance": false,
+    "reason": "No current scored quality evaluation is recorded.",
+    "runId": null,
+    "anatomy": null,
+    "findings": []
+  },
+  "checks": {
+    "state": "unavailable",
+    "total": null,
+    "passed": null,
+    "checks": [],
+    "reason": "Current checks could not be loaded. Refresh to verify them."
+  },
+  "ruling": {
+    "state": "pending",
+    "label": "Awaiting decision",
+    "note": null,
+    "actorKind": "unknown",
+    "actorLabel": null,
+    "at": null
+  },
+  "outcome": {
+    "state": "unobserved",
+    "label": "No outcome observed",
+    "count": 0,
+    "latestKind": null,
+    "observedAt": null,
+    "source": null
+  },
+  "lineage": {
+    "state": "current",
+    "version": 1,
+    "parentId": null,
+    "supersededBy": null,
+    "items": []
+  },
+  "evidence": {
+    "confidence": 1,
+    "gradedLayers": 0,
+    "domain": "research",
+    "stackSource": "domain",
+    "provisional": false,
+    "barVersion": null,
+    "judgeModel": null,
+    "evalLinkage": {
+      "currentEvalRunId": null,
+      "latestJudgedEvalRunId": null,
+      "selectedJudgedEvalRunIds": [],
+      "selectedMeasuredEvalRunIds": [],
+      "latestJudgedBelongsToCurrentEval": null
+    },
+    "layers": [
+      {
+        "key": "source_quality",
+        "label": "Source quality",
+        "question": "Named, primary, verifiable sources \u2014 URLs that resolve?",
+        "weight": 0.25,
+        "anchors": [
+          "Taste-mining rule: named individuals and specific works, not \"experts say\"."
+        ],
+        "verdict": null
+      },
+      {
+        "key": "synthesis_over_summary",
+        "label": "Synthesis over summary",
+        "question": "Does it produce a NEW claim the sources don\u2019t state alone?",
+        "weight": 0.25,
+        "anchors": [
+          "The convergent finding across sources IS the deliverable."
+        ],
+        "verdict": null
+      },
+      {
+        "key": "falsifiability",
+        "label": "Falsifiability",
+        "question": "Are the claims testable \u2014 and is the killing test named?",
+        "weight": 0.2,
+        "anchors": [
+          "Each thesis ships with its cheapest falsifier."
+        ],
+        "verdict": null
+      },
+      {
+        "key": "coverage",
+        "label": "Coverage",
+        "question": "Were the disconfirming lanes searched, not just the friendly ones?",
+        "weight": 0.15,
+        "anchors": [
+          "Multi-modal sweep: by-source, by-counter-case, by-time."
+        ],
+        "verdict": null
+      },
+      {
+        "key": "actionable_findings",
+        "label": "Actionable findings",
+        "question": "Does it end in decisions someone can execute this week?",
+        "weight": 0.15,
+        "anchors": [
+          "Findings ranked by leverage, each with an owner-shaped verb."
+        ],
+        "verdict": null
+      }
+    ],
+    "measured": [],
+    "observations": [],
+    "outcomes": [],
+    "relationships": []
+  },
+  "workflow": {
+    "artifactStatus": "in_review",
+    "canAdvance": false,
+    "headline": "Current checks unavailable",
+    "tone": "attention",
+    "reason": "Current checks could not be loaded. Refresh to verify them. An authorized reviewer must still record a decision."
+  },
+  "authority": {
+    "canReview": false,
+    "canRerun": false,
+    "canOverride": false,
+    "canEditPolicy": false
+  },
+  "counts": {
+    "artifactRecords": 1,
+    "versions": 1,
+    "qualityRuns": 0,
+    "rulings": 0,
+    "outcomeObservations": 0,
+    "evidenceRefs": 5
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "artifact": {
+    "id": "11111111-1111-4111-8111-111111111111",
+    "version": 1,
+    "artifact_type": "document",
+    "status": "in_review",
+    "metadata": {
+      "purpose": "deliverable",
+      "requires_eval": true
+    },
+    "verification": {},
+    "name": "Native checked report"
+  },
+  "reviewContract": {
+    "schemaVersion": "artifact_review_contract.v1",
+    "purpose": {
+      "kind": "deliverable",
+      "label": "Deliverable",
+      "reviewRequired": true,
+      "reviewAction": "sign"
+    },
+    "modality": {
+      "kind": "document",
+      "label": "Document"
+    },
+    "modalityGate": {
+      "state": "not_required",
+      "label": "No modality-specific gate",
+      "blocksAdvance": false,
+      "reason": "No additional modality-specific proof is required.",
+      "missingFields": []
+    },
+    "lifecycle": {
+      "state": "in_review",
+      "label": "In review",
+      "terminal": false
+    },
+    "quality": {
+      "state": "cleared",
+      "required": true,
+      "score": 0.96,
+      "scoreBasis": "judged_lower_bound",
+      "previousScore": null,
+      "threshold": 0.9,
+      "thresholdSource": {
+        "kind": "native_quality_bar",
+        "profileName": "Private client closeout bar",
+        "profileScope": "workspace",
+        "profileVersion": 3
+      },
+      "isFresh": true,
+      "blocksAdvance": false,
+      "reason": "all_quality_gates_passed",
+      "runId": null,
+      "anatomy": {
+        "schemaVersion": "artifact_evaluation_anatomy.v1",
+        "source": "native_four_lens",
+        "runId": null,
+        "artifactVersion": 1,
+        "profile": {
+          "id": null,
+          "name": "Private client closeout bar",
+          "version": 3,
+          "scope": "workspace",
+          "policyDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "threshold": 0.9,
+        "runner": {
+          "key": null,
+          "label": "Independent native verification",
+          "model": null
+        },
+        "inputSummary": {
+          "artifactType": "document",
+          "modality": "text",
+          "referenceCount": 1,
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "criteria": [
+          {
+            "key": "measured:links-resolve:v1",
+            "label": "Links resolve",
+            "score": 1,
+            "passed": true,
+            "weight": null
+          }
+        ],
+        "aggregation": {
+          "method": "unknown",
+          "count": 1
+        },
+        "decision": {
+          "score": 0.96,
+          "status": "passed"
+        },
+        "completedAt": "2026-10-23T12:00:00.000Z"
+      },
+      "findings": [
+        {
+          "label": "Links resolve",
+          "score": 1,
+          "tone": "good"
+        }
+      ],
+      "native": {
+        "source": "native_four_lens",
+        "verificationId": "22222222-2222-4222-8222-222222222222",
+        "report": {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "uri": "orgx://agent-run-artifacts/33333333-3333-4333-8333-333333333333",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "subjectDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "checks": {
+      "state": "passed",
+      "total": 1,
+      "passed": 1,
+      "reason": null,
+      "checks": [
+        {
+          "profileId": null,
+          "profileName": "Links resolve",
+          "profileVersion": null,
+          "status": "passed",
+          "score": 1,
+          "threshold": null,
+          "runId": null
+        }
+      ]
+    },
+    "ruling": {
+      "state": "pending",
+      "label": "Awaiting decision",
+      "note": null,
+      "actorKind": "unknown",
+      "actorLabel": null,
+      "at": null
+    },
+    "outcome": {
+      "state": "unobserved",
+      "label": "No outcome observed",
+      "count": 0,
+      "latestKind": null,
+      "observedAt": null,
+      "source": null
+    },
+    "lineage": {
+      "state": "current",
+      "version": 1,
+      "parentId": null,
+      "supersededBy": null,
+      "items": []
+    },
+    "evidence": {
+      "confidence": null,
+      "gradedLayers": 0,
+      "domain": null,
+      "stackSource": null,
+      "provisional": false,
+      "barVersion": null,
+      "judgeModel": null,
+      "evalLinkage": {
+        "currentEvalRunId": null,
+        "latestJudgedEvalRunId": null,
+        "selectedJudgedEvalRunIds": [],
+        "selectedMeasuredEvalRunIds": [],
+        "latestJudgedBelongsToCurrentEval": null
+      },
+      "layers": [],
+      "measured": [],
+      "observations": [],
+      "outcomes": [],
+      "relationships": []
+    },
+    "workflow": {
+      "artifactStatus": "in_review",
+      "canAdvance": false,
+      "headline": "Ready for a decision",
+      "reason": "Quality cleared; an authorized human or external reviewer must rule.",
+      "tone": "attention"
+    },
+    "authority": {
+      "canReview": false,
+      "canRerun": false,
+      "canOverride": false,
+      "canEditPolicy": false
+    },
+    "counts": {
+      "artifactRecords": 1,
+      "versions": null,
+      "qualityRuns": 1,
+      "rulings": null,
+      "outcomeObservations": 0,
+      "evidenceRefs": 0
+    }
+  },
+  "reviewContractSource": "canonical"
+}
