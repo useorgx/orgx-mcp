@@ -20,7 +20,7 @@ describe('shared output summary presentation', () => {
     expect(doc.querySelector('.ox-fd-checks')?.textContent).toContain('Reported by the producer. Quality results and client acceptance are recorded separately below.');
     expect(doc.querySelectorAll('.ox-fd-decisions li')).toHaveLength(1);
     expect(doc.querySelector('[aria-current="page"]')?.textContent).toContain('Client deck.md');
-    expect(doc.querySelector('.ox-fd-receipt')?.textContent).toContain('Run cost$0.00Expert minutes left0 minQuality barNot recorded');
+    expect(doc.querySelector('.ox-fd-receipt')?.textContent).toContain('Run cost$0.00Expert minutes0 minQuality barNot recorded');
     expect(doc.querySelectorAll('button')).toHaveLength(0);
   });
 

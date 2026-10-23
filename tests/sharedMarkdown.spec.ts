@@ -43,7 +43,7 @@ describe('shared output Markdown', () => {
     expect(doc.querySelector('script')).toBeNull();
     expect(doc.querySelector('main')?.textContent).toContain('Open the full artifact');
     const diagram = preview('```mermaid\nflowchart LR\n A[Client] --> B[Review]\n```');
-    expect(diagram.querySelector('main')?.textContent).toBe('Open the full artifact to view this diagram.');
+    expect(diagram.querySelector('main')?.textContent).toBe('Diagram preview unavailable; a rendered file is needed.');
     expect(diagram.querySelector('main')?.textContent).not.toContain('flowchart');
   });
 

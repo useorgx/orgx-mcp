@@ -44,7 +44,7 @@
       '<details class="ox-fd-checks"><summary>Checked / Not checked</summary><p>Reported by the producer. Quality results and client acceptance are recorded separately below.</p><h4>Checked</h4>' + list(value.checked) + '<h4>Not checked</h4>' + list(value.notChecked) + '</details>' +
       fileList + '<section class="ox-fd-receipt" aria-label="Run receipt"><h4>Run receipt</h4><dl><dt>Run cost</dt><dd>' +
       (typeof receipt.costUsd === 'number' && Number.isFinite(receipt.costUsd) && receipt.costUsd >= 0 ? receipt.costUsd > 0 && receipt.costUsd < 0.01 ? '&lt;$0.01' : '$' + receipt.costUsd.toFixed(2) : 'Not recorded') +
-      '</dd><dt>Expert minutes left</dt><dd>' + esc(amount(receipt.expertMinutes, ' min')) + '</dd><dt>Quality bar</dt><dd>' + esc(text(receipt.qualityBar) || 'Not recorded') + '</dd></dl><p>' + runLink + '</p></section></section>';
+      '</dd><dt>Expert minutes</dt><dd>' + esc(amount(receipt.expertMinutes, ' min')) + '</dd><dt>Quality bar</dt><dd>' + esc(text(receipt.qualityBar) || 'Not recorded') + '</dd></dl><p>' + runLink + '</p></section></section>';
   }
   global.OrgXOutputFrontDoor = { render: render };
 })(typeof window !== 'undefined' ? window : globalThis);

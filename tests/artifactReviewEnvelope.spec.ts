@@ -34,7 +34,7 @@ describe("artifact review envelope", () => {
     expect(summary).toContain('Answer: Review the client deck');
     expect(summary).toContain('Context: partial. The brief loaded. Budget was not recorded.');
     expect(summary).toContain('Checked (producer notes)');
-    expect(summary).toContain('Run cost: $0.00; expert minutes left: 0; quality bar: Not recorded');
+    expect(summary).toContain('Run cost: $0.00; expert minutes: 0; quality bar: Not recorded');
     expect(summary).toContain('Quality: unscored; human ruling: accepted; outcome: unobserved');
     expect(summary).toContain('Modality proof: blocked');
     expect(summary).toContain('Decision: Visual proof incomplete');
