@@ -133,6 +133,7 @@
       outSel: null,
       // What each output says (summary, preview): widget-only, from the read's _meta, never the snapshot.
       outPreviews: {},
+      outDoorPending: {},
       goalReasons: {},
       outRange: '7d',
       outFamily: 'all',
@@ -2405,7 +2406,7 @@
         ui[key] = data && data[key] ? data[key] : { status: 'unavailable', items: [], total: 0 };
         if (key === 'outputs') {
           var said = result && result.meta && result.meta[PREVIEW_META_KEY];
-          ui.outPreviews = said && typeof said === 'object' ? said : {};
+          ui.outPreviews = said && typeof said === 'object' ? Object.assign({}, said) : {};
         } else {
           var why = result && result.meta && result.meta[GOAL_REASONS_META_KEY];
           ui.goalReasons = why && typeof why === 'object' ? why : {};
@@ -2421,6 +2422,29 @@
     }
     function fetchOutputs() { fetchView('outputs'); }
     function fetchGoals() { fetchView('goals'); }
+
+    // Read only the selected output's canonical detail. No producer metadata,
+    // model-visible preview text, N+1 list reads or new tool is required.
+    function fetchOutputSummary(id) {
+      if (!id || isGallery || ui.outDoorPending[id]) return;
+      ui.outDoorPending[id] = true;
+      var old = Object.assign({}, ui.outPreviews[id] || {});
+      delete old.frontDoor;
+      ui.outPreviews[id] = old;
+      var gen = ui.generation;
+      R.callToolResult('orgx_panel_snapshot', { view: 'outputs', query: id }).then(function received(result) {
+        if (gen !== ui.generation) return;
+        var previews = result && result.meta && result.meta[PREVIEW_META_KEY];
+        var current = previews && previews[id];
+        if (current && typeof current === 'object') ui.outPreviews[id] = current;
+        ui.outDoorPending[id] = false;
+        if (ui.outSel === id) render();
+      }, function unavailable() {
+        if (gen !== ui.generation) return;
+        ui.outDoorPending[id] = false;
+        if (ui.outSel === id) render();
+      });
+    }
 
     /** Say a sentence in the chat for the person: the panel's way to do what it has no button of its own for. */
     function sendSentence(text, button, done) {
@@ -3175,6 +3199,7 @@
         case 'out-select':
           transition('detail', function openOut() {
             ui.outSel = !id || ui.outSel === id ? null : id;
+            if (ui.outSel) fetchOutputSummary(ui.outSel);
             render();
             focusFirst(ui.outSel ? '.pn-md-detail .md-close' : '.oc-row');
           });
@@ -3646,7 +3671,7 @@
       ui.startStatus = null; ui.startWhoOpen = false;
       ui.wsOpen = false; ui.wsPhase = 'idle'; ui.workspaces = null; ui.wsError = null; ui.wsSwitchingTo = null;
       ui.seenRows = null; ui.lastCounts = null;
-      ui.outputs = null; ui.outputsPhase = 'idle'; ui.outSel = null; ui.outGoal = 'all'; ui.outPreviews = {};
+      ui.outputs = null; ui.outputsPhase = 'idle'; ui.outSel = null; ui.outGoal = 'all'; ui.outPreviews = {}; ui.outDoorPending = {};
       ui.goals = null; ui.goalsPhase = 'idle'; ui.goalSel = null; ui.goalForm = { open: false, text: '', status: null }; ui.goalLinks = {}; ui.goalReasons = {};
       ui.pop = null; ui.steer = null; ui.ladderOpen = {}; ui.evidenceRaw = false;
       ui.bulkMode = false; ui.bulkSel = {}; ui.bulkNote = null; ui.bulkNotes = {};

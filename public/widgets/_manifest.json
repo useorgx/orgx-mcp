@@ -25,6 +25,8 @@
     "shared/mcp-apps-sdk.umd.js",
     "shared/openai-extensions.js",
     "shared/orgx-icons.js",
+    "shared/output-front-door.css",
+    "shared/output-front-door.js",
     "shared/panel-interaction-state.js",
     "shared/panel/panel-app.js",
     "shared/panel/panel-brand.js",
@@ -109,8 +111,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 112541,
-      "hash": "aabb4d399b7b",
+      "bytes": 113363,
+      "hash": "479b5269b834",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -126,6 +128,8 @@
         "shared/markdown.js",
         "shared/mcp-apps-sdk.umd.js",
         "shared/orgx-icons.js",
+        "shared/output-front-door.css",
+        "shared/output-front-door.js",
         "shared/tokens.css",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
@@ -314,8 +318,8 @@
     },
     "orgx-panel": {
       "file": "public/widgets/orgx-panel.html",
-      "bytes": 2230,
-      "hash": "3de8a88faf92",
+      "bytes": 2348,
+      "hash": "6ab60fd36aca",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -333,6 +337,8 @@
         "shared/markdown.js",
         "shared/mcp-apps-sdk.umd.js",
         "shared/openai-extensions.js",
+        "shared/output-front-door.css",
+        "shared/output-front-door.js",
         "shared/panel-interaction-state.js",
         "shared/panel/panel-app.js",
         "shared/panel/panel-brand.js",

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
   <link rel="stylesheet" href="shared/markdown.css" />
+  <link rel="stylesheet" href="shared/output-front-door.css" />
   <script src="shared/kit/ox-elements-core.js"></script>
   <script src="shared/kit/ox-elements-footer.js"></script>
   <script src="shared/kit/ox-elements-avatar.js"></script>
@@ -279,6 +280,7 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/markdown.js"></script>
+  <script src="shared/output-front-door.js"></script>
   <script src="shared/live-machine.js"></script>
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
@@ -366,6 +368,7 @@
 
       // ─── data resolution ─────────────────────────────────────────
       let activeReviewContract = null;
+      let activeFrontDoor = null;
       let renderGeneration = 0;
 
       function resolveArtifact() {
@@ -672,6 +675,7 @@
 
       function resolveIncomingArtifact(payload) {
         if (!payload || typeof payload !== 'object') return payload;
+        activeFrontDoor = null;
         const data = asRecord(payload.data);
         const result = asRecord(payload.result);
         const reviewContract =
@@ -695,7 +699,11 @@
             __errorCode: typeof error === 'object' ? firstString([error.code, error.kind]) : '',
           };
         }
-        return normalizeArtifact(candidate);
+        const normalized = normalizeArtifact(candidate);
+        if ((payload.reviewContractSource || data.reviewContractSource || result.reviewContractSource) === 'canonical' && activeReviewContract && activeReviewContract.frontDoor) {
+          activeFrontDoor = { id: normalized.id, version: normalized.version, value: activeReviewContract.frontDoor };
+        }
+        return normalized;
       }
 
       function resolveReviewerSignal(review) {
@@ -1844,6 +1852,8 @@
         const summary = activeReviewContract
           ? firstString([canonicalWorkflow.reason, canonicalWorkflow.headline]) || artifact.summary || 'Canonical review evidence attached.'
           : (artifact.summary || 'Production artifact awaiting approval.');
+        const frontDoorHtml = activeFrontDoor && activeFrontDoor.id === artifact.id && activeFrontDoor.version === artifact.version
+          ? window.OrgXOutputFrontDoor.render(activeFrontDoor.value, { artifactId: artifact.id }) : '';
 
         if (isResolved) {
           const approved = artifact.status === 'approved';
@@ -1851,6 +1861,7 @@
             '<article class="wcard ox-surface" data-edge="teal">' +
             renderHeader(artifact, 'teal', 'proactive', 'sign') +
             '<div class="bd">' +
+            frontDoorHtml +
             '<h2 class="review-question">' + (approved ? 'Approval recorded' : 'Revision requested') + '</h2>' +
             '<p class="review-summary">' + (approved ? 'Signed off. Execution can continue from this version.' : 'Guidance filed. The author owns the next revision.') + '</p>' +
             '</div>' +
@@ -1915,6 +1926,7 @@
           renderHeader(artifact, tone, mode === 'resolve' ? 'asking' : 'verifying', mode) +
           '<div class="bd">' +
           '<div class="review-desk animate-in">' +
+          frontDoorHtml +
           '<div class="review-control">' +
           (chip ? '<div class="review-status">' + chip + '</div>' : '') +
           '<h2 class="review-question">' + escapeHtml(question) + '</h2>' +

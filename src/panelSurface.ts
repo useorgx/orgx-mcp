@@ -43,6 +43,8 @@ import {
   splitWidgetApprovalMeta,
 } from './widgetApprovalMeta';
 import { normalizeArtifactRecord } from './widgetArtifactProof';
+import { canonicalOutputFrontDoor } from './outputFrontDoor';
+import type { ArtifactReviewEnvelope } from './artifactReview';
 import type { StreamGrant } from './live/streamGrant';
 import {
   buildPanelReceiptDetail,
@@ -141,7 +143,7 @@ export const PANEL_SNAPSHOT_TOOL_CONTRACT = {
       .string()
       .max(200)
       .optional()
-      .describe('For view "receipts": a Work Ledger filter instead of the range, e.g. "pr:3236" for the work behind a merge.'),
+      .describe('For view "receipts": a Work Ledger filter instead of the range, e.g. "pr:3236". For view "outputs": optional output UUID to read its canonical summary.'),
     receipt_id: z
       .string()
       .max(200)
@@ -1792,6 +1794,8 @@ export interface PanelSurfaceHost {
     workspaceId: string;
     limit: number;
   }): Promise<Array<Record<string, unknown>>>;
+  /** Current authorized artifact review, bound to the supplied artifact subject. */
+  fetchArtifactReview?(artifact: Record<string, unknown>): Promise<ArtifactReviewEnvelope>;
   /**
    * The agent-status read, asked for only when the panel opens In progress.
    * Returns the app payload's data, or null when the read fails.
@@ -1991,6 +1995,16 @@ export async function handlePanelSnapshot(
       const built = buildPanelOutputs(artifacts, { viewerIds: host.viewerUserIds(), decisionByArtifact });
       snapshot.outputs = built.outputs;
       outputPreviews = built.previews;
+      const selectedId = typeof args.query === 'string' && UUID_RE.test(args.query) ? args.query : null;
+      const selected = selectedId && built.outputs.items.some((item) => item.id === selectedId)
+        ? artifacts?.find((artifact) => asRecord(artifact)?.id === selectedId) : null;
+      if (selected && host.fetchArtifactReview) {
+        try {
+          const envelope = await host.fetchArtifactReview(asRecord(selected)!);
+          const frontDoor = envelope.artifact.id === selectedId ? canonicalOutputFrontDoor(envelope) : null;
+          if (frontDoor) outputPreviews[selectedId!] = { ...(outputPreviews[selectedId!] ?? { summary: null, preview: null }), frontDoor };
+        } catch { /* Existing preview and exact decision authority remain available. */ }
+      }
     }
     if (args?.view === 'goals' && workspace) {
       try {

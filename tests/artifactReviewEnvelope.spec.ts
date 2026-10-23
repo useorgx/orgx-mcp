@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { outputFrontDoor } from './fixtures/outputFrontDoor';
 
 import {
   loadArtifactReviewEnvelope,
@@ -27,6 +28,25 @@ const reviewContract = {
 };
 
 describe("artifact review envelope", () => {
+  it('narrates an admitted summary in five lines while keeping producer claims separate', () => {
+    const summary = summarizeArtifactReviewEnvelope({ artifact, reviewContract: { ...reviewContract, frontDoor: outputFrontDoor() }, reviewContractSource: 'canonical' });
+    expect(summary.split('\n')).toHaveLength(5);
+    expect(summary).toContain('Answer: Review the client deck');
+    expect(summary).toContain('Context: partial. The brief loaded. Budget was not recorded.');
+    expect(summary).toContain('Checked (producer notes)');
+    expect(summary).toContain('Run cost: $0.00; expert minutes left: 0; quality bar: Not recorded');
+    expect(summary).toContain('Quality: unscored; human ruling: accepted; outcome: unobserved');
+    expect(summary).toContain('https://useorgx.com/console/runs/');
+  });
+
+  it('drops an invalid additive summary and preserves the canonical review and actor scope', async () => {
+    const actor = { userId: 'u', userEmail: null, workspaceId: 'workspace-1', runId: 'run-1', scopes: ['entities:read'] };
+    const callApi = vi.fn().mockResolvedValue({ json: async () => ({ artifact, reviewContract: { ...reviewContract, frontDoor: { ...outputFrontDoor(), context: { state: 'loaded', team: 'invented' } } } }) });
+    const result = await loadArtifactReviewEnvelope({ env, artifact, actor, callApi });
+    expect(result.reviewContractSource).toBe('canonical');
+    expect(result.reviewContract).toEqual(reviewContract);
+    expect(callApi.mock.calls[0]?.[3]).toEqual(actor);
+  });
   it("loads the canonical detail projection with the same authenticated actor", async () => {
     const callApi = vi.fn().mockResolvedValue({
       json: async () => ({

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { mountPanel, snapshot, D1, D2 } from './fixtures/panel';
+import { outputFrontDoor } from './fixtures/outputFrontDoor';
 
 /**
  * The redesign's new pieces, end to end in the widget: bulk approve with its
@@ -202,6 +203,25 @@ describe('ready answers and a person’s own answer', () => {
 });
 
 describe('Outputs', () => {
+  it('hydrates the selected canonical answer and routes its decision to the existing controls', async () => {
+    const p = await open(null, { outputs: { data: outputsView(), meta: { 'orgx/panelPreviews': { [OUT]: { summary: null, preview: PREVIEW, frontDoor: outputFrontDoor() } } } } });
+    p.click('[data-tab="outputs"]');
+    await p.settle();
+    p.click(`[data-action="out-select"][data-id="${OUT}"]`);
+    await p.settle();
+    expect(reads(p).filter((c) => c.arguments.query === OUT)).toHaveLength(1);
+    const summary = p.doc.querySelector('.pn-md-detail [data-front-door]')!;
+    expect(summary.textContent).toContain('Review the client deck');
+    expect(summary.textContent).toContain('Budget was not recorded.');
+    expect(summary.textContent).toContain('$0.00');
+    expect(summary.querySelector('[data-action="out-decide"]')?.getAttribute('data-id')).toBe(D1);
+    expect(decided(p)).toEqual([]);
+    p.click('[data-front-door] [data-action="out-decide"]');
+    await p.settle();
+    expect(p.doc.querySelector('#pn-tab-needs[aria-selected="true"]')).not.toBeNull();
+    expect(decided(p)).toEqual([]);
+    expect(p.calls.updateModelContext).not.toHaveBeenCalled();
+  });
   it('renders the output preview as safe structured Markdown', async () => {
     const markdown = '# Client answer\n\n**Review the deck.**\n\n| Work | Owner | Due | State | Next |\n| --- | --- | --- | --- | --- |\n| Deck | Hope | Friday | Ready | Review |\n\n[Unsafe](javascript:alert(1))';
     const p = await open(null, { outputs: { data: outputsView(), meta: { 'orgx/panelPreviews': { [OUT]: { summary: null, preview: markdown } } } } });
