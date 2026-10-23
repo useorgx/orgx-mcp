@@ -33,7 +33,7 @@
     }
     var fileList = files.length ? '<nav aria-label="Output files"><h4>Files</h4><ul class="ox-fd-files">' + files.slice(0, 4).map(fileRow).join('') + '</ul>' +
       (files.length > 4 ? '<details><summary>Show all ' + files.length + ' files</summary><ul class="ox-fd-files">' + files.slice(4).map(fileRow).join('') + '</ul></details>' : '') + '</nav>' : '';
-    var decisionList = decisions.length ? '<section aria-label="Decisions"><h4>Needs you · ' + decisions.length + (decisions.length === 1 ? ' decision' : ' decisions') + '</h4><ol class="ox-fd-decisions">' + decisions.map(function decision(d) {
+    var decisionList = decisions.length ? '<section aria-label="Decisions"><h4>Linked decisions · ' + decisions.length + (decisions.length === 1 ? ' decision' : ' decisions') + '</h4><ol class="ox-fd-decisions">' + decisions.map(function decision(d) {
       return '<li><strong>' + esc(d.question) + '</strong><p><b>Recommend:</b> ' + esc(d.recommendation) + '</p><p>' + esc(d.impact) + '</p>' +
         (typeof options.decisionAction === 'function' ? options.decisionAction(d.id) : link(d.href, 'Review decision')) + '</li>';
     }).join('') + '</ol></section>' : '';
