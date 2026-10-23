@@ -1,0 +1,24 @@
+.ox-markdown { min-width: 0; max-width: 100%; color: var(--ox-text-2); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.ox-markdown > :first-child { margin-top: 0; }
+.ox-markdown > :last-child { margin-bottom: 0; }
+.ox-markdown h1,.ox-markdown h2,.ox-markdown h3,.ox-markdown h4,.ox-markdown h5,.ox-markdown h6 { color: var(--ox-text); font-weight: 700; line-height: 1.3; margin: 18px 0 10px; }
+.ox-markdown h1 { font-size: 20px; } .ox-markdown h2 { font-size: 18px; } .ox-markdown h3 { font-size: 16px; }
+.ox-markdown p { margin: 0 0 10px; } .ox-markdown ul,.ox-markdown ol { margin: 0 0 12px; padding-left: 20px; }
+.ox-markdown li { margin: 4px 0; } .ox-markdown a { color: var(--ox-text); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.ox-markdown code { font: 12px/1.5 var(--ox-font-code); background: var(--ox-hover); padding: 2px 4px; border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ox-markdown pre { max-width: 100%; margin: 10px 0; padding: 12px; border: 1px solid var(--ox-border); border-radius: 8px; background: var(--ox-well-bg); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ox-markdown pre code { padding: 0; background: none; } .ox-markdown blockquote { margin: 12px 0; border-left: 2px solid var(--ox-border-strong); padding-left: 12px; color: var(--ox-text-muted); }
+.ox-markdown hr { border: 0; border-top: 1px solid var(--ox-border); margin: 18px 0; }
+.ox-md-note { color: var(--ox-text-muted); }
+.ox-md-table { max-width: 100%; margin: 12px 0; }
+.ox-md-table table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; line-height: 1.5; }
+.ox-md-table th,.ox-md-table td { padding: 8px; text-align: left; vertical-align: top; overflow-wrap: anywhere; border-bottom: 1px solid var(--ox-border); }
+.ox-md-table th { color: var(--ox-text); font-weight: 650; background: var(--ox-surface-subtle); }
+@media (max-width: 480px) {
+  .ox-md-table table[data-stack] thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .ox-md-table table[data-stack],.ox-md-table table[data-stack] tbody,.ox-md-table table[data-stack] tr { display: block; width: 100%; }
+  .ox-md-table table[data-stack] tr { margin: 8px 0; border: 1px solid var(--ox-border); border-radius: 8px; padding: 3px 8px; }
+  .ox-md-table table[data-stack] td { display: grid; grid-template-columns: minmax(70px,35%) minmax(0,1fr); gap: 8px; padding: 7px 0; }
+  .ox-md-table table[data-stack] td:last-child { border-bottom: 0; }
+  .ox-md-table table[data-stack] td::before { content: attr(data-label); color: var(--ox-text-muted); font-weight: 600; overflow-wrap: anywhere; }
+}

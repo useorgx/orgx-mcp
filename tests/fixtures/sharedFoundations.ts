@@ -8,7 +8,7 @@ import { join } from 'node:path';
  * first, then install their stub; window.OrgXTime and window.OrgXLinks stay.
  */
 const SHARED = join(__dirname, '..', '..', 'public', 'widgets', 'shared');
-const SOURCES = ['agent-identity.js', 'widget-runtime.js', 'orgx-icons.js'].map((file) =>
+const SOURCES = ['agent-identity.js', 'widget-runtime.js', 'orgx-icons.js', 'markdown.js'].map((file) =>
   readFileSync(join(SHARED, file), 'utf8')
 );
 
