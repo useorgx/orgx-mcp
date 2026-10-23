@@ -22,7 +22,7 @@ export const artifactOutputFrontDoorSchema = z.object({
     state: z.enum(['loaded', 'partial', 'missing', 'unavailable', 'unknown']),
     summary: z.string().min(1).max(1000),
     runId: uuid.nullable(),
-  }).strict(),
+  }).strict().refine((value) => !['loaded', 'partial'].includes(value.state) || value.runId !== null),
   files: z.array(z.object({
     artifactId: uuid,
     name: z.string().min(1).max(300),
@@ -30,15 +30,18 @@ export const artifactOutputFrontDoorSchema = z.object({
     sizeBytes: z.number().int().nonnegative().nullable(),
     purpose: z.string().min(1).max(500),
     href: z.string(),
-  }).strict().refine((value) => value.href === `/artifacts/${value.artifactId}`)).max(100),
+  }).strict().refine((value) => value.href === `/artifacts/${value.artifactId}`)).max(100)
+    .refine((files) => new Set(files.map((file) => file.artifactId)).size === files.length),
   receipt: z.object({
     href: z.string().nullable(),
     runId: uuid.nullable(),
     costUsd: finiteAmount,
     expertMinutes: finiteAmount,
     qualityBar: nullableText,
-  }).strict().refine((value) => value.href === (value.runId ? `/console/runs/${value.runId}` : null)),
-}).strict();
+  }).strict()
+    .refine((value) => value.href === (value.runId ? `/console/runs/${value.runId}` : null))
+    .refine((value) => value.runId !== null || (value.costUsd === null && value.expertMinutes === null)),
+}).strict().refine((value) => !value.context.runId || !value.receipt.runId || value.context.runId === value.receipt.runId);
 
 export type ArtifactOutputFrontDoor = z.infer<typeof artifactOutputFrontDoorSchema>;
 
