@@ -21,6 +21,10 @@ describe('canonical output front door', () => {
     (door: ReturnType<typeof outputFrontDoor>) => ({ ...door, files: [{ ...door.files[0], href: '/artifacts/other' }] }),
     (door: ReturnType<typeof outputFrontDoor>) => ({ ...door, receipt: { ...door.receipt, href: '/console/runs/other' } }),
     (door: ReturnType<typeof outputFrontDoor>) => ({ ...door, receipt: { ...door.receipt, costUsd: Infinity } }),
+    (door: ReturnType<typeof outputFrontDoor>) => ({ ...door, context: { ...door.context, runId: null } }),
+    (door: ReturnType<typeof outputFrontDoor>) => ({ ...door, receipt: { ...door.receipt, runId: null, href: null } }),
+    (door: ReturnType<typeof outputFrontDoor>) => ({ ...door, receipt: { ...door.receipt, runId: door.decisions[0].id, href: `/console/runs/${door.decisions[0].id}` } }),
+    (door: ReturnType<typeof outputFrontDoor>) => ({ ...door, files: [...door.files, ...door.files] }),
   ])('rejects malformed blocks without weakening the existing review', (mutate) => {
     expect(artifactOutputFrontDoorSchema.safeParse(mutate(outputFrontDoor())).success).toBe(false);
     expect(canonicalOutputFrontDoor(envelope(mutate(outputFrontDoor())))).toBeNull();

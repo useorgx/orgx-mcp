@@ -152,7 +152,7 @@ export function summarizeArtifactReviewEnvelope(
       `Answer: ${line(frontDoor.answer)}`,
       `Decisions: ${decisions.length ? decisions.join(' | ') : 'None requested.'}`,
       `Context: ${frontDoor.context.state}. ${line(frontDoor.context.summary)}`,
-      `Checked (producer notes): ${frontDoor.checked.map(line).join('; ') || 'None recorded'}. Not checked: ${frontDoor.notChecked.map(line).join('; ') || 'None recorded'}. Quality: ${humanize(quality.state, 'unscored')}${score}; human ruling: ${humanize(ruling.state, 'none')}; outcome: ${humanize(outcome.state, 'unobserved')}.`,
+      `Checked (producer notes): ${frontDoor.checked.map(line).join('; ') || 'None recorded'}. Not checked: ${frontDoor.notChecked.map(line).join('; ') || 'None recorded'}. Quality: ${humanize(quality.state, 'unscored')}${score}; human ruling: ${humanize(ruling.state, 'none')}; outcome: ${humanize(outcome.state, 'unobserved')}. Lifecycle: ${status}. Modality proof: ${humanize(modalityGate.state, 'not required')}. Decision: ${line(cleanString(workflow.headline) ?? 'Inspect the evidence.')}`,
       `Files: ${frontDoor.files.length}. Run cost: ${costText}; expert minutes left: ${frontDoor.receipt.expertMinutes ?? 'Not recorded'}; quality bar: ${frontDoor.receipt.qualityBar ? line(frontDoor.receipt.qualityBar) : 'Not recorded'}. Open: ${output}${receipt ? ` | Run receipt: ${receipt}` : ''}`,
     ].join('\n');
   }

@@ -36,6 +36,8 @@ describe("artifact review envelope", () => {
     expect(summary).toContain('Checked (producer notes)');
     expect(summary).toContain('Run cost: $0.00; expert minutes left: 0; quality bar: Not recorded');
     expect(summary).toContain('Quality: unscored; human ruling: accepted; outcome: unobserved');
+    expect(summary).toContain('Modality proof: blocked');
+    expect(summary).toContain('Decision: Visual proof incomplete');
     expect(summary).toContain('https://useorgx.com/console/runs/');
   });
 
