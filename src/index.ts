@@ -270,6 +270,7 @@ import {
 } from './artifactReview';
 import { buildWorkspaceCreateBody } from './workspaceTool';
 import { buildEntityUpdateRequest } from './entityUpdateRequest';
+import { buildWorkOutputAttachmentRequest, readWorkOutputAttachmentAcknowledgement } from './workOutputAttachment';
 import { buildEntityCollectionSearchParams } from './entityCollectionSearch';
 import {
   buildBroadSearchPagination,
@@ -6070,6 +6071,24 @@ export class OrgXMcp extends McpAgent<
           const operation =
             typeof args.operation === 'string' ? args.operation : 'create';
           if (operation === 'update') {
+            if (args.artifact !== undefined) {
+              const attachment = buildWorkOutputAttachmentRequest(args);
+              const response = await callOrgxApiJson(this.env, '/api/v1/workflows/attach-output', {
+                method: 'POST', headers: { 'Idempotency-Key': attachment.idempotencyKey },
+                body: JSON.stringify(attachment.body),
+              }, { userId: resolvedUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(resolvedUserId), allowFallback: false });
+              const data = readWorkOutputAttachmentAcknowledgement(await response.json());
+              const artifact = data.artifact;
+              const payload = canonicalizeOrgxWriteResponse({
+                _v2_tool: 'orgx_write', operation: 'update', ok: true,
+                id: artifact.id, data,
+                message: 'Output attached for review. Attachment does not approve or complete work.',
+              }, 'artifact');
+              return {
+                content: [{ type: 'text', text: `${payload.message} Inspect artifact ${artifact.id} for its canonical output summary and review link.` }],
+                structuredContent: payload,
+              };
+            }
             const fields =
               args.fields && typeof args.fields === 'object' && !Array.isArray(args.fields)
                 ? (args.fields as Record<string, unknown>)

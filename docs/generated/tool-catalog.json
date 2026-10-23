@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-23T11:39:14.654Z",
-  "sourceHash": "35036f1e4264d88e",
+  "generatedAt": "2026-10-23T11:55:54.655Z",
+  "sourceHash": "38b8ee272286dd3e",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -16050,6 +16050,7 @@
         "chatgpt",
         "claude-directory",
         "claude-directory-legacy",
+        "claude-code",
         "read-only",
         "memory",
         "commander",
@@ -16103,6 +16104,7 @@
         "chatgpt",
         "claude-directory",
         "claude-directory-legacy",
+        "claude-code",
         "read-only",
         "memory",
         "commander",
@@ -16179,6 +16181,7 @@
         "extended",
         "chatgpt",
         "claude-directory",
+        "claude-code",
         "read-only"
       ]
     },
@@ -16256,6 +16259,7 @@
         "chatgpt",
         "claude-directory",
         "claude-directory-legacy",
+        "claude-code",
         "read-only",
         "memory",
         "commander",
@@ -16314,6 +16318,7 @@
         "chatgpt",
         "claude-directory",
         "claude-directory-legacy",
+        "claude-code",
         "read-only",
         "commander",
         "observer"
@@ -16693,6 +16698,7 @@
         "claude-directory",
         "claude-directory-legacy",
         "claude-plugin",
+        "claude-code",
         "claude-code-legacy",
         "read-only",
         "memory",
@@ -17957,6 +17963,7 @@
         "claude-directory",
         "claude-directory-legacy",
         "claude-plugin",
+        "claude-code",
         "claude-code-legacy",
         "read-only",
         "memory",
@@ -18525,7 +18532,7 @@
     {
       "id": "orgx_update_work",
       "title": "Update OrgX Work Content",
-      "description": "Apply a nonempty typed content patch to initiative, workstream, milestone, or task. Permits text, priority, dates, objectives, notes, and tags; cannot change workflow status, approvals, ownership authority, or execution policy.",
+      "description": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -18606,6 +18613,142 @@
             },
             "additionalProperties": false
           },
+          "artifact": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "artifact_type": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "artifact_url": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "artifact_url"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "external_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "external_url"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "preview_markdown": {
+                "type": "string",
+                "maxLength": 25000
+              },
+              "output_front_door": {
+                "type": "object",
+                "properties": {
+                  "answer": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "decisions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "decisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "question": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "recommendation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        },
+                        "impact": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        }
+                      },
+                      "required": [
+                        "decisionId",
+                        "question",
+                        "recommendation",
+                        "impact"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 3,
+                    "default": []
+                  },
+                  "checked": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "maxItems": 8,
+                    "default": []
+                  },
+                  "notChecked": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "maxItems": 8,
+                    "default": []
+                  }
+                },
+                "required": [
+                  "answer"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "artifact_type",
+              "location"
+            ],
+            "additionalProperties": false
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          },
           "idempotency_key": {
             "type": "string",
             "minLength": 1,
@@ -18619,7 +18762,6 @@
         "required": [
           "type",
           "id",
-          "fields",
           "idempotency_key"
         ],
         "additionalProperties": false,
@@ -18639,7 +18781,7 @@
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,
-        "openWorldHint": false
+        "openWorldHint": true
       },
       "readOnly": false,
       "source": "workflow_operation",
@@ -18647,7 +18789,9 @@
         "v2",
         "extended",
         "chatgpt",
-        "claude-directory"
+        "claude-directory",
+        "claude-code",
+        "commander"
       ]
     },
     {

@@ -11,6 +11,7 @@ import {
 import { SECURITY_SCHEMES, SCAFFOLD_INITIATIVE_WIDGET_META, OUTPUT_TEMPLATE_URIS, WIDGET_URIS } from './toolDefinitions';
 import { jsonValueSchema } from './openaiOutputSchemas/shared';
 import { idempotencyKeySchema } from './idempotencyKeySchema';
+import { validateWorkUpdateSelection, workOutputArtifactSchema } from './workOutputAttachment';
 
 /** A public operation is bound to one implementation, never a caller-selected verb. */
 export interface WorkflowBackendRequest {
@@ -380,9 +381,13 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       fixedArgs: { operation: 'create', type: 'task' }, annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
   operation('orgx_update_work', 'orgx_write', 'Update OrgX Work Content',
-    'Apply a nonempty typed content patch to initiative, workstream, milestone, or task. Permits text, priority, dates, objectives, notes, and tags; cannot change workflow status, approvals, ownership authority, or execution policy.',
-    { type: workType, id, fields: WORK_CONTENT_PATCH_SCHEMA, idempotency_key: retryKey, session_id: id.optional() }, {
-      fixedArgs: { operation: 'update' }, annotations: modifiesRecords, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+    'Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records.',
+    { type: workType, id, fields: WORK_CONTENT_PATCH_SCHEMA.optional(), artifact: workOutputArtifactSchema.optional(), workspace_id: workspaceId, idempotency_key: retryKey, session_id: id.optional() }, {
+      fixedArgs: { operation: 'update' }, annotations: { ...modifiesRecords, openWorldHint: true }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
+      transformArgs: (args) => {
+        validateWorkUpdateSelection(args);
+        return args;
+      },
     }),
   operation('orgx_estimate_agent_task', 'orgx_spawn', 'Estimate OrgX Agent Task',
     'Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run. An estimate grants no effects: the dispatch that follows must declare its effects scope, or the run gets no external effects (effect_scope_missing).',

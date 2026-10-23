@@ -243,12 +243,12 @@
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,
-        "openWorldHint": false
+        "openWorldHint": true
       },
       "justifications": {
-        "read_only_justification": "Apply a nonempty typed content patch to initiative, workstream, milestone, or task. Permits text, priority, dates, objectives, notes, and tags; cannot change workflow status, approvals, ownership authority, or execution policy. This operation creates records or changes existing planning, work, evidence, or execution state.",
-        "open_world_justification": "Operates on OrgX records or deterministic document validation. It does not publish content or start work in connected services.",
-        "destructive_justification": "Apply a nonempty typed content patch to initiative, workstream, milestone, or task. Permits text, priority, dates, objectives, notes, and tags; cannot change workflow status, approvals, ownership authority, or execution policy. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
+        "read_only_justification": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. This operation creates records or changes existing planning, work, evidence, or execution state.",
+        "open_world_justification": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. The declared operation can start or stop execution, use external providers, or affect connected services under OrgX policy.",
+        "destructive_justification": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. Existing content or workflow state changes; dispatched or canceled attempts cannot necessarily be restored as the same execution."
       }
     },
     "orgx_estimate_agent_task": {
