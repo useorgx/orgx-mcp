@@ -2407,6 +2407,9 @@
         if (key === 'outputs') {
           var said = result && result.meta && result.meta[PREVIEW_META_KEY];
           ui.outPreviews = said && typeof said === 'object' ? Object.assign({}, said) : {};
+          // A late list response replaces compact previews. Re-read the selected
+          // canonical detail so it cannot erase an already admitted summary.
+          if (ui.outSel) fetchOutputSummary(ui.outSel);
         } else {
           var why = result && result.meta && result.meta[GOAL_REASONS_META_KEY];
           ui.goalReasons = why && typeof why === 'object' ? why : {};

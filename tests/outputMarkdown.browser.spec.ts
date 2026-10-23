@@ -17,7 +17,7 @@ describe.each(['light', 'dark'] as const)('output Markdown on a 390px %s phone',
     const page = await context.newPage();
     page.setDefaultTimeout(8000);
     await installHostedWidgetFixtures(page);
-    const markdown = '# Client answer\n\n| Work | Owner | Due | State | Next |\n| --- | --- | --- | --- | --- |\n| Deck | Hope | Friday | Ready | Review |\n\n## <img src=x onerror="window.compromised=true">';
+    const markdown = '# Client answer\n\n| Work | Owner | Due | State | Next |\n| --- | --- | --- | --- | --- |\n| Deck | Hope | Friday | Ready | Review |\n\n## <img src=x onerror="window.compromised=true">\n\n```mermaid\nflowchart LR\n A-->B\n```';
     const data = snapshot({ outputs: { status: 'ok', total: 1, items: [{ id: FRONT_DOOR_ARTIFACT_ID, title: 'Client deck', type: 'document', family: 'writing', status: 'in_review', has_preview: true, external_url: null, initiative_id: null, task_id: null, made_at: new Date().toISOString(), made_by: 'OrgX', accepted: { state: 'waiting', at: null, by: null }, landed: null, moved: null, checks: [], checks_source: null, eval_score: null, decision_id: null, url: `https://useorgx.com/artifacts/${FRONT_DOOR_ARTIFACT_ID}` }] } });
     await page.addInitScript(({ theme, data, door, markdown, id }) => {
       (window as unknown as Record<string, unknown>).openai = { theme, toolOutput: data, setWidgetHeight() {}, async callTool(name: string, args: Record<string, unknown>) {
@@ -34,6 +34,8 @@ describe.each(['light', 'dark'] as const)('output Markdown on a 390px %s phone',
       expect(await summary.locator('.ox-fd-answer').innerText()).toContain('Review the client deck');
       expect(await page.locator('.pn-md-detail .ox-markdown h1').innerText()).toBe('Client answer');
       expect(await page.locator('.pn-md-detail .ox-markdown img').count()).toBe(0);
+      expect(await page.locator('.pn-md-detail .ox-markdown').innerText()).toContain('Diagram preview unavailable; a rendered file is needed.');
+      expect(await page.locator('.pn-md-detail .ox-markdown').innerText()).not.toContain('flowchart');
       expect(await page.locator('.pn-md-detail table[data-stack]').count()).toBe(1);
       expect(await page.evaluate(() => (window as unknown as Record<string, unknown>).compromised)).toBeUndefined();
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
@@ -59,6 +61,8 @@ describe.each(['light', 'dark'] as const)('output Markdown on a 390px %s phone',
       expect(await summary.locator('.ox-fd-context').innerText()).toContain('Budget was not recorded.');
       expect(await summary.locator('[aria-current="page"]').innerText()).toContain('Client deck.md');
       expect(await summary.locator('.ox-fd-receipt').innerText()).toContain('$0.00');
+      expect(await summary.locator('.ox-fd-receipt dt').allTextContents()).toContain('Expert minutes');
+      expect(await summary.locator('.ox-fd-receipt').innerText()).not.toContain('minutes left');
       expect(await summary.locator('.ox-fd-receipt dd').first().evaluate((node) => getComputedStyle(node).fontFamily)).toContain('monospace');
       expect(await summary.locator('.ox-fd-context').evaluate((node) => getComputedStyle(node).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
       expect(await summary.locator('button').count()).toBe(0);
@@ -80,7 +84,7 @@ describe.each(['light', 'dark'] as const)('output Markdown on a 390px %s phone',
         theme, setWidgetHeight() {},
         toolOutput: {
           artifact: { id: 'markdown-output', name: 'Client report', artifact_type: 'product.report', status: 'in_review',
-            content: '# Answer\n\n**Review the deck.**\n\n| Work | Owner | Due | State | Next |\n| --- | --- | --- | --- | --- |\n| Deck | Hope | Friday | Ready | Review |\n\n## <img src=x onerror="window.compromised=true">\n\n[Unsafe](javascript:alert(1))' },
+            content: '# Answer\n\n**Review the deck.**\n\n| Work | Owner | Due | State | Next |\n| --- | --- | --- | --- | --- |\n| Deck | Hope | Friday | Ready | Review |\n\n## <img src=x onerror="window.compromised=true">\n\n```mermaid\nflowchart LR\n A-->B\n```\n\n[Unsafe](javascript:alert(1))' },
           reviewContract: { schemaVersion: 'artifact_review_contract.v1', quality: { state: 'unscored', score: null }, workflow: { headline: 'Review the output' } },
           reviewContractSource: 'canonical',
         },
@@ -91,6 +95,8 @@ describe.each(['light', 'dark'] as const)('output Markdown on a 390px %s phone',
       const preview = page.locator('.artifact-preview__markdown');
       await preview.waitFor();
       expect(await preview.locator('h1').innerText()).toBe('Answer');
+      expect(await preview.innerText()).toContain('Diagram preview unavailable; a rendered file is needed.');
+      expect(await preview.innerText()).not.toContain('flowchart');
       expect(await preview.locator('table[data-stack] th').count()).toBe(5);
       expect(await preview.locator('img,script,iframe').count()).toBe(0);
       expect(await preview.locator('a').count()).toBe(0);

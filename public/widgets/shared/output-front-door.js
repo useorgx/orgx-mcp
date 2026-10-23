@@ -33,7 +33,7 @@
     }
     var fileList = files.length ? '<nav aria-label="Output files"><h4>Files</h4><ul class="ox-fd-files">' + files.slice(0, 4).map(fileRow).join('') + '</ul>' +
       (files.length > 4 ? '<details><summary>Show all ' + files.length + ' files</summary><ul class="ox-fd-files">' + files.slice(4).map(fileRow).join('') + '</ul></details>' : '') + '</nav>' : '';
-    var decisionList = decisions.length ? '<section aria-label="Decisions"><h4>Needs you · ' + decisions.length + (decisions.length === 1 ? ' decision' : ' decisions') + '</h4><ol class="ox-fd-decisions">' + decisions.map(function decision(d) {
+    var decisionList = decisions.length ? '<section aria-label="Decisions"><h4>Linked decisions · ' + decisions.length + (decisions.length === 1 ? ' decision' : ' decisions') + '</h4><ol class="ox-fd-decisions">' + decisions.map(function decision(d) {
       return '<li><strong>' + esc(d.question) + '</strong><p><b>Recommend:</b> ' + esc(d.recommendation) + '</p><p>' + esc(d.impact) + '</p>' +
         (typeof options.decisionAction === 'function' ? options.decisionAction(d.id) : link(d.href, 'Review decision')) + '</li>';
     }).join('') + '</ol></section>' : '';
@@ -44,7 +44,7 @@
       '<details class="ox-fd-checks"><summary>Checked / Not checked</summary><p>Reported by the producer. Quality results and client acceptance are recorded separately below.</p><h4>Checked</h4>' + list(value.checked) + '<h4>Not checked</h4>' + list(value.notChecked) + '</details>' +
       fileList + '<section class="ox-fd-receipt" aria-label="Run receipt"><h4>Run receipt</h4><dl><dt>Run cost</dt><dd>' +
       (typeof receipt.costUsd === 'number' && Number.isFinite(receipt.costUsd) && receipt.costUsd >= 0 ? receipt.costUsd > 0 && receipt.costUsd < 0.01 ? '&lt;$0.01' : '$' + receipt.costUsd.toFixed(2) : 'Not recorded') +
-      '</dd><dt>Expert minutes left</dt><dd>' + esc(amount(receipt.expertMinutes, ' min')) + '</dd><dt>Quality bar</dt><dd>' + esc(text(receipt.qualityBar) || 'Not recorded') + '</dd></dl><p>' + runLink + '</p></section></section>';
+      '</dd><dt>Expert minutes</dt><dd>' + esc(amount(receipt.expertMinutes, ' min')) + '</dd><dt>Quality bar</dt><dd>' + esc(text(receipt.qualityBar) || 'Not recorded') + '</dd></dl><p>' + runLink + '</p></section></section>';
   }
   global.OrgXOutputFrontDoor = { render: render };
 })(typeof window !== 'undefined' ? window : globalThis);

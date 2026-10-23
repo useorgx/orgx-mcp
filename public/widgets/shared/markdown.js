@@ -88,7 +88,7 @@
         var close = new RegExp('^' + fence[1][0] + '{' + fence[1].length + ',}\\s*$');
         while (++index < lines.length && !close.test(lines[index].trim())) code.push(lines[index]);
         result.push(fence[2].toLowerCase() === 'mermaid'
-          ? '<p class="ox-md-note">Open the full artifact to view this diagram.</p>'
+          ? '<p class="ox-md-note">Diagram preview unavailable; a rendered file is needed.</p>'
           : '<pre><code>' + esc(code.join('\n')) + '</code></pre>');
         continue;
       }
