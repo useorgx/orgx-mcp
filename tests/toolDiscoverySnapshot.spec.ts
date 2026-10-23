@@ -92,7 +92,7 @@ describe('tool discovery snapshot', () => {
 
   it('uses explicit context and workspace selection in current workflow profiles', () => {
     const currentProfiles = new Set(['v2', 'chatgpt', 'claude-directory', 'extended']);
-    const narrowReadProfiles = new Set(['read-only', 'claude-code-legacy']);
+    const narrowContextProfiles = new Set(['read-only', 'claude-code-legacy', 'claude-code']);
     for (const [profile, definition] of Object.entries(TOOL_PROFILES)) {
       if (definition.tools === null) continue;
       const allowed = resolveProfileToolSet(profile)!;
@@ -100,7 +100,7 @@ describe('tool discovery snapshot', () => {
         expect(allowed.has('orgx_get_workspace_context'), profile).toBe(true);
         expect(allowed.has('orgx_widget_select_workspace'), profile).toBe(true);
         expect(allowed.has('orgx_bootstrap'), profile).toBe(false);
-      } else if (narrowReadProfiles.has(profile)) {
+      } else if (narrowContextProfiles.has(profile)) {
         expect(allowed.has('orgx_bootstrap'), profile).toBe(false);
         expect(allowed.has('orgx_widget_select_workspace'), profile).toBe(false);
       } else {
