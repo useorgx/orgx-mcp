@@ -9,7 +9,7 @@ Keep the submitted profile aligned with `src/toolProfiles.ts`, the operation reg
 | Field | Value |
 |-------|-------|
 | Server name | OrgX MCP |
-| Tagline (≤55 chars) | Organizational continuity for AI agents. |
+| Tagline (≤55 chars) | Proof for AI-delivered work. |
 | Server URL | `https://mcp.useorgx.com/mcp?profile=claude-directory` |
 | Transport | Streamable HTTP (primary) · SSE (fallback) |
 | Auth | OAuth 2.0 + PKCE · Dynamic Client Registration |
@@ -72,7 +72,7 @@ the live form wording is authoritative.
 
 The task outlives the chat. OrgX lets the next agent continue from the
 decisions, artifacts, approvals, owners, and proof the last agent left behind.
-Make AI work resumable, reviewable, and provable across agents.
+Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts.
 
 Claude can retrieve prior decisions and artifacts, plan work, create and update
 owned tasks, check execution readiness and delegation costs, delegate specialist

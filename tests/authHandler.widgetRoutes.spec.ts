@@ -65,7 +65,7 @@ describe('authHandler widget compatibility routes', () => {
       resources?: Array<{ uri?: string }>;
     };
     expect(body.serverInfo?.name).toBe(
-      'OrgX MCP — Organizational Continuity for AI Agents'
+      'OrgX MCP — Proof for AI-Delivered Work'
     );
     expect(body.serverInfo?.version).toBeTruthy();
     expect(body.authentication).toEqual({
