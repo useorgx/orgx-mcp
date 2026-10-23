@@ -8,7 +8,7 @@ const CLOUDFLARE_INTERNAL_ERROR_REFERENCE =
   /^internal error; reference = [a-z0-9]+$/;
 
 const DURABLE_OBJECT_INTERNAL_STORAGE_RESET =
-  /^Internal error in Durable Object storage caused object to be reset; reference = [a-z0-9]+$/;
+  /^Internal error (?:in|while starting up) Durable Object storage caused object to be reset; reference = [a-z0-9]+$/;
 
 const RETRYABLE_METHODS = new Set(['GET', 'HEAD', 'DELETE']);
 

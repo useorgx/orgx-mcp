@@ -39,6 +39,7 @@ describe('Durable Object transport recovery', () => {
     'Durable Object storage operation exceeded timeout which caused object to be reset.',
     'internal error; reference = 8nh1jobu9hnkcgi2v22uqe58',
     'Internal error in Durable Object storage caused object to be reset; reference = daa1kaheu5iq2ojl2fgquadg',
+    'Internal error while starting up Durable Object storage caused object to be reset; reference = 5ldq0rva4k7tmh2oaat71a31',
   ])('retries the exact Cloudflare transient message: %s', (message) => {
     const request = new Request('https://mcp.useorgx.com/mcp', {
       method: 'GET',
@@ -54,6 +55,8 @@ describe('Durable Object transport recovery', () => {
     'internal error; reference =',
     'internal error; reference = abc with trailing context',
     'Internal error in Durable Object storage caused object to be reset.',
+    'Internal error while starting up Durable Object storage caused object to be reset.',
+    'Internal error while starting up Durable Object storage caused object to be reset; reference = abc with trailing context',
     'application internal error; reference = abc123',
   ])('does not retry a non-matching application error: %s', (message) => {
     const request = new Request('https://mcp.useorgx.com/mcp', {
@@ -79,7 +82,11 @@ describe('Durable Object transport recovery', () => {
     );
   });
 
-  it('does not retry POST tool calls even when Cloudflare marks the error retryable', () => {
+  it.each([
+    'transient internal error',
+    'Internal error in Durable Object storage caused object to be reset; reference = hgg3lskugo2gd02g27ptv5tu',
+    'Internal error while starting up Durable Object storage caused object to be reset; reference = 5ldq0rva4k7tmh2oaat71a31',
+  ])('does not retry POST tool calls for %s even when Cloudflare marks the error retryable', (message) => {
     const request = new Request('https://mcp.useorgx.com/mcp', {
       method: 'POST',
       body: '{}',
@@ -88,7 +95,7 @@ describe('Durable Object transport recovery', () => {
     expect(
       shouldRetryDurableObjectTransportRequest(
         request,
-        durableObjectError('transient internal error', { retryable: true }),
+        durableObjectError(message, { retryable: true }),
       ),
     ).toBe(false);
   });
