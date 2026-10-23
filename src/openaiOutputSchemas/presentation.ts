@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { artifactOutputFrontDoorSchema } from '../outputFrontDoor';
 
 import {
   artifactSchema,
@@ -80,6 +81,7 @@ export const chronicleSchema = z.object({
  */
 export const reviewContractSchema = z.object({
   schemaVersion: z.string(),
+  frontDoor: artifactOutputFrontDoorSchema.optional(),
   purpose: z
     .object({
       kind: z

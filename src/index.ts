@@ -3234,6 +3234,11 @@ export class OrgXMcp extends McpAgent<
           workspaceId,
           limit,
         }),
+      fetchArtifactReview: (artifact) => loadArtifactReviewEnvelope({
+        env: this.env,
+        artifact,
+        actor: actor(userId()) ?? {},
+      }),
       // Read only when the person opens In progress; the same read
       // get_agent_status uses, normalized the same way.
       fetchAgentStatus: async ({ workspaceId }) => {

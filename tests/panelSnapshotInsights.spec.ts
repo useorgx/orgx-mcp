@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { outputFrontDoor } from './fixtures/outputFrontDoor';
 
 import { WIDGET_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas/widgets';
 import {
@@ -335,6 +336,27 @@ describe('the outputs and goals reads', () => {
     expect((result._meta as Record<string, unknown>)[PANEL_PREVIEW_META_KEY]).toEqual({ [ART]: { summary: SUMMARY, preview: PREVIEW } });
     expect(h.fetchGoalProgress).not.toHaveBeenCalled();
     expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(snap).success).toBe(true);
+  });
+
+  it('reads canonical summary only for the selected visible output and keeps it widget-only', async () => {
+    const fetchArtifactReview = vi.fn(async () => ({ artifact: artifact(ART), reviewContractSource: 'canonical' as const, reviewContract: { schemaVersion: 'artifact_review_contract.v1', frontDoor: outputFrontDoor() } }));
+    const h = host({ fetchArtifactReview });
+    await handlePanelSnapshot(h, { view: 'outputs' });
+    await handlePanelSnapshot(h, { view: 'outputs', query: ART2 });
+    expect(fetchArtifactReview).not.toHaveBeenCalled();
+    const result = await handlePanelSnapshot(h, { view: 'outputs', query: ART });
+    expect(fetchArtifactReview).toHaveBeenCalledTimes(1);
+    expect((result._meta?.[PANEL_PREVIEW_META_KEY] as Record<string, unknown>)[ART]).toMatchObject({ frontDoor: outputFrontDoor() });
+    expect(JSON.stringify(result.structuredContent)).not.toContain(outputFrontDoor().answer);
+  });
+
+  it.each(['different subject', 'entity fallback', 'read failure'])('keeps existing preview when canonical summary has %s', async (problem) => {
+    const fetchArtifactReview = vi.fn(async () => {
+      if (problem === 'read failure') throw new Error('unavailable');
+      return { artifact: artifact(problem === 'different subject' ? ART2 : ART), reviewContractSource: problem === 'entity fallback' ? 'entity_fallback' as const : 'canonical' as const, reviewContract: { schemaVersion: 'artifact_review_contract.v1', frontDoor: outputFrontDoor() } };
+    });
+    const result = await handlePanelSnapshot(host({ fetchArtifactReview }), { view: 'outputs', query: ART });
+    expect(result._meta?.[PANEL_PREVIEW_META_KEY]).toEqual({ [ART]: { summary: SUMMARY, preview: PREVIEW } });
   });
 
   it('reads goal progress only for view goals, with move reasons in _meta only', async () => {

@@ -1,4 +1,6 @@
-import { callOrgxApiJson, type OrgxApiEnv } from "./orgxApi";
+import { callOrgxApiJson, type OrgxApiEnv, type GatewayDelegationClaims } from "./orgxApi";
+import { canonicalOutputFrontDoor } from './outputFrontDoor';
+import { buildEntityLink } from './deepLinks';
 
 export type ArtifactReviewRecord = Record<string, unknown>;
 
@@ -9,10 +11,10 @@ export interface ArtifactReviewEnvelope {
   reviewContractSource: "canonical" | "entity_fallback";
 }
 
-interface ArtifactReviewActorContext {
-  userId?: string;
-  userEmail?: string;
-  orgxUserId?: string;
+interface ArtifactReviewActorContext extends GatewayDelegationClaims {
+  userId?: string | null;
+  userEmail?: string | null;
+  orgxUserId?: string | null;
 }
 
 type OrgxApiCaller = typeof callOrgxApiJson;
@@ -83,9 +85,15 @@ export async function loadArtifactReviewEnvelope(params: {
       };
     }
 
+    // Admit the additive presentation block through its closed contract. A
+    // malformed block cannot turn metadata into context, spend or authority.
+    const frontDoor = canonicalOutputFrontDoor({ reviewContract: asRecord(reviewContract), reviewContractSource: 'canonical' });
+    const admittedContract = { ...asRecord(reviewContract) };
+    delete admittedContract.frontDoor;
+    if (frontDoor) admittedContract.frontDoor = frontDoor;
     return {
       artifact: { ...params.artifact, ...detailedArtifact },
-      reviewContract,
+      reviewContract: admittedContract,
       reviewContractSource: "canonical",
     };
   } catch {
@@ -127,6 +135,27 @@ export function summarizeArtifactReviewEnvelope(
     typeof quality.score === "number" && Number.isFinite(quality.score)
       ? ` ${Math.round(quality.score * 100)}/100`
       : "";
+
+  const frontDoor = canonicalOutputFrontDoor(envelope);
+  if (frontDoor) {
+    const line = (value: string) => value.replace(/\s+/g, ' ').trim();
+    const decisions = frontDoor.decisions.map((decision) =>
+      `${line(decision.question)} Recommend: ${line(decision.recommendation)} Impact: ${line(decision.impact)} (${buildEntityLink('decision', decision.id).url})`
+    );
+    const artifactId = cleanString(artifact.id);
+    const output = artifactId ? buildEntityLink('artifact', artifactId).url : 'Open the artifact in OrgX.';
+    const receipt = frontDoor.receipt.runId && frontDoor.receipt.href
+      ? new URL(frontDoor.receipt.href, buildEntityLink('run', frontDoor.receipt.runId).url).toString() : null;
+    const cost = frontDoor.receipt.costUsd;
+    const costText = cost === null ? 'Not recorded' : cost > 0 && cost < 0.01 ? '<$0.01' : `$${cost.toFixed(2)}`;
+    return [
+      `Answer: ${line(frontDoor.answer)}`,
+      `Decisions: ${decisions.length ? decisions.join(' | ') : 'None requested.'}`,
+      `Context: ${frontDoor.context.state}. ${line(frontDoor.context.summary)}`,
+      `Checked (producer notes): ${frontDoor.checked.map(line).join('; ') || 'None recorded'}. Not checked: ${frontDoor.notChecked.map(line).join('; ') || 'None recorded'}. Quality: ${humanize(quality.state, 'unscored')}${score}; human ruling: ${humanize(ruling.state, 'none')}; outcome: ${humanize(outcome.state, 'unobserved')}.`,
+      `Files: ${frontDoor.files.length}. Run cost: ${costText}; expert minutes left: ${frontDoor.receipt.expertMinutes ?? 'Not recorded'}; quality bar: ${frontDoor.receipt.qualityBar ? line(frontDoor.receipt.qualityBar) : 'Not recorded'}. Open: ${output}${receipt ? ` | Run receipt: ${receipt}` : ''}`,
+    ].join('\n');
+  }
 
   return [
     `Artifact ready for review: **${name}**.`,
