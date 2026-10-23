@@ -121,7 +121,7 @@
         return k ? '<span class="' + k + '">' + esc(l) + '</span>' : esc(l);
       }).join('\n') + '</pre>';
     }
-    return '<div class="pv pv-doc">' + (summary && text !== summary ? '<p class="pv-sum">' + esc(summary) + '</p>' : '') + (text ? '<p>' + esc(text) + '</p>' : '') + '</div>';
+    return '<div class="pv pv-doc ox-markdown">' + (summary && text !== summary ? '<p class="pv-sum">' + esc(summary) + '</p>' : '') + (text ? global.OrgXMarkdown.render(text) : '') + '</div>';
   }
 
   function checksHtml(o) {

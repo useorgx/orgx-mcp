@@ -202,6 +202,22 @@ describe('ready answers and a person’s own answer', () => {
 });
 
 describe('Outputs', () => {
+  it('renders the output preview as safe structured Markdown', async () => {
+    const markdown = '# Client answer\n\n**Review the deck.**\n\n| Work | Owner | Due | State | Next |\n| --- | --- | --- | --- | --- |\n| Deck | Hope | Friday | Ready | Review |\n\n[Unsafe](javascript:alert(1))';
+    const p = await open(null, { outputs: { data: outputsView(), meta: { 'orgx/panelPreviews': { [OUT]: { summary: null, preview: markdown } } } } });
+    p.click('[data-tab="outputs"]');
+    await p.settle();
+    p.click(`[data-action="out-select"][data-id="${OUT}"]`);
+    await p.settle();
+    const preview = p.doc.querySelector('.pn-md-detail .ox-markdown')!;
+    expect(preview.querySelector('h1')?.textContent).toBe('Client answer');
+    expect(preview.querySelector('strong')?.textContent).toBe('Review the deck.');
+    expect(preview.querySelectorAll('th')).toHaveLength(5);
+    expect(preview.querySelector('table')?.getAttribute('data-stack')).toBe('true');
+    expect(preview.querySelector('a')).toBeNull();
+    expect(decided(p)).toEqual([]);
+  });
+
   it('reads view outputs once, shows the chain and the widget-only preview, and reviews with the same decision', async () => {
     const p = await open(null, { outputs: { data: outputsView(), meta: { 'orgx/panelPreviews': { [OUT]: { summary: null, preview: PREVIEW } } } } });
     p.click('[data-tab="outputs"]');

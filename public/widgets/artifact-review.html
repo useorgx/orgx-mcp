@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="shared/tokens.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/markdown.css" />
   <script src="shared/kit/ox-elements-core.js"></script>
   <script src="shared/kit/ox-elements-footer.js"></script>
   <script src="shared/kit/ox-elements-avatar.js"></script>
@@ -277,6 +278,7 @@
 
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
+  <script src="shared/markdown.js"></script>
   <script src="shared/live-machine.js"></script>
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
@@ -1010,7 +1012,7 @@
         }
 
         if (type.includes('markdown') || type.includes('doc') || type.includes('report') || type.includes('brief') || content) {
-          return '<div class="artifact-preview__markdown">' + escapeHtml(humanizeCodes(content)).replace(/\n\n/g, '</p><p>').replace(/^(.+)$/, '<p>$1</p>') + '</div>';
+          return '<div class="artifact-preview__markdown ox-markdown">' + window.OrgXMarkdown.render(humanizeCodes(content), { linkAllowed: isAllowedArtifactLinkUrl }) + '</div>';
         }
 
         if (payload) return renderStructured(payload);
