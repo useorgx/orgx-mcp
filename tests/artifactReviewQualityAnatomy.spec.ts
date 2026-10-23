@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it, vi } from 'vitest';
 import { installSharedFoundations } from './fixtures/sharedFoundations';
+import nativeResponse from './fixtures/nativeArtifactReview.private.json';
 
 const widgetPath = join(
   process.cwd(),
@@ -105,6 +106,33 @@ function canonicalToolOutput(options: {
 }
 
 describe('artifact review quality anatomy', () => {
+  it('shows native check verdicts and the judged lower bound without inventing a mean or legacy run', () => {
+    const dom = createWidget('anatomy=expanded', structuredClone(nativeResponse));
+    const text = dom.window.document.querySelector('[data-stage]')?.textContent ?? '';
+    expect(text).toContain('Judged lower bound = 96');
+    expect(text).toContain('Recorded native verification check');
+    expect(text).not.toContain('Average of');
+    expect(text).not.toContain('None ran on this version.');
+    expect(Array.from(dom.window.document.querySelectorAll('a')).some((link) => /eval-runs/.test(link.href))).toBe(false);
+  });
+  it('holds native measured failures above the judged threshold and ignores contradictory producer passes', () => {
+    const response = structuredClone(nativeResponse);
+    response.artifact.verification = { eval: { status: 'passed', score: 1 } };
+    response.reviewContract.quality.state = 'failed';
+    response.reviewContract.quality.blocksAdvance = true;
+    response.reviewContract.checks!.checks[0].status = 'failed';
+    const dom = createWidget('anatomy=expanded', response);
+    expect(dom.window.document.querySelector('[data-stage]')?.textContent).toContain('Held by recorded verification');
+    expect(dom.window.document.querySelector('.qv-check[data-status="failed"]')?.textContent).toContain('Links resolve');
+    expect(dom.window.document.querySelector('[data-stage]')?.textContent).not.toContain('Cleared · scored 100');
+  });
+  it('never borrows a producer pass when the canonical native response is unavailable', () => {
+    const response = structuredClone(nativeResponse);
+    response.artifact.verification = { eval: { status: 'passed', score: 1 } };
+    const dom = createWidget('', { ...response, reviewContract: null, reviewContractSource: 'entity_fallback' });
+    expect(dom.window.document.querySelector('[data-stage]')?.textContent).toContain('Not scored yet');
+    expect(dom.window.document.querySelector('[data-stage]')?.textContent).not.toContain('Cleared · scored 100');
+  });
   const checks = (dom: JSDOM) =>
     Array.from(dom.window.document.querySelectorAll('.qv-check')).map((row) => ({
       status: row.getAttribute('data-status'),

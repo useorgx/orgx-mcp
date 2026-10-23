@@ -1,6 +1,7 @@
 import { callOrgxApiJson, type OrgxApiEnv, type GatewayDelegationClaims } from "./orgxApi";
 import { canonicalOutputFrontDoor } from './outputFrontDoor';
 import { buildEntityLink } from './deepLinks';
+import { artifactQualityPresentationSchema, canonicalNativeArtifactQuality } from './nativeArtifactQuality';
 
 export type ArtifactReviewRecord = Record<string, unknown>;
 
@@ -85,6 +86,14 @@ export async function loadArtifactReviewEnvelope(params: {
       };
     }
 
+    // New native claims must match the closed server projection. Never fall
+    // back to a producer's passing eval when canonical native proof is invalid.
+    const quality = artifactQualityPresentationSchema.safeParse(asRecord(reviewContract).quality);
+    if (!quality.success) return { artifact: { ...params.artifact, ...detailedArtifact }, reviewContract: null, reviewContractSource: 'entity_fallback' };
+    if (quality.data.native && !canonicalNativeArtifactQuality({ artifact: detailedArtifact, reviewContract: asRecord(reviewContract), reviewContractSource: 'canonical' })) {
+      return { artifact: { ...params.artifact, ...detailedArtifact }, reviewContract: null, reviewContractSource: 'entity_fallback' };
+    }
+
     // Admit the additive presentation block through its closed contract. A
     // malformed block cannot turn metadata into context, spend or authority.
     const frontDoor = canonicalOutputFrontDoor({ reviewContract: asRecord(reviewContract), reviewContractSource: 'canonical' });
@@ -135,6 +144,7 @@ export function summarizeArtifactReviewEnvelope(
     typeof quality.score === "number" && Number.isFinite(quality.score)
       ? ` ${Math.round(quality.score * 100)}/100`
       : "";
+  const scoreBasis = canonicalNativeArtifactQuality(envelope) ? ' (judged lower bound)' : '';
 
   const frontDoor = canonicalOutputFrontDoor(envelope);
   if (frontDoor) {
@@ -152,7 +162,7 @@ export function summarizeArtifactReviewEnvelope(
       `Answer: ${line(frontDoor.answer)}`,
       `Decisions: ${decisions.length ? decisions.join(' | ') : 'None requested.'}`,
       `Context: ${frontDoor.context.state}. ${line(frontDoor.context.summary)}`,
-      `Checked (producer notes): ${frontDoor.checked.map(line).join('; ') || 'None recorded'}. Not checked: ${frontDoor.notChecked.map(line).join('; ') || 'None recorded'}. Quality: ${humanize(quality.state, 'unscored')}${score}; human ruling: ${humanize(ruling.state, 'none')}; outcome: ${humanize(outcome.state, 'unobserved')}. Lifecycle: ${status}. Modality proof: ${humanize(modalityGate.state, 'not required')}. Decision: ${line(cleanString(workflow.headline) ?? 'Inspect the evidence.')}`,
+      `Checked (producer notes): ${frontDoor.checked.map(line).join('; ') || 'None recorded'}. Not checked: ${frontDoor.notChecked.map(line).join('; ') || 'None recorded'}. Quality: ${humanize(quality.state, 'unscored')}${score}${scoreBasis}; human ruling: ${humanize(ruling.state, 'none')}; outcome: ${humanize(outcome.state, 'unobserved')}. Lifecycle: ${status}. Modality proof: ${humanize(modalityGate.state, 'not required')}. Decision: ${line(cleanString(workflow.headline) ?? 'Inspect the evidence.')}`,
       `Files: ${frontDoor.files.length}. Run cost: ${costText}; expert minutes: ${frontDoor.receipt.expertMinutes ?? 'Not recorded'}; quality bar: ${frontDoor.receipt.qualityBar ? line(frontDoor.receipt.qualityBar) : 'Not recorded'}. Open: ${output}${receipt ? ` | Run receipt: ${receipt}` : ''}`,
     ].join('\n');
   }
@@ -160,7 +170,7 @@ export function summarizeArtifactReviewEnvelope(
   return [
     `Artifact ready for review: **${name}**.`,
     `Lifecycle: ${status}.`,
-    `Quality: ${humanize(quality.state, "unscored")}${score}.`,
+    `Quality: ${humanize(quality.state, "unscored")}${score}${scoreBasis}.`,
     `Human ruling: ${humanize(ruling.state, "none")}.`,
     `Modality proof: ${humanize(modalityGate.state, "not required")}.`,
     `Observed outcome: ${humanize(outcome.state, "unobserved")}.`,
