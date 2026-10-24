@@ -2085,6 +2085,8 @@
     function maybeStartTour() {
       if (ui.tourChecked || !Tour || ui.mode !== 'global' || ui.auth || !ui.snapshot || ui.snapshot.state !== 'ok') return;
       if (isGallery && params.get('tour') !== '1') return;
+      // OrgX for Mac runs its own welcome tour; this one teaches a chat it doesn't have. "?" still opens it.
+      if (Host && Host.ownsOnboarding && Host.ownsOnboarding()) return;
       if (!root.getBoundingClientRect().width) return;
       ui.tourChecked = true;
       if (Tour.seen() && !(isGallery && params.get('tour') === '1')) return;
