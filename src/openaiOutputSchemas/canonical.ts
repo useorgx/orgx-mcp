@@ -278,6 +278,10 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       idempotency_key: nullableString.optional(),
       normalization_warnings: z.array(normalizationWarningSchema).optional(),
       replay_source: z.string().optional(),
+      // Entity create/update responses preserve these API-owned follow-ups.
+      // Rejecting them after commit hides the mutation acknowledgement.
+      initiative_activation: resourceSchema.optional(),
+      stream_reassignment: resourceSchema.optional(),
       message: z.string().optional(),
       created: z.boolean().optional(),
       updated: z.boolean().optional(),

@@ -35,15 +35,26 @@ jobs:
   # PRs get the validation gate, but never deploy a shared preview.
   validate:
     if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
+    # Standard hosted runners are free for this public repository.
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - uses: ./.github/actions/validate
+        with:
+          cache-enabled: 'false'
 
       - name: Validate gateway parity probe syntax
         run: node --check scripts/verify-gateway-actor-parity.mjs
+
+      - name: Verify widget rendering in supported host variants
+        run: pnpm widget:verify-rendering
+
+      - name: Verify widget payload semantics and interactions
+        run: pnpm widget:verify-payloads
 
   # Main, release, and manual production/preview deploys validate in the same
   # job that deploys. This avoids a second checkout and dependency install.
