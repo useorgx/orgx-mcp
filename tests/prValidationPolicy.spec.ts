@@ -20,6 +20,10 @@ function expression(value: unknown, scope: Scope): unknown {
   const source = value.trim().replace(/^\$\{\{\s*([\s\S]*?)\s*\}\}$/, '$1');
   assert.match(source, /^[\w\s.'"\[\]()=!&|\-]+$/, 'unsupported expression syntax');
   assert.doesNotMatch(source, /\b(?:constructor|prototype|__proto__|globalThis|process|eval|Function|require|import)\b/, 'unsupported expression access');
+  // GitHub string equality ignores case; JS does not. The reviewed guards use
+  // lower-case literals, so reject other casing rather than model it wrongly.
+  const literals = source.match(/'[^']*'|"[^"]*"/g) ?? [];
+  assert.ok(literals.every(value => value === value.toLowerCase()), 'unsupported string literal casing');
   const identifiers = source.replace(/'[^']*'|"[^"]*"/g, '').match(/\b[A-Za-z_]\w*\b/g) ?? [];
   const permitted = new Set(['github', 'inputs', 'event_name', 'ref_type', 'environment', 'publish_registry', 'true', 'false']);
   assert.ok(identifiers.every(name => permitted.has(name)), 'unsupported expression binding');
@@ -184,6 +188,11 @@ const negatives: Mutation[] = [
   { name: 'self-hosted runner', change: w => { w.jobs.validate['runs-on'] = ['self-hosted', 'linux']; }, reason: /standard hosted Linux/ },
   { name: 'missing cache opt-out', change: w => { delete call(w.jobs.validate).with['cache-enabled']; }, reason: /PR cache effects/ },
   { name: 'case-insensitive cache opt-in', change: w => { call(w.jobs.validate).with['cache-enabled'] = 'TRUE'; }, reason: /PR cache effects/ },
+  { name: 'case-insensitive cache predicate', change: (_w, a) => {
+    const node = step(a.runs, 'Set up Node.js');
+    node.with.cache = "${{ (inputs['cache-enabled'] == 'true' || inputs['cache-enabled'] == 'FALSE') && 'pnpm' || '' }}";
+    node.with['package-manager-cache'] = "${{ inputs['cache-enabled'] == 'true' || inputs['cache-enabled'] == 'FALSE' }}";
+  }, reason: /unsupported string literal casing/ },
   { name: 'globally disabled default cache', change: (_w, a) => { a.inputs['cache-enabled'].default = 'false'; }, reason: /cache-enabled default/ },
   { name: 'forced explicit cache', change: (_w, a) => { step(a.runs, 'Set up Node.js').with.cache = 'pnpm'; }, reason: /PR cache effects/ },
   { name: 'forced automatic cache', change: (_w, a) => { step(a.runs, 'Set up Node.js').with['package-manager-cache'] = true; }, reason: /PR cache effects/ },
