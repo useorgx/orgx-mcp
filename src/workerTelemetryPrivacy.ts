@@ -9,6 +9,7 @@ import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 import { OAUTH_SCOPES_SUPPORTED } from './authorizationPolicy';
 import { MCP_ACTIVATION_MILESTONES } from './mcpActivationTracker';
 import { TOOL_PROFILE_NAMES } from './toolProfiles';
+import { OAUTH_JOURNEY_STAGES, OAUTH_JOURNEY_REASONS, OAUTH_REDIRECT_ROUTE_SEGMENTS } from './oauthJourneyContract';
 import { DEPRECATED_TOOL_IDS } from './deprecatedTools';
 import {
   boundedMcpCompatibilityMappingId, boundedMcpCompatibilityToolId,
@@ -45,6 +46,9 @@ const clients = ['openai-mcp (Codex)', 'openai-mcp', 'codex', 'chatgpt', 'openai
   'opencode', 'open-code', 'openclaw', 'openclaw-plugin', 'goose', 'api',
   'web', 'web-ui', 'webapp', 'mcp-probe', 'agent-scout', 'brick.blue'];
 const enumProperties: Record<string, readonly string[]> = {
+  stage: OAUTH_JOURNEY_STAGES,
+  reason: OAUTH_JOURNEY_REASONS,
+  event_outcome: ['success', 'failure', 'attempt', 'unknown'],
   status: ['success', 'error'],
   tool_family: ['chatgpt', 'stream', 'plan_session', 'client_integration', 'bootstrap',
     'scaffold', 'entity_write', 'activity', 'entity_action', 'agent_dispatch', 'decision', 'receipt', 'read', 'mcp_tool'],
@@ -91,9 +95,9 @@ const enumProperties: Record<string, readonly string[]> = {
   platform: ['web', 'mobile', 'desktop', 'other'],
   display_mode: ['inline', 'fullscreen', 'pip', 'other'],
   safe_source: ['host', 'floor', 'none', 'other'],
-  panel_tab: ['needs', 'work', 'done', 'start', 'other'],
-  panel_from_tab: ['needs', 'work', 'done', 'start', 'other'],
-  panel_read_kind: ['snapshot', 'work', 'receipts', 'history', 'receipt', 'workspaces', 'behind', 'decide_status', 'other'],
+  panel_tab: ['needs', 'work', 'outputs', 'goals', 'done', 'start', 'other'],
+  panel_from_tab: ['needs', 'work', 'outputs', 'goals', 'done', 'start', 'other'],
+  panel_read_kind: ['snapshot', 'work', 'outputs', 'goals', 'receipts', 'history', 'receipt', 'workspaces', 'behind', 'decide_status', 'other'],
   panel_trigger: ['open', 'tab', 'refresh', 'warm', 'live', 'switch', 'ruling', 'range', 'retry', 'focus', 'other'],
   panel_decision_action: ['approve', 'reject', 'other'],
   panel_outcome: ['confirmed', 'rejected', 'elsewhere', 'recorded', 'failed', 'validation', 'sent', 'copied', 'unsent', 'other'],
@@ -103,6 +107,7 @@ const enumProperties: Record<string, readonly string[]> = {
   panel_source: ['decisions', 'artifacts', 'work', 'history', 'ledger', 'receipt', 'workspaces', 'live', 'other'],
 };
 const numericProperties = new Set([
+  'elapsed_ms',
   'latency_ms', 'http_status', 'argument_count', 'estimated_argument_bytes',
   'step_index', 'auth_ms', 'session_ms', 'request_normalization_ms', 'handler_ms',
   'response_headers_ms', 'response_shaping_ms', 'first_response_byte_ms',
@@ -127,7 +132,7 @@ const booleanProperties = new Set([
   'cold', 'warm', 'agent_picked', 'has_workspace',
 ]);
 const uuidProperties = new Set(['request_id', 'session_id', 'run_id', 'workspace_id', 'initiative_id', 'request_uuid',
-  'attempt_id', 'connection_id', 'event_id']);
+  'attempt_id', 'connection_id', 'event_id', 'pairing_attempt_id']);
 const toolProperties = new Set(['tool_id', 'previous_tool_id', 'expected_next_tool_id',
   'previous_expected_next_tool_id', 'deprecated_tool_id', 'replacement_tool_id',
   'normalized_tool_id', 'executed_tool_id', 'registered_tool_id']);
@@ -148,6 +153,11 @@ export function sanitizeWorkerTelemetryProperties(
     if (key === 'trace_id' || key === 'span_id') {
       const id = safeCorrelation(value, key === 'trace_id' ? 'trace' : 'span');
       if (id) result[key] = id;
+    } else if (key === 'destination_host') {
+      if (typeof value === 'string' && /^[a-z0-9.[\]:-]{1,253}$/.test(value)) result[key] = value;
+    } else if (key === 'destination_path') {
+      if (typeof value === 'string' && value.length <= 160 && value.startsWith('/') &&
+        (value === '/other' || value.split('/').filter(Boolean).every((part) => OAUTH_REDIRECT_ROUTE_SEGMENTS.has(part)))) result[key] = value;
     } else if (numericProperties.has(key)) {
       if (typeof value === 'number' && Number.isFinite(value) && value >= 0) result[key] = value;
     } else if (booleanProperties.has(key)) {

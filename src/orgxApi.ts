@@ -1,4 +1,5 @@
 import { ApiRequestObservation, currentApiReferences, observedApiFetch, recordApiBody, withResponseDiagnostics } from './apiDiagnostics';
+import { markTransportFailure } from './remedyErrors';
 
 export interface OrgxApiEnv {
   ORGX_API_URL: string;
@@ -194,10 +195,10 @@ async function readResponseTextWithTimeout(
     timeoutId = setTimeout(() => {
       timedOut = true;
       reject(
-        createApiError(
+        markTransportFailure(createApiError(
           'The request took too long. Please try again.',
           `Response body timed out after ${timeoutMs}ms for ${upstreamUrl}`
-        )
+        ), 'timeout')
       );
     }, timeoutMs);
   });
@@ -254,21 +255,38 @@ function expectedResponseMediaType(accept: string | undefined): string | null {
  * The `message` property contains a user-friendly error that's safe to expose.
  * The `internalDetails` contains technical info logged but not shown to users.
  */
+/** Structured fields an OrgX API error body may carry beyond its message. */
+export interface OrgXApiErrorStructure {
+  /** Machine-readable backend code, e.g. `approval_required` or `version_conflict`. */
+  backendCode?: string;
+  /** Structured backend details (approver, scope, limits, versions...). */
+  backendDetails?: Record<string, unknown>;
+  /** Parsed `Retry-After` response header, in seconds. */
+  retryAfterSeconds?: number;
+}
+
 export class OrgXApiError extends Error {
   readonly internalDetails: string;
   readonly statusCode?: number;
   readonly requestId?: string;
   readonly traceId?: string;
+  readonly backendCode?: string;
+  readonly backendDetails?: Record<string, unknown>;
+  readonly retryAfterSeconds?: number;
 
   constructor(
     userMessage: string,
     internalDetails: string,
-    statusCode?: number
+    statusCode?: number,
+    structure: OrgXApiErrorStructure = {}
   ) {
     super(userMessage);
     this.name = 'OrgXApiError';
     this.internalDetails = internalDetails;
     this.statusCode = statusCode;
+    this.backendCode = structure.backendCode;
+    this.backendDetails = structure.backendDetails;
+    this.retryAfterSeconds = structure.retryAfterSeconds;
     const references = currentApiReferences();
     this.requestId = references.request_id;
     this.traceId = references.trace_id;
@@ -281,10 +299,45 @@ export class OrgXApiError extends Error {
 export function createApiError(
   userMessage: string,
   internalDetails: string,
-  statusCode?: number
+  statusCode?: number,
+  structure?: OrgXApiErrorStructure
 ): OrgXApiError {
   console.error(JSON.stringify({ event: 'orgx_api_error', ...currentApiReferences(), status: statusCode ?? 0 }));
-  return new OrgXApiError(userMessage, internalDetails, statusCode);
+  return new OrgXApiError(userMessage, internalDetails, statusCode, structure);
+}
+
+const BACKEND_CODE_RE = /^[a-z][a-z0-9_.:-]{0,79}$/i;
+
+/** Read the machine-readable code and details from a parsed error body. */
+export function parseBackendErrorStructure(parsed: unknown): Pick<OrgXApiErrorStructure, 'backendCode' | 'backendDetails'> {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  const body = parsed as Record<string, unknown>;
+  const nested = body.error && typeof body.error === 'object' && !Array.isArray(body.error)
+    ? body.error as Record<string, unknown>
+    : null;
+  const code = [nested?.code, body.code, body.error_code, nested?.type]
+    .find((value): value is string => typeof value === 'string' && BACKEND_CODE_RE.test(value.trim()));
+  const details: Record<string, unknown> = {};
+  for (const source of [body, nested, body.details, nested?.details]) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+    for (const [key, value] of Object.entries(source as Record<string, unknown>)) {
+      if (key === 'error' || key === 'message' || key === 'details' || key === 'stack' || key === 'code' || key === 'error_code') continue;
+      if (details[key] === undefined) details[key] = value;
+    }
+  }
+  return {
+    ...(code ? { backendCode: code.trim().toLowerCase() } : {}),
+    ...(Object.keys(details).length ? { backendDetails: details } : {}),
+  };
+}
+
+/** Parse a Retry-After header (delta seconds or HTTP date). */
+export function parseRetryAfterSeconds(value: string | null, now = Date.now()): number | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  const date = Date.parse(trimmed);
+  return Number.isNaN(date) ? undefined : Math.max(0, Math.ceil((date - now) / 1000));
 }
 
 export async function callOrgxApiRaw(
@@ -425,10 +478,10 @@ async function callOrgxApiRawImplementation(
             console.warn('[orgx-api] trying fallback', currentApiReferences());
             continue;
           }
-          throw createApiError(
+          throw markTransportFailure(createApiError(
             'The request took too long. Please try again.',
             lastRetryableFailure
-          );
+          ), 'timeout');
         }
         throw createApiError(
           'The request was cancelled.',
@@ -442,7 +495,7 @@ async function callOrgxApiRawImplementation(
         console.warn('[orgx-api] trying fallback', currentApiReferences());
         continue;
       }
-      throw error;
+      throw markTransportFailure(error, 'network');
     } finally {
       clearTimeout(timeout);
       upstreamSignal?.removeEventListener('abort', forwardAbort);
@@ -482,11 +535,15 @@ async function callOrgxApiRawImplementation(
         })
       );
       let parsedMessage: string | null = null;
+      let structure: OrgXApiErrorStructure = {
+        retryAfterSeconds: parseRetryAfterSeconds(response.headers.get('retry-after')),
+      };
       try {
         const parsed = JSON.parse(text) as {
           error?: string | { code?: string; message?: string };
           message?: string;
         };
+        structure = { ...structure, ...parseBackendErrorStructure(parsed) };
         // Handle string error: { "error": "Something went wrong" }
         if (typeof parsed?.error === 'string' && parsed.error.trim()) {
           parsedMessage = parsed.error.trim();
@@ -527,7 +584,8 @@ async function callOrgxApiRawImplementation(
       throw createApiError(
         userMessage,
         `API ${response.status} from ${url.toString()}: ${text}`,
-        response.status
+        response.status,
+        structure
       );
     }
 
@@ -559,9 +617,18 @@ async function callOrgxApiRawImplementation(
     return response;
   }
 
+  // With no base URL there was nothing to call: that is a server setup
+  // problem, not an outage, and retrying will not help.
+  if (!lastRetryableFailure) {
+    throw createApiError(
+      'This OrgX connection is not configured. Retrying will not help; your administrator needs to set the OrgX API URL.',
+      'No OrgX API base URL was configured'
+    );
+  }
+
   throw createApiError(
     'OrgX is temporarily unavailable. Please try again later.',
-    lastRetryableFailure ?? 'No OrgX API base URL was configured'
+    lastRetryableFailure
   );
 }
 

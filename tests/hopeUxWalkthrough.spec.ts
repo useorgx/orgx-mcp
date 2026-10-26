@@ -22,10 +22,15 @@ describe('Hope UX integration walkthrough', () => {
   });
 
   it('keeps the walkthrough grounded in the integration proof sequence', () => {
-    expect(html).toContain('scaffold_initiative');
-    expect(html).toContain('get_initiative_pulse');
-    expect(html).toContain('get_operator_chronicle');
-    expect(html).toContain('orgx_submit_receipt');
+    expect(html).toContain('orgx_get_workspace_context');
+    expect(html).toContain('orgx_create_initiative_hierarchy');
+    expect(html).toContain('orgx_get_initiative_progress');
+    expect(html).toContain('orgx_get_operator_brief');
+    expect(html).toContain('orgx_submit_work_receipt');
+    // The walkthrough teaches the default v2 catalog, not legacy routers.
+    for (const legacy of ['orgx_bootstrap', 'scaffold_initiative', 'get_initiative_pulse', 'get_operator_chronicle', 'orgx_submit_receipt']) {
+      expect(html).not.toMatch(new RegExp(`(?<![A-Za-z0-9_])${legacy}(?![A-Za-z0-9_])`));
+    }
     expect(html).toContain('what context arrives');
     expect(html).toContain('What each side owns');
   });

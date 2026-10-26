@@ -1,0 +1,541 @@
+[
+  {
+    "name": "aliases 0",
+    "input": {
+      "title": "Offline"
+    },
+    "expected": {
+      "args": {
+        "title": "Offline"
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 1",
+    "input": {
+      "title": "Offline",
+      "goal_ids": []
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "goal_ids": []
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 2",
+    "input": {
+      "title": "Offline",
+      "goal_ids": [
+        "goal-a"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "goal_ids": [
+          "goal-a"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 3",
+    "input": {
+      "title": "Offline",
+      "goal_ids": [
+        "goal-b"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "goal_ids": [
+          "goal-b"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 4",
+    "input": {
+      "title": "Offline",
+      "objective_ids": null
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": null
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 5",
+    "input": {
+      "title": "Offline",
+      "objective_ids": null,
+      "goal_ids": []
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": null,
+        "goal_ids": []
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 6",
+    "input": {
+      "title": "Offline",
+      "objective_ids": null,
+      "goal_ids": [
+        "goal-a"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": null,
+        "goal_ids": [
+          "goal-a"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 7",
+    "input": {
+      "title": "Offline",
+      "objective_ids": null,
+      "goal_ids": [
+        "goal-b"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": null,
+        "goal_ids": [
+          "goal-b"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 8",
+    "input": {
+      "title": "Offline",
+      "objective_ids": []
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": []
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 9",
+    "input": {
+      "title": "Offline",
+      "objective_ids": [],
+      "goal_ids": []
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": [],
+        "goal_ids": []
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 10",
+    "input": {
+      "title": "Offline",
+      "objective_ids": [],
+      "goal_ids": [
+        "goal-a"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": [],
+        "goal_ids": [
+          "goal-a"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 11",
+    "input": {
+      "title": "Offline",
+      "objective_ids": [],
+      "goal_ids": [
+        "goal-b"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": [],
+        "goal_ids": [
+          "goal-b"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 12",
+    "input": {
+      "title": "Offline",
+      "objective_ids": [
+        "goal-a"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "goal_ids": [
+          "goal-a"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 13",
+    "input": {
+      "title": "Offline",
+      "objective_ids": [
+        "goal-a"
+      ],
+      "goal_ids": []
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "goal_ids": [
+          "goal-a"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 14",
+    "input": {
+      "title": "Offline",
+      "objective_ids": [
+        "goal-a"
+      ],
+      "goal_ids": [
+        "goal-a"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "goal_ids": [
+          "goal-a"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 15",
+    "input": {
+      "title": "Offline",
+      "objective_ids": [
+        "goal-a"
+      ],
+      "goal_ids": [
+        "goal-b"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "goal_ids": [
+          "goal-b"
+        ]
+      },
+      "warnings": [
+        {
+          "code": "objective_ids_goal_ids_conflict",
+          "message": "scaffold_initiative.goal_ids was kept because it differs from objective_ids."
+        }
+      ]
+    }
+  },
+  {
+    "name": "aliases 16",
+    "input": {
+      "title": "Offline",
+      "objective_ids": [
+        " goal-a ",
+        12,
+        "",
+        "goal-a"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "goal_ids": [
+          "goal-a",
+          "goal-a"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 17",
+    "input": {
+      "title": "Offline",
+      "objective_ids": [
+        " goal-a ",
+        12,
+        "",
+        "goal-a"
+      ],
+      "goal_ids": []
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "goal_ids": [
+          "goal-a",
+          "goal-a"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 18",
+    "input": {
+      "title": "Offline",
+      "objective_ids": [
+        " goal-a ",
+        12,
+        "",
+        "goal-a"
+      ],
+      "goal_ids": [
+        "goal-a"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "goal_ids": [
+          "goal-a"
+        ]
+      },
+      "warnings": [
+        {
+          "code": "objective_ids_goal_ids_conflict",
+          "message": "scaffold_initiative.goal_ids was kept because it differs from objective_ids."
+        }
+      ]
+    }
+  },
+  {
+    "name": "aliases 19",
+    "input": {
+      "title": "Offline",
+      "objective_ids": [
+        " goal-a ",
+        12,
+        "",
+        "goal-a"
+      ],
+      "goal_ids": [
+        "goal-b"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "goal_ids": [
+          "goal-b"
+        ]
+      },
+      "warnings": [
+        {
+          "code": "objective_ids_goal_ids_conflict",
+          "message": "scaffold_initiative.goal_ids was kept because it differs from objective_ids."
+        }
+      ]
+    }
+  },
+  {
+    "name": "aliases 20",
+    "input": {
+      "title": "Offline",
+      "objective_ids": "goal-a"
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": "goal-a"
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 21",
+    "input": {
+      "title": "Offline",
+      "objective_ids": "goal-a",
+      "goal_ids": []
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": "goal-a",
+        "goal_ids": []
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 22",
+    "input": {
+      "title": "Offline",
+      "objective_ids": "goal-a",
+      "goal_ids": [
+        "goal-a"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": "goal-a",
+        "goal_ids": [
+          "goal-a"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "aliases 23",
+    "input": {
+      "title": "Offline",
+      "objective_ids": "goal-a",
+      "goal_ids": [
+        "goal-b"
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Offline",
+        "objective_ids": "goal-a",
+        "goal_ids": [
+          "goal-b"
+        ]
+      },
+      "warnings": []
+    }
+  },
+  {
+    "name": "nested precedence and diagnostics",
+    "input": {
+      "title": "Nested",
+      "goal_ids": [
+        "goal-a"
+      ],
+      "objective_ids": [
+        "goal-b"
+      ],
+      "workstreams": [
+        {
+          "objective_ids": [
+            "goal-c"
+          ],
+          "milestones": [
+            {
+              "goal_ids": [
+                "goal-d"
+              ],
+              "objective_ids": [
+                "goal-e"
+              ],
+              "tasks": [
+                {
+                  "goal_ids": [],
+                  "objective_ids": [
+                    "goal-f"
+                  ]
+                },
+                null,
+                "invalid"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "args": {
+        "title": "Nested",
+        "goal_ids": [
+          "goal-a"
+        ],
+        "workstreams": [
+          {
+            "milestones": [
+              {
+                "goal_ids": [
+                  "goal-d"
+                ],
+                "tasks": [
+                  {
+                    "goal_ids": [
+                      "goal-f"
+                    ]
+                  },
+                  null,
+                  "invalid"
+                ]
+              }
+            ],
+            "goal_ids": [
+              "goal-c"
+            ]
+          }
+        ]
+      },
+      "warnings": [
+        {
+          "code": "objective_ids_goal_ids_conflict",
+          "message": "scaffold_initiative.goal_ids was kept because it differs from objective_ids."
+        },
+        {
+          "code": "objective_ids_goal_ids_conflict",
+          "message": "scaffold_initiative.workstreams[0].milestones[0].goal_ids was kept because it differs from objective_ids."
+        }
+      ]
+    }
+  }
+]

@@ -23,6 +23,8 @@ export interface McpIdentityTokenPayload {
   // or degraded, so the gateway must treat its absence as "resolve downstream
   // via sub (Clerk id) + email" exactly as before.
   orgx_user_id?: string;
+  pairing_attempt_id?: string;
+  telemetry_opt_out?: boolean;
   state_key?: string;
   mcp_state?: string;
   iat: number;
@@ -59,6 +61,9 @@ export async function signMcpIdentityToken(opts: {
   userId: string;
   email: string;
   emailVerified?: boolean;
+  orgxUserId?: string;
+  pairingAttemptId?: string;
+  telemetryOptOut?: boolean;
   stateKey?: string | null;
   mcpState?: string | null;
   secret: string;
@@ -71,6 +76,9 @@ export async function signMcpIdentityToken(opts: {
     sub: opts.userId,
     email: opts.email.trim().toLowerCase(),
     email_verified: opts.emailVerified ?? undefined,
+    ...(opts.orgxUserId ? { orgx_user_id: opts.orgxUserId } : {}),
+    ...(opts.pairingAttemptId ? { pairing_attempt_id: opts.pairingAttemptId } : {}),
+    ...(opts.telemetryOptOut ? { telemetry_opt_out: true } : {}),
     ...(opts.stateKey ? { state_key: opts.stateKey } : {}),
     ...(opts.mcpState ? { mcp_state: opts.mcpState } : {}),
     iat: now,

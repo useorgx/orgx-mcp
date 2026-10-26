@@ -677,3 +677,31 @@ describe('B8 · morning brief: one degraded notice, inside the card', () => {
     );
   });
 });
+
+describe('panel · initiative brief in a chat', () => {
+  it('shows where each fact came from when nothing needs a decision', async () => {
+    withQuery('gallery=true&state=calm&mode=thread&brief=populated');
+    mountPanel();
+    await vi.waitFor(() => expect(document.querySelector('.brief')).not.toBeNull());
+    expect(document.querySelector('.brief-h')!.textContent).toBe('What OrgX knows about Launch the new pricing page');
+    const sources = [...document.querySelectorAll('.brief-src')].map((n) => n.textContent!.split(' · ')[0]);
+    expect(sources).toEqual(['Claude Code run', 'ChatGPT chat', 'Your ruling', 'Codex run']);
+    expect(document.querySelector('.brief')!.textContent).toContain('3 rulings in effect · 2 precedents');
+    expect(document.querySelector('.brief')!.textContent).not.toContain('could not be read');
+  });
+
+  it('keeps the brief to one line under an open decision', async () => {
+    withQuery('gallery=true&state=needs-you&mode=thread&brief=populated');
+    mountPanel();
+    await vi.waitFor(() => expect(document.querySelector('.brief-line')).not.toBeNull());
+    expect(document.querySelector('.brief')).toBeNull();
+    expect(document.querySelector('.brief-line')!.textContent).toMatch(/^Brief · 3 rulings in effect · 2 precedents · latest: Claude Code run, /);
+  });
+
+  it('says so when a source could not be read', async () => {
+    withQuery('gallery=true&state=calm&mode=thread&brief=degraded');
+    mountPanel();
+    await vi.waitFor(() => expect(document.querySelector('.brief')).not.toBeNull());
+    expect(document.querySelector('.brief')!.textContent).toContain('Some sources could not be read.');
+  });
+});

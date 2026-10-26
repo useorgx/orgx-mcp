@@ -1,3 +1,4 @@
+import { LegacyBatchCapabilityCache, runCompatibleLegacyBatch } from './legacyBatchCutover';
 import { artifactProofScope } from './artifactProofScope';
 import { parseSearchDateRange, type SearchDateRange } from './searchDateRange';
 import { McpAgent } from 'agents/mcp';
@@ -54,7 +55,7 @@ import {
 import { isModelVisibleToolMeta } from './toolVisibility';
 import { applyToolArgumentAliases } from './toolArgumentAliases';
 import { isWidgetOnlyTool } from './widgetToolContract';
-import { WORKFLOW_TOOL_ADAPTERS, EXTENDED_WORKFLOW_TOOL_ADAPTERS, resolveWorkflowInvocationSecuritySchemes, type WorkflowToolAdapter } from './workflowTools';
+import { WORKFLOW_TOOL_ADAPTERS, EXTENDED_WORKFLOW_TOOL_ADAPTERS, getWorkflowToolContract, resolveWorkflowInvocationSecuritySchemes, type WorkflowToolAdapter } from './workflowTools';
 import { RECEIPT_OPERATION_TOOLS, executeReceiptOperation } from './receiptOperationTools';
 import { WIDGET_OPERATION_TOOLS } from './widgetOperations';
 import { getPublicOperationContract, getPublicOperationContracts } from './publicOperationContracts';
@@ -131,9 +132,11 @@ import {
 import { mapMorningBriefApiError } from './morningBriefError';
 import { fetchContextPreparation, fetchContextPack } from './contextPack';
 import {
-  batchCreateEntities as runBatchCreateEntities,
   validateEntityCreatePayloadContract,
 } from './batchCreate';
+import { isRemedyCode, RemedyError } from './remedyErrors';
+import { installIdempotencyKeyGuard } from './idempotencyKeys';
+import { isMutatingOperation, typedRemedyDetails, withTypedRemedy } from './typedToolErrors';
 import {
   buildClientAwareContentBlocks,
   buildFailureDetails,
@@ -267,6 +270,7 @@ import {
 } from './artifactReview';
 import { buildWorkspaceCreateBody } from './workspaceTool';
 import { buildEntityUpdateRequest } from './entityUpdateRequest';
+import { buildWorkOutputAttachmentRequest, readWorkOutputAttachmentAcknowledgement } from './workOutputAttachment';
 import { buildEntityCollectionSearchParams } from './entityCollectionSearch';
 import {
   buildBroadSearchPagination,
@@ -461,6 +465,7 @@ import {
   withClientSessionIdentity,
 } from './clientSessionIdentity';
 import { applyEntityWriteAttribution } from './entityWriteAttribution';
+import { ORGX_SERVER_INSTRUCTIONS } from './serverInstructions';
 import { ensureSqliteColumn } from './sqliteSchema';
 import { checkToolPlanAccess } from './toolAccessGating';
 import { resolveLegacyToolAlias } from './deprecatedTools';
@@ -521,6 +526,7 @@ function computeServerVersion(): string {
 
 const MCP_SERVER_VERSION = computeServerVersion();
 
+
 function createInstrumentedMcpServer(): McpServer {
   return Sentry.wrapMcpServerWithSentry(
     new McpServer({
@@ -535,7 +541,7 @@ function createInstrumentedMcpServer(): McpServer {
           sizes: ['64x64', '128x128', 'any'],
         },
       ],
-    }),
+    }, { instructions: ORGX_SERVER_INSTRUCTIONS }),
     {
       // MCP arguments and results can contain customer strategy, credentials,
       // or generated artifacts. Keep spans useful without recording payloads.
@@ -598,6 +604,8 @@ interface OrgXMcpProps extends Record<string, unknown> {
   userId?: string;
   // Internal Supabase user UUID resolved at MCP login. Optional — see SessionAuth.
   orgxUserId?: string;
+  pairingAttemptId?: string;
+  telemetryOptOut?: boolean;
   scope?: string;
   email?: string;
   profile?: string;
@@ -730,6 +738,12 @@ export class OrgXMcp extends McpAgent<
 
   // Session context for workspace scoping plus the MCP initialize handshake
   // identity (clientInfo) used for server-side attribution.
+  private legacyBatchCapabilities?: LegacyBatchCapabilityCache;
+
+  private getLegacyBatchCapabilities(): LegacyBatchCapabilityCache {
+    return this.legacyBatchCapabilities ??= new LegacyBatchCapabilityCache();
+  }
+
   sessionContext: {
     workspaceId?: string;
     workspaceName?: string;
@@ -2211,7 +2225,9 @@ export class OrgXMcp extends McpAgent<
         { userId: userId ?? undefined, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(userId ?? undefined) }
       );
       if (!response.ok) return null;
-      return (await response.json()) as T;
+      const payload = (await response.json()) as T;
+      if (path === '/api/client/bootstrap?source_client=mcp') this.getLegacyBatchCapabilities().observe(payload, userId);
+      return payload;
     } catch (error) {
       console.warn('[mcp:orgx] Failed to fetch JSON payload', {
         path,
@@ -2463,7 +2479,8 @@ export class OrgXMcp extends McpAgent<
 
   private async withOrgx(
     runner: () => Promise<CallToolResult>,
-    toolId?: string
+    toolId?: string,
+    args?: Record<string, unknown>
   ): Promise<CallToolResult> {
     try {
       const result = await runner();
@@ -2523,23 +2540,42 @@ export class OrgXMcp extends McpAgent<
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // Typed remedies come from the failure's origin, its structured backend
+      // code, or its status. Message matching is only the last resort.
+      const diagnostic = diagnoseToolFailure({
+        toolId: toolId ?? 'unknown',
+        error,
+        args,
+        mutating: isMutatingOperation(toolId),
+      });
+      const typed = isRemedyCode(diagnostic.code);
       if (error instanceof OrgXApiError) {
         return this.toolError(message, {
-          code:
-            error.statusCode === 401 || error.statusCode === 403
-              ? 'permission_denied'
-              : error.statusCode === 404
-              ? 'entity_not_found'
-              : error.statusCode === 400
-              ? 'invalid_input'
-              : error.statusCode && error.statusCode >= 500
-              ? 'upstream_unavailable'
-              : 'tool_execution_failed',
+          code: typed
+            ? diagnostic.code
+            : error.statusCode === 401 || error.statusCode === 403
+            ? 'permission_denied'
+            : error.statusCode === 404
+            ? 'entity_not_found'
+            : error.statusCode === 400
+            ? 'invalid_input'
+            : error.statusCode && error.statusCode >= 500
+            ? 'upstream_unavailable'
+            : 'tool_execution_failed',
           status: error.statusCode,
-          details: {
-            retryable: Boolean(error.statusCode && error.statusCode >= 500),
-            suggested_next_calls: [{ tool: 'orgx_bootstrap', args: {} }],
-          },
+          details: typed
+            ? typedRemedyDetails(diagnostic)
+            : {
+                retryable: Boolean(error.statusCode && error.statusCode >= 500),
+                suggested_next_calls: [{ tool: 'orgx_get_workspace_context', args: {} }],
+              },
+        });
+      }
+      if (typed) {
+        return this.toolError(message, {
+          code: diagnostic.code,
+          status: error instanceof RemedyError ? error.status : undefined,
+          details: typedRemedyDetails(diagnostic),
         });
       }
       return this.toolError(message);
@@ -3161,6 +3197,14 @@ export class OrgXMcp extends McpAgent<
               name: this.sessionContext.workspaceName ?? null,
             }
           : null,
+      sessionInitiative: () => this.sessionContext?.initiativeId ?? null,
+      fetchInitiativeBrief: (initiativeId) =>
+        fetchContextPack(
+          this.env,
+          userId(),
+          { type: 'initiative', id: initiativeId },
+          { briefSources: true, relations: 0 }
+        ),
       inferWorkspace: () => this.inferSessionWorkspace(userId()),
       fetchPendingDecisions: async ({ workspaceId, limit }) => {
         const id = userId();
@@ -3191,6 +3235,11 @@ export class OrgXMcp extends McpAgent<
           workspaceId,
           limit,
         }),
+      fetchArtifactReview: (artifact) => loadArtifactReviewEnvelope({
+        env: this.env,
+        artifact,
+        actor: actor(userId()) ?? {},
+      }),
       // Read only when the person opens In progress; the same read
       // get_agent_status uses, normalized the same way.
       fetchAgentStatus: async ({ workspaceId }) => {
@@ -3280,6 +3329,13 @@ export class OrgXMcp extends McpAgent<
       fetchLedgerReceipt: async ({ workspaceId, id }) => {
         const qs = new URLSearchParams({ workspace_id: workspaceId, widget_meta: '1' });
         const response = await callOrgxApiJson(this.env, `/api/v1/work-ledger/receipts/${encodeURIComponent(id)}?${qs.toString()}`, undefined, actor(userId()));
+        return response.json();
+      },
+      // Read only when the person opens Goals: each goal's recorded progress,
+      // the initiatives under it, and the workspace's quality bars.
+      fetchGoalProgress: async ({ workspaceId }) => {
+        const qs = new URLSearchParams({ workspace_id: workspaceId });
+        const response = await callOrgxApiJson(this.env, `/api/v1/objectives/progress?${qs.toString()}`, undefined, actor(userId()));
         return response.json();
       },
       // Read only when the person opens the workspace switcher.
@@ -4253,6 +4309,11 @@ export class OrgXMcp extends McpAgent<
             {
               method: 'POST',
               body: JSON.stringify(body),
+              // Public lifecycle operations require a retry key; forward it so
+              // a retried pause/resume/retry/cancel applies at most once.
+              ...(isLifecycle && typeof args.idempotency_key === 'string'
+                ? { headers: { 'Idempotency-Key': args.idempotency_key } }
+                : {}),
             },
             isLifecycle
               ? {
@@ -4316,7 +4377,7 @@ export class OrgXMcp extends McpAgent<
         });
         throw error;
       }
-    });
+    }, toolId, args);
   }
 
   /**
@@ -4688,6 +4749,7 @@ export class OrgXMcp extends McpAgent<
 
               let url = endpoint.path;
               let fetchInit: RequestInit;
+              let retryKeyHeader: Record<string, string> | undefined;
 
               if (endpoint.method === 'GET') {
                 const endpointPath =
@@ -4759,6 +4821,9 @@ export class OrgXMcp extends McpAgent<
                     artifactId
                   )}/independent-review`;
                   normalizedToolArgs = {};
+                  if (typeof toolArgs.idempotency_key === 'string') {
+                    retryKeyHeader = { 'Idempotency-Key': toolArgs.idempotency_key };
+                  }
                 }
                 if (tool.id === 'record_quality_score') {
                   const normalized =
@@ -4834,6 +4899,7 @@ export class OrgXMcp extends McpAgent<
                 fetchInit = {
                   method: 'POST',
                   body: JSON.stringify(normalizedToolArgs),
+                  ...(retryKeyHeader ? { headers: retryKeyHeader } : {}),
                 };
               }
 
@@ -5637,6 +5703,7 @@ export class OrgXMcp extends McpAgent<
                 this.sessionContext.initiativeId ?? undefined
               )
             : null;
+          this.getLegacyBatchCapabilities().observe({ data: { workspace: { id: this.sessionContext.workspaceId }, workflow_contracts: preparation?.workflow_contracts } }, resolvedUserId);
           const context_pack = preparation?.context_pack ?? null;
           const payload = {
             ...this.buildBootstrapPayload(allowedTools ?? null),
@@ -5681,10 +5748,12 @@ export class OrgXMcp extends McpAgent<
             ),
             args.hydrate_context === false
               ? Promise.resolve(null)
-              : fetchContextPack(this.env, resolvedUserId, {
-                  type: String(args.type),
-                  id: String(args.id),
-                }),
+              : fetchContextPack(
+                  this.env,
+                  resolvedUserId,
+                  { type: String(args.type), id: String(args.id) },
+                  { briefSources: true, relations: args.relations === 0 ? 0 : 1 }
+                ),
             // A run's answer lives in its outputs, not its row.
             args.type === 'run'
               ? fetchRunOutputs(this.env, String(args.id), {
@@ -6002,6 +6071,24 @@ export class OrgXMcp extends McpAgent<
           const operation =
             typeof args.operation === 'string' ? args.operation : 'create';
           if (operation === 'update') {
+            if (args.artifact !== undefined) {
+              const attachment = buildWorkOutputAttachmentRequest(args);
+              const response = await callOrgxApiJson(this.env, '/api/v1/workflows/attach-output', {
+                method: 'POST', headers: { 'Idempotency-Key': attachment.idempotencyKey },
+                body: JSON.stringify(attachment.body),
+              }, { userId: resolvedUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(resolvedUserId), allowFallback: false });
+              const data = readWorkOutputAttachmentAcknowledgement(await response.json());
+              const artifact = data.artifact;
+              const payload = canonicalizeOrgxWriteResponse({
+                _v2_tool: 'orgx_write', operation: 'update', ok: true,
+                id: artifact.id, data,
+                message: 'Output attached for review. Attachment does not approve or complete work.',
+              }, 'artifact');
+              return {
+                content: [{ type: 'text', text: `${payload.message} Inspect artifact ${artifact.id} for its canonical output summary and review link.` }],
+                structuredContent: payload,
+              };
+            }
             const fields =
               args.fields && typeof args.fields === 'object' && !Array.isArray(args.fields)
                 ? (args.fields as Record<string, unknown>)
@@ -7828,6 +7915,17 @@ export class OrgXMcp extends McpAgent<
       toolId: id, securitySchemes: schemes, userId: this.resolveUserId() ?? undefined,
       serverUrl: this.env.MCP_SERVER_URL, featureDescription: `use ${id.replace(/_/g, ' ')}`,
     });
+    // Writes that declare a required idempotency_key return a typed
+    // idempotency_key_required remedy when it is missing (src/idempotencyKeys.ts),
+    // after the same authorization check the operation itself performs.
+    installIdempotencyKeyGuard(this.server, {
+      authorize: (id, args) => {
+        const schemes = getWorkflowToolContract(id)
+          ? resolveWorkflowInvocationSecuritySchemes(id, args)
+          : RECEIPT_OPERATION_TOOLS.find((tool) => tool.id === id)?.securitySchemes;
+        return schemes ? auth(id, schemes) : null;
+      },
+    });
     const directResult = (raw: Record<string, unknown>): CallToolResult => {
       const split = separateOperationWidgetMeta(raw);
       return { content: [{ type: 'text', text: JSON.stringify(split.data) }], structuredContent: split.data, ...(split.meta ? { _meta: split.meta } : {}) };
@@ -7838,7 +7936,7 @@ export class OrgXMcp extends McpAgent<
       this.server.registerTool(tool.id, {
         title: tool.title, description: tool.description, inputSchema: this.withClientContext(tool.inputSchema),
         annotations: tool.annotations, _meta: { ...tool._meta, 'mcp/securitySchemes': tool.securitySchemes },
-      }, async (args: Record<string, unknown>, extra: unknown) => {
+      }, async (args: Record<string, unknown>, extra: unknown) => withTypedRemedy(await (async (): Promise<CallToolResult> => {
         const schemes = resolveWorkflowInvocationSecuritySchemes(tool.id, args);
         const blocked = auth(tool.id, schemes);
         if (blocked) return blocked;
@@ -7848,7 +7946,7 @@ export class OrgXMcp extends McpAgent<
           return directResult(await this.requestPublicOperation(request.path, {
             method: request.method, ...(request.body ? { body: JSON.stringify(request.body) } : {}), ...(request.headers ? { headers: request.headers } : {}),
           }));
-        }, tool.id);
+        }, tool.id, effective);
         const canonicalArgs = tool.toCanonicalArgs(effective);
         if (tool.id === 'orgx_open_artifact_review' && typeof canonicalArgs.artifact_id === 'string') return this.withOrgx(async () => {
           const params = new URLSearchParams({ widget_meta: '1', ...(effective.workspace_id ? { workspace_id: String(effective.workspace_id) } : {}) });
@@ -7856,7 +7954,7 @@ export class OrgXMcp extends McpAgent<
           const split = separateOperationWidgetMeta(raw);
           const data = split.data.data && typeof split.data.data === 'object' ? split.data.data as Record<string, unknown> : split.data;
           return { content: [{ type: 'text', text: summarizeArtifactReviewEnvelope(data as any) }], structuredContent: data, ...(split.meta ? { _meta: split.meta } : {}) };
-        }, tool.id);
+        }, tool.id, effective);
         if (tool.id === 'orgx_complete_work_with_proof' && canonicalArgs.type === 'task') return this.withOrgx(async () => {
           const request = await taskProofCompletionRequest(canonicalArgs);
           return directResult(await this.requestPublicOperation('/api/v1/workflows/complete-with-proof', {
@@ -7864,7 +7962,7 @@ export class OrgXMcp extends McpAgent<
           // Keyed proof writes can commit before the short primary deadline.
           // Keep their response and retries on the same canonical data plane.
           }, { allowFallback: false }));
-        }, tool.id);
+        }, tool.id, effective);
         if (tool.id === 'orgx_get_operation_status') {
           if (!canonicalArgs.kind && typeof canonicalArgs.operation_id === 'string' && ORGX_UUID_RE.test(canonicalArgs.operation_id)) {
             // Opaque UUIDs from existing durable APIs remain useful. An
@@ -7892,13 +7990,13 @@ export class OrgXMcp extends McpAgent<
             const split = separateOperationWidgetMeta(raw);
             const data = split.data.data && typeof split.data.data === 'object' ? split.data.data as Record<string, unknown> : split.data;
             return { ...result, structuredContent: { ...result.structuredContent, ...data }, ...(split.meta ? { _meta: { ...result._meta, ...split.meta } } : {}) };
-          }, tool.id);
+          }, tool.id, effective);
         }
         if (tool.id === 'orgx_complete_work_with_proof' && result.structuredContent && !result.isError) return {
           ...result, structuredContent: { data: result.structuredContent, meta: { apiVersion: '1', workspaceId: effective.workspace_id ?? this.sessionContext?.workspaceId ?? null, implementation: 'compatibility' } },
         };
         return result;
-      });
+      })(), { toolId: tool.id, args }));
     }
     for (const tool of RECEIPT_OPERATION_TOOLS) {
       if (!allowed(tool.id)) continue;
@@ -7931,7 +8029,7 @@ export class OrgXMcp extends McpAgent<
               tool.id === 'orgx_get_work_receipt' || tool.id === 'orgx_list_work_receipts' ? `${path}${path.includes('?') ? '&' : '?'}widget_meta=1` : path, init),
           });
           return directResult(raw);
-        }, tool.id);
+        }, tool.id, args);
       });
     }
     for (const tool of WIDGET_OPERATION_TOOLS) {
@@ -10830,18 +10928,19 @@ export class OrgXMcp extends McpAgent<
             : entities;
 
           const actorUserId = resolvedUserId ?? null;
-          const result = await runBatchCreateEntities({
+          const result = await runCompatibleLegacyBatch({
+            actorUserId, workspaceId: effectiveWorkspaceId, capabilityCache: this.getLegacyBatchCapabilities(),
             env: this.env,
             // Ignore the runner's per-entity userId: the acting identity is the
             // authenticated session, not the payload owner.
             callApi: ({ env, path, init }) =>
-              callOrgxApiJson(env, path, init, { userId: actorUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(actorUserId) }),
-            findExistingEntity: ({ body }) =>
+              callOrgxApiJson(env, path, init, { ...(path === '/api/v1/workflows/legacy-scaffold-batch' ? { allowFallback: false } : {}), userId: actorUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(actorUserId) }),
+            findExistingEntity: patchedEntities.some(entity => readEntityIdempotencyKey(entity)) ? ({ body }) =>
               this.findExistingEntityByIdempotencyKey({
                 body,
                 idempotencyKey: readEntityIdempotencyKey(body),
                 userId: actorUserId,
-              }),
+              }) : undefined,
             entities: patchedEntities,
             ownerId,
             continueOnError,
@@ -10962,11 +11061,11 @@ export class OrgXMcp extends McpAgent<
           objective_ids: z
             .array(z.string())
             .optional()
-            .describe('Preferred objective UUIDs; alias of goal_ids.'),
+            .describe('Legacy alias for goal_ids. Pass goal UUIDs; this does not convert objective records to goals.'),
           goal_ids: z
             .array(z.string())
             .optional()
-            .describe('Objective UUIDs for API compatibility.'),
+            .describe('Goal UUIDs. Goals and objectives are distinct entities.'),
           idempotency_key: z
             .string()
             .min(8)
@@ -11123,20 +11222,23 @@ export class OrgXMcp extends McpAgent<
               lowerError.includes('goal invariant') ||
               lowerError.includes('goal_ids') ||
               lowerError.includes('objective');
-            const nextSteps = needsWorkspace
+            const requiresReconciliation = lowerError.includes('requires reconciliation');
+            const nextSteps = requiresReconciliation
+              ? ['Inspect existing entities in this workspace and reconcile the partial outcome before making any further writes', 'Do not retry this batch or fall back to per-entity creation']
+              : needsWorkspace
               ? [
                   'Resolve a workspace first with list_entities type=command_center or get_org_snapshot',
                   'Retry scaffold_initiative with workspace_id set to that command center UUID',
-                  'If you also see a primary-goal invariant, resolve objectives with list_entities type=objective and pass the chosen objective UUID in goal_ids',
+                  'If you also see a primary-goal invariant, choose an existing goal in the OrgX workspace and pass its UUID in goal_ids',
                 ]
               : needsObjective
               ? [
-                  'Resolve objectives with list_entities type=objective',
-                  'Retry scaffold_initiative with goal_ids set to one of those objective UUIDs; goal_ids is the API field name for objective IDs',
+                  'Choose an existing goal in the OrgX workspace; objectives are distinct',
+                  'Retry scaffold_initiative with goal_ids set to a goal UUID; objective UUIDs are not goal UUIDs',
                   'Keep the same workspace_id/command_center_id on the retry',
                 ]
               : [
-                  'Re-run the same prompt (transient failures happen)',
+                  'Inspect existing entities before retrying; creation may have partially completed',
                   'Set launch_after_create=false, then say "start agents"',
                   'Reduce concurrency (e.g. concurrency=2)',
                   'If this is an auth issue, reconnect and try again',
@@ -11429,7 +11531,7 @@ export class OrgXMcp extends McpAgent<
               '',
               'Suggested next calls:',
               '- orgx_search with type="workspace" to pick the workspace',
-              '- orgx_search with type="objective" and workspace_id to pick objective UUIDs for goal_ids when the workspace requires a primary objective',
+              '- If the workspace requires a primary goal, choose an existing goal in OrgX and pass its UUID in goal_ids',
               '- scaffold_initiative again with workspace_id and, when available, goal_ids',
             ].join('\n');
             recordScaffoldTelemetry({
@@ -11463,7 +11565,7 @@ export class OrgXMcp extends McpAgent<
                       workspace_id: '<workspace_id>',
                     },
                     purpose:
-                      'Find objective UUIDs to pass as goal_ids when required.',
+                      'Inspect objectives separately; use goal UUIDs from OrgX for goal_ids.',
                   },
                 ],
               },
@@ -11613,12 +11715,14 @@ export class OrgXMcp extends McpAgent<
             };
           }
 
-          const result = await runBatchCreateEntities({
+          const result = await runCompatibleLegacyBatch({
+            actorUserId: this.props?.authSource === 'run_token' ? null : scaffoldActorUserId, capabilityActorUserId: resolvedUserId ?? null, workspaceId: effectiveCommandCenterId, capabilityCache: this.getLegacyBatchCapabilities(),
             env: this.env,
             // Ignore the runner's per-entity userId: the acting identity is the
             // authenticated session, not the payload owner.
             callApi: ({ env, path, init }) =>
               callOrgxApiJson(env, path, init, {
+                ...(path === '/api/v1/workflows/legacy-scaffold-batch' ? { allowFallback: false } : {}),
                 userId: scaffoldActorUserId ?? undefined,
                 userEmail: this.resolveUserEmail() ?? undefined,
                 orgxUserId: this.resolveOrgxUserId(scaffoldActorUserId),
@@ -15497,6 +15601,7 @@ function observeVerifiedMcpTransport(handler: typeof profileAwareHttpHandler) {
       const props = (ctx as ExecutionContext & { props?: OrgXMcpProps }).props;
       return handleMcpRequest(request, env, ctx, handler, async () => ({
         userId: props?.userId, orgxUserId: props?.orgxUserId,
+        pairingAttemptId: props?.pairingAttemptId, telemetryOptOut: props?.telemetryOptOut,
         scope: props?.scope, email: props?.email,
       }));
     },

@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="shared/tokens.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/markdown.css" />
+  <link rel="stylesheet" href="shared/output-front-door.css" />
   <script src="shared/kit/ox-elements-core.js"></script>
   <script src="shared/kit/ox-elements-footer.js"></script>
   <script src="shared/kit/ox-elements-avatar.js"></script>
@@ -277,6 +279,8 @@
 
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
+  <script src="shared/markdown.js"></script>
+  <script src="shared/output-front-door.js"></script>
   <script src="shared/live-machine.js"></script>
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
@@ -312,7 +316,6 @@
         doc.addEventListener('keydown', function (event) { if (!event.metaKey && !event.ctrlKey && !event.altKey) set('keyboard'); }, true);
       })(document);
 
-      // ─── SDK shim ────────────────────────────────────────────────
       // Blocker artifacts can carry raw codes ("Model call stopped: model_budget_exhausted").
       // Known codes read as words; an unknown snake_case code becomes plain words. Code, diffs
       // and structured payloads are shown as they are.
@@ -362,8 +365,8 @@
         window.OrgXWidgetRuntime.reportSize();
       }
 
-      // ─── data resolution ─────────────────────────────────────────
       let activeReviewContract = null;
+      let activeFrontDoor = null;
       let renderGeneration = 0;
 
       function resolveArtifact() {
@@ -517,7 +520,6 @@
         return payload;
       }
 
-      // ─── helpers ─────────────────────────────────────────────────
       function escapeHtml(str) {
         if (!str) return '';
         const div = document.createElement('div');
@@ -670,6 +672,7 @@
 
       function resolveIncomingArtifact(payload) {
         if (!payload || typeof payload !== 'object') return payload;
+        activeFrontDoor = null;
         const data = asRecord(payload.data);
         const result = asRecord(payload.result);
         const reviewContract =
@@ -693,7 +696,24 @@
             __errorCode: typeof error === 'object' ? firstString([error.code, error.kind]) : '',
           };
         }
-        return normalizeArtifact(candidate);
+        const normalized = normalizeArtifact(candidate);
+        const source = payload.reviewContractSource || data.reviewContractSource || result.reviewContractSource;
+        const quality = asRecord(asRecord(activeReviewContract).quality);
+        const anatomy = asRecord(quality.anatomy);
+        const native = asRecord(quality.native);
+        const claimsNative = native.source || quality.scoreBasis || anatomy.source === 'native_four_lens' || asRecord(quality.thresholdSource).kind === 'native_quality_bar';
+        if (source === 'entity_fallback' || (claimsNative && (source !== 'canonical' || native.source !== 'native_four_lens' || quality.scoreBasis !== 'judged_lower_bound' || anatomy.source !== 'native_four_lens' || anatomy.artifactVersion !== normalized.version || asRecord(anatomy.inputSummary).contentDigest !== native.subjectDigest))) {
+          activeReviewContract = {
+            schemaVersion: 'artifact_review_contract.v1',
+            quality: { state: 'unscored', score: null, blocksAdvance: true, reason: 'Canonical quality evidence is unavailable. Open the artifact to reload its source.' },
+            authority: { canReview: false }, purpose: { reviewRequired: true },
+            workflow: { headline: 'Reload canonical quality evidence' },
+          };
+        }
+        if ((payload.reviewContractSource || data.reviewContractSource || result.reviewContractSource) === 'canonical' && activeReviewContract && activeReviewContract.frontDoor) {
+          activeFrontDoor = { id: normalized.id, version: normalized.version, value: activeReviewContract.frontDoor };
+        }
+        return normalized;
       }
 
       function resolveReviewerSignal(review) {
@@ -719,6 +739,10 @@
           state + (actorLabel ? ' · ' + actorLabel : actorKind ? ' · ' + actorKind : ''),
           'Review recorded',
         );
+      }
+
+      function nativeQualityEvidence(quality) {
+        return asRecord(quality.native).source === 'native_four_lens' && quality.scoreBasis === 'judged_lower_bound' && asRecord(quality.anatomy).source === 'native_four_lens';
       }
 
       function resolveContractEvidence(artifact, reviewContract) {
@@ -818,6 +842,7 @@
           detail: firstString([quality.reason, asRecord(contract.workflow).reason]) ||
             'Canonical review evidence is attached to this artifact.',
           score: score,
+          nativeQuality: nativeQualityEvidence(quality),
           previousScore: previousScore,
           threshold: threshold,
           evalStatus: qualityState || 'unscored',
@@ -1010,7 +1035,7 @@
         }
 
         if (type.includes('markdown') || type.includes('doc') || type.includes('report') || type.includes('brief') || content) {
-          return '<div class="artifact-preview__markdown">' + escapeHtml(humanizeCodes(content)).replace(/\n\n/g, '</p><p>').replace(/^(.+)$/, '<p>$1</p>') + '</div>';
+          return '<div class="artifact-preview__markdown ox-markdown">' + window.OrgXMarkdown.render(humanizeCodes(content), { linkAllowed: isAllowedArtifactLinkUrl }) + '</div>';
         }
 
         if (payload) return renderStructured(payload);
@@ -1068,6 +1093,7 @@
           case 'cleared':
             return { icon: 'done', title: score === null ? 'Cleared the bar' : 'Cleared · scored ' + score + (bar === null ? '' : ' of the ' + bar + ' needed'), detail: 'This version meets the quality bar.' };
           case 'held':
+            if (evidence.nativeQuality) return { icon: 'needs-you', title: 'Held by recorded verification', detail: evidence.detail };
             return {
               icon: 'needs-you',
               title: score === null ? 'Held below the bar' : 'Held · scored ' + score + (bar === null ? '' : ' of the ' + bar + ' needed'),
@@ -1091,6 +1117,9 @@
 
       // What was checked, as four plain rows: passed, failed, missing, or not run.
       function buildChecks(anatomy, evidence) {
+        if (evidence.nativeQuality) return anatomy.nativeChecks.map(function (check) {
+          return { status: check.status === 'passed' ? 'passed' : check.status === 'failed' ? 'failed' : 'missing', label: check.profileName || 'Native verification check', detail: 'Recorded native verification check' };
+        });
         const rec = anatomy.records;
         const scored = anatomy.evidenceIsCurrent && evidence.score !== null;
         const findings = (evidence.findings || []).map(function (f) {
@@ -1171,6 +1200,7 @@
         const contract = asRecord(reviewContract);
         const hasCanonicalContract = contract.schemaVersion === 'artifact_review_contract.v1';
         const contractQuality = asRecord(contract.quality);
+        const native = nativeQualityEvidence(contractQuality);
         const contractEvidence = asRecord(contract.evidence);
         const contractCounts = asRecord(contract.counts);
         const contractLineage = asRecord(contract.lineage);
@@ -1278,7 +1308,9 @@
         const allCriteriaWeighted =
           allCriteriaScored && criterionWeights.every(function (weight) { return weight !== null; });
         let calculation = 'Recorded score · formula unavailable';
-        if (aggregationMethod === 'mean' && allCriteriaScored) {
+        if (native) {
+          calculation = 'Judged lower bound = ' + scoreLabel;
+        } else if (aggregationMethod === 'mean' && allCriteriaScored) {
           calculation = '(' + criterionScores.map(function (score) {
             return Math.round(score * 100);
           }).join(' + ') + ') ÷ ' + criteria.length + ' = ' + scoreLabel;
@@ -1305,6 +1337,7 @@
           evidenceIsCurrent: evidenceIsCurrent,
           calculation: calculation,
           hasScoredCriteria: criteria.length > 0,
+          nativeChecks: native && Array.isArray(asRecord(contract.checks).checks) ? asRecord(contract.checks).checks : [],
         };
       }
 
@@ -1316,6 +1349,7 @@
         const bar = pct(evidence.threshold);
         const calc = anatomy.calculation === 'Recorded score · formula unavailable'
           ? (anatomy.hasScoredCriteria ? 'One recorded score; the breakdown wasn’t saved.' : 'One overall score; no breakdown was saved.')
+          : anatomy.calculation.indexOf('Judged lower bound') === 0 ? anatomy.calculation + '. Independent criterion verdicts and policy checks remain separate.'
           : anatomy.calculation.indexOf('Holistic') === 0 ? 'One overall judgment: ' + anatomy.calculation.replace(/^Holistic judgment = /, '') + '.'
           : anatomy.calculation.indexOf('×') !== -1 ? 'Weighted average: ' + anatomy.calculation.replace(/ = /, ' → ') + '.'
           : 'Average of ' + anatomy.judgedCount + ' criteria: ' + anatomy.calculation.replace(/^\(/, '').replace(/\) ÷ \d+ = /, ' → ') + '.';
@@ -1573,7 +1607,6 @@
         footer.setAttribute('state', frame.state);
       }
 
-      // ─── interactions ────────────────────────────────────────────
       // Approval is one click. approveArtifact disables the button before its
       // first await, so a double click records one approval; a failure hands
       // the button back.
@@ -1767,7 +1800,6 @@
         }
       }
 
-      // ─── render ─────────────────────────────────────────────────
       function bindLinks(stage) {
         const deepLink = stage.querySelector('[data-deeplink]');
         if (deepLink) {
@@ -1842,6 +1874,8 @@
         const summary = activeReviewContract
           ? firstString([canonicalWorkflow.reason, canonicalWorkflow.headline]) || artifact.summary || 'Canonical review evidence attached.'
           : (artifact.summary || 'Production artifact awaiting approval.');
+        const frontDoorHtml = activeFrontDoor && activeFrontDoor.id === artifact.id && activeFrontDoor.version === artifact.version
+          ? window.OrgXOutputFrontDoor.render(activeFrontDoor.value, { artifactId: artifact.id }) : '';
 
         if (isResolved) {
           const approved = artifact.status === 'approved';
@@ -1849,6 +1883,7 @@
             '<article class="wcard ox-surface" data-edge="teal">' +
             renderHeader(artifact, 'teal', 'proactive', 'sign') +
             '<div class="bd">' +
+            frontDoorHtml +
             '<h2 class="review-question">' + (approved ? 'Approval recorded' : 'Revision requested') + '</h2>' +
             '<p class="review-summary">' + (approved ? 'Signed off. Execution can continue from this version.' : 'Guidance filed. The author owns the next revision.') + '</p>' +
             '</div>' +
@@ -1913,6 +1948,7 @@
           renderHeader(artifact, tone, mode === 'resolve' ? 'asking' : 'verifying', mode) +
           '<div class="bd">' +
           '<div class="review-desk animate-in">' +
+          frontDoorHtml +
           '<div class="review-control">' +
           (chip ? '<div class="review-status">' + chip + '</div>' : '') +
           '<h2 class="review-question">' + escapeHtml(question) + '</h2>' +

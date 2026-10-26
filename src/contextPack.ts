@@ -39,10 +39,24 @@ export interface ContextPackAnchor {
 }
 
 /** Pure: the request body the app endpoint expects. */
+export interface ContextPackOptions {
+  /** Ask for dated events, precedents in effect and graph relations. */
+  briefSources?: boolean;
+  /** Work-graph depth with brief sources: 0 skips it, 1 reads adjacent edges. */
+  relations?: 0 | 1;
+}
+
 export function buildContextPackRequestBody(
-  anchor: ContextPackAnchor
-): Record<string, string> {
-  return { entity_type: anchor.type, entity_id: anchor.id };
+  anchor: ContextPackAnchor,
+  options: ContextPackOptions = {}
+): Record<string, string | number | boolean> {
+  return {
+    entity_type: anchor.type,
+    entity_id: anchor.id,
+    ...(options.briefSources
+      ? { brief_sources: true, relations: options.relations ?? 1 }
+      : {}),
+  };
 }
 
 /** Pure: workspace-scoped request body for the additive v1 context capsule. */
@@ -64,14 +78,15 @@ export function isPackableAnchor(anchor: ContextPackAnchor): boolean {
 export async function fetchContextPack(
   env: OrgxApiEnv,
   userId: string | null | undefined,
-  anchor: ContextPackAnchor
+  anchor: ContextPackAnchor,
+  options: ContextPackOptions = {}
 ): Promise<unknown | null> {
   if (!isPackableAnchor(anchor)) return null;
   try {
     const response = await callOrgxApiJson(
       env,
       CONTEXT_PACK_API_PATH,
-      { method: 'POST', body: JSON.stringify(buildContextPackRequestBody(anchor)) },
+      { method: 'POST', body: JSON.stringify(buildContextPackRequestBody(anchor, options)) },
       { userId: userId ?? null }
     );
     const payload = (await response.json()) as { ok?: boolean; data?: unknown };
@@ -98,7 +113,7 @@ export async function fetchContextPreparation(
   userId: string | null | undefined,
   workspaceId: string,
   initiativeId?: string
-): Promise<{ context_capsule: Record<string, unknown> | null; context_delivery: Record<string, unknown> | null; context_pack: Record<string, unknown> | null } | null> {
+): Promise<{ context_capsule: Record<string, unknown> | null; context_delivery: Record<string, unknown> | null; context_pack: Record<string, unknown> | null; workflow_contracts?: Record<string, unknown> | null } | null> {
   const normalizedWorkspaceId = workspaceId.trim();
   if (!normalizedWorkspaceId) return null;
 
@@ -150,6 +165,7 @@ export async function fetchContextPreparation(
     return {
       context_capsule: capsule?.schema_version === CONTEXT_CAPSULE_SCHEMA_VERSION ? capsule : null,
       context_delivery: asRecord(data.context_delivery),
+      workflow_contracts: asRecord(data.workflow_contracts),
       context_pack: initiativeId ? data : null,
     };
   } catch {

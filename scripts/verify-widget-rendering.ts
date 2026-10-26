@@ -372,7 +372,7 @@ async function checkWidget(
       }
     }
     if (variant === "chatgpt-empty-results") {
-      if (!/No results (?:found|on this page)/.test(diagnostics.visibleText)) {
+      if (!diagnostics.visibleText.includes("No results on this page")) {
         errors.push("render: successful empty search was not shown");
       }
       if (diagnostics.visibleText.includes("Search unavailable")) {
@@ -386,7 +386,7 @@ async function checkWidget(
       if (!diagnostics.visibleText.includes("Search unavailable")) {
         errors.push("render: missing or malformed search response was not surfaced");
       }
-      if (/No results (?:found|on this page)/.test(diagnostics.visibleText)) {
+      if (diagnostics.visibleText.includes("No results on this page")) {
         errors.push("render: missing or malformed response was shown as zero results");
       }
     }

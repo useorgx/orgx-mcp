@@ -2,22 +2,17 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 type TextContent = Extract<CallToolResult['content'][number], { type: 'text' }>;
 
-export type PayloadNormalizationWarning = {
-  path: string;
-  from: string;
-  to: string;
-  reason: string;
-};
+import type { PayloadNormalizationWarning } from './generated/legacyEntityBatchWire';
+export type { PayloadNormalizationWarning } from './generated/legacyEntityBatchWire';
+export { normalizeEntityCreatePayloadForAgents } from './generated/legacyEntityBatchPreparation';
 
-export type FailureDiagnostic = {
-  code: string;
-  reason: string;
-  safe_to_retry: boolean;
-  corrected_payload?: Record<string, unknown>;
-  valid_values?: readonly string[];
-  suggested_next_calls?: Array<{ tool: string; args: Record<string, unknown> }>;
-  security_note?: string;
-};
+import {
+  buildRemedy,
+  classifyFailureMessage,
+  classifyStructuredFailure,
+  type FailureDiagnostic,
+} from './remedyErrors';
+export type { FailureDiagnostic } from './remedyErrors';
 
 function compactString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0
@@ -105,49 +100,6 @@ export function buildClientAwareContentBlocks(params: {
   return buildJsonFirstContentBlocks(params);
 }
 
-export function normalizeEntityCreatePayloadForAgents(
-  entity: Record<string, unknown>,
-  pathPrefix: string
-): { entity: Record<string, unknown>; warnings: PayloadNormalizationWarning[] } {
-  const next: Record<string, unknown> = { ...entity };
-  const warnings: PayloadNormalizationWarning[] = [];
-  const type = compactString(next.type);
-
-  const rewrite = (
-    key: string,
-    from: string,
-    to: string,
-    reason: string
-  ) => {
-    if (next[key] !== from) return;
-    next[key] = to;
-    warnings.push({ path: `${pathPrefix}.${key}`, from, to, reason });
-  };
-
-  if (type === 'task') {
-    rewrite('priority', 'urgent', 'high', 'OrgX task priority accepts low|medium|high; high is the urgent-equivalent.');
-    rewrite('status', 'active', 'in_progress', 'OrgX task status uses in_progress for active execution.');
-  }
-
-  if (type === 'milestone') {
-    rewrite('status', 'active', 'in_progress', 'OrgX milestone status uses in_progress, not active.');
-  }
-
-  if (type === 'decision') {
-    rewrite('status', 'active', 'pending', 'OrgX decision status uses pending for unresolved decisions.');
-  }
-
-  if (type === 'blocker') {
-    rewrite('status', 'active', 'open', 'OrgX blocker status uses open for active blockers.');
-  }
-
-  if (type === 'artifact') {
-    rewrite('status', 'active', 'draft', 'OrgX artifact status uses draft for newly attached artifacts.');
-  }
-
-  return { entity: next, warnings };
-}
-
 export function normalizeRecordQualityScoreArgs(
   args: Record<string, unknown>
 ): { body: Record<string, unknown>; error?: FailureDiagnostic } {
@@ -209,11 +161,28 @@ export function normalizeRecordOutcomeArgs(
   return { body, workspaceId };
 }
 
-export function diagnoseToolFailure(params: {
+export type ToolFailureInput = {
   toolId: string;
   error: unknown;
   args?: Record<string, unknown>;
-}): FailureDiagnostic {
+  /** Upstream tool error code when the failure arrived as a tool result. */
+  code?: string;
+  /** HTTP status when known. */
+  status?: number;
+  /** Structured upstream error details (approver, limits, versions...). */
+  details?: unknown;
+  /** True when the failing tool writes durable state. */
+  mutating?: boolean;
+};
+
+/**
+ * Explain a tool failure as a typed remedy.
+ *
+ * Structured signals win: a RemedyError from the origin, a backend error code,
+ * the HTTP status, or a transport failure on a write. Tool-specific contract
+ * corrections follow. Message patterns are only the last resort.
+ */
+export function diagnoseToolFailure(params: ToolFailureInput): FailureDiagnostic {
   const message = redactSensitiveText(
     params.error instanceof Error
       ? params.error.message
@@ -222,6 +191,18 @@ export function diagnoseToolFailure(params: {
       : String(params.error)
   );
   const lower = message.toLowerCase();
+
+  const structured = classifyStructuredFailure({
+    error: params.error,
+    code: params.code,
+    status: params.status,
+    details: params.details,
+    mutating: params.mutating,
+    args: params.args,
+  });
+  if (structured) {
+    return buildRemedy(structured.code, { toolId: params.toolId, args: params.args, facts: structured.facts, message });
+  }
 
   if (params.toolId === 'record_quality_score' || /taskid is required|agentdomain is required/.test(lower)) {
     const normalized = normalizeRecordQualityScoreArgs(params.args ?? {});
@@ -287,16 +268,10 @@ export function diagnoseToolFailure(params: {
     };
   }
 
-  if (/no approval received|approval/i.test(message)) {
-    return {
-      code: 'approval_required_or_missing',
-      reason:
-        'The requested write appears to require an approval record or explicit user confirmation before execution.',
-      safe_to_retry: false,
-      suggested_next_calls: [
-        { tool: 'orgx_decide', args: { action: 'list_pending' } },
-      ],
-    };
+  // Last resort: no structured signal identified the failure.
+  const fromMessage = classifyFailureMessage(message, params.mutating);
+  if (fromMessage) {
+    return buildRemedy(fromMessage, { toolId: params.toolId, args: params.args, message });
   }
 
   return {
@@ -307,16 +282,13 @@ export function diagnoseToolFailure(params: {
   };
 }
 
-export function buildFailureDetails(params: {
-  toolId: string;
-  error: unknown;
-  args?: Record<string, unknown>;
-}): Record<string, unknown> {
+export function buildFailureDetails(params: ToolFailureInput): Record<string, unknown> {
   const diagnostic = diagnoseToolFailure(params);
   return {
     diagnostic,
     retryable: diagnostic.safe_to_retry,
-    suggested_next_calls: diagnostic.suggested_next_calls,
-    corrected_payload: diagnostic.corrected_payload,
+    ...(diagnostic.suggested_next_calls ? { suggested_next_calls: diagnostic.suggested_next_calls } : {}),
+    ...(diagnostic.corrected_payload ? { corrected_payload: diagnostic.corrected_payload } : {}),
+    ...(diagnostic.retry_after_seconds !== undefined ? { retry_after_seconds: diagnostic.retry_after_seconds } : {}),
   };
 }

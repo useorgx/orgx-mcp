@@ -23,25 +23,25 @@ export type ClientHookCoverage = {
   gaps: string[];
 };
 
-const OPERATOR_CHRONICLE_ENTRYPOINT: ClientActivationAction = {
-  tool: 'get_operator_chronicle',
+const OPERATOR_BRIEF_ENTRYPOINT: ClientActivationAction = {
+  tool: 'orgx_get_operator_brief',
   label: 'Read decision chronology and delivery proof',
   prompt:
-    'Run get_operator_chronicle period=30d and lead with reportingNarrative.briefMarkdown, topPriorities, PR velocity, artifacts, goals, and gaps.',
+    'Run orgx_get_operator_brief period=30d and lead with the brief narrative, top priorities, PR velocity, artifacts, goals, and gaps.',
   args: { period: '30d' },
 };
 
-const MORNING_BRIEF_ENTRYPOINT: ClientActivationAction = {
-  tool: 'orgx_recommend',
-  label: 'Fallback to the morning brief',
+const NEXT_ACTIONS_ENTRYPOINT: ClientActivationAction = {
+  tool: 'orgx_get_next_actions',
+  label: 'Ask for the next highest-value step',
   prompt:
-    'Run orgx_recommend mode=morning_brief when a host has not exposed get_operator_chronicle directly.',
-  args: { mode: 'morning_brief' },
+    'Run orgx_get_next_actions after reading the brief to turn reported gaps into the next concrete step.',
+  args: {},
 };
 
 const REPORTING_ENTRYPOINTS = [
-  OPERATOR_CHRONICLE_ENTRYPOINT,
-  MORNING_BRIEF_ENTRYPOINT,
+  OPERATOR_BRIEF_ENTRYPOINT,
+  NEXT_ACTIONS_ENTRYPOINT,
 ];
 
 const CLIENT_HOOK_COVERAGE: Record<SourceClient, ClientHookCoverage> = {

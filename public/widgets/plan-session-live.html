@@ -853,9 +853,12 @@
         try {
           if (state.plan.demoSendFails) throw new Error('guidance_not_recorded');
           if (!state.plan.demo) {
+            var nonce = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
             var result = await window.OrgXWidgetRuntime.callTool('orgx_record_plan_edit', {
               session_id: state.plan.id,
               edit_summary: summary,
+              // Recording guidance is a write: one idempotency key per send.
+              idempotency_key: 'widget:plan-edit:' + state.plan.id + ':' + nonce,
             });
             if (
               result == null ||

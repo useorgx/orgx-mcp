@@ -1,0 +1,42 @@
+{
+  "classification": "actual-production-pure-projection-with-synthetic-admitted-native-input",
+  "method": "deriveArtifactReviewContract with nativeQuality test fixture; redactInternalIds true for public projection",
+  "authorityMeasured": false,
+  "sources": [
+    {
+      "repo": "hopeatina/orgx",
+      "path": "orgx/lib/artifacts/reviewContract.ts",
+      "sha256": "d60336c49de642e0078edd5d3a83cce9258ea56d166e09fdbae12c4f6c362609"
+    },
+    {
+      "repo": "hopeatina/orgx",
+      "path": "orgx/lib/artifacts/nativeQuality.ts",
+      "sha256": "f8540f6bfb6566de3ea76af7166ff64b20d3942ab387d931e5ac38d5c70fc5da"
+    },
+    {
+      "repo": "hopeatina/orgx",
+      "path": "orgx/lib/artifacts/__tests__/nativeQuality.test.ts",
+      "sha256": "02b814648189b5ff7fcc360bd4447dea576569bf33a64b8607aeb054719619f8"
+    }
+  ],
+  "databaseProjection": {
+    "classification": "actual-owned-synthetic-database-canonical-builder-projection",
+    "method": "buildArtifactReviewContract over owned PostgreSQL and PostgREST after native generation, promotion and independent verification",
+    "run": "run-rYWcTA",
+    "observationCase": "native-artifact-review-contract",
+    "observationSource": "orgx/artifacts/qa/business-output-proof/run-rYWcTA/observations.jsonl",
+    "liveAuthenticatedGetMeasured": false,
+    "externalProviderExecutionMeasured": false,
+    "envelopeArtifact": "Test wrapper reconstructed from actual contract file reference and lineage; raw private/public review contracts remain unchanged.",
+    "fixtures": [
+      {
+        "file": "nativeArtifactReview.db-private.json",
+        "sha256": "0a5e22779eca305cb89349b179325694de8796fe8837de6f99d03443b9075f52"
+      },
+      {
+        "file": "nativeArtifactReview.db-public.json",
+        "sha256": "aae73027b494e831ed2143bc46ee55c4be99e8a2972da73eb89dba7fff55a4f5"
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "contract": "legacy_scaffold_batch_profile_v1",
+  "repository": "hopeatina/orgx",
+  "source": "orgx/packages/contracts/src/legacyScaffoldBatchProfile.ts",
+  "source_sha256": "bc2c1a82991825f82de8eda76bece4e5f5371904bac6526612ecb48412e7cc7b",
+  "fixture_sha256": "15d784dad6ede175455a07ad60c87fe6a1b85eca71116470966e72159e031f78"
+}

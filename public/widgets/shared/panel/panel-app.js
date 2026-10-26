@@ -7,6 +7,15 @@
     var Brand = window.OrgXPanelBrand || null;
     var Launch = window.OrgXPanelLaunch || null;
     var Views = window.OrgXPanelViews || null;
+    var Forms = window.OrgXPanelForms || null;
+    var Icons = window.OrgXPanelIcons || null;
+    var Outputs = window.OrgXPanelOutputs || null;
+    var Goals = window.OrgXPanelGoals || null;
+    var Packet = window.OrgXPanelPacket || null;
+    /** The initiative a decision belongs to, marked with its level icon. */
+    function initiativeHtml(title) {
+      return title ? '<span class="pn-lv">' + (Icons ? Icons.level('initiative', 12) : '') + esc(title) + '</span>' : '';
+    }
     var Tour = window.OrgXPanelTour || null;
     var Start = window.OrgXPanelStart || null;
     var Receipts = window.OrgXPanelReceipts || null;
@@ -32,6 +41,8 @@
     var params = new URLSearchParams(window.location.search);
     var isGallery = params.get('gallery') === 'true';
     var APPROVAL_META_KEY = 'orgx/widgetApproval';
+    var PREVIEW_META_KEY = 'orgx/panelPreviews';
+    var GOAL_REASONS_META_KEY = 'orgx/panelGoalReasons';
     var ORGX_HOME = window.OrgXLinks.command();
     var EVIDENCE_VISIBLE = 2;
 
@@ -42,6 +53,9 @@
       syncedAt: null,
       tokens: {},
       mode: params.get('mode') === 'thread' ? 'thread' : 'global',
+      // True once the panel has bound itself to the conversation it was opened
+      // beside; an explicit ?mode= in the URL always wins over the binding.
+      threadBound: params.has('mode'),
       listOpen: false,
       evidenceOpen: false,
       composer: null,
@@ -49,6 +63,11 @@
       rejectPicks: {},
       answers: {},
       notes: {},
+      // Several questions asked in turn, and outputs reviewed one by one (panel-forms.js).
+      forms: {},
+      reviews: {},
+      limitHits: {},
+      remember: {},
       fieldErrors: {},
       rulings: {},
       lastRuling: null,
@@ -108,6 +127,36 @@
       wsPhase: 'idle',
       workspaces: null,
       wsError: null,
+      // Outputs: what agents made, read on first open; its range, type, goal and the open one.
+      outputs: null,
+      outputsPhase: 'idle',
+      outSel: null,
+      // What each output says (summary, preview): widget-only, from the read's _meta, never the snapshot.
+      outPreviews: {},
+      outDoorPending: {},
+      goalReasons: {},
+      outRange: '7d',
+      outFamily: 'all',
+      outGoal: 'all',
+      // Goals: read on first open (and warmed, since other views join on it).
+      goals: null,
+      goalsPhase: 'idle',
+      goalSel: null,
+      goalForm: { open: false, text: '', status: null },
+      goalLinks: {},
+      // The one open scope menu (a popover, or a sheet on a phone).
+      pop: null,
+      // In progress: grouped by agent or by initiative, and the note to the agent being written.
+      workGroup: 'agent',
+      steer: null,
+      // Needs you: the ladder of levels per decision, the evidence detail, the bulk selection and its undo window.
+      ladderOpen: {},
+      evidenceRaw: false,
+      bulkMode: false,
+      bulkSel: {},
+      bulkNote: null,
+      bulkPending: null,
+      bulkNotes: {},
     };
     // Who takes it and how are the person's own settings: they survive the host
     // re-creating the widget (ChatGPT does after every send).
@@ -355,12 +404,13 @@
       'allow once': 'Allowed once', 'allow and continue': 'Allowed', 'send answer': 'Answer sent', 'send guidance and retry': 'Guidance sent',
       'confirm and continue': 'Confirmed', 'confirm selection': 'Confirmed', confirm: 'Confirmed', 'accept plan': 'Plan accepted',
       'apply edit': 'Edit applied', retry: 'Retry approved', 'retry and continue': 'Retry approved', acknowledge: 'Acknowledged',
+      link: 'Linked', 'not this': 'Not linked',
       'send back': 'Sent back', deny: 'Denied', decline: 'Declined', reject: 'Rejected', 'request changes': 'Changes requested', 'stop here': 'Stopped',
     };
     function pastTense(label, action) {
       return PAST[String(label || '').toLowerCase()] || (action === 'approve' ? 'Approved' : 'Sent back');
     }
-    var KINDS = ['decision', 'approval', 'action'];
+    var KINDS = ['decision', 'approval', 'action', 'link'];
     var TEXT_MAX = 2000;
     function has(list, value) { return Array.isArray(list) && list.indexOf(value) !== -1; }
     function kindOf(f) {
@@ -373,6 +423,7 @@
         id: o.id, label: o.label, description: o.description || '',
         implied: o.implied_action === 'approve' || o.implied_action === 'reject' ? o.implied_action : null,
         requiresReason: o.requires_reason === true,
+        recommended: o.recommended === true,
       };
     }
     /** The bar on an "Agree on done" decision (expectation_agreement), or null. */
@@ -404,10 +455,21 @@
           reject: has(raw.actions, 'reject') ? { label: labels.reject || 'Send back' } : null,
           rejectRequiresReason: raw.reject_requires_reason === true,
           answer: raw.answer && (has(raw.answer.required_for, 'approve') || has(raw.answer.required_for, 'reject'))
-            ? { approve: has(raw.answer.required_for, 'approve'), reject: has(raw.answer.required_for, 'reject'), max: Math.min(TEXT_MAX, Number(raw.answer.max_length) || TEXT_MAX) }
+            ? { approve: has(raw.answer.required_for, 'approve'), reject: has(raw.answer.required_for, 'reject'), max: Math.min(TEXT_MAX, Number(raw.answer.max_length) || TEXT_MAX), saveAsPrecedent: raw.answer.save_as_precedent === true,
+              suggestions: Array.isArray(raw.answer.suggestions) ? raw.answer.suggestions.filter(function s(x) { return typeof x === 'string' && x.trim(); }).slice(0, 6) : [] }
             : null,
           selection: null,
+          questions: null,
+          items: null,
         };
+        if (Forms && raw.questions) {
+          var fields = Forms.fieldsOf(raw.questions);
+          if (fields.length) spec.questions = fields;
+        }
+        if (Forms && raw.items) {
+          var reviewItems = Forms.itemsOf(raw.items);
+          if (reviewItems.length >= 2) spec.items = reviewItems;
+        }
         if (options.length) {
           var multiple = rs.mode === 'multiple';
           var min = multiple ? Math.min(options.length, Math.max(0, Number(rs.min) || 0) || 1) : 1;
@@ -429,7 +491,7 @@
           .map(function opt(a) { return { id: a.option_id, label: a.label, description: '', implied: null, requiresReason: false }; });
         var approveAction = raw.filter(function isApprove(a) { return a && a.kind === 'approve'; })[0];
         var rejectAction = raw.filter(function isReject(a) { return a && a.kind === 'reject'; })[0];
-        var legacy = { kind: kind, approve: null, reject: rejectAction ? { label: rejectAction.label } : null, rejectRequiresReason: true, answer: null, selection: null };
+        var legacy = { kind: kind, approve: null, reject: rejectAction ? { label: rejectAction.label } : null, rejectRequiresReason: true, answer: null, selection: null, questions: null, items: null };
         if (legacyOptions.length === 1 && !approveAction) legacy.approve = { label: legacyOptions[0].label, optionId: legacyOptions[0].id };
         else {
           legacy.approve = { label: approveAction ? approveAction.label : 'Approve', optionId: '' };
@@ -445,13 +507,46 @@
         reject: { label: 'Send back' },
         rejectRequiresReason: true,
         answer: null,
+        questions: null,
+        items: null,
         selection: fallback.length >= 2
           ? { mode: multi ? 'multiple' : 'single', options: fallback, min: 1, max: multi ? fallback.length : 1, requiredFor: { approve: true, reject: false } }
           : null,
       };
     }
     function selectedFor(id) {
-      return Array.isArray(ui.selections[id]) ? ui.selections[id] : [];
+      if (Array.isArray(ui.selections[id])) return ui.selections[id];
+      // The asker's recommendation starts picked; nothing is sent until the person confirms.
+      var item = findItem(id);
+      var sel = item ? choicesFor(item).selection : null;
+      if (!sel) return [];
+      var recommended = sel.options.filter(function rec(o) { return o.recommended && o.implied !== 'reject'; }).map(function oid(o) { return o.id; });
+      return recommended.slice(0, sel.mode === 'multiple' ? sel.max : 1);
+    }
+    function hasDraft(id) {
+      return Boolean((ui.forms[id] && ui.forms[id].touched) || (ui.reviews[id] && ui.reviews[id].touched) ||
+        Array.isArray(ui.selections[id]) && ui.selections[id].length || String(ui.answers[id] || '').trim());
+    }
+    function formFor(f, c) {
+      if (!c.questions) return null;
+      if (!ui.forms[f.id]) ui.forms[f.id] = Forms.newForm(c.questions);
+      return ui.forms[f.id];
+    }
+    function reviewFor(f, c) {
+      if (!c.items) return null;
+      if (!ui.reviews[f.id]) ui.reviews[f.id] = Forms.newReview(c.items);
+      return ui.reviews[f.id];
+    }
+    /** "Approve selected" says nothing; the primary names what happens. */
+    function outcomeLabel(f, c, picked) {
+      var generic = /^(approve selected|approve|confirm selection|confirm|choose)$/i.test(c.approve.label);
+      if (!generic || !picked.length) return c.approve.label;
+      if (picked.length === 1) return 'Go with ' + clipLabel(optionLabel(f, picked[0]), 30);
+      return 'Go with these ' + picked.length;
+    }
+    function clipLabel(text, max) {
+      var chars = Array.from(String(text || ''));
+      return chars.length <= max ? chars.join('') : chars.slice(0, max - 1).join('').trimEnd() + '…';
     }
     function optionById(f, optionId) {
       var sel = choicesFor(f).selection;
@@ -497,7 +592,7 @@
       var err = ui.fieldErrors[id];
       var reasonNeeded = picked.some(function asks(oid) { var o = optionById(f, oid); return Boolean(o && o.requiresReason); }) ||
         (action === 'reject' && c.rejectRequiresReason) || Boolean(err && err.action === action && err.field === 'reason');
-      var reason = String((action === 'reject' ? (ui.composer && ui.composer.id === id ? ui.composer.draft : '') : ui.notes[id]) || '').trim();
+      var reason = String((action === 'reject' ? (ui.composer && ui.composer.id === id ? ui.composer.draft : ui.bulkNotes[id] || '') : ui.notes[id]) || '').trim();
       if (reason) args.reason = reason.slice(0, TEXT_MAX);
       else if (reasonNeeded) missing.push('reason');
       var answerNeeded = Boolean(c.answer && c.answer[action]);
@@ -505,12 +600,29 @@
         var answer = String(ui.answers[id] || '').trim();
         if (answer) args.answer = answer.slice(0, c.answer.max);
         else missing.push('answer');
+        if (answer && action === 'approve' && c.answer.saveAsPrecedent && ui.remember[id]) args.remember = true;
+      }
+      var form = formFor(f, c);
+      if (form) {
+        var fd = Forms.formDraft(c.questions, form);
+        if (Object.keys(fd.answers).length) args.answers = fd.answers;
+        if (action === 'approve' && (fd.missing.length || !fd.onReview)) missing.push('answers');
+      }
+      var review = reviewFor(f, c);
+      if (review) {
+        var rd = Forms.reviewDraft(c.items, review);
+        args.item_reviews = rd.itemReviews;
+        // The verdicts decide the action: any kept means approve, all back means reject.
+        if (rd.action !== action) missing.push('items');
+        if (rd.missing.length) missing.push('notes');
       }
       return { action: action, args: args, missing: missing, picked: picked, reasonNeeded: reasonNeeded, answerNeeded: answerNeeded };
     }
     function missingCopy(draft, sel) {
       if (draft.missing.indexOf('options') !== -1) return sel && sel.mode === 'multiple' ? 'choose ' + rangeCopy(sel) + ' first' : 'choose an option first';
       if (draft.missing.indexOf('answer') !== -1) return 'type your answer first';
+      if (draft.missing.indexOf('answers') !== -1) return 'answer the questions first';
+      if (draft.missing.indexOf('notes') !== -1) return 'add a note to each one going back';
       if (draft.missing.indexOf('reason') !== -1) return draft.action === 'reject' ? 'write a note first' : 'say why first';
       return '';
     }
@@ -518,7 +630,7 @@
       // Agreeing on done means reading the bar first: the row opens it.
       if (isAgreementItem(item)) return false;
       var c = choicesFor(item);
-      return Boolean(c.approve && !c.selection && !(c.answer && c.answer.approve));
+      return Boolean(c.approve && !c.selection && !c.questions && !c.items && !(c.answer && c.answer.approve));
     }
     function tokenFor(id) {
       if (ui.chatCannotDecide) return null;
@@ -583,10 +695,26 @@
       var mark = Brand ? '<span class="pn-mark-slot">' + Brand.mark(22) + '</span>' : '';
       var tabs = tabsHtml();
       var help = tabs ? '<button type="button" class="quiet-btn pn-help" data-action="tour" aria-label="How OrgX works here">?</button>' : '';
+      // Start lives behind +: a task, an initiative, a goal, or the words in the chat.
+      var plus = tabs && Start ? startMenuHtml() : '';
       var display = displayButtonHtml();
       return '<header class="top' + (tabs ? ' has-tabs' : '') + '">' + mark + '<div class="top-id"><span class="brand" aria-hidden="' + (name ? 'false' : 'true') + '">OrgX</span>' +
         (name ? '<span aria-hidden="true">·</span>' : '') + nameHtml + '</div>' + tabs +
-        (synced ? '<span class="sync" data-live="' + esc(ui.live) + '"' + (ui.live === 'live' ? ' role="img" aria-label="Live: updates as they happen" title="Updates as they happen"' : '') + '>' + esc(synced) + '</span>' : '') + refresh + display + help + '</header>';
+        (synced ? '<span class="sync" data-live="' + esc(ui.live) + '"' + (ui.live === 'live' ? ' role="img" aria-label="Live: updates as they happen" title="Updates as they happen"' : '') + '>' + esc(synced) + '</span>' : '') + refresh + plus + display + help + '</header>';
+    }
+
+    function startMenuHtml() {
+      var open = ui.pop === 'start';
+      var lv = function lv(kind) { return Icons ? Icons.level(kind, 14) : ''; };
+      return '<span class="pn-tokw pn-plus-w"><button type="button" class="quiet-btn pn-plus" id="pn-tab-start" data-action="pop" data-id="start" aria-haspopup="menu" aria-expanded="' + open + '" aria-controls="pn-pop-start" aria-label="Start work"' + (ui.tab === 'start' ? ' aria-current="page"' : '') + '>' +
+        '<svg class="pn-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span class="pn-plus-t">Start</span></button>' +
+        (open ? Views.popHtml('start', 'Start', [
+          { label: 'A task', action: 'start-pick', id: 'delegate', lead: lv('task') },
+          { label: 'An initiative', action: 'start-pick', id: 'initiative', lead: lv('initiative') },
+          { label: 'A goal', action: 'start-pick', id: 'goal', lead: lv('goal') },
+          { sep: true },
+          { label: 'Describe it in chat', action: 'start-pick', id: 'chat', lead: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>' },
+        ]) : '') + '</span>';
     }
 
     /**
@@ -748,7 +876,8 @@
         : Boolean(ui.liveWork && ui.liveWork.blocked);
       var workCount = workRead ? ui.work.total : ui.liveWork ? ui.liveWork.total : null;
       // Done counts what was settled here; a zero would read as nothing done, so it waits until there is one.
-      var counts = { needs: s.attention.pending, work: workCount, done: ui.session.length || undefined };
+      var toReview = Outputs ? Outputs.toReviewCount(ui.outputs) : null;
+      var counts = { needs: s.attention.pending, work: workCount, outputs: toReview || undefined, done: ui.session.length || undefined };
       ui.countChanged = {};
       Object.keys(counts).forEach(function diff(k) {
         if (ui.lastCounts && ui.lastCounts[k] !== undefined && ui.lastCounts[k] !== null && counts[k] !== ui.lastCounts[k]) ui.countChanged[k] = true;
@@ -758,7 +887,7 @@
         changed: ui.countChanged,
         active: ui.tab,
         counts: counts,
-        tones: { needs: s.attention.pending ? (s.attention.blocking ? 'red' : 'amber') : '', work: blocked ? 'red' : '', done: ui.session.length ? 'teal' : '' },
+        tones: { needs: s.attention.pending ? (s.attention.blocking ? 'red' : 'amber') : '', work: blocked ? 'red' : '', outputs: toReview ? 'amber' : '', done: ui.session.length ? 'teal' : '' },
       });
     }
 
@@ -826,12 +955,16 @@
         : (f.evidence_total > f.evidence.length
           ? '<button type="button" class="text-btn" data-action="open" data-url="' + esc(f.url) + '">All evidence (' + f.evidence_total + ') ↗</button>'
           : '');
+      var raw = Packet && Packet.hasRaw(f.evidence);
       var items = f.evidence.map(function evidenceItem(e) {
         return '<li class="ev-item">' + ICON.doc + '<span class="ev-title">' + esc(e.title) + '</span>' +
-          (e.source_url ? '<button type="button" class="ev-open" data-action="open" data-url="' + esc(e.source_url) + '" aria-label="Open ' + esc(e.title) + ' (opens in a new tab)">' + ICON.ext + '</button>' : '') + '</li>';
+          (e.source_url ? '<button type="button" class="ev-open" data-action="open" data-url="' + esc(e.source_url) + '" aria-label="Open ' + esc(e.title) + ' (opens in a new tab)">' + ICON.ext + '</button>' : '') +
+          (raw && ui.evidenceRaw ? Packet.evidenceRawHtml(e) : '') + '</li>';
       }).join('');
       var count = evidenceCountLabel(shown.length, f.evidence_total);
-      return '<div class="evidence"><p class="evidence-head"><span data-evidence-count>' + count + '</span>' + more + '</p><ul class="ev-list" id="ev-list">' + items + '</ul></div>';
+      // What each piece recorded (summary, pointer, confidence, freshness), one press away.
+      var details = raw ? '<button type="button" class="text-btn ev-raw-t" data-action="ev-raw" aria-expanded="' + ui.evidenceRaw + '" aria-controls="ev-list">' + (ui.evidenceRaw ? 'Hide details' : 'Details') + '</button>' : '';
+      return '<div class="evidence"><p class="evidence-head"><span data-evidence-count>' + count + '</span>' + details + more + '</p><ul class="ev-list' + (ui.evidenceRaw ? ' is-raw' : '') + '" id="ev-list">' + items + '</ul></div>';
     }
 
     function evidenceToggleLabel(open, total) {
@@ -891,16 +1024,23 @@
         list.map(function optionButton(o) {
           var toggle = sel.mode === 'multiple' || forAction === 'reject';
           var on = forAction === 'reject' && sel.mode === 'single' ? ui.rejectPicks[f.id] === o.id : picked.indexOf(o.id) !== -1;
-          var tag = forAction === 'approve' && o.implied === 'reject' && c.reject ? c.reject.label : o.requiresReason ? 'Asks why' : '';
+          var tag = forAction === 'approve' && o.implied === 'reject' && c.reject ? c.reject.label : o.requiresReason ? 'Asks why' : o.recommended && forAction === 'approve' ? 'Recommended' : '';
           var action = forAction === 'reject' ? 'reject-option' : sel.mode === 'multiple' ? 'toggle-option' : 'option';
           var atMax = sel.mode === 'multiple' && !on && picked.length >= sel.max;
           return '<button type="button" class="opt" data-action="' + action + '" data-id="' + esc(f.id) + '" data-option="' + esc(o.id) + '"' +
             (toggle || on ? ' aria-pressed="' + (on ? 'true' : 'false') + '"' : '') + (atMax ? ' data-at-max' : '') + '>' +
             (toggle ? '<span class="opt-box" aria-hidden="true">✓</span>' : '') +
             '<span class="opt-text">' + esc(o.label) + (o.description ? '<span class="opt-desc">' + esc(o.description) + '</span>' : '') + '</span>' +
-            (tag ? '<span class="opt-tag">' + esc(tag) + '</span>' : '') +
-            (toggle ? '' : '<span class="opt-go" aria-hidden="true">›</span>') + '</button>';
-        }).join('') + fieldErrorHtml(f.id, 'options', forAction) + '</div>';
+            (tag ? '<span class="opt-tag' + (tag === 'Recommended' ? ' rec' : '') + '">' + esc(tag) + '</span>' : '') +
+            (toggle ? '' : '<span class="opt-go" aria-hidden="true">' + (on ? '✓' : '›') + '</span>') + '</button>';
+        }).join('') +
+        (sel.mode === 'multiple' && ui.limitHits[f.id]
+          ? '<p class="opts-limit" role="status">You can pick ' + sel.max + '. Uncheck one to add “' + esc(clipLabel(ui.limitHits[f.id], 40)) + '”.</p>'
+          : '') +
+        // None of these: the person's own words go back to the agent as a send back.
+        (forAction === 'approve' && sel.mode === 'single' && c.reject && !c.items
+          ? '<button type="button" class="opt opt-own" data-action="own-open" data-id="' + esc(f.id) + '"><span class="opt-text">Write my own<span class="opt-desc">Goes back to the agent as ' + esc(c.reject.label.toLowerCase()) + ', in your words</span></span><span class="opt-go" aria-hidden="true">›</span></button>'
+          : '') + fieldErrorHtml(f.id, 'options', forAction) + '</div>';
     }
 
     function composerHtml(f) {
@@ -913,28 +1053,37 @@
       var options = sel && (sel.requiredFor.reject || optionsFor(c, 'reject').some(function implied(o) { return o.implied === 'reject'; }))
         ? optionButtonsHtml(f, c, 'reject') : '';
       var answer = draft.answerNeeded ? textFieldHtml(id, 'answer', 'Your answer · required', ui.answers[id], c.answer.max) + fieldErrorHtml(id, 'answer', 'reject') : '';
-      return '<div class="composer" data-composer="' + esc(id) + '">' + options + answer +
-        '<label for="reason-' + esc(id) + '">What should change?' + (draft.reasonNeeded ? ' · required' : ' · optional') + '</label>' +
-        '<textarea id="reason-' + esc(id) + '" data-reason="' + esc(id) + '" maxlength="' + TEXT_MAX + '" placeholder="Tell the agent what to fix or do instead."' +
+      var own = Boolean(ui.composer && ui.composer.id === id && ui.composer.own);
+      return '<div class="composer" data-composer="' + esc(id) + '">' + (own ? '' : options) + answer +
+        '<label for="reason-' + esc(id) + '">' + (own ? 'Your own answer' : 'What should change?') + (draft.reasonNeeded || own ? ' · required' : ' · optional') + '</label>' +
+        '<textarea id="reason-' + esc(id) + '" data-reason="' + esc(id) + '" maxlength="' + TEXT_MAX + '" placeholder="' + (own ? 'Write what you want instead. It goes back to the agent.' : 'Tell the agent what to fix or do instead.') + '"' +
         (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'reason' && ui.fieldErrors[id].message ? ' aria-invalid="true"' : '') + '>' + esc(value) + '</textarea>' +
         fieldErrorHtml(id, 'reason', 'reject') +
         '<div class="composer-row"><button type="button" class="secondary-btn" data-action="cancel-sendback" data-id="' + esc(id) + '">Cancel</button>' +
-        '<button type="button" class="secondary-btn" data-action="submit-sendback" data-id="' + esc(id) + '"' + (draft.missing.length ? ' disabled' : '') + '>' + esc(label) + '</button></div></div>';
+        '<button type="button" class="secondary-btn" data-action="submit-sendback" data-id="' + esc(id) + '"' + (draft.missing.length || (own && !value.trim()) ? ' disabled' : '') + '>' + esc(own ? 'Send my answer' : label) + '</button></div></div>';
     }
 
     function footerSpec(f) {
       var c = choicesFor(f);
       var sel = c.selection;
       if (!c.approve) return { heading: 'Decide here', detail: 'recorded in OrgX', primary: '', disabled: false };
+      if (c.items) {
+        var rp = Forms.reviewPrimary(c.items, reviewFor(f, c));
+        return { heading: rp.heading, detail: rp.detail, primary: rp.label, disabled: false };
+      }
+      if (c.questions) {
+        var fp = Forms.formPrimary(c.questions, formFor(f, c), c.approve.label);
+        return { heading: fp.heading, detail: fp.detail, primary: fp.label, disabled: fp.disabled };
+      }
       var draft = draftFor(f, 'approve');
       var ready = !draft.missing.length;
       var detail = ready ? 'recorded in OrgX' : missingCopy(draft, sel);
       if (sel && sel.mode === 'multiple') {
         var n = draft.picked.length;
-        return { heading: n ? n + ' chosen' : 'Choose ' + rangeCopy(sel), detail: n || ready ? detail : 'recorded in OrgX', primary: c.approve.label === 'Confirm' && n ? 'Confirm ' + n : c.approve.label, disabled: !ready };
+        return { heading: n ? n + ' chosen' : 'Choose ' + rangeCopy(sel), detail: n || ready ? detail : 'recorded in OrgX', primary: outcomeLabel(f, c, draft.picked), disabled: !ready };
       }
       if (sel && !draft.picked.length && sel.requiredFor.approve) return { heading: 'Choose one', detail: 'recorded in OrgX', primary: '', disabled: false };
-      if (sel && draft.picked.length) return { heading: 'You picked ' + optionLabel(f, draft.picked[0]), detail: detail, primary: c.approve.label, disabled: !ready };
+      if (sel && draft.picked.length) return { heading: 'You picked ' + optionLabel(f, draft.picked[0]), detail: detail, primary: outcomeLabel(f, c, draft.picked), disabled: !ready };
       if (isAgreementItem(f)) return { heading: 'Agree on done', detail: ready ? 'agents start when you agree' : detail, primary: c.approve.label, disabled: !ready };
       return { heading: 'Decide here', detail: detail, primary: c.approve.label, disabled: !ready };
     }
@@ -991,14 +1140,27 @@
       if (ui.composer && ui.composer.id === f.id) return composerHtml(f);
       if (tokenFor(f.id)) {
         var c = choicesFor(f);
-        var sendBack = c.reject
+        // Each output carries its own verdict, so there is no separate Send back.
+        var sendBack = c.reject && !c.items
           ? '<button type="button" slot="action" class="ft-action" data-action="sendback" data-id="' + esc(f.id) + '">' + esc(c.reject.label) + '</button>'
           : '';
         var body = '';
+        if (c.questions) body += Forms.questionsHtml(f.id, c.questions, formFor(f, c), { dir: ui.formDir && ui.formDir.id === f.id ? ui.formDir.dir : '', limitHit: ui.limitHits[f.id] }) + fieldErrorHtml(f.id, 'answers');
+        if (c.items) body += Forms.itemsHtml(f.id, c.items, reviewFor(f, c)) + fieldErrorHtml(f.id, 'items');
         if (c.selection && c.approve) body += optionButtonsHtml(f, c, 'approve');
         var draft = c.approve ? draftFor(f, 'approve') : null;
         if (draft && draft.answerNeeded) {
           body += textFieldHtml(f.id, 'answer', 'Your answer · required', ui.answers[f.id], c.answer.max, 'Type the answer the agent needs to continue.') + fieldErrorHtml(f.id, 'answer', 'approve');
+          // Answers the asker offered: a tap puts one in the box to edit; nothing is sent until the footer is pressed.
+          if (c.answer.suggestions && c.answer.suggestions.length) {
+            body += '<div class="sugg" role="group" aria-label="Suggested answers"><span class="sugg-l">Suggested</span>' + c.answer.suggestions.map(function chip(x) {
+              return '<button type="button" class="pn-chip sugg-c" data-action="answer-suggest" data-id="' + esc(f.id) + '" data-value="' + esc(x) + '" aria-pressed="' + (String(ui.answers[f.id] || '').trim() === x) + '">' + esc(x) + '</button>';
+            }).join('') + '</div>';
+          }
+          if (c.answer.saveAsPrecedent) {
+            body += '<label class="remember"><input type="checkbox" data-action="remember" data-id="' + esc(f.id) + '"' + (ui.remember[f.id] ? ' checked' : '') + '>' +
+              '<span>Save as an approved answer<span class="remember-hint">OrgX asks you to confirm it as a rule before agents use it.</span></span></label>';
+          }
         }
         if (draft && draft.reasonNeeded) {
           var pickedLabel = draft.picked.length ? optionLabel(f, draft.picked[0]) : '';
@@ -1083,8 +1245,11 @@
         (refs.length ? '<div class="why-refs">' + refs.join('') + '</div>' : '') + '</div></div>';
     }
 
+    /** The goal an initiative counts toward, once Goals has been read (undefined until then). */
+    function goalOf(initiativeId) { return Goals ? Goals.goalOfInitiative(ui.goals, initiativeId) : undefined; }
+
     function packetHtml(f, headingTag) {
-      var metaBits = [askerPhrase(f), f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
+      var metaBits = [askerPhrase(f), f.kind === 'action' ? 'Action approval' : f.kind === 'approval' ? 'Agent run approval' : f.kind === 'link' ? 'Session link' : '', ago(f.waiting_since), f.initiative_title].filter(Boolean);
       var askerAvatarHtml = '<span class="pn-asker" aria-hidden="true">' + askerAvatar(f.asker_kind, f.asker, 'inline') + '</span>';
       var error = ui.actionError && ui.actionError.id === f.id ? actionErrorHtml() : '';
       var changed = ui.changedSince
@@ -1103,7 +1268,8 @@
         // Said, quietly: no recommendation is information for a decision.
         facts.push('<div class="fact"><dt>Recommendation</dt><dd class="quiet">No recommendation yet</dd></div>');
       }
-      if (f.consequence_if_approved || body.ifApproved) {
+      var outs = Packet ? Packet.outsHtml(f, { approved: f.consequence_if_approved || body.ifApproved, inline: inline }) : '';
+      if ((f.consequence_if_approved || body.ifApproved) && !outs) {
         facts.push('<div class="fact"><dt>If approved</dt><dd>' + inline(f.consequence_if_approved || body.ifApproved) + '</dd></div>');
       }
       var bar = agreementOf(f);
@@ -1120,13 +1286,16 @@
         // "Normal · Blocking work" says two things at once; blocking is the one that matters.
         (f.blocked && (f.urgency === 'medium' || f.urgency === 'low') ? '' : '<span class="urgency" data-u="' + esc(f.urgency) + '">' + esc(urgencyLabel(f.urgency)) + '</span>') +
         (f.blocked ? (f.urgency === 'medium' || f.urgency === 'low' ? '' : '<span aria-hidden="true">·</span>') + '<span class="blocked-tag">Blocking work</span>' : '') +
-        (metaBits.length ? '<span aria-hidden="true">·</span><span class="meta-text" title="' + esc(metaBits.join(' · ')) + '">' + esc(metaBits.join(' · ')) + '</span>' : '<span class="meta-text"></span>') +
+        (metaBits.length ? '<span aria-hidden="true">·</span><span class="meta-text" title="' + esc(metaBits.join(' · ')) + '">' +
+          esc(metaBits.filter(function notInit(b) { return b !== f.initiative_title; }).join(' · ')) +
+          (f.initiative_title ? (metaBits.length > 1 ? ' · ' : '') + initiativeHtml(f.initiative_title) : '') + '</span>' : '<span class="meta-text"></span>') +
         (tokenFor(f.id) || ui.rulings[f.id] ? '<button type="button" class="ox-open" data-action="open" data-url="' + esc(f.url) + '" aria-label="Open this decision in OrgX">Open in OrgX</button>' : '') + '</p>' +
         '<' + headingTag + ' id="pk-q" tabindex="-1" class="q' + (ui.wholeQ === f.id ? ' is-whole' : '') + '">' + esc(head.headline) + '</' + headingTag + '>' +
         '<button type="button" class="q-more" data-action="whole-q" data-id="' + esc(f.id) + '" hidden>Show the whole question</button>' +
+        (Packet ? Packet.crumbsHtml(f, { open: Boolean(ui.ladderOpen[f.id]), goalOf: goalOf, linkStatus: f.initiative_id ? ui.goalLinks[f.initiative_id] : null }) : '') +
         (body.lede.length ? '<p class="q-body">' + inline(body.lede.join(' ')) + '</p>' : '') +
         body.commands.map(function cmd(c) { return '<div class="q-cmd"><span>Command</span><pre><code>' + esc(c) + '</code></pre></div>'; }).join('') +
-        (facts.length ? '<dl class="facts">' + facts.join('') + '</dl>' : '') +
+        (facts.length ? '<dl class="facts">' + facts.join('') + '</dl>' : '') + (bar ? '' : outs) +
         (evidenceSlot || evidenceHtml(f)) + whyHtml(f) +
         // The work this decision would let through, read before deciding, not after.
         behindFor(f) +
@@ -1142,6 +1311,10 @@
       });
       var calmUrgency = item.urgency === 'medium' || item.urgency === 'low';
       var meta = [item.blocked && calmUrgency ? 'Blocking work' : urgencyLabel(item.urgency), ago(item.waiting_since), item.initiative_title].filter(Boolean).join(' · ');
+      var metaLead = [item.blocked && calmUrgency ? 'Blocking work' : urgencyLabel(item.urgency), ago(item.waiting_since)].filter(Boolean).join(' · ');
+      var metaHtml = function metaLine(prefix) {
+        return esc(prefix + metaLead) + (item.initiative_title ? (prefix + metaLead ? ' · ' : '') + initiativeHtml(item.initiative_title) : '');
+      };
       var acts = '';
       var opening = ui.readState.phase === 'loading' && ui.readState.focusId === item.id;
       var current = Boolean(ui.snapshot.focus && ui.snapshot.focus.id === item.id && !ruling);
@@ -1158,7 +1331,7 @@
         acts = '<div class="row-acts"><ox-state-chip state="' + chip + '" label="' + esc(label) + '"></ox-state-chip></div>';
       } else if (tokenFor(item.id) && (!quickDecide(item) || repeatedTitle)) {
         var c0 = choicesFor(item);
-        var open = repeatedTitle ? 'Review' : c0.selection ? 'Choose' : c0.answer ? 'Answer' : 'Open';
+        var open = repeatedTitle ? 'Review' : c0.items ? 'Review ' + c0.items.length : c0.questions ? (c0.questions.length > 1 ? c0.questions.length + ' questions' : 'Answer') : c0.selection ? 'Choose' : c0.answer ? 'Answer' : 'Open';
         acts = '<div class="row-acts"><button type="button" class="mini' + (repeatedTitle ? ' ghost' : ' approve') + '" data-action="select" data-id="' + esc(item.id) + '" aria-label="' + esc(open + ': ' + item.title) + '">' + open + '</button></div>';
       } else if (tokenFor(item.id) && !(ui.composer && ui.composer.id === item.id)) {
         var c = choicesFor(item);
@@ -1167,12 +1340,14 @@
           '<button type="button" class="mini approve" data-action="approve" data-id="' + esc(item.id) + '" aria-label="' + esc(c.approve.label + ': ' + item.title) + '">' + esc(c.approve.label) + '</button></div>';
       }
       var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
-      var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : '';
+      var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : item.kind === 'link' ? 'Session link · ' : '';
+      // Started but not sent: the answers wait here, and the row says so.
+      if (!ruling && hasDraft(item.id)) kindTag = 'Draft · ' + kindTag;
       var arrived = ui.seenRows && !ui.seenRows[item.id];
       if (grouped) {
         // Inside a group the title is the group's; the line is what differs.
         return '<li class="row grow' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + ' ' + (item.detail || '') + '. ' + meta) + '">' +
-          (opts.sub || distinguisherHtml(item)) + '<span class="row-meta"><span>' + esc(meta) + '</span></span></button>' + acts +
+          (opts.sub || distinguisherHtml(item)) + '<span class="row-meta"><span>' + metaHtml('') + '</span></span></button>' + acts +
           (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
       }
       return '<li class="row' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
@@ -1181,7 +1356,7 @@
         (repeatedTitle && distinguisherHtml(item)
           ? distinguisherHtml(item) + '<span class="row-title is-repeat">' + esc(splitHeadline(item.title).headline) + '</span>'
           : '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span>') +
-        '<span class="row-meta"><span>' + esc(kindTag + meta) + '</span></span></button>' + acts +
+        '<span class="row-meta"><span>' + metaHtml(kindTag) + '</span></span></button>' + acts +
         (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
     }
 
@@ -1268,6 +1443,12 @@
       } else if (calm) {
         html += '<p class="proof-quiet">No output has been accepted yet.</p>';
       }
+      (s.awaiting_acceptance || []).forEach(function awaitingRow(a) {
+        html += '<p class="proof-sub proof-await"><span>' + esc(a.title) + ' is ready for you</span> ' +
+          '<button type="button" class="text-btn" data-action="review-artifact" data-prompt="' +
+          esc('Open the OrgX review for the artifact "' + a.title + '" (' + a.artifact_id + ') so I can accept it or ask for changes.') +
+          '">Review here</button></p>';
+      });
       if (p.completed_unaccepted > 0) {
         html += '<p class="proof-sub">' + p.completed_unaccepted.toLocaleString() + (p.completed_unaccepted === 1 ? ' finished output waits' : ' finished outputs wait') + ' for acceptance' +
           ' <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.workLedger({ center: s.workspace && s.workspace.id, range: '30d' })) + '">Review in OrgX ↗</button></p>';
@@ -1364,7 +1545,19 @@
       if (ui.tab === 'work' && Views) {
         var wv = workView();
         return html + Views.workHtml(wv.work, wv.phase, startLinkHtml(wv.work && wv.work.items.length ? 'Start or delegate more work' : 'Start work'),
-          { sel: ui.workSel, filter: ui.workFilter, query: ui.workQuery, expanded: ui.workExpanded });
+          { sel: ui.workSel, filter: ui.workFilter, query: ui.workQuery, expanded: ui.workExpanded, group: ui.workGroup, pop: ui.pop,
+            initiativeName: initiativeName, waiting: waitingOnYou(s), steer: ui.steer });
+      }
+      if (ui.tab === 'outputs' && Outputs) {
+        return html + Outputs.html(ui.outputs, ui.outputsPhase, {
+          sel: ui.outSel, range: ui.outRange, family: ui.outFamily, goal: ui.outGoal, goals: ui.goals, pop: ui.pop, decision: outputDecision,
+          previewFor: function previewFor(id) { var p = ui.outPreviews[id]; return p && typeof p === 'object' ? p : null; },
+        });
+      }
+      if (ui.tab === 'goals' && Goals) {
+        return html + Goals.html(ui.goals, ui.goalsPhase, {
+          sel: ui.goalSel, needs: needsByInitiative(s), links: ui.goalLinks, form: ui.goalForm, qualityUrl: ORGX_HOME, reasons: ui.goalReasons,
+        });
       }
       if (ui.tab === 'done' && Views) {
         var workRange = workRangeOf(ui.doneRange);
@@ -1392,13 +1585,129 @@
       // The whole queue, with the open decision marked in place: the list's
       // count is the attention line's count, never one short of it.
       var hidden = Math.max(0, s.attention.pending - s.queue.length);
-      html += '<div class="pn-split">' +
+      var eligible = bulkEligible(s);
+      if (ui.bulkMode && eligible.length < 2) { ui.bulkMode = false; ui.bulkSel = {}; ui.bulkNote = null; }
+      var picked = eligible.filter(function on(item) { return ui.bulkSel[item.id]; });
+      var selectBtn = eligible.length >= 2 && !ui.bulkPending
+        ? '<button type="button" class="text-btn queue-sel" data-action="bulk-mode" aria-pressed="' + ui.bulkMode + '">' + (ui.bulkMode ? (picked.length === eligible.length ? 'Select none' : 'Select all ' + eligible.length) : 'Select') + '</button>' : '';
+      var queueList = ui.bulkMode ? bulkRowsHtml(s, eligible) : queueRowsHtml(shownQueueItems(s));
+      html += '<div class="pn-split' + (ui.bulkMode ? ' is-selecting' : '') + '">' +
         '<div class="pn-att">' + attentionLine(s) + '</div>' +
-        '<div class="pn-detail">' + (s.focus ? packetHtml(s.focus, 'h2') : '') + '</div>' +
-        (s.queue.length > 1 || !s.focus ? '<div class="pn-list"><h2 class="queue-head">Your queue <span class="queue-n">' + s.attention.pending + '</span></h2><ul class="queue">' + queueRowsHtml(s.queue) + '</ul>' +
+        '<div class="pn-detail">' + (s.focus && !(ui.bulkPending && ui.bulkPending.ids.indexOf(s.focus.id) !== -1) ? packetHtml(s.focus, 'h2') : '') + '</div>' +
+        (s.queue.length > 1 || !s.focus ? '<div class="pn-list"><h2 class="queue-head">Your queue <span class="queue-n">' + s.attention.pending + '</span>' + selectBtn + '</h2><ul class="queue">' + queueList + '</ul>' +
+          (ui.bulkMode && picked.length && Packet ? Packet.bulkBarHtml(picked.length, ui.bulkNote ? { note: true, text: ui.bulkNote.text } : null) : '') +
           (hidden ? '<p class="sub">' + hidden + ' more in OrgX. <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.decisions({ status: 'pending' })) + '">All decisions ↗</button></p>' : '') + '</div>' : '') +
         '</div>';
       return html;
+    }
+
+    // ── Bulk: several plain approvals at once, each one ticked by the person ──
+    var BULK_WINDOW_MS = 5000;
+    var bulkTimer = null;
+    /**
+     * What may be decided together: plain approvals the person can decide
+     * here, not critical, not already settling. Anything that asks for a
+     * choice, an answer or a read stays one at a time.
+     */
+    function bulkEligible(s) {
+      return s.queue.filter(function plain(item) {
+        return quickDecide(item) && Boolean(tokenFor(item.id)) && item.urgency !== 'critical' && !ui.rulings[item.id] &&
+          !(ui.bulkPending && ui.bulkPending.ids.indexOf(item.id) !== -1);
+      });
+    }
+    /** The queue minus what is waiting out its undo window. */
+    function shownQueueItems(s) {
+      if (!ui.bulkPending) return s.queue;
+      return s.queue.filter(function pending(item) { return ui.bulkPending.ids.indexOf(item.id) === -1; });
+    }
+    function bulkRowsHtml(s, eligible) {
+      var ids = eligible.map(function id(x) { return x.id; });
+      var rest = shownQueueItems(s).filter(function own(item) { return ids.indexOf(item.id) === -1; });
+      var row = function check(item) {
+        var on = Boolean(ui.bulkSel[item.id]);
+        var c = choicesFor(item);
+        var meta = [urgencyLabel(item.urgency), ago(item.waiting_since)].filter(Boolean).join(' · ');
+        return '<li class="row is-check" data-row="' + esc(item.id) + '"><button type="button" class="row-main" role="checkbox" aria-checked="' + on + '" data-action="bulk-check" data-id="' + esc(item.id) + '">' +
+          '<span class="row-av row-chk" aria-hidden="true">' + askerAvatar(item.asker_kind, item.asker, 'row') + '<span class="chk">✓</span></span>' +
+          '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span><span class="row-meta"><span>' + esc(meta) +
+          (item.initiative_title ? ' · ' + initiativeHtml(item.initiative_title) : '') + (c.approve ? ' · ' + esc(c.approve.label) : '') + '</span></span></button></li>';
+      };
+      return eligible.map(row).join('') +
+        (rest.length ? '<li class="qcap" aria-hidden="false"><h3 class="pn-cap">Needs its own look</h3></li>' + rest.map(function one(item) { return rowHtml(item); }).join('') : '');
+    }
+    /** Start the undo window. Nothing reaches OrgX until it runs out. */
+    function bulkStart(action) {
+      var s = ui.snapshot;
+      if (!s || ui.bulkPending) return;
+      var ids = bulkEligible(s).filter(function on(item) { return ui.bulkSel[item.id]; }).map(function id(item) { return item.id; });
+      if (!ids.length) return;
+      var note = action === 'reject' ? String(ui.bulkNote && ui.bulkNote.text || '').trim() : '';
+      if (action === 'reject' && !note) return;
+      ui.bulkPending = { ids: ids, action: action, note: note, until: Date.now() + BULK_WINDOW_MS, window: BULK_WINDOW_MS };
+      ui.bulkMode = false; ui.bulkSel = {}; ui.bulkNote = null;
+      if (bulkTimer) window.clearTimeout(bulkTimer);
+      bulkTimer = window.setTimeout(bulkSend, BULK_WINDOW_MS);
+      announce((action === 'approve' ? 'Approving ' : 'Sending back ') + ids.length + '. Undo within 5 seconds.');
+      render();
+      focusFirst('[data-action="bulk-undo"]');
+    }
+    function bulkUndo() {
+      if (!ui.bulkPending) return;
+      if (bulkTimer) window.clearTimeout(bulkTimer);
+      bulkTimer = null;
+      var n = ui.bulkPending.ids.length;
+      ui.bulkPending = null;
+      announce('Undone. Nothing was sent for those ' + n + '.');
+      render();
+      focusFirst('[data-action="bulk-mode"], .row-main');
+    }
+    /** The window ran out: each one goes through the same path as a single tap. */
+    function bulkSend() {
+      bulkTimer = null;
+      var p = ui.bulkPending;
+      if (!p) return;
+      // A read in flight holds every decision; send as soon as it lands, without reopening the window.
+      if (ui.readState.phase !== 'idle') { p.sending = true; bulkTimer = window.setTimeout(bulkSend, 400); render(); return; }
+      ui.bulkPending = null;
+      p.ids.forEach(function send(id) {
+        if (!findItem(id) || !tokenFor(id) || ui.rulings[id]) return;
+        if (p.action === 'reject') ui.bulkNotes[id] = p.note;
+        rule(id, p.action, { bulk: true });
+      });
+      render();
+    }
+
+    /** An initiative's name: from the Goals read, else from a decision that names it. */
+    function initiativeName(id) {
+      if (!id) return null;
+      var joined = Goals ? Goals.goalOfInitiative(ui.goals, id) : undefined;
+      if (joined && joined.initiative && joined.initiative.title) return joined.initiative.title;
+      var s = ui.snapshot;
+      var item = s && s.queue.filter(function same(q) { return q.initiative_id === id && q.initiative_title; })[0];
+      return item ? item.initiative_title : null;
+    }
+    /** Work items a decision in the queue is holding, by task id. */
+    function waitingOnYou(s) {
+      var by = {};
+      (s && s.queue || []).forEach(function each(item) { if (item.task_id && !ui.rulings[item.id]) by[item.task_id] = { id: item.id, title: splitHeadline(item.title).headline }; });
+      return by;
+    }
+    function needsByInitiative(s) {
+      var by = {};
+      (s && s.queue || []).forEach(function each(item) { if (item.initiative_id && !ui.rulings[item.id]) (by[item.initiative_id] = by[item.initiative_id] || []).push(item.id); });
+      return by;
+    }
+    /** The decision behind an output, as Needs you has it, for the Outputs view's buttons. */
+    function outputDecision(id) {
+      var item = findItem(id);
+      if (!item) return null;
+      var c = choicesFor(item);
+      var r = ui.rulings[id];
+      var ruling = r ? {
+        chip: r.phase === 'confirmed' ? 'confirmed' : r.phase === 'rejected' ? 'rejected' : r.phase === 'elsewhere' ? 'superseded' : r.phase === 'failed' ? 'failed' : r.phase === 'recorded' ? 'stale' : 'sending',
+        label: r.phase === 'confirmed' ? pastTense(r.approveLabel, 'approve') : r.phase === 'rejected' ? pastTense(r.rejectLabel, 'reject') : r.phase === 'elsewhere' ? 'Settled in OrgX' : r.phase === 'failed' ? 'Could not continue' : r.phase === 'recorded' ? 'Check receipt' : 'Recording',
+      } : null;
+      return { quick: quickDecide(item), canDecide: Boolean(tokenFor(id)), approveLabel: c.approve ? c.approve.label : '', rejectLabel: c.reject ? c.reject.label : '', ruling: ruling };
     }
 
     /**
@@ -1471,9 +1780,48 @@
     }
 
     function launchContext(s) {
-      var initiative = null;
+      var initiative = s && s.thread && s.thread.initiative_title ? s.thread.initiative_title : null;
+      if (initiative) return { initiative: initiative };
       (s && s.queue || []).some(function pick(item) { initiative = item.initiative_title || null; return Boolean(initiative); });
       return { initiative: initiative };
+    }
+
+    var BRIEF_SOURCES = { chatgpt: 'ChatGPT', 'claude-code': 'Claude Code', claude_code: 'Claude Code', claude: 'Claude', cursor: 'Cursor', codex: 'Codex', managed: 'Managed run', console: 'OrgX', orgx: 'OrgX' };
+    var BRIEF_KINDS = { run: 'run', session: 'chat', decision: 'ruling' };
+    function briefSource(e) {
+      var raw = String(e.source || '').toLowerCase();
+      if (raw === 'you') return 'Your ' + BRIEF_KINDS[e.kind];
+      var named = BRIEF_SOURCES[raw] || (raw ? raw.charAt(0).toUpperCase() + raw.slice(1).replace(/[_-]+/g, ' ') : 'OrgX');
+      return named + ' ' + BRIEF_KINDS[e.kind];
+    }
+
+    /**
+     * What OrgX already knows about the initiative this chat is bound to, and
+     * where each part came from. Full when nothing needs a decision; one line
+     * under an open decision, so the decision stays the interface.
+     */
+    function briefHtml(s, compact) {
+      var b = s.brief;
+      if (!b) return '';
+      var title = (s.thread && s.thread.initiative_title) || 'this initiative';
+      var counts = [];
+      if (b.decisions) counts.push(b.decisions + (b.decisions === 1 ? ' ruling' : ' rulings') + ' in effect');
+      if (b.precedents) counts.push(b.precedents + (b.precedents === 1 ? ' precedent' : ' precedents'));
+      var url = window.OrgXLinks.initiative ? window.OrgXLinks.initiative(b.initiative_id) : ORGX_HOME;
+      if (compact) {
+        var latest = b.events[0];
+        var bits = counts.slice();
+        if (latest) bits.push('latest: ' + briefSource(latest) + ', ' + agoLong(latest.at));
+        return bits.length ? '<p class="brief-line">' + esc('Brief · ' + bits.join(' · ')) + '</p>' : '';
+      }
+      var rows = b.events.map(function ev(e) {
+        return '<li class="brief-ev"><span class="brief-src">' + esc(briefSource(e)) + ' · ' + esc(agoLong(e.at)) + '</span><span class="brief-t">' + esc(e.title) + '</span></li>';
+      }).join('');
+      return '<section class="brief" aria-labelledby="brief-h"><h2 class="brief-h" id="brief-h">' + esc('What OrgX knows about ' + title) + '</h2>' +
+        (rows ? '<ul class="brief-evs">' + rows + '</ul>' : '<p class="proof-quiet">No runs, linked chats or rulings recorded on it yet.</p>') +
+        '<p class="proof-sub">' + esc(counts.join(' · ')) + (counts.length ? ' ' : '') +
+        '<button type="button" class="text-btn" data-action="open" data-url="' + esc(url) + '">Open initiative ↗</button></p>' +
+        (b.degraded ? '<p class="proof-sub">Some sources could not be read.</p>' : '') + '</section>';
     }
 
     function threadHtml(s) {
@@ -1503,10 +1851,10 @@
           '<button type="button" class="secondary-btn" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>' + foot;
       }
       if (!s.focus) {
-        return '<h1 class="lede">Nothing needs your decision.</h1>' + html + proofHtml(s, true) +
+        return '<h1 class="lede">Nothing needs your decision.</h1>' + html + briefHtml(s, false) + proofHtml(s, true) +
           (Launch ? Launch.sectionHtml('calm', launchContext(s), { limit: 3 }) : '') + foot;
       }
-      html += packetHtml(s.focus, 'h1');
+      html += packetHtml(s.focus, 'h1') + briefHtml(s, true);
       if (s.queue.length > 1) {
         html += '<div class="thread-foot"><button type="button" class="text-btn choose" data-action="choose">Choose another item ›</button>' +
           '<span class="foot-sync"><span class="sync">' + syncLabel + '</span><button type="button" class="quiet-btn" data-action="refresh">Refresh</button></span></div>';
@@ -1609,6 +1957,39 @@
       var safe = Host.safeArea();
       sheetHost.style.setProperty('--pn-float-bottom', Math.max(safe.bottom || 0, 0) + 'px');
     }
+    /**
+     * The undo toast, and a narrow panel's menu as a sheet, sit on the page
+     * rather than in the panel's layout (the panel is a layout container, so
+     * a fixed child would pin to the panel's box, not the screen).
+     */
+    var toastHost = null;
+    var popHost = null;
+    function bodyLayer(id) {
+      var el = document.createElement('div');
+      el.id = id;
+      el.className = id;
+      el.addEventListener('click', onClick);
+      document.body.appendChild(el);
+      return el;
+    }
+    function floatLayers() {
+      var pending = ui.mode === 'global' && ui.snapshot && Packet ? ui.bulkPending : null;
+      var key = pending ? String(pending.until) + (pending.sending ? 's' : '') : '';
+      if (pending || toastHost) {
+        if (!toastHost) toastHost = bodyLayer('pn-toast-host');
+        if (toastHost.getAttribute('data-key') !== key) {
+          toastHost.setAttribute('data-key', key);
+          toastHost.innerHTML = pending ? Packet.toastHtml(pending) : '';
+        }
+      }
+      var pop = ui.pop && root.clientWidth && root.clientWidth <= 560 ? root.querySelector('.pn-pop') : null;
+      if (!pop) { if (popHost) popHost.innerHTML = ''; return; }
+      if (!popHost) popHost = bodyLayer('pn-pop-sheet');
+      popHost.innerHTML = '<button type="button" class="pn-pop-scrim" data-action="pop-close" aria-label="Close menu" tabindex="-1"></button>';
+      popHost.appendChild(pop);
+      var safe = Host ? Host.safeArea() : { bottom: 0 };
+      popHost.style.setProperty('--pn-float-bottom', Math.max(safe.bottom || 0, 0) + 'px');
+    }
     var floatQueued = false;
     function queueFloat() {
       if (floatQueued) return;
@@ -1631,10 +2012,16 @@
         transition('boot', function firstPaint() { try { render(); } finally { bootLeaving = false; } });
         return;
       }
-      var focusKey = document.activeElement && document.activeElement.getAttribute
-        ? document.activeElement.getAttribute('data-action') + '|' + (document.activeElement.getAttribute('data-id') || '') +
-          '|' + (document.activeElement.getAttribute('data-option') || '')
+      var active = document.activeElement;
+      var focusKey = active && active.getAttribute
+        ? active.getAttribute('data-action') + '|' + (active.getAttribute('data-id') || '') +
+          '|' + (active.getAttribute('data-option') || '')
         : null;
+      // Question picks and item verdicts are told apart by their own keys.
+      var focusExtra = active && active.getAttribute
+        ? ['data-field', 'data-value', 'data-item', 'data-verdict', 'data-tab'].filter(function has(k) { return active.hasAttribute(k); })
+          .map(function pair(k) { return '[' + k + '="' + (window.CSS && CSS.escape ? CSS.escape(active.getAttribute(k)) : active.getAttribute(k)) + '"]'; }).join('')
+        : '';
       root.setAttribute('data-mode', ui.mode);
       if (ui.auth) {
         root.setAttribute('data-tone', 'none');
@@ -1652,7 +2039,7 @@
       if (focusKey && focusKey !== 'null||') {
         var parts = focusKey.split('|');
         var selector = '[data-action="' + parts[0] + '"]' + (parts[1] ? '[data-id="' + parts[1] + '"]' : '') +
-          (parts[2] ? '[data-option="' + (window.CSS && CSS.escape ? CSS.escape(parts[2]) : parts[2]) + '"]' : '');
+          (parts[2] ? '[data-option="' + (window.CSS && CSS.escape ? CSS.escape(parts[2]) : parts[2]) + '"]' : '') + focusExtra;
         var again = root.querySelector(selector);
         if (again && again.focus) again.focus({ preventScroll: true });
       }
@@ -1671,6 +2058,7 @@
       window.requestAnimationFrame(fitQuestion);
       window.requestAnimationFrame(floatFooter);
       sheetMenu();
+      floatLayers();
       if (R && R.reportSize) R.reportSize();
       if (tour) tour.refresh();
       maybeStartTour();
@@ -1703,6 +2091,7 @@
       later(startTour, 600);
     }
 
+    var TAB_NAMES = { needs: 'Needs you', work: 'In progress', outputs: 'Outputs', goals: 'Goals', done: 'Done', start: 'Start' };
     // Where each tab was scrolled to, so coming back lands where you left.
     var scrollMemo = {};
     function rememberScroll() { try { scrollMemo[ui.tab] = window.scrollY || window.pageYOffset || 0; } catch (_) { /* no scroll */ } }
@@ -1710,15 +2099,22 @@
       var y = scrollMemo[tab] || 0;
       try { if (typeof window.scrollTo === 'function') window.scrollTo({ top: y, left: 0, behavior: 'instant' }); } catch (_) { try { window.scrollTo(0, y); } catch (__) { /* no scroll */ } }
     }
+    /** The tabs in order, then Start (opened from +, not a tab). */
+    function viewOrder() {
+      var tabs = Views && Views.tabOrder ? Views.tabOrder() : ['needs', 'work', 'done'];
+      return Start ? tabs.concat(['start']) : tabs;
+    }
     function setTab(tab, quiet, after) {
-      if (['needs', 'work', 'done', 'start'].indexOf(tab) === -1 || (tab === 'start' && !Start)) return;
+      if (viewOrder().indexOf(tab) === -1) return;
       var changed = ui.tab !== tab;
       if (changed) rememberScroll();
-      var order = ['needs', 'work', 'done', 'start'];
+      var order = viewOrder();
       var dir = order.indexOf(tab) >= order.indexOf(ui.tab) ? 'fwd' : 'back';
       var from = ui.tab;
       var tapped = performance.now();
       var warm = tab === 'work' ? Boolean(ui.work && ui.work.status === 'ok')
+        : tab === 'outputs' ? Boolean(ui.outputs && ui.outputs.status === 'ok')
+        : tab === 'goals' ? Boolean(ui.goals && ui.goals.status === 'ok')
         : tab === 'done' ? Boolean(ui.doneLens === 'work' ? ui.receipts[workRangeOf(ui.doneRange)] : ui.doneRange === 'session' || ui.history[ui.doneRange])
         : true;
       function apply() {
@@ -1726,7 +2122,10 @@
         if (changed) window.requestAnimationFrame(function painted() { track('panel_tab_switched', { panel_from_tab: from, panel_tab: tab, latency_ms: performance.now() - tapped, warm: warm }); });
         ui.composer = changed ? null : ui.composer;
         ui.startWhoOpen = false;
+        ui.pop = null;
         if (tab === 'work' && (!ui.work || ui.workPhase === 'failed')) { fetchWork(); if (changed) restoreScroll(tab); return; }
+        if (tab === 'outputs' && (!ui.outputs || ui.outputsPhase === 'failed')) { fetchOutputs(); if (!ui.goals && ui.goalsPhase === 'idle') fetchGoals(); if (changed) restoreScroll(tab); if (after) after(); return; }
+        if (tab === 'goals' && (!ui.goals || ui.goalsPhase === 'failed')) { fetchGoals(); if (changed) restoreScroll(tab); if (after) after(); return; }
         // Done › Work reads its receipts the first time it opens; the read renders the loading rows.
         if (tab === 'done' && ui.doneLens === 'work' && Receipts && !ui.receipts[workRangeOf(ui.doneRange)]) fetchReceipts(workRangeOf(ui.doneRange));
         else render();
@@ -1735,7 +2134,7 @@
           if (Host) Host.haptic('tap');
           var t = root.querySelector('#pn-tab-' + tab);
           if (t) t.focus({ preventScroll: true });
-          announce(tab === 'needs' ? 'Needs you.' : tab === 'work' ? 'In progress.' : tab === 'done' ? 'Done.' : 'Start.');
+          announce(TAB_NAMES[tab] + '.');
         }
         if (after) after();
       }
@@ -1926,21 +2325,30 @@
     /** The work behind the open decision: the ledger's receipts for its PR, read once per decision. */
     function maybeFetchBehind(focus) {
       if (!Receipts || !focus || ui.behind[focus.id] !== undefined) return;
-      var pr = Receipts.prOf([focus.title, focus.question, focus.detail].filter(Boolean).join('\n'));
-      if (!pr) { ui.behind[focus.id] = null; return; }
+      // Join by id first: the run the decision came from is the run its
+      // receipt names. A pull request number read from the text is only the
+      // fallback for decisions that carry no run.
+      var queries = Receipts.behindQueries(focus);
+      if (!queries.length) { ui.behind[focus.id] = null; return; }
       ui.behind[focus.id] = 'loading';
-      if (isGallery) { ui.behind[focus.id] = gallery.behind(pr); rememberRows(ui.behind[focus.id]); later(render, 0); return; }
+      if (isGallery) { ui.behind[focus.id] = gallery.behind(Receipts.prOf([focus.title, focus.question, focus.detail].filter(Boolean).join('\n'))); rememberRows(ui.behind[focus.id]); later(render, 0); return; }
       var gen = ui.generation;
-      observeRead('behind', 'open', R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: 'pr:' + pr }))).then(function onBehind(result) {
-        if (gen !== ui.generation) return;
-        var data = result && result.data;
-        ui.behind[focus.id] = Receipts.normalizeList(data, 'pr:' + pr);
-        rememberRows(ui.behind[focus.id]);
-        if (ui.tab === 'needs' && ui.snapshot && ui.snapshot.focus && ui.snapshot.focus.id === focus.id) render();
-      }, function onBehindError() {
-        if (gen !== ui.generation) return;
-        ui.behind[focus.id] = null;
-      });
+      function attempt(i) {
+        var query = queries[i];
+        observeRead('behind', 'open', R.callWidgetRead('orgx_list_work_receipts', withWorkspace({ query: query }))).then(function onBehind(result) {
+          if (gen !== ui.generation) return;
+          var list = Receipts.normalizeList(result && result.data, query);
+          if ((!list || list.status !== 'ok' || !list.items || !list.items.length) && i + 1 < queries.length) { attempt(i + 1); return; }
+          ui.behind[focus.id] = list;
+          rememberRows(ui.behind[focus.id]);
+          if (ui.tab === 'needs' && ui.snapshot && ui.snapshot.focus && ui.snapshot.focus.id === focus.id) render();
+        }, function onBehindError() {
+          if (gen !== ui.generation) return;
+          if (i + 1 < queries.length) { attempt(i + 1); return; }
+          ui.behind[focus.id] = null;
+        });
+      }
+      attempt(0);
     }
 
     /** In progress is read only when opened: the same snapshot with view "work". */
@@ -1969,6 +2377,87 @@
         if (gen !== ui.generation) return;
         ui.workPhase = 'failed';
         render();
+      });
+    }
+
+    /**
+     * Outputs and Goals: one read each through the snapshot (view: outputs,
+     * view: goals), on first open; the gallery's fixtures stand in for both.
+     */
+    function fetchView(kind) {
+      var key = kind === 'outputs' ? 'outputs' : 'goals';
+      var phase = key + 'Phase';
+      if (isGallery) {
+        ui[key] = gallery[key] ? gallery[key]() : { status: 'unavailable', items: [], total: 0 };
+        if (key === 'outputs' && gallery.previews) ui.outPreviews = gallery.previews();
+        if (key === 'goals' && gallery.goalReasons) ui.goalReasons = gallery.goalReasons();
+        ui[phase] = 'ready';
+        render();
+        return;
+      }
+      if (ui[phase] === 'loading') return;
+      ui[phase] = 'loading';
+      if (ui.tab === key) render();
+      var gen = ui.generation;
+      observeRead(key, ui.tab === key ? 'tab' : 'warm', R.callToolResult('orgx_panel_snapshot', { view: key })).then(function onView(result) {
+        if (gen !== ui.generation) return;
+        var data = result && result.data;
+        if (isSnapshot(data)) accept(data, result.meta || null, 'refresh');
+        ui[key] = data && data[key] ? data[key] : { status: 'unavailable', items: [], total: 0 };
+        if (key === 'outputs') {
+          var said = result && result.meta && result.meta[PREVIEW_META_KEY];
+          ui.outPreviews = said && typeof said === 'object' ? Object.assign({}, said) : {};
+          // A late list response replaces compact previews. Re-read the selected
+          // canonical detail so it cannot erase an already admitted summary.
+          if (ui.outSel) fetchOutputSummary(ui.outSel);
+        } else {
+          var why = result && result.meta && result.meta[GOAL_REASONS_META_KEY];
+          ui.goalReasons = why && typeof why === 'object' ? why : {};
+        }
+        ui[phase] = 'ready';
+        render();
+      }, function onViewError(error) {
+        if (gen !== ui.generation) return;
+        ui[key] = { status: 'unavailable', items: [], total: 0, reason: safeErrorText(error, (key === 'outputs' ? 'Outputs' : 'Goals') + ' could not be read right now.', 160) };
+        ui[phase] = 'failed';
+        render();
+      });
+    }
+    function fetchOutputs() { fetchView('outputs'); }
+    function fetchGoals() { fetchView('goals'); }
+
+    // Read only the selected output's canonical detail. No producer metadata,
+    // model-visible preview text, N+1 list reads or new tool is required.
+    function fetchOutputSummary(id) {
+      if (!id || isGallery || ui.outDoorPending[id]) return;
+      ui.outDoorPending[id] = true;
+      var old = Object.assign({}, ui.outPreviews[id] || {});
+      delete old.frontDoor;
+      ui.outPreviews[id] = old;
+      var gen = ui.generation;
+      R.callToolResult('orgx_panel_snapshot', { view: 'outputs', query: id }).then(function received(result) {
+        if (gen !== ui.generation) return;
+        var previews = result && result.meta && result.meta[PREVIEW_META_KEY];
+        var current = previews && previews[id];
+        if (current && typeof current === 'object') ui.outPreviews[id] = current;
+        ui.outDoorPending[id] = false;
+        if (ui.outSel === id) render();
+      }, function unavailable() {
+        if (gen !== ui.generation) return;
+        ui.outDoorPending[id] = false;
+        if (ui.outSel === id) render();
+      });
+    }
+
+    /** Say a sentence in the chat for the person: the panel's way to do what it has no button of its own for. */
+    function sendSentence(text, button, done) {
+      if (!Launch || !text) return;
+      if (button) button.setAttribute('aria-busy', 'true');
+      Launch.send(text).then(function sent(outcome) {
+        if (button && button.isConnected) button.removeAttribute('aria-busy');
+        if (Host && outcome === 'sent') Host.haptic('tap');
+        announce(outcome === 'sent' ? 'Sent to the chat.' : outcome === 'copied' ? 'Copied. Paste it into the chat.' : 'Couldn’t send it. Type it in the chat.');
+        done(outcome);
       });
     }
 
@@ -2034,6 +2523,13 @@
       }
       ui.snapshot = snapshot;
       ui.syncedAt = new Date(snapshot.generated_at);
+      // The thread entrypoint: OrgX named the conversation this panel sits
+      // beside, so open on this chat's view rather than the sidebar's. A
+      // fullscreen panel is the sidebar (global) entrypoint and stays global.
+      if (!ui.threadBound && snapshot.thread && snapshot.thread.conversation_id) {
+        ui.threadBound = true;
+        if (!(Host && Host.displayMode() === 'fullscreen')) ui.mode = 'thread';
+      }
       ui.auth = null;
       if (!openedTracked) {
         openedTracked = true;
@@ -2217,7 +2713,10 @@
     }
 
     var VALIDATION_CODES = ['reason_required', 'answer_required', 'answer_not_accepted', 'option_required', 'options_not_accepted',
-      'option_unavailable', 'option_action_mismatch', 'selection_out_of_range', 'invalid_decision_option_material'];
+      'option_unavailable', 'option_action_mismatch', 'selection_out_of_range', 'invalid_decision_option_material',
+      'answers_required', 'answers_not_accepted', 'answer_invalid',
+      'item_reviews_required', 'item_reviews_not_accepted', 'item_review_invalid', 'item_note_required', 'item_action_mismatch',
+      'remember_not_accepted'];
     var VALIDATION_COPY = {
       reason_required: 'Say what should change.',
       answer_required: 'Type an answer to send.',
@@ -2228,6 +2727,15 @@
       option_action_mismatch: 'That option goes with the other button.',
       selection_out_of_range: 'Choose a number of options the decision allows.',
       invalid_decision_option_material: 'That choice is not valid for this decision. Choose again.',
+      answers_required: 'Answer the required questions first.',
+      answers_not_accepted: 'The questions changed. Answer them again.',
+      answer_invalid: 'One answer is not one OrgX accepts. Check it and try again.',
+      item_reviews_required: 'Keep or send back each one first.',
+      item_reviews_not_accepted: 'The list changed. Review it again.',
+      item_review_invalid: 'The list changed. Review it again.',
+      item_note_required: 'Each one going back needs a note.',
+      item_action_mismatch: 'The verdicts changed. Review them again.',
+      remember_not_accepted: 'This answer cannot be saved for next time. Send it without saving.',
     };
     var STALE_COPY = {
       widget_approval_token_expired: 'This view is out of date. Refresh to decide.',
@@ -2261,6 +2769,29 @@
       ui.selections[id] = selectedFor(id).filter(function keep(oid) { return ids.indexOf(oid) !== -1; });
       if (ui.rejectPicks[id] && ids.indexOf(ui.rejectPicks[id]) === -1) delete ui.rejectPicks[id];
       if (!c.answer) delete ui.answers[id];
+      // Keep what still fits a changed set of questions or items; drop the rest.
+      var form = ui.forms[id];
+      if (form) {
+        if (!c.questions) delete ui.forms[id];
+        else {
+          var fieldIds = c.questions.map(function fid(q) { return q.id; });
+          Object.keys(form.values).forEach(function drop(k) { if (fieldIds.indexOf(k) === -1) delete form.values[k]; });
+          form.step = Math.min(form.step, c.questions.length);
+        }
+      }
+      var review = ui.reviews[id];
+      if (review) {
+        if (!c.items) delete ui.reviews[id];
+        else {
+          var fresh = Forms.newReview(c.items);
+          c.items.forEach(function carry(it) {
+            if (review.verdicts[it.id]) fresh.verdicts[it.id] = review.verdicts[it.id];
+            if (review.notes[it.id]) fresh.notes[it.id] = review.notes[it.id];
+          });
+          fresh.touched = review.touched;
+          ui.reviews[id] = fresh;
+        }
+      }
     }
 
     function rule(id, action) {
@@ -2301,6 +2832,7 @@
         if (!status) return 'recorded; status not available yet';
         if (agreeing) return action === 'approve' ? 'agents start; every receipt is judged against this bar' : 'OrgX redrafts it and asks again';
         if (c.kind === 'action') return action === 'approve' ? 'the action can run' : 'the action does not run';
+        if (c.kind === 'link') return action === 'approve' ? 'its work now counts toward this initiative' : 'OrgX stops suggesting it';
         if (c.kind === 'approval') return action === 'approve' ? 'the run continues' : 'the run stops at this step';
         return action === 'approve' ? 'the agent can continue' : 'the agent reworks it';
       }
@@ -2323,6 +2855,11 @@
         }
         delete ui.answers[id];
         delete ui.notes[id];
+        delete ui.bulkNotes[id];
+        delete ui.forms[id];
+        delete ui.reviews[id];
+        delete ui.remember[id];
+        delete ui.limitHits[id];
         announce(pastTense(action === 'approve' ? ui.rulings[id].approveLabel : ui.rulings[id].rejectLabel, action) + ': ' + title);
         if (Host) Host.haptic('success');
         render();
@@ -2331,7 +2868,7 @@
       R.callTool('orgx_widget_decide', args).then(function onDecided(result) {
         if (gen !== ui.generation) return;
         if (c.kind !== 'decision') {
-          // Agent-run approvals and actions settle in the call itself; there is no decision status to read.
+          // Approvals, actions and links settle in the call itself; there is no decision status to read.
           var data = R.extractStructuredWidgetData ? R.extractStructuredWidgetData(result, true) : null;
           settle({ state: 'succeeded', status: data && data.status });
           return;
@@ -2347,6 +2884,7 @@
         if (VALIDATION_CODES.indexOf(code) === -1) track('panel_error', { panel_error_code: 'decide_failed', error_code: errorCodeOf(error) });
         var details = error && error.details && typeof error.details === 'object' ? error.details : {};
         delete ui.rulings[id];
+        delete ui.bulkNotes[id];
         if (VALIDATION_CODES.indexOf(code) !== -1) {
           // Still open, same token: put the message on the field and render the item's current contract.
           ui.tokens[id] = token;
@@ -2354,7 +2892,9 @@
             eachCopy(id, function adopt(copy) { copy.widget_actions = details.widget_actions; });
             pruneDrafts(id);
           }
-          var field = code === 'reason_required' ? 'reason' : code === 'answer_required' ? 'answer' : code === 'answer_not_accepted' ? 'form' : 'options';
+          var field = code === 'reason_required' ? 'reason' : code === 'answer_required' ? 'answer' : code === 'answer_not_accepted' || code === 'remember_not_accepted' ? 'form'
+            : /^answers?_/.test(code) ? 'answers' : /^item_/.test(code) ? 'items' : 'options';
+          if (code === 'remember_not_accepted') delete ui.remember[id];
           ui.fieldErrors[id] = { action: action, field: field, message: refusalCopy(error, VALIDATION_COPY[code]) };
           if (action === 'reject') ui.composer = { id: id, draft: note, focus: field === 'reason', opener: id };
           render();
@@ -2417,8 +2957,8 @@
       if (!c.approve) return;
       var already = selectedFor(id)[0] === optionId;
       ui.selections[id] = already ? [] : [optionId];
-      if (!already && !draftFor(item, 'approve').missing.length) { rule(id, 'approve'); return; }
-      render();
+      // A tap picks; the footer's primary, which names the pick, sends it.
+      keepScroll(render);
       if (!already) focusFirst('textarea[data-field][data-id="' + id + '"]');
     }
 
@@ -2461,11 +3001,11 @@
     function onClick(event) {
       if (ui.startWhoOpen && !event.target.closest('.st-menu, [data-action="start-who"]')) transition('menu', function dismiss() { ui.startWhoOpen = false; render(); });
       var el = event.target.closest('[data-action]');
-      if (!el || !(root.contains(el) || (sheetHost && sheetHost.contains(el))) || el.disabled) return;
+      if (!el || !(root.contains(el) || (sheetHost && sheetHost.contains(el)) || (popHost && popHost.contains(el)) || (toastHost && toastHost.contains(el))) || el.disabled) return;
       var action = el.getAttribute('data-action');
       var id = el.getAttribute('data-id');
       // During the tour only the practice press is live; picks and send-back wait.
-      if (tour && tour.active() && ['approve', 'option', 'toggle-option', 'reject-option', 'sendback', 'submit-sendback'].indexOf(action) !== -1) return;
+      if (tour && tour.active() && ['approve', 'option', 'toggle-option', 'reject-option', 'sendback', 'submit-sendback', 'q-pick', 'item-verdict'].indexOf(action) !== -1) return;
       switch (action) {
         case 'workspaces': transition('menu', function toggleWs() { if (ui.wsOpen) closeWorkspaces(true); else openWorkspaces(); }); break;
         case 'workspaces-retry': ui.workspaces = null; ui.wsPhase = 'idle'; openWorkspaces(); break;
@@ -2481,11 +3021,23 @@
         case 'option': chooseOption(id, el.getAttribute('data-option')); break;
         case 'toggle-option': toggleOption(id, el.getAttribute('data-option')); break;
         case 'reject-option': pickRejectOption(id, el.getAttribute('data-option')); break;
+        case 'q-pick': pickAnswer(id, el.getAttribute('data-field'), el.getAttribute('data-value')); break;
+        case 'q-back': { var backItem = findItem(id); var backForm = backItem && ui.forms[id]; if (backForm) stepForm(id, backForm.step - 1); break; }
+        case 'q-goto': stepForm(id, Number(el.getAttribute('data-step')) || 0); break;
+        case 'item-verdict': setVerdict(id, el.getAttribute('data-item'), el.getAttribute('data-verdict')); break;
+        case 'item-copy-note': {
+          var copyItem = findItem(id);
+          var copyChoices = copyItem ? choicesFor(copyItem) : null;
+          if (copyChoices && copyChoices.items && Forms.copyNote(copyChoices.items, reviewFor(copyItem, copyChoices))) { keepScroll(render); announce('Note copied to the others going back.'); }
+          break;
+        }
+        case 'remember': ui.remember[id] = el.checked === true; break;
         case 'sendback': ui.composer = { id: id, draft: '', focus: true, opener: id }; ui.actionError = null; render(); break;
         case 'cancel-sendback': closeComposer(); break;
         case 'submit-sendback': {
           var area = root.querySelector('textarea[data-reason="' + id + '"]');
           if (ui.composer && ui.composer.id === id && area) ui.composer.draft = area.value;
+          if (ui.composer && ui.composer.own && !String(ui.composer.draft || '').trim()) { focusFirst('textarea[data-reason="' + cssId(id) + '"]'); break; }
           rule(id, 'reject');
           break;
         }
@@ -2503,6 +3055,7 @@
           }
           break;
         case 'share': doShare(id); break;
+        case 'review-artifact': launchPrompt(el); break;
         case 'stop-share': stopShare(); break;
         case 'tab': setTab(el.getAttribute('data-tab')); break;
         case 'launch': launchPrompt(el); break;
@@ -2630,6 +3183,121 @@
           break;
         }
         case 'why': transition('expand', function why() { ui.whyOpen = ui.whyOpen === id ? null : id; render(); focusFirst('[data-action="why"]'); }); break;
+        // ── Scope menus: one open at a time ──
+        case 'pop':
+          transition('menu', function togglePop() {
+            ui.pop = ui.pop === id ? null : id;
+            render();
+            focusFirst(ui.pop ? '#pn-pop-' + cssId(id) + ' [aria-checked="true"], #pn-pop-' + cssId(id) + ' .pn-pop-o' : '[data-action="pop"][data-id="' + cssId(id) + '"]');
+          });
+          break;
+        case 'pop-close': closePop(true); break;
+        case 'start-pick':
+          ui.pop = null;
+          if (id === 'goal') { ui.goalForm = { open: true, text: ui.goalForm.text, status: null }; setTab('goals', true, function focusGoal() { focusFirst('#gl-goal'); }); break; }
+          if (id === 'delegate' || id === 'initiative') { ui.startVerb = id; ui.startStatus = null; rememberStart(); }
+          setTab('start', true, function focusComposer() { render(); focusFirst('#st-text'); });
+          break;
+        // ── Outputs ──
+        case 'out-select':
+          transition('detail', function openOut() {
+            ui.outSel = !id || ui.outSel === id ? null : id;
+            if (ui.outSel) fetchOutputSummary(ui.outSel);
+            render();
+            focusFirst(ui.outSel ? '.pn-md-detail .md-close' : '.oc-row');
+          });
+          break;
+        case 'out-range': ui.outRange = id || '7d'; closePop(false); focusFirst('[data-action="pop"][data-id="orange"]'); break;
+        case 'out-family': ui.outFamily = id || 'all'; closePop(false); focusFirst('[data-action="pop"][data-id="ofam"]'); break;
+        case 'out-goal': ui.outGoal = id || 'all'; closePop(false); focusFirst('[data-action="pop"][data-id="ogoal"]'); break;
+        case 'out-clear': ui.outRange = '30d'; ui.outFamily = 'all'; ui.outGoal = 'all'; render(); focusFirst('.oc-row'); break;
+        case 'outputs-retry': ui.outputsPhase = 'failed'; fetchOutputs(); break;
+        case 'out-decide': {
+          // The same decision, in Needs you: opened there, or with its send-back note open.
+          var mode = el.getAttribute('data-mode');
+          setTab('needs', true, function openThere() {
+            selectDecision(id);
+            if (mode === 'sendback' && findItem(id) && tokenFor(id)) { ui.composer = { id: id, draft: '', focus: true, opener: id }; render(); }
+          });
+          break;
+        }
+        // ── Goals ──
+        case 'goal-open':
+          ui.goalForm = { open: false, text: ui.goalForm.text, status: null };
+          if (ui.tab !== 'goals') { ui.goalSel = id || null; setTab('goals'); break; }
+          transition('detail', function openGoal() { if (id) ui.goalSel = id; render(); focusFirst('.gl-row[aria-pressed="true"]'); });
+          break;
+        case 'goal-new': ui.goalForm = { open: true, text: ui.goalForm.text, status: null }; render(); focusFirst('#gl-goal'); break;
+        case 'goals-retry': ui.goalsPhase = 'failed'; fetchGoals(); break;
+        case 'goal-send': {
+          var goalSentence = Goals ? Goals.sentence(ui.goalForm.text) : '';
+          if (!goalSentence) break;
+          sendSentence(goalSentence, el, function goalSent(outcome) {
+            ui.goalForm = { open: ui.goalForm.open, text: outcome === 'sent' ? '' : ui.goalForm.text, status: outcome };
+            render();
+          });
+          break;
+        }
+        case 'goal-link': {
+          var initTitle = el.getAttribute('data-title') || initiativeName(id) || 'this initiative';
+          sendSentence(Goals ? Goals.linkSentence(initTitle, ui.goals) : '', el, function linked(outcome) { ui.goalLinks[id] = outcome; render(); });
+          break;
+        }
+        case 'goal-needs': setTab('needs', true, function openNeed() { selectDecision(id); }); break;
+        // ── In progress ──
+        case 'work-group': ui.workGroup = id === 'initiative' ? 'initiative' : 'agent'; ui.workExpanded = {}; closePop(false); if (ui.workGroup === 'initiative' && !ui.goals && ui.goalsPhase === 'idle') fetchGoals(); focusFirst('[data-action="pop"][data-id="wview"]'); break;
+        case 'work-decide': setTab('needs', true, function decideThere() { selectDecision(id); }); break;
+        case 'steer-send': {
+          var steerItem = (workView().work || { items: [] }).items.filter(function same(i) { return i.id === id; })[0];
+          var steerText = ui.steer && ui.steer.id === id ? String(ui.steer.text || '').trim() : '';
+          if (!steerItem || !steerText) break;
+          var steerSentence = 'In OrgX, tell ' + (steerItem.agent || 'the agent') + ' working on “' + steerItem.title.slice(0, 120) + '”: ' + steerText.replace(/[.。]+$/, '') + '.';
+          sendSentence(steerSentence, el, function steered(outcome) {
+            ui.steer = { id: id, text: outcome === 'sent' ? '' : steerText, status: outcome };
+            render();
+            later(function clearSteer() { if (ui.steer && ui.steer.id === id && ui.steer.status) { ui.steer.status = null; if (ui.tab === 'work') liveRender(); } }, 4000);
+          });
+          break;
+        }
+        // ── Needs you: levels, evidence detail, own answer, suggestions, numbers, bulk ──
+        case 'ladder': transition('expand', function ladder() { ui.ladderOpen[id] = !ui.ladderOpen[id]; render(); focusFirst('[data-action="ladder"][data-id="' + cssId(id) + '"]'); if (ui.ladderOpen[id] && !ui.goals && ui.goalsPhase === 'idle') fetchGoals(); }); break;
+        case 'ev-raw': ui.evidenceRaw = !ui.evidenceRaw; if (ui.evidenceRaw) ui.evidenceOpen = true; keepScroll(render); focusFirst('[data-action="ev-raw"]'); break;
+        case 'own-open': ui.composer = { id: id, draft: '', focus: true, opener: id, own: true }; ui.actionError = null; render(); break;
+        case 'answer-suggest': {
+          ui.answers[id] = el.getAttribute('data-value') || '';
+          clearFieldError(id);
+          keepScroll(render);
+          var answerBox = root.querySelector('textarea[data-field="answer"][data-id="' + cssId(id) + '"]');
+          if (answerBox) { answerBox.focus({ preventScroll: true }); try { answerBox.setSelectionRange(answerBox.value.length, answerBox.value.length); } catch (_) { /* not a text field */ } }
+          break;
+        }
+        case 'q-step': {
+          var stepItem = findItem(id);
+          var stepChoices = stepItem ? choicesFor(stepItem) : null;
+          var stepField = stepChoices && stepChoices.questions ? stepChoices.questions.filter(function byId(x) { return x.id === el.getAttribute('data-field'); })[0] : null;
+          if (!stepField || ui.rulings[id]) break;
+          var stepForm0 = formFor(stepItem, stepChoices);
+          stepForm0.values[stepField.id] = Forms.stepNumber(stepField, stepForm0.values[stepField.id], Number(el.getAttribute('data-delta')) || 0);
+          stepForm0.touched = true;
+          keepScroll(render);
+          break;
+        }
+        case 'bulk-mode': {
+          var all = bulkEligible(ui.snapshot);
+          if (!ui.bulkMode) { ui.bulkMode = true; ui.bulkSel = {}; }
+          else if (all.every(function on(x) { return ui.bulkSel[x.id]; })) { ui.bulkMode = false; ui.bulkSel = {}; ui.bulkNote = null; }
+          else all.forEach(function pick(x) { ui.bulkSel[x.id] = true; });
+          render();
+          focusFirst('[data-action="bulk-mode"]');
+          break;
+        }
+        case 'bulk-check': ui.bulkSel[id] = !ui.bulkSel[id]; keepScroll(render); break;
+        case 'bulk-clear': ui.bulkMode = false; ui.bulkSel = {}; ui.bulkNote = null; render(); focusFirst('[data-action="bulk-mode"]'); break;
+        case 'bulk-approve': bulkStart('approve'); break;
+        case 'bulk-sendback': ui.bulkNote = { text: '' }; render(); focusFirst('#bulk-note'); break;
+        case 'bulk-note-cancel': ui.bulkNote = null; render(); focusFirst('[data-action="bulk-sendback"]'); break;
+        case 'bulk-reject': bulkStart('reject'); break;
+        case 'bulk-undo': bulkUndo(); break;
         default: break;
       }
     }
@@ -2643,6 +3311,22 @@
         id = area.getAttribute('data-reason');
         if (ui.composer && ui.composer.id === id) ui.composer.draft = area.value;
         if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'reason') clearFieldError(id);
+      } else if (area.matches('textarea[data-qfield]')) {
+        id = area.getAttribute('data-id');
+        var qItem = findItem(id);
+        var qChoices = qItem ? choicesFor(qItem) : null;
+        if (qChoices && qChoices.questions) { var qForm = formFor(qItem, qChoices); qForm.values[area.getAttribute('data-qfield')] = area.value; qForm.touched = true; }
+        if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'answers') clearFieldError(id);
+      } else if (area.matches('textarea[data-item-note]')) {
+        id = area.getAttribute('data-id');
+        var nItem = findItem(id);
+        var nChoices = nItem ? choicesFor(nItem) : null;
+        if (nChoices && nChoices.items) {
+          var nReview = reviewFor(nItem, nChoices);
+          nReview.notes[area.getAttribute('data-item-note')] = area.value;
+          nReview.touched = true;
+          syncReviewCopy(id, nChoices.items, nReview);
+        }
       } else if (area.matches('textarea[data-field]')) {
         id = area.getAttribute('data-id');
         var field = area.getAttribute('data-field');
@@ -2664,6 +3348,47 @@
         if (st) st.remove();
         return;
       }
+      if (area.matches('input[data-qnum]')) {
+        var nid = area.getAttribute('data-id');
+        var nItem0 = findItem(nid);
+        var nCh = nItem0 ? choicesFor(nItem0) : null;
+        var nField = nCh && nCh.questions ? nCh.questions.filter(function byId(x) { return x.id === area.getAttribute('data-qnum'); })[0] : null;
+        if (nField) {
+          var nForm = formFor(nItem0, nCh);
+          nForm.values[nField.id] = String(Number(area.value));
+          nForm.touched = true;
+          var said = Forms.numberText(nField, area.value);
+          var out = root.querySelector('[data-amt-out="' + cssId(nField.id) + '"]');
+          if (out) out.textContent = said;
+          area.setAttribute('aria-valuetext', said);
+          var rec = area.closest('.fq-amt') ? area.closest('.fq-amt').querySelector('[data-amt-rec]') : null;
+          if (rec) rec.hidden = Number(area.value) !== nField.range.recommended;
+          syncFooter(nid);
+        }
+        return;
+      }
+      if (area.matches('input[data-action="steer-text"]')) {
+        var sid = area.getAttribute('data-id');
+        ui.steer = { id: sid, text: area.value, status: null };
+        var go0 = root.querySelector('[data-action="steer-send"][data-id="' + cssId(sid) + '"]');
+        if (go0) go0.disabled = !area.value.trim();
+        return;
+      }
+      if (area.matches('input[data-action="goal-text"]')) {
+        ui.goalForm.text = area.value;
+        ui.goalForm.status = null;
+        var gsend = root.querySelector('[data-action="goal-send"]');
+        if (gsend) gsend.disabled = !area.value.trim();
+        var ghint = area.closest('.gl-form') ? area.closest('.gl-form').querySelector('.steer-hint') : null;
+        if (ghint && Goals) ghint.textContent = 'Goes to the chat as “' + (Goals.sentence(area.value || '…')) + '”';
+        return;
+      }
+      if (area.matches('textarea[data-action="bulk-note"]')) {
+        if (ui.bulkNote) ui.bulkNote.text = area.value;
+        var bgo = root.querySelector('[data-action="bulk-reject"]');
+        if (bgo) bgo.disabled = !area.value.trim();
+        return;
+      }
       if (area.matches('input[data-action="ws-query"]')) {
         ui.wsQuery = area.value;
         var wcaret = area.selectionStart;
@@ -2680,6 +3405,27 @@
         if (again) { again.focus(); try { again.setSelectionRange(caret, caret); } catch (_) { /* not a text input */ } }
       }
     });
+    /** The copy-note link appears once one note exists and others are empty, without re-rendering the typing. */
+    function syncReviewCopy(id, items, review) {
+      var section = root.querySelector('[data-review="' + cssId(id) + '"]');
+      if (!section) return;
+      var missing = Forms.missingNotes(items, review).length;
+      var hasNote = items.some(function written(it) { return review.verdicts[it.id] === 'send_back' && String(review.notes[it.id] || '').trim(); });
+      var link = section.querySelector('.fi-copy');
+      if (missing && hasNote) {
+        if (!link) {
+          link = document.createElement('button');
+          link.type = 'button';
+          link.className = 'text-btn fi-copy';
+          link.setAttribute('data-action', 'item-copy-note');
+          link.setAttribute('data-id', id);
+          section.appendChild(link);
+        }
+        link.textContent = 'Use the first note for the ' + missing + ' without one';
+      } else if (link) {
+        link.remove();
+      }
+    }
     function clearFieldError(id) {
       if (ui.fieldErrors[id]) ui.fieldErrors[id].message = '';
       Array.prototype.forEach.call(root.querySelectorAll('[data-error-for="' + id + '"]'), function drop(node) { node.remove(); });
@@ -2690,8 +3436,72 @@
       var footer = event.target.closest('ox-footer');
       var id = footer && footer.getAttribute('data-id');
       if (!id || footer.getAttribute('state') !== 'needs-you') return;
+      var item = findItem(id);
+      var c = item ? choicesFor(item) : null;
+      if (c && c.questions) {
+        var form = formFor(item, c);
+        if (form.step < c.questions.length) { stepForm(id, form.step + 1); return; }
+      }
+      if (c && c.items) {
+        var review = reviewFor(item, c);
+        var rd = Forms.reviewDraft(c.items, review);
+        if (rd.missing.length) { focusFirst('textarea[data-item-note="' + cssId(rd.missing[0].id) + '"][data-id="' + cssId(id) + '"]'); return; }
+        rule(id, rd.action);
+        return;
+      }
       rule(id, 'approve');
     });
+    function cssId(value) { return window.CSS && CSS.escape ? CSS.escape(value) : String(value).replace(/"/g, '\\"'); }
+    /** Move a question form to step k, sliding the way the person is going. */
+    function stepForm(id, k) {
+      var item = findItem(id);
+      var c = item ? choicesFor(item) : null;
+      if (!c || !c.questions) return;
+      var form = formFor(item, c);
+      var to = Math.max(0, Math.min(c.questions.length, k));
+      if (to === form.step) return;
+      ui.formDir = { id: id, dir: to > form.step ? 'fwd' : 'back' };
+      form.step = to;
+      delete ui.limitHits[id];
+      keepScroll(render);
+      ui.formDir = null;
+      var next = root.querySelector('[data-form="' + cssId(id) + '"] textarea[data-qfield], [data-form="' + cssId(id) + '"] [data-action="q-pick"][aria-pressed="true"], [data-form="' + cssId(id) + '"] [data-action="q-pick"]');
+      if (next) next.focus({ preventScroll: true });
+    }
+    function pickAnswer(id, fieldId, value) {
+      var item = findItem(id);
+      if (!item || ui.rulings[id]) return;
+      var c = choicesFor(item);
+      if (!c.questions) return;
+      var form = formFor(item, c);
+      var f = c.questions.filter(function byId(x) { return x.id === fieldId; })[0];
+      var changed = Forms.pick(c.questions, form, fieldId, value);
+      if (changed === 'limit') {
+        var o = f ? f.options.filter(function byId(x) { return x.id === value; })[0] : null;
+        ui.limitHits[id] = o ? o.label : '';
+      } else {
+        delete ui.limitHits[id];
+      }
+      if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'answers') delete ui.fieldErrors[id];
+      keepScroll(render);
+      // One answer moves on by itself, after the pick has shown.
+      if (changed === 'advance') {
+        var at = form.step;
+        later(function autoAdvance() { if (ui.forms[id] === form && form.step === at && !ui.rulings[id]) stepForm(id, at + 1); }, reducedMotion() ? 0 : 320);
+      }
+    }
+    function setVerdict(id, itemId, verdict) {
+      var item = findItem(id);
+      if (!item || ui.rulings[id]) return;
+      var c = choicesFor(item);
+      if (!c.items) return;
+      var review = reviewFor(item, c);
+      review.verdicts[itemId] = verdict === 'send_back' ? 'send_back' : 'keep';
+      review.touched = true;
+      if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'items') delete ui.fieldErrors[id];
+      keepScroll(render);
+      if (verdict === 'send_back' && !String(review.notes[itemId] || '').trim()) focusFirst('textarea[data-item-note="' + cssId(itemId) + '"][data-id="' + cssId(id) + '"]');
+    }
 
     function approve(id) {
       rule(id, 'approve');
@@ -2703,11 +3513,18 @@
       if (!sel) return;
       var current = selectedFor(id);
       var next = current.indexOf(optionId) === -1 ? current.concat(optionId) : current.filter(function keep(x) { return x !== optionId; });
-      if (next.length > sel.max) return;
+      if (next.length > sel.max) {
+        // Say why the tap did nothing instead of only dimming the rest.
+        var full = optionById(item, optionId);
+        ui.limitHits[id] = full ? full.label : '';
+        keepScroll(render);
+        return;
+      }
+      delete ui.limitHits[id];
       ui.selections[id] = sel.options.map(function ids(o) { return o.id; })
         .filter(function picked(oid) { return next.indexOf(oid) !== -1; });
       if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'options') delete ui.fieldErrors[id];
-      render();
+      keepScroll(render);
     }
     function pickRejectOption(id, optionId) {
       var item = findItem(id);
@@ -2732,6 +3549,13 @@
       openUrl(event.detail && event.detail.href);
     });
 
+    function closePop(restore) {
+      var was = ui.pop;
+      if (!was) return;
+      ui.pop = null;
+      render();
+      if (restore) focusFirst('[data-action="pop"][data-id="' + cssId(was) + '"]');
+    }
     function closeComposer() {
       var opener = ui.composer && ui.composer.opener;
       ui.composer = null;
@@ -2739,19 +3563,34 @@
       var back = opener ? root.querySelector('[data-action="sendback"][data-id="' + opener + '"]') : null;
       if (back) back.focus();
     }
+    /** Re-render in place: a pick should not move the page under the finger. */
+    function keepScroll(fn) {
+      var scroller = document.scrollingElement || document.documentElement;
+      var top = scroller ? scroller.scrollTop : 0;
+      fn();
+      if (scroller && scroller.scrollTop !== top) scroller.scrollTop = top;
+    }
     function focusFirst(selector) {
-      var el = root.querySelector(selector) || (sheetHost ? sheetHost.querySelector(selector) : null);
+      var el = root.querySelector(selector) || (sheetHost ? sheetHost.querySelector(selector) : null) ||
+        (popHost ? popHost.querySelector(selector) : null) || (toastHost ? toastHost.querySelector(selector) : null);
       if (el) el.focus({ preventScroll: true });
     }
 
     document.addEventListener('keydown', function onKey(event) {
       var tabEl = event.target && event.target.closest ? event.target.closest('.pn-tab') : null;
       if (tabEl && (event.key === 'ArrowRight' || event.key === 'ArrowLeft' || event.key === 'Home' || event.key === 'End')) {
-        var order = Start ? ['needs', 'work', 'done', 'start'] : ['needs', 'work', 'done'];
+        var order = Views && Views.tabOrder ? Views.tabOrder() : ['needs', 'work', 'done'];
         var at = order.indexOf(tabEl.getAttribute('data-tab'));
         var next = event.key === 'Home' ? 0 : event.key === 'End' ? order.length - 1 : (at + (event.key === 'ArrowRight' ? 1 : -1) + order.length) % order.length;
         event.preventDefault();
         setTab(order[next]);
+        return;
+      }
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.target && event.target.matches && event.target.matches('textarea.fq-text[rows="1"]')) {
+        event.preventDefault();
+        var qid = event.target.getAttribute('data-id');
+        var qf = ui.forms[qid];
+        if (qf) stepForm(qid, qf.step + 1);
         return;
       }
       if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.target && event.target.id === 'st-text') {
@@ -2760,7 +3599,17 @@
         if (goBtn && !goBtn.disabled) goBtn.click();
         return;
       }
+      if (event.key === 'Enter' && !event.isComposing && event.target && event.target.matches && event.target.matches('input[data-action="steer-text"], input[data-action="goal-text"]')) {
+        event.preventDefault();
+        var enterGo = event.target.matches('[data-action="steer-text"]')
+          ? root.querySelector('[data-action="steer-send"][data-id="' + cssId(event.target.getAttribute('data-id')) + '"]')
+          : root.querySelector('[data-action="goal-send"]');
+        if (enterGo && !enterGo.disabled) enterGo.click();
+        return;
+      }
       if (event.key !== 'Escape') return;
+      if (ui.pop) { event.preventDefault(); transition('menu', function escPop() { closePop(true); }); return; }
+      if (ui.bulkPending) { event.preventDefault(); bulkUndo(); return; }
       if (ui.startWhoOpen) { event.preventDefault(); transition('menu', function esc() { ui.startWhoOpen = false; render(); focusFirst('[data-action="start-who"]'); }); return; }
       if (ui.wsOpen) { event.preventDefault(); transition('menu', function escWs() { closeWorkspaces(true); }); return; }
       if (ui.composer) { event.preventDefault(); closeComposer(); return; }
@@ -2787,6 +3636,13 @@
       }
     }, true);
 
+    document.addEventListener('pointerdown', function closePopOutside(event) {
+      if (!ui.pop) return;
+      var t = event.target;
+      if (t && t.closest && (t.closest('.pn-pop') || t.closest('[data-action="pop"]'))) return;
+      ui.pop = null;
+      render();
+    });
     document.addEventListener('pointerdown', function closeOnOutside(event) {
       if (!ui.wsOpen) return;
       var t = event.target;
@@ -2807,6 +3663,7 @@
       ui.readState = { phase: 'idle' };
       ui.tokens = {}; ui.receiptTokens = {}; ui.rulings = {}; ui.lastRuling = null; ui.composer = null;
       ui.selections = {}; ui.rejectPicks = {}; ui.answers = {}; ui.notes = {}; ui.fieldErrors = {};
+      ui.forms = {}; ui.reviews = {}; ui.limitHits = {}; ui.remember = {};
       ui.actionError = null; ui.changedSince = null; ui.chatCannotDecide = false;
       ui.listOpen = false; ui.evidenceOpen = false; ui.wholeQ = null;
       ui.tab = 'needs'; ui.work = null; ui.workPhase = 'idle'; ui.session = []; ui.openReceipt = null;
@@ -2817,6 +3674,13 @@
       ui.startStatus = null; ui.startWhoOpen = false;
       ui.wsOpen = false; ui.wsPhase = 'idle'; ui.workspaces = null; ui.wsError = null; ui.wsSwitchingTo = null;
       ui.seenRows = null; ui.lastCounts = null;
+      ui.outputs = null; ui.outputsPhase = 'idle'; ui.outSel = null; ui.outGoal = 'all'; ui.outPreviews = {}; ui.outDoorPending = {};
+      ui.goals = null; ui.goalsPhase = 'idle'; ui.goalSel = null; ui.goalForm = { open: false, text: '', status: null }; ui.goalLinks = {}; ui.goalReasons = {};
+      ui.pop = null; ui.steer = null; ui.ladderOpen = {}; ui.evidenceRaw = false;
+      ui.bulkMode = false; ui.bulkSel = {}; ui.bulkNote = null; ui.bulkNotes = {};
+      // A workspace change drops a pending bulk send: those decisions belong to the old scope.
+      if (bulkTimer) { window.clearTimeout(bulkTimer); bulkTimer = null; }
+      ui.bulkPending = null;
       share = X.createShareController({ modelContext: ext.modelContext });
       handledHint = { deepLink: null, context: null };
     }
@@ -2879,7 +3743,7 @@
 
     function typingInPanel() {
       var el = document.activeElement;
-      return Boolean(el && root.contains(el) && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'radio')));
+      return Boolean(el && root.contains(el) && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'radio' && el.type !== 'range')));
     }
     function liveRender() {
       if (typingInPanel()) { ui.renderPending = true; return; }
@@ -3110,7 +3974,7 @@
       if (ui.mode !== 'global' || !ui.snapshot || ui.auth) return false;
       if ((tour && tour.active()) || ui.wsOpen || ui.startWhoOpen || ui.composer) return false;
       if (!root.querySelector('.pn-tabs')) return false;
-      return !target.closest('textarea, input, select, .pn-tabs, .pn-asks, .st-try, .ws-menu, .st-menu, pre, [data-swipe="off"]');
+      return !ui.pop && !target.closest('textarea, input, select, .pn-tabs, .pn-asks, .st-try, .ws-menu, .st-menu, .pn-pop, .goalswitch, pre, [data-swipe="off"]');
     }
     root.addEventListener('pointerdown', function onSwipeStart(event) {
       swipe = null;
@@ -3122,7 +3986,7 @@
       var dx = event.clientX - swipe.x, dy = event.clientY - swipe.y, dt = Date.now() - swipe.at;
       swipe = null;
       if (dt > 800 || Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-      var order = ['needs', 'work', 'done', 'start'].filter(function has(t) { return Boolean(root.querySelector('#pn-tab-' + t)); });
+      var order = (Views && Views.tabOrder ? Views.tabOrder() : ['needs', 'work', 'done']).filter(function has(t) { return Boolean(root.querySelector('#pn-tab-' + t)); });
       var at = order.indexOf(ui.tab);
       var next = at === -1 ? null : order[dx < 0 ? at + 1 : at - 1];
       if (!next) return;

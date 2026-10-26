@@ -1089,7 +1089,7 @@ describe('OAuth scope enforcement through the live MCP registry', () => {
     }
     const allowed = await createHarness({ scope: 'agents:write initiatives:write' });
     try {
-      const result = await allowed.client.callTool({ name: 'orgx_handoff_task', arguments: { task_id: INITIATIVE_ID, agent_type: 'engineering' } });
+      const result = await allowed.client.callTool({ name: 'orgx_handoff_task', arguments: { task_id: INITIATIVE_ID, agent_type: 'engineering', idempotency_key: 'handoff-once' } });
       expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
       const call = apiMocks.callOrgxApiJson.mock.calls.find(([, path, init]) => path === '/api/tools/execute' && JSON.parse(String(init?.body ?? '{}')).tool_id === 'handoff_task');
       expect(call).toBeTruthy();

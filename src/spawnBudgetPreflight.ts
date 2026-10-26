@@ -106,6 +106,14 @@ export function evaluateSpawnBudgetPreflightResult(
       )} exceeds cap $${estimate.budget_check.max_cost_usd?.toFixed(4)}.`,
       details: {
         code: 'budget_cap_exceeded',
+        // Typed remedy facts (see src/remedyErrors.ts): the cap that blocked
+        // dispatch and the estimate it was compared against.
+        limit: {
+          ...(estimate.budget_check.max_cost_usd !== null && estimate.budget_check.max_cost_usd !== undefined
+            ? { max_cost_usd: estimate.budget_check.max_cost_usd } : {}),
+          ...(estimate.budget_check.estimated_cost_usd !== null && estimate.budget_check.estimated_cost_usd !== undefined
+            ? { estimated_cost_usd: estimate.budget_check.estimated_cost_usd } : {}),
+        },
         budget_preflight: preflight,
       },
     };
@@ -187,10 +195,21 @@ export function evaluateSpawnGateResult(
       message: `Spawn blocked by workspace budget cap (${reason}).`,
       details: {
         code: 'workspace_budget_blocked',
+        ...spawnGateRemedyFacts(decision),
         spawn_gate: decision,
       },
     };
   }
 
   return { ok: true };
+}
+
+/** Lift the cap and reset timing a spawn-gate denial names into typed remedy facts. */
+function spawnGateRemedyFacts(decision: Record<string, unknown>): Record<string, unknown> {
+  const limit = decision.limit ?? decision.cap ?? decision.capUsd ?? decision.cap_usd;
+  const retryAfter = decision.retry_after_seconds ?? decision.retryAfterSeconds;
+  return {
+    ...(limit !== undefined && limit !== null ? { limit } : {}),
+    ...(typeof retryAfter === 'number' && Number.isFinite(retryAfter) ? { retry_after_seconds: retryAfter } : {}),
+  };
 }

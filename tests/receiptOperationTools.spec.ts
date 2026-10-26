@@ -42,8 +42,14 @@ describe('explicit receipt operations', () => {
 
   it('does not downgrade an admission refusal into another write', async () => {
     const request = vi.fn().mockRejectedValue(Object.assign(new Error('reserved harness'), { status: 422 }));
-    await expect(executeReceiptOperation('orgx_submit_work_receipt', { receipt: receipt() }, { workspaceId, request })).rejects.toThrow('reserved harness');
+    await expect(executeReceiptOperation('orgx_submit_work_receipt', { receipt: receipt(), idempotency_key: 'stable-1' }, { workspaceId, request })).rejects.toThrow('reserved harness');
     expect(request).toHaveBeenCalledOnce();
+  });
+
+  it('requires an explicit idempotency key instead of deriving one from the document', async () => {
+    const request = vi.fn();
+    await expect(executeReceiptOperation('orgx_submit_work_receipt', { receipt: receipt() }, { workspaceId, request })).rejects.toThrow(/idempotency_key is required/);
+    expect(request).not.toHaveBeenCalled();
   });
 
   it('blocks hidden operation selectors and requires workspace scope before ledger reads', async () => {

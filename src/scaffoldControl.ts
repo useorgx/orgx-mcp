@@ -1,3 +1,4 @@
+export { normalizeScaffoldObjectiveAliases } from './generated/legacyScaffoldGoalAliases';
 export type ScaffoldMode = 'draft' | 'scaffold' | 'launch';
 export type ScaffoldResponseMode = 'fast_ack' | 'complete';
 
@@ -73,11 +74,6 @@ function stringArray(value: unknown): string[] {
     .filter(Boolean);
 }
 
-function arraysEqual(a: string[], b: string[]) {
-  if (a.length !== b.length) return false;
-  return a.every((value, index) => value === b[index]);
-}
-
 export function resolveScaffoldMode(args: Record<string, unknown>): {
   mode: ScaffoldMode;
   launchAfterCreate: boolean;
@@ -145,58 +141,6 @@ export function resolveScaffoldResponseMode(
 
   return {
     responseMode: mode === 'draft' ? 'complete' : 'fast_ack',
-    warnings,
-  };
-}
-
-function normalizeObjectiveNode(
-  value: unknown,
-  warnings: ScaffoldContractWarning[],
-  path: string
-): unknown {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
-  const node: Record<string, unknown> = { ...(value as Record<string, unknown>) };
-  const objectiveIds = stringArray(node.objective_ids);
-  const goalIds = stringArray(node.goal_ids);
-
-  if (objectiveIds.length > 0) {
-    if (goalIds.length === 0) {
-      node.goal_ids = objectiveIds;
-    } else if (!arraysEqual(objectiveIds, goalIds)) {
-      warnings.push({
-        code: 'objective_ids_goal_ids_conflict',
-        message: `${path}.goal_ids was kept because it differs from objective_ids.`,
-      });
-    }
-    delete node.objective_ids;
-  }
-
-  if (Array.isArray(node.workstreams)) {
-    node.workstreams = node.workstreams.map((child, index) =>
-      normalizeObjectiveNode(child, warnings, `${path}.workstreams[${index}]`)
-    );
-  }
-  if (Array.isArray(node.milestones)) {
-    node.milestones = node.milestones.map((child, index) =>
-      normalizeObjectiveNode(child, warnings, `${path}.milestones[${index}]`)
-    );
-  }
-  if (Array.isArray(node.tasks)) {
-    node.tasks = node.tasks.map((child, index) =>
-      normalizeObjectiveNode(child, warnings, `${path}.tasks[${index}]`)
-    );
-  }
-
-  return node;
-}
-
-export function normalizeScaffoldObjectiveAliases(
-  args: Record<string, unknown>
-): { args: Record<string, unknown>; warnings: ScaffoldContractWarning[] } {
-  const warnings: ScaffoldContractWarning[] = [];
-  const normalized = normalizeObjectiveNode(args, warnings, 'scaffold_initiative');
-  return {
-    args: (asRecord(normalized) ?? { ...args }) as Record<string, unknown>,
     warnings,
   };
 }

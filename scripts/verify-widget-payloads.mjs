@@ -14,18 +14,14 @@ let checks = 0;
 try {
   for (const width of [1440, 375]) {
     for (const theme of ['dark', 'light']) {
-      for (const action of ['estimate', 'guard', 'route']) {
+      for (const { action, allowed } of [{ action: 'estimate' }, { action: 'guard', allowed: false }, { action: 'guard', allowed: true }, { action: 'route' }]) {
         const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
-        await setup(page, { _action: action, allowed: action === 'guard' ? false : undefined, initiative_name: 'Launch', estimate: { recommended_model: 'standard', estimated_cost_usd: 0.02 } }, theme);
+        await setup(page, { _action: action, allowed, initiative_name: 'Launch', estimate: { recommended_model: 'standard', estimated_cost_usd: 0.02 } }, theme);
         await page.goto(`${origin}/widgets/task-spawned.html?resource=true&theme=${theme}`);
         // The kit-built card: its receipt rows replace the old dispatch spine.
         await page.locator('.wcard[data-state] .rows ox-receipt-row').first().waitFor();
-        const text = await renderedText(page.locator('#content'));
-        assert.match(text, /Nothing (?:was started|has started|started)/);
-        assert.doesNotMatch(text, /Queued|Routing pending|Sync time unavailable|Awaiting receipt ID|Open execution/i);
-        assert.equal(await page.locator('.wcard').getAttribute('data-state'), action === 'guard' ? 'blocked' : 'preflight');
-        if (action === 'guard') assert.match(text, /Can’t run|Dispatch blocked/i);
-        await page.screenshot({ path: `${output}/${action}-${theme}-${width}.png`, fullPage: true });
+        await assertPreflight(page, allowed === false);
+        await page.screenshot({ path: `${output}/${action}${allowed === true ? '-allowed' : ''}-${theme}-${width}.png`, fullPage: true });
         await page.close(); checks++;
       }
       const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
@@ -51,6 +47,42 @@ try {
       await page.close(); checks++;
     }
   }
+  // Execution evidence must fail the preflight contract even when its title
+  // claims that nothing started. These are local host fixtures, not tool calls.
+  for (const status of ['queued', 'in_progress']) {
+    const page = await browser.newPage({ viewport: { width: 375, height: 900 }, reducedMotion: 'reduce' });
+    await setup(page, { _action: 'spawn', title: 'Nothing was started', agent_name: 'Engineering', workspace_name: 'Contract fixture', run_id: 'contract-started-run', status }, 'dark');
+    await page.goto(`${origin}/widgets/task-spawned.html?resource=true&theme=dark`);
+    await page.locator('.wcard[data-state] .rows ox-receipt-row').first().waitFor();
+    assert.match(await renderedText(page.locator('#content')), /Nothing was started/);
+    await assert.rejects(() => assertPreflight(page), /preflight card state/);
+    await page.close(); checks++;
+  }
+  {
+    const page = await browser.newPage({ viewport: { width: 375, height: 900 }, reducedMotion: 'reduce' });
+    await setup(page, { _action: 'estimate', estimate: { estimated_cost_usd: 0.02 } }, 'dark');
+    await page.goto(`${origin}/widgets/task-spawned.html?resource=true&theme=dark`);
+    await page.locator('.wcard[data-state] .rows ox-receipt-row').first().waitFor();
+    await assertPreflight(page);
+    await page.locator('#dispatchFooter').evaluate(footer => footer.setAttribute('state', 'queued'));
+    await assert.rejects(() => assertPreflight(page), /preflight footer state/); checks++;
+    await page.locator('#dispatchFooter').evaluate(footer => footer.setAttribute('state', 'caught-up'));
+    await page.evaluate(async () => { try { await window.openai.callTool('orgx_spawn', {}); } catch {} });
+    await assert.rejects(() => assertPreflight(page), /preflight host effects/); checks++;
+    await page.evaluate(() => { window.__payloadEffects = []; window.openai.openExternal('https://useorgx.com/runs/contract-negative'); });
+    await assert.rejects(() => assertPreflight(page), /preflight host effects/); checks++;
+    await page.evaluate(() => { window.__payloadEffects = []; });
+    await assertPreflight(page);
+    const footer = page.locator('#dispatchFooter');
+    const attributes = await footer.evaluate(host => Array.from(host.attributes, attribute => [attribute.name, attribute.value]));
+    await footer.evaluate(host => {
+      if (!host.shadowRoot) throw new Error('Footer shadow root is unavailable to the contract');
+      host.shadowRoot.replaceChildren();
+    });
+    assert.deepEqual(await footer.evaluate(host => Array.from(host.attributes, attribute => [attribute.name, attribute.value])), attributes);
+    await assert.rejects(() => assertPreflight(page), /preflight visible heading/); checks++;
+    await page.close();
+  }
   for (const width of [1440, 375]) {
     const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
     await setup(page, null, 'dark');
@@ -64,8 +96,14 @@ try {
     assert.equal(await page.locator('.node-toggle[aria-expanded="true"]').count(), 0);
     await page.goto(`${origin}/widgets/agent-status.html?demo=true&theme=dark`);
     await page.locator('[data-agent-tab]').first().waitFor();
-    await page.locator('[data-agent-tab]').nth(1).click();
-    assert.equal(await page.locator('[data-agent-tab]').nth(1).getAttribute('aria-pressed'), 'true');
+    const nextAgent = page.locator('[data-agent-tab]').nth(1);
+    const nextAgentId = await nextAgent.getAttribute('data-agent-tab');
+    const nextAgentName = await nextAgent.locator('.switcher-name').innerText();
+    await nextAgent.click();
+    const selectedAgent = page.locator('[data-agent-tab][aria-pressed="true"]');
+    assert.equal(await selectedAgent.count(), 1);
+    assert.equal(await selectedAgent.getAttribute('data-agent-tab'), nextAgentId);
+    assert.equal(await page.locator('#agent-command-panel .command-who b').innerText(), nextAgentName);
     await page.locator('[data-action="toggle-details"]').click();
     assert.equal(await page.locator('[data-action="toggle-details"]').getAttribute('aria-expanded'), 'true');
     await page.goto(`${origin}/widgets/morning-brief.html?demo=true&theme=dark`);
@@ -89,8 +127,20 @@ try {
     assert.equal(await needsYou.getAttribute('aria-expanded'), 'true');
     await page.close(); checks += 6;
   }
-  console.log(`${checks} payload, pagination, and disclosure cases passed`);
+  console.log(`${checks} payload, no-dispatch negative-control, pagination, and disclosure cases passed`);
 } finally { await browser.close(); }
+
+async function assertPreflight(page, blocked = false) {
+  assert.equal(await page.locator('.wcard').getAttribute('data-state'), blocked ? 'blocked' : 'preflight', 'preflight card state');
+  const footer = page.locator('#dispatchFooter');
+  assert.equal(await footer.getAttribute('state'), blocked ? 'rejected' : 'caught-up', 'preflight footer state');
+  assert.equal(await footer.getAttribute('variant'), blocked ? 'confirms-in-orgx' : 'reads', 'preflight footer variant');
+  assert.equal(await footer.getAttribute('heading'), 'Nothing started', 'preflight must explain that work has not started');
+  assert.match(await renderedText(footer), /Nothing started/, 'preflight visible heading');
+  assert.ok(!(await footer.getAttribute('action-label')) && !(await footer.getAttribute('primary-label')), 'preflight must not offer an execution action');
+  assert.doesNotMatch(await renderedText(page.locator('#content')), /Queued|Routing pending|Sync time unavailable|Awaiting receipt ID|Open execution/i);
+  assert.deepEqual(await page.evaluate(() => window.__payloadEffects), [], 'preflight host effects');
+}
 
 // What a reader sees: light DOM text plus the visible text inside the kit
 // elements' shadow roots (chip labels, footer headings, receipt rows).
@@ -114,7 +164,8 @@ async function renderedText(locator) {
       readShadows(element);
     };
     const readShadows = (scope) => {
-      for (const host of scope.querySelectorAll('*')) {
+      // A locator can target the custom element itself, not only its parent.
+      for (const host of [scope, ...scope.querySelectorAll('*')]) {
         if (!host.shadowRoot) continue;
         for (const child of host.shadowRoot.children) if (child instanceof HTMLElement) visit(child);
       }
@@ -134,7 +185,9 @@ async function setup(page, payload, theme) {
   await page.addInitScript(({ payload, theme }) => {
     if (payload === null) return;
     let calls = 0;
-    window.openai = { theme, toolOutput: payload, setWidgetHeight() {}, openExternal() {}, callTool: async (name, args) => {
+    window.__payloadEffects = [];
+    window.openai = { theme, toolOutput: payload, setWidgetHeight() {}, openExternal: (...args) => window.__payloadEffects.push({ kind: 'openExternal', args }), callTool: async (name, args) => {
+      window.__payloadEffects.push({ kind: 'callTool', name, args });
       if (name !== 'orgx_search' || args.offset !== 8) throw new Error('Unexpected continuation');
       if (++calls === 1) throw new Error('Temporary failure');
       return { structuredContent: { type: 'task', results: [{ id: 'task-8', name: 'Campaign 8' }], pagination: { has_more: false }, next_call: null } };

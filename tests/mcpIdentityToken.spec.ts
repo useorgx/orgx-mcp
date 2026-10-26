@@ -130,7 +130,12 @@ describe('MCP OAuth identity token', () => {
     expect(env.OAUTH_PROVIDER.completeAuthorization).not.toHaveBeenCalled();
   });
 
-  it('rejects unsigned browser-supplied identity when the internal secret is configured', async () => {
+  it.each([
+    { lifecycle: 'absent', context: undefined, stateReads: 0 },
+    { lifecycle: 'incomplete', context: {}, stateReads: 0 },
+    { lifecycle: 'malformed', context: { waitUntil: true }, stateReads: 0 },
+    { lifecycle: 'unavailable', context: { waitUntil() { throw new Error('lifecycle closed'); } }, stateReads: 1 },
+  ])('rejects unsigned browser-supplied identity with an $lifecycle analytics lifecycle', async ({ context, stateReads }) => {
     const env = makeEnv();
 
     const response = await authHandler.fetch(
@@ -138,12 +143,12 @@ describe('MCP OAuth identity token', () => {
         'https://mcp.useorgx.com/oauth/callback?state_key=state-1&user_id=victim&user_email=victim@example.com'
       ),
       env,
-      {} as any
+      context as unknown as ExecutionContext
     );
 
     expect(response.status).toBe(302);
     expect(response.headers.get('location')).toContain('error=invalid_request');
     expect(env.OAUTH_PROVIDER.completeAuthorization).not.toHaveBeenCalled();
-    expect(env.OAUTH_KV.get).not.toHaveBeenCalled();
+    expect(env.OAUTH_KV.get).toHaveBeenCalledTimes(stateReads);
   });
 });

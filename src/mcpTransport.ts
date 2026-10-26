@@ -45,6 +45,8 @@ export type AgentHandler<Env, Props> = {
 export type AuthResult = {
   userId?: string;
   orgxUserId?: string;
+  pairingAttemptId?: string;
+  telemetryOptOut?: boolean;
   scope?: string;
   email?: string;
   response?: Response;
@@ -775,6 +777,7 @@ async function captureMcpToolCallVisibility<Env>(
       outcome: status === 'success' && !observation.logicalResultObserved ? 'attempt' : status,
     }),
     ...metadata,
+    pairing_attempt_id: auth.pairingAttemptId,
     request_uuid: response.headers.get('x-orgx-request-id') ?? crypto.randomUUID(),
     trace_id: response.headers.get('x-orgx-trace-id'),
     span_id: response.headers.get('x-orgx-span-id'),
@@ -1029,7 +1032,7 @@ export async function handleMcpRequest<Env, Props>(
   if ('response' in auth && auth.response) {
     if (auth.userId) {
       const rejected = await normalizeRequestBody(request, connectionProfile, undefined, false);
-      const rejectedCtx = { ...ctx, props: { ...asRecord(ctx.props), userId: auth.userId, ...(request.headers.get('dnt') === '1' ? { telemetryOptOut: true } : {}), operationContractVersion: 'unknown' } };
+      const rejectedCtx = { ...ctx, props: { ...asRecord(ctx.props), userId: auth.userId, ...(request.headers.get('dnt') === '1' || auth.telemetryOptOut ? { telemetryOptOut: true } : {}), operationContractVersion: 'unknown' } };
       ctx.waitUntil?.(captureMcpToolCallsVisibility(env, rejectedCtx as ExecutionContextWithProps<unknown>, auth,
         rejected.toolCalls ?? [], auth.response, { requestStartedAt, authMs, normalizationMs: 0, handlerMs: 0,
           responseHeadersMs: Math.max(0, Date.now() - requestStartedAt), profile: connectionProfile,
@@ -1044,12 +1047,12 @@ export async function handleMcpRequest<Env, Props>(
   const nextProps: Record<string, unknown> = {
     ...existingProps,
     userId: auth.userId,
-    ...(request.headers.get('dnt') === '1' ? { telemetryOptOut: true } : {}),
+    ...(request.headers.get('dnt') === '1' || auth.telemetryOptOut ? { telemetryOptOut: true } : {}),
     scope: auth.scope,
     email: auth.email,
     profile: connectionProfile,
   };
-  if (request.headers.get('dnt') !== '1') delete nextProps.telemetryOptOut;
+  if (request.headers.get('dnt') !== '1' && !auth.telemetryOptOut) delete nextProps.telemetryOptOut;
   if (orgxUserId) nextProps.orgxUserId = orgxUserId;
   else delete nextProps.orgxUserId;
   // Reject stale sessions before dispatch; fresh sessions import the current catalog.
@@ -1234,11 +1237,11 @@ export async function handleMcpWebSocket<Env, Props>(
   const props: Record<string, unknown> = {
     ...existingProps,
     userId: auth.userId,
-    ...(request.headers.get('dnt') === '1' ? { telemetryOptOut: true } : {}),
+    ...(request.headers.get('dnt') === '1' || auth.telemetryOptOut ? { telemetryOptOut: true } : {}),
     scope: auth.scope,
     email: auth.email,
   };
-  if (request.headers.get('dnt') !== '1') delete props.telemetryOptOut;
+  if (request.headers.get('dnt') !== '1' && !auth.telemetryOptOut) delete props.telemetryOptOut;
   if (orgxUserId) props.orgxUserId = orgxUserId;
   else delete props.orgxUserId;
   const ctxWithProps = ctx as ExecutionContextWithProps<Props>;

@@ -19,8 +19,17 @@ function adapter(id: string) {
   return tool!;
 }
 
-function parse(id: string, args: Record<string, unknown>) {
+const KEY = 'test:retry-key:1';
+
+function parseRaw(id: string, args: Record<string, unknown>) {
   return z.object(adapter(id).inputSchema).strict().parse(args);
+}
+
+/** Writes require a retry key; supply one unless the case sets its own. */
+function parse(id: string, args: Record<string, unknown>) {
+  const schema = adapter(id).inputSchema.idempotency_key;
+  const keyed = schema && !schema.isOptional() && !('idempotency_key' in args) ? { ...args, idempotency_key: KEY } : args;
+  return parseRaw(id, keyed);
 }
 
 describe('fixed workflow operation contracts', () => {
@@ -103,8 +112,9 @@ describe('fixed workflow operation contracts', () => {
   it('accepts the scaffold widget launch payload and fixes its initiative target', () => {
     const tool = adapter('orgx_launch_initiative');
     const args = parse(tool.id, { initiative_id: UUID });
-    expect(tool.toCanonicalArgs(args)).toEqual({ id: UUID, type: 'initiative', action: 'launch' });
-    expect(tool.toCanonicalArgs({ ...args, id: 'another-id', type: 'task', action: 'delete' })).toEqual({ id: UUID, type: 'initiative', action: 'launch' });
+    expect(tool.toCanonicalArgs(args)).toEqual({ id: UUID, type: 'initiative', action: 'launch', idempotency_key: KEY });
+    expect(tool.toCanonicalArgs({ ...args, id: 'another-id', type: 'task', action: 'delete' })).toEqual({ id: UUID, type: 'initiative', action: 'launch', idempotency_key: KEY });
+    expect(() => parseRaw(tool.id, { initiative_id: UUID })).toThrow(/idempotency_key is required/);
     expect(() => parse(tool.id, { id: UUID })).toThrow();
     expect(resolveWorkflowInvocationSecuritySchemes(tool.id, args)).toEqual(SECURITY_SCHEMES.handoffRequiresAuth);
   });
@@ -114,8 +124,9 @@ describe('fixed workflow operation contracts', () => {
     expect(() => parse(tool.id, { session_id: UUID, plan_content: '# Plan' })).toThrow();
     const args = parse(tool.id, { session_id: UUID, plan_content: '# Plan', expected_version: 3, edit_summary: 'Added acceptance criteria' });
     expect(tool.backendRequest!(args)).toEqual({ method: 'POST', path: '/api/v1/workflows/save-plan',
-      body: { session_id: UUID, plan: '# Plan', expected_version: 3, edit_summary: 'Added acceptance criteria' }, headers: undefined,
+      body: { session_id: UUID, plan: '# Plan', expected_version: 3, edit_summary: 'Added acceptance criteria' }, headers: { 'Idempotency-Key': KEY },
     });
+    expect(() => parseRaw(tool.id, { session_id: UUID, plan_content: '# Plan', expected_version: 3 })).toThrow(/idempotency_key is required/);
     expect(tool.annotations.idempotentHint).toBe(false);
     expect(adapter('orgx_record_plan_edit').toCanonicalArgs({ session_id: UUID, edit_summary: 'Feedback', plan_content: '# Overwrite' })).toEqual({ session_id: UUID, edit_summary: 'Feedback', action: 'record_edit' });
   });
@@ -124,11 +135,12 @@ describe('fixed workflow operation contracts', () => {
     const tool = adapter('orgx_complete_plan');
     const base = { session_id: `orgx://plan_session/${UUID}`, plan_content: '# Final plan', expected_version: 3 };
     expect(() => parse(tool.id, { session_id: UUID, plan_content: '# Stale final plan' })).toThrow();
-    expect(() => parse(tool.id, { ...base, idempotency_key: 'no-write-replay' })).toThrow();
+    expect(() => parseRaw(tool.id, base)).toThrow(/idempotency_key is required/);
     expect(() => parse(tool.id, { ...base, attach_to: { entity_type: 'task', entity_id: UUID } })).toThrow();
     expect(() => parse(tool.id, { ...base, plan_content: '   ' })).toThrow();
     const args = parse(tool.id, { ...base, workspace_id: UUID, attach_to: [{ entity_type: 'task', entity_id: UUID }] });
-    expect(tool.backendRequest!(args)).toEqual({ method: 'POST', path: '/api/v1/workflows/complete-plan', body: args });
+    const { idempotency_key: _key, ...body } = args;
+    expect(tool.backendRequest!(args)).toEqual({ method: 'POST', path: '/api/v1/workflows/complete-plan', body, headers: { 'Idempotency-Key': KEY } });
     expect(tool.annotations.idempotentHint).toBe(false);
     const completed = {
       data: { id: UUID, session_id: UUID, uuid: UUID, uri: `orgx://plan_session/${UUID}`,
@@ -143,20 +155,20 @@ describe('fixed workflow operation contracts', () => {
     expect(() => WORKFLOW_OUTPUT_SCHEMAS.orgx_complete_plan.parse({ ...completed, data: { ...completed.data, status: 'active' } })).toThrow();
   });
 
-  it('keeps an optional plan-create replay key in the header and out of saved plan content', () => {
+  it('keeps the required plan-create replay key in the header and out of saved plan content', () => {
     const tool = adapter('orgx_start_plan');
     expect(tool.backendRequest!(parse(tool.id, { title: 'Plan', workspace_id: UUID, idempotency_key: 'create-plan-once' }))).toEqual({
       method: 'POST', path: '/api/v1/workflows/save-plan',
       body: { title: 'Plan', plan: '', workspace_id: UUID }, headers: { 'Idempotency-Key': 'create-plan-once' },
     });
-    expect(tool.backendRequest!(parse(tool.id, { title: 'Unkeyed plan' })).headers).toBeUndefined();
+    expect(() => parseRaw(tool.id, { title: 'Unkeyed plan' })).toThrow(/idempotency_key is required/);
     expect(tool.annotations.idempotentHint).toBe(false);
-    expect(() => parse('orgx_save_plan', { session_id: UUID, plan_content: '# Plan', expected_version: 1, idempotency_key: 'cannot-replay-updates' })).toThrow();
+    expect(tool.backendRequest!(parse('orgx_save_plan', { session_id: UUID, plan_content: '# Plan', expected_version: 1, idempotency_key: 'save-plan-once' })).headers).toEqual({ 'Idempotency-Key': 'save-plan-once' });
   });
 
   it('requires a declared hierarchy and retry key while fixing creation to private', () => {
     const tool = adapter('orgx_create_initiative_hierarchy');
-    expect(() => parse(tool.id, { plan: PLAN })).toThrow();
+    expect(() => parseRaw(tool.id, { plan: PLAN })).toThrow();
     expect(() => parse(tool.id, { plan: { ...PLAN, force: true }, idempotency_key: 'fixture-key' })).toThrow();
     const args = parse(tool.id, { plan: PLAN, workspace_id: UUID, idempotency_key: 'fixture-key' });
     const request = tool.backendRequest!({ ...args, action: 'launch', mode: 'launch', visibility: 'public', user_id: UUID });
@@ -184,7 +196,7 @@ describe('fixed workflow operation contracts', () => {
       evidence_refs: [{ url: 'https://github.com/org/repo/actions/runs/1', hash: 'sha256:actual' }],
     };
     const base = { type: 'task', id: UUID, artifact: { artifact_type: 'eng.pull_request', external_url: 'https://github.com/org/repo/pull/1', modality_proof } };
-    expect(parse('orgx_complete_work_with_proof', base)).toEqual(base);
+    expect(parse('orgx_complete_work_with_proof', base)).toEqual({ ...base, idempotency_key: KEY });
     for (const patch of [
       { artifact_version: 2 }, { evidence_refs: [] }, { checked_at: 'yesterday' },
       { eval: { status: 'passed', score: 1 } }, { owner_id: UUID },
@@ -209,7 +221,7 @@ describe('fixed workflow operation contracts', () => {
   it('binds an exact transition path and a supported target instead of legacy action aliases', () => {
     const tool = adapter('orgx_reassign_streams_work');
     expect(() => parse(tool.id, { type: 'workstream', id: UUID })).toThrow();
-    expect(tool.backendRequest!(parse(tool.id, { type: 'initiative', id: UUID }))).toEqual({ method: 'POST', path: `/api/entities/initiative/${UUID}/reassign_streams`, body: {}, headers: undefined });
+    expect(tool.backendRequest!(parse(tool.id, { type: 'initiative', id: UUID }))).toEqual({ method: 'POST', path: `/api/entities/initiative/${UUID}/reassign_streams`, body: {}, headers: { 'Idempotency-Key': KEY } });
     expect(() => parse('orgx_start_work', { type: 'decision', id: UUID })).toThrow();
   });
 

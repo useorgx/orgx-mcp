@@ -22,7 +22,9 @@ describe('panel v2 tabs', () => {
   it('shows Needs you, In progress and Done with honest counts', async () => {
     const m = await open();
     const tabs = Array.from(doc(m).querySelectorAll('.pn-tab')).map((t) => t.textContent);
-    expect(tabs).toEqual(['Needs you2', 'In progress', 'Done', 'Start']); // Done counts only once something was settled here
+    // Done counts only once something was settled here; Start opens from the header's +, not a tab.
+    expect(tabs).toEqual(['Needs you2', 'In progress', 'Outputs', 'Goals', 'Done']);
+    expect(doc(m).querySelector('#pn-tab-start')!.getAttribute('aria-haspopup')).toBe('menu');
     expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('needs');
   });
 
@@ -64,9 +66,9 @@ describe('panel v2 tabs', () => {
     needs.focus();
     needs.dispatchEvent(new m.dom.window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     await m.flush();
-    // Left from the first tab wraps to the last: Start.
-    expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('start');
-    expect(doc(m).activeElement!.id).toBe('pn-tab-start');
+    // Left from the first tab wraps to the last: Done.
+    expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('done');
+    expect(doc(m).activeElement!.id).toBe('pn-tab-done');
   });
 
   it('keeps a receipt in Done for a decision settled in this panel', async () => {

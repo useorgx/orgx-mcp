@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-12T07:59:23.142Z",
-  "sourceHash": "69de103a90ac0647",
+  "generatedAt": "2026-10-23T11:55:54.655Z",
+  "sourceHash": "38b8ee272286dd3e",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -165,7 +165,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -173,11 +173,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -475,7 +475,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -483,11 +483,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -1910,10 +1910,12 @@
             "type": "string",
             "enum": [
               "work",
+              "outputs",
+              "goals",
               "workspaces",
               "history"
             ],
-            "description": "Optional panel view: running work, authorized workspace membership, or settled decisions."
+            "description": "Optional panel view: running work, outputs agents made, goals and their progress, authorized workspace membership, or settled decisions."
           },
           "range": {
             "type": "string",
@@ -4591,7 +4593,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -4599,11 +4601,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -6388,7 +6390,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -6396,11 +6398,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -7424,10 +7426,197 @@
             "maxLength": 120,
             "description": "Recommended option when the agent can justify one"
           },
+          "recommended_option_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "maxItems": 10,
+            "description": "Recommended options for multi_select; pre-checked for the owner"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "textarea",
+                    "boolean",
+                    "single_select",
+                    "multi_select"
+                  ]
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "placeholder": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      },
+                      "description": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "recommended": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "label"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "maxItems": 10
+                },
+                "min_select": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "max_select": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 12,
+            "description": "Several questions the owner answers one at a time; use instead of options when one answer is not enough"
+          },
+          "review_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "maxLength": 2000
+                },
+                "type": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "Artifact type, e.g. social_post, doc, image"
+                },
+                "flagged": {
+                  "type": "boolean"
+                },
+                "flag_note": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 2,
+            "maxItems": 20,
+            "description": "Outputs the owner keeps or sends back one by one, each sent-back item with its own note"
+          },
           "recommended_action": {
             "type": "string",
             "maxLength": 1000,
             "description": "Concise recommendation and why it is safest or highest leverage"
+          },
+          "suggested_answers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "maxItems": 6,
+            "description": "Ready answers to a free-text question; the owner can pick one and edit it before sending"
+          },
+          "consequences": {
+            "type": "object",
+            "properties": {
+              "approve": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "What happens if the owner goes ahead"
+              },
+              "reject": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "What happens if the owner sends it back"
+              },
+              "defer": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "What happens if nobody decides"
+              },
+              "not_covered": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "description": "What this decision does not settle"
+              }
+            },
+            "additionalProperties": false,
+            "description": "What each outcome does, shown beside the question before the owner decides"
           },
           "blocking": {
             "type": "boolean",
@@ -8045,7 +8234,7 @@
     {
       "id": "orgx_widget_decide",
       "title": "Decide from the decisions widget",
-      "description": "Widget-only: settles one pending item (a decision of any type, an agent-run approval, or an action awaiting approval) after the person clicks in the decisions widget or the OrgX panel. Sends what the item's widget_actions ask for: an option, several options, a typed answer or a reason. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the item as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.",
+      "description": "Widget-only: settles one pending item (a decision of any type, an agent-run approval, an action awaiting approval, or a suggestion to link a captured session to an initiative) after the person clicks in the decisions widget or the OrgX panel. Sends what the item's widget_actions ask for: an option, several options, a typed answer, answers to several questions, a verdict per item or a reason. USE WHEN: the widget sends a click with its approval token from result metadata, which models never see. NEXT: the widget shows the item as settled. DO NOT USE: from a model or without a widget approval token; use approve_decision or reject_decision to point the person to where they decide.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
@@ -8053,14 +8242,15 @@
           "decision_id": {
             "type": "string",
             "minLength": 1,
-            "description": "Pending item being settled (decision, agent-run approval or action id)"
+            "description": "Pending item being settled (decision, agent-run approval, action or session id)"
           },
           "kind": {
             "type": "string",
             "enum": [
               "decision",
               "approval",
-              "action"
+              "action",
+              "link"
             ],
             "description": "The item's widget_actions.kind. Defaults to decision."
           },
@@ -8098,6 +8288,66 @@
             "minItems": 1,
             "maxItems": 12,
             "description": "The options the person chose, when widget_actions.selection.mode is multiple"
+          },
+          "answers": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "maxItems": 10
+                }
+              ]
+            },
+            "description": "Answers by field id, when widget_actions.questions lists fields"
+          },
+          "item_reviews": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "verdict": {
+                  "type": "string",
+                  "enum": [
+                    "keep",
+                    "send_back"
+                  ]
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "id",
+                "verdict"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 20,
+            "description": "Keep or send back each item, when widget_actions.items lists items; a sent-back item needs a note"
+          },
+          "remember": {
+            "type": "boolean",
+            "description": "Propose the typed answer as a rule for next time, when widget_actions.answer.save_as_precedent"
           },
           "approval_token": {
             "type": "string",
@@ -8948,7 +9198,7 @@
     {
       "id": "orgx_submit_work_receipt",
       "title": "Submit OrgX Work Receipt",
-      "description": "Import one portable Agent Work Receipt v0.1 or v0.2 into the authenticated workspace ledger. Preserves the full document, including identified criteria, evidence, provenance, lineage and review extensions. Producer outcome, verification and acceptance are claims; import does not verify, accept or complete work. The canonical import enforces document limits, reserved harness names, workspace quota and content-bound idempotency. Never falls back to a legacy write after rejection.",
+      "description": "Import one portable Agent Work Receipt v0.1 or v0.2 into the authenticated workspace ledger. Preserves the full document, including identified criteria, evidence, provenance, lineage and review extensions. Producer outcome, verification and acceptance are claims; import does not verify, accept or complete work. The canonical import enforces document limits, reserved harness names, workspace quota and the required document-bound idempotency key. Never falls back to a legacy write after rejection.",
       "category": "Portable Work Receipts",
       "inputSchema": {
         "type": "object",
@@ -10303,11 +10553,12 @@
           "idempotency_key": {
             "type": "string",
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$",
-            "description": "Retry key bound to this document. Omit to use its content hash."
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected. Bound to this receipt document; up to 160 characters of letters, digits, and . _ : / -."
           }
         },
         "required": [
-          "receipt"
+          "receipt",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -12144,7 +12395,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -12152,11 +12403,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -12798,7 +13049,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -12807,7 +13060,8 @@
         },
         "required": [
           "type",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -12861,7 +13115,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -12870,7 +13126,8 @@
         },
         "required": [
           "type",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -12971,7 +13228,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -13014,6 +13273,7 @@
           "id",
           "name",
           "artifact_type",
+          "idempotency_key",
           "location"
         ],
         "additionalProperties": false,
@@ -13070,7 +13330,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -13080,7 +13342,8 @@
         "required": [
           "type",
           "id",
-          "note"
+          "note",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -13130,11 +13393,18 @@
             "type": "string",
             "minLength": 1,
             "description": "UUID of the node"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "level",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -13200,7 +13470,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -13208,7 +13480,8 @@
           }
         },
         "required": [
-          "decision"
+          "decision",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -13456,7 +13729,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -13465,7 +13740,8 @@
         },
         "required": [
           "type",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -13563,12 +13839,19 @@
             "type": "string",
             "format": "uuid",
             "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "session_id",
           "plan_content",
-          "expected_version"
+          "expected_version",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -13875,7 +14158,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -13890,7 +14175,8 @@
         "required": [
           "type",
           "id",
-          "artifact"
+          "artifact",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -14316,7 +14602,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "continue_on_error": {
             "type": "boolean"
@@ -14358,7 +14644,8 @@
           }
         },
         "required": [
-          "title"
+          "title",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -14498,7 +14785,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -14506,11 +14793,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -14551,7 +14838,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -14560,7 +14849,8 @@
         },
         "required": [
           "title",
-          "instructions"
+          "instructions",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -14623,7 +14913,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -14632,7 +14924,8 @@
         },
         "required": [
           "title",
-          "decision"
+          "decision",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -14723,7 +15016,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -14731,7 +15026,8 @@
           }
         },
         "required": [
-          "title"
+          "title",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -15032,7 +15328,8 @@
           "idempotency_key": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
@@ -15131,7 +15428,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -15153,6 +15452,7 @@
         },
         "required": [
           "title",
+          "idempotency_key",
           "workstream_id"
         ],
         "additionalProperties": false,
@@ -15247,7 +15547,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -15273,6 +15575,7 @@
         },
         "required": [
           "title",
+          "idempotency_key",
           "workstream_id"
         ],
         "additionalProperties": false,
@@ -15367,7 +15670,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -15381,6 +15686,7 @@
         },
         "required": [
           "title",
+          "idempotency_key",
           "initiative_id"
         ],
         "additionalProperties": false,
@@ -15442,7 +15748,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -15452,7 +15760,8 @@
         "required": [
           "type",
           "id",
-          "note"
+          "note",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -15482,7 +15791,7 @@
     {
       "id": "orgx_estimate_agent_task",
       "title": "Estimate OrgX Agent Task",
-      "description": "Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run.",
+      "description": "Estimate routing and cost for an existing task or a proposed task. Never creates a task, consumes a dispatch allowance, or starts a run. An estimate grants no effects: the dispatch that follows must declare its effects scope, or the run gets no external effects (effect_scope_missing).",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -15646,7 +15955,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -15656,7 +15967,8 @@
         "required": [
           "type",
           "id",
-          "note"
+          "note",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -15738,6 +16050,7 @@
         "chatgpt",
         "claude-directory",
         "claude-directory-legacy",
+        "claude-code",
         "read-only",
         "memory",
         "commander",
@@ -15791,6 +16104,7 @@
         "chatgpt",
         "claude-directory",
         "claude-directory-legacy",
+        "claude-code",
         "read-only",
         "memory",
         "commander",
@@ -15867,6 +16181,7 @@
         "extended",
         "chatgpt",
         "claude-directory",
+        "claude-code",
         "read-only"
       ]
     },
@@ -15944,6 +16259,7 @@
         "chatgpt",
         "claude-directory",
         "claude-directory-legacy",
+        "claude-code",
         "read-only",
         "memory",
         "commander",
@@ -16002,6 +16318,7 @@
         "chatgpt",
         "claude-directory",
         "claude-directory-legacy",
+        "claude-code",
         "read-only",
         "commander",
         "observer"
@@ -16010,7 +16327,7 @@
     {
       "id": "orgx_get_workspace_context",
       "title": "Read OrgX Workspace Context",
-      "description": "Read the authorized workspace, optional initiative context, and typed references. Does not select a workspace or create a session.",
+      "description": "Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, and capture health (which clients reported recently and how many sessions are unlinked). Does not select a workspace or create a session.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -16170,7 +16487,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -16178,11 +16495,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -16223,7 +16540,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -16232,7 +16551,8 @@
         },
         "required": [
           "task_id",
-          "agent_type"
+          "agent_type",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -16313,6 +16633,12 @@
             "maximum": 50000,
             "description": "Approximate maximum hydrated context characters"
           },
+          "relations": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Work-graph depth around the initiative in the brief: 0 skips it, 1 (default) adds edges that touch it"
+          },
           "session_id": {
             "type": "string",
             "description": "Optional bootstrap/session identifier"
@@ -16372,6 +16698,7 @@
         "claude-directory",
         "claude-directory-legacy",
         "claude-plugin",
+        "claude-code",
         "claude-code-legacy",
         "read-only",
         "memory",
@@ -16400,7 +16727,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -16408,7 +16737,8 @@
           }
         },
         "required": [
-          "initiative_id"
+          "initiative_id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -16821,11 +17151,18 @@
             "type": "string",
             "minLength": 1,
             "description": "UUID of the node"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "level",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -16960,7 +17297,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -16969,7 +17308,8 @@
         },
         "required": [
           "type",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -17015,12 +17355,15 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "session_id",
-          "edit_summary"
+          "edit_summary",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -17125,7 +17468,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -17134,7 +17479,8 @@
         },
         "required": [
           "type",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -17173,10 +17519,17 @@
             "type": "string",
             "format": "uuid",
             "description": "Completed work_artifacts UUID to evaluate"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
-          "artifact_id"
+          "artifact_id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -17225,12 +17578,15 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "session_id",
-          "plan_content"
+          "plan_content",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -17280,11 +17636,18 @@
             "type": "string",
             "minLength": 1,
             "description": "UUID of the node"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "level",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -17339,11 +17702,18 @@
             "type": "string",
             "minLength": 1,
             "description": "UUID of the node"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "level",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -17414,12 +17784,19 @@
             "type": "string",
             "format": "uuid",
             "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
           "session_id",
           "plan_content",
-          "expected_version"
+          "expected_version",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -17586,6 +17963,7 @@
         "claude-directory",
         "claude-directory-legacy",
         "claude-plugin",
+        "claude-code",
         "claude-code-legacy",
         "read-only",
         "memory",
@@ -17620,7 +17998,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -17678,6 +18058,7 @@
         "required": [
           "type",
           "id",
+          "idempotency_key",
           "artifact"
         ],
         "additionalProperties": false,
@@ -17814,7 +18195,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. Internal work (editing files, running tests) is not an effect and needs no declaration."
+                "description": "Effects the work may perform without further approval. One of: email.send, message.send, crm.write, campaign.schedule, document.write, issue.write, calendar.write, computer.use, repo.sync, ci.trigger, repo.push, pull_request.create, merge, deploy, package.publish. An empty list declares that the work needs none. Internal work (editing files, running tests) is not an effect and needs no declaration."
               },
               "approval_required": {
                 "type": "array",
@@ -17822,11 +18203,11 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. An unknown name is refused, so a typo cannot silently gate nothing."
+                "description": "Effects that must wait for a person to approve them, per run. Same names as allowed. They stay approval-required in every child or handed-off run. An unknown name is refused (effect_scope_invalid), so a typo cannot silently gate nothing."
               }
             },
             "additionalProperties": false,
-            "description": "Optional declared effect scope for the work. Recorded on the run and shown in the receipt. Declaring an effect never grants it — the platform intersects it with the caller authority."
+            "description": "Declared effect scope for the work. Fails closed: omit it and the run gets NO external effects (any attempt is refused with effect_scope_missing); send { \"allowed\": [] } to declare that it needs none. Declare every external effect the work needs. Recorded on the run and shown in the receipt. Declaring an effect never grants it: the platform intersects it with the caller authority, a child or handed-off run's scope is intersected with its parent's, and approval_required effects stay approval-required in children. On effect_scope_missing or effect_scope_invalid, re-dispatch with an explicit, valid scope; never route the effect through another tool."
           },
           "acceptance": {
             "type": "array",
@@ -17867,7 +18248,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -17875,7 +18258,8 @@
           }
         },
         "required": [
-          "task_id"
+          "task_id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -17908,7 +18292,7 @@
     {
       "id": "orgx_start_plan",
       "title": "Start OrgX Plan",
-      "description": "Create a durable planning draft with a title and optional initial markdown. An optional retry key replays the same unedited draft; conflicting content or a draft edited since creation returns a conflict. Does not create executable work or dispatch agents.",
+      "description": "Create a durable planning draft with a title and optional initial markdown. The required retry key replays the same unedited draft; conflicting content or a draft edited since creation returns a conflict. Does not create executable work or dispatch agents.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -17932,11 +18316,12 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           }
         },
         "required": [
-          "title"
+          "title",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -18041,7 +18426,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -18050,7 +18437,8 @@
         },
         "required": [
           "type",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -18102,7 +18490,9 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "type": "string",
@@ -18111,7 +18501,8 @@
         },
         "required": [
           "type",
-          "id"
+          "id",
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -18141,7 +18532,7 @@
     {
       "id": "orgx_update_work",
       "title": "Update OrgX Work Content",
-      "description": "Apply a nonempty typed content patch to initiative, workstream, milestone, or task. Permits text, priority, dates, objectives, notes, and tags; cannot change workflow status, approvals, ownership authority, or execution policy.",
+      "description": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -18222,11 +18613,147 @@
             },
             "additionalProperties": false
           },
+          "artifact": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "artifact_type": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "artifact_url": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "artifact_url"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "external_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "external_url"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "preview_markdown": {
+                "type": "string",
+                "maxLength": 25000
+              },
+              "output_front_door": {
+                "type": "object",
+                "properties": {
+                  "answer": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "decisions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "decisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "question": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "recommendation": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        },
+                        "impact": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        }
+                      },
+                      "required": [
+                        "decisionId",
+                        "question",
+                        "recommendation",
+                        "impact"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 3,
+                    "default": []
+                  },
+                  "checked": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "maxItems": 8,
+                    "default": []
+                  },
+                  "notChecked": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "maxItems": 8,
+                    "default": []
+                  }
+                },
+                "required": [
+                  "answer"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "artifact_type",
+              "location"
+            ],
+            "additionalProperties": false
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Workspace UUID. Defaults to the authenticated session workspace when unambiguous."
+          },
           "idempotency_key": {
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "description": "Stable retry key for this request. Reuse it only with identical input."
+            "description": "Required idempotency key for this write. Generate one stable value per intended change (for example \"<client>:<operation>:<uuid>\") and resend the same key with identical input when retrying after a timeout or unknown outcome; OrgX applies the write at most once and replays the original result. Use a new key for a different change; reusing a key with different input is rejected."
           },
           "session_id": {
             "$ref": "#/properties/id"
@@ -18235,7 +18762,7 @@
         "required": [
           "type",
           "id",
-          "fields"
+          "idempotency_key"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -18254,7 +18781,7 @@
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,
-        "openWorldHint": false
+        "openWorldHint": true
       },
       "readOnly": false,
       "source": "workflow_operation",
@@ -18262,7 +18789,9 @@
         "v2",
         "extended",
         "chatgpt",
-        "claude-directory"
+        "claude-directory",
+        "claude-code",
+        "commander"
       ]
     },
     {

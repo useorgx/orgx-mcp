@@ -841,8 +841,12 @@ describe('explicit operations through the live MCP registry', () => {
     apiMocks.callOrgxApiJson.mockClear();
     apiMocks.callOrgxApiJson.mockRejectedValue(new OrgXApiError('Workspace access denied', 'test foreign workspace', 403));
     try {
-      const result = await client.callTool({ name: 'orgx_submit_work_receipt', arguments: { workspace_id: '99999999-9999-4999-8999-999999999999', receipt: portableReceipt() } });
+      const result = await client.callTool({ name: 'orgx_submit_work_receipt', arguments: { workspace_id: '99999999-9999-4999-8999-999999999999', receipt: portableReceipt(), idempotency_key: 'foreign-retry' } });
       expect(result.isError).toBe(true);
+      // A typed forbidden remedy never suggests another route around the denial.
+      const error = (result.structuredContent as { error: Record<string, any> }).error;
+      expect(error.code).toBe('forbidden');
+      expect(error.details).toMatchObject({ retryable: false, suggested_next_calls: [], diagnostic: { code: 'forbidden' } });
       expect(apiMocks.callOrgxApiJson).toHaveBeenCalledOnce();
       expect(apiMocks.callOrgxApiJson.mock.calls[0]?.[1]).toBe('/api/v1/agent-work-receipts');
     } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
@@ -891,11 +895,46 @@ describe('explicit operations through the live MCP registry', () => {
     } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
   }, 30000);
 
+  it('attaches an output through the existing OAuth operation without completing or accepting it', async () => {
+    const { client, worker } = await connectProfile('claude-code');
+    const original = apiMocks.callOrgxApiJson.getMockImplementation();
+    const artifactId = '09d480e6-2b5e-4bb9-a374-6bbbc2b3b2d7';
+    apiMocks.callOrgxApiJson.mockReset();
+    apiMocks.callOrgxApiJson.mockResolvedValue(Response.json({ data: { artifact: { id: artifactId }, duplicate: false, review_url: `/artifacts/${artifactId}`, accepted: false, completed: false } }));
+    try {
+      const result = await client.callTool({ name: 'orgx_update_work', arguments: {
+        type: 'task', id: INITIATIVE_ID, workspace_id: WORKSPACE_ID, idempotency_key: 'output:once:v1',
+        artifact: { name: 'Client plan', artifact_type: 'product.report', location: { external_url: 'https://example.com/plan.pdf' }, output_front_door: { answer: 'Confirm the launch date.' } },
+      } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({ id: artifactId, type: 'artifact', data: { accepted: false, completed: false } });
+      expect(apiMocks.callOrgxApiJson).toHaveBeenCalledOnce();
+      const [, path, init, actor] = apiMocks.callOrgxApiJson.mock.calls[0]!;
+      expect(path).toBe('/api/v1/workflows/attach-output');
+      expect(init?.headers).toEqual({ 'Idempotency-Key': 'output:once:v1' });
+      expect(JSON.parse(String(init?.body))).toMatchObject({ type: 'task', id: INITIATIVE_ID, workspace_id: WORKSPACE_ID });
+      expect(JSON.parse(String(init?.body))).not.toHaveProperty('operation');
+      expect(actor).toMatchObject({ userId: 'surface-contract-user', allowFallback: false });
+    } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('keeps output attachment unavailable to a read-only OAuth grant on the Claude Code profile', async () => {
+    const { client, worker } = await connectProfile('claude-code', 'read-only-client', AUTHORIZATION_PRESETS.read.scopes);
+    apiMocks.callOrgxApiJson.mockClear();
+    try {
+      const listed = await client.listTools();
+      expect(listed.tools.map((tool) => tool.name)).not.toContain('orgx_update_work');
+      const result = await client.callTool({ name: 'orgx_update_work', arguments: { type: 'task', id: INITIATIVE_ID, artifact: { name: 'Output' }, idempotency_key: 'unauthorized-output' } });
+      expect(result.isError).toBe(true);
+      expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+    } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
   it('cannot turn the create-task operation into launch or update by adding hidden router arguments', async () => {
     const { client, worker } = await connectProfile('chatgpt');
     const execute = vi.spyOn(worker, 'executeContractTool').mockResolvedValue({ isError: true, content: [{ type: 'text', text: 'Fixture stopped after operation routing.' }] });
     try {
-      await client.callTool({ name: 'orgx_create_task', arguments: { title: 'Login regression', workstream_id: INITIATIVE_ID, action: 'launch', operation: 'update', type: 'initiative', status: 'completed', user_id: 'forged-person' } });
+      await client.callTool({ name: 'orgx_create_task', arguments: { title: 'Login regression', workstream_id: INITIATIVE_ID, idempotency_key: 'create-task-once', action: 'launch', operation: 'update', type: 'initiative', status: 'completed', user_id: 'forged-person' } });
       expect(execute).toHaveBeenCalledOnce();
       const [name, args] = execute.mock.calls[0]!;
       expect(name).toBe('orgx_write');
@@ -952,12 +991,12 @@ describe('core proof and artifact operations through MCP output contracts', () =
     apiMocks.callOrgxApiJson.mockImplementation(async () => Response.json(payload));
     try {
       await client.listTools();
-      const result = await client.callTool({ name: 'orgx_complete_work_with_proof', arguments: { type: 'task', id: INITIATIVE_ID, workspace_id: WORKSPACE_ID, artifact: { artifact_type: 'document', external_url: 'https://example.com/proof' } } });
+      const result = await client.callTool({ name: 'orgx_complete_work_with_proof', arguments: { type: 'task', id: INITIATIVE_ID, workspace_id: WORKSPACE_ID, idempotency_key: 'complete-proof-once', artifact: { artifact_type: 'document', external_url: 'https://example.com/proof' } } });
       expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
       expect(result.structuredContent).toEqual(payload);
       expect(apiMocks.callOrgxApiJson).toHaveBeenCalledOnce();
       expect(apiMocks.callOrgxApiJson.mock.calls[0]?.[1]).toBe('/api/v1/workflows/complete-with-proof');
-      expect(apiMocks.callOrgxApiJson.mock.calls[0]?.[2]?.headers).toMatchObject({ 'Idempotency-Key': expect.stringMatching(/^mcp-proof:/) });
+      expect(apiMocks.callOrgxApiJson.mock.calls[0]?.[2]?.headers).toMatchObject({ 'Idempotency-Key': 'complete-proof-once' });
     } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
   }, 30000);
 });

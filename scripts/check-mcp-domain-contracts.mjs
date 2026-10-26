@@ -9,6 +9,9 @@ import { execFileSync } from 'node:child_process';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const contracts = [
+  { name: 'legacyScaffoldGoalAliases', version: 'legacy_scaffold_goal_alias_v1', fixture: 'legacy-scaffold-goal-alias-v1' },
+  { name: 'legacyScaffoldBatchProfile', version: 'legacy_scaffold_batch_profile_v1', fixture: 'legacy-scaffold-batch-profile-v1' },
+  { name: 'legacyEntityBatchResponse', version: 'legacy_entity_batch_response_v1', fixture: 'legacy-entity-batch-v1' },
   { name: 'legacyEntityBatchWire', version: 'legacy_entity_batch_wire_v1', fixture: 'legacy-entity-batch-v1' },
   { name: 'legacyEntityBatchPreparation', version: 'legacy_entity_batch_preparation_v1', fixture: 'legacy-entity-batch-v1' },
   { name: 'legacyEntityBatchExecution', version: 'legacy_entity_batch_execution_v1', fixture: 'legacy-entity-batch-v1' },

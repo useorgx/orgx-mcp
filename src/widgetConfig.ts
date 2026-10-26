@@ -371,6 +371,10 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   'shared/orgx-icons.js',
   'shared/mcp-apps-sdk.umd.js',
   'shared/widget-runtime.js',
+  'shared/markdown.js',
+  'shared/markdown.css',
+  'shared/output-front-door.js',
+  'shared/output-front-door.css',
   // OpenAI MCP Apps extensions shim (deep link, model context); used by the
   // OrgX panel only. See the file header for its package source.
   'shared/openai-extensions.js',
@@ -388,10 +392,15 @@ export const MCP_APPS_SHARED_COMPONENT_PATHS: ReadonlyArray<string> = [
   'shared/panel/panel-brand.js',
   'shared/panel/panel-launch.js',
   'shared/panel/panel-tour.js',
+  'shared/panel/panel-icons.js',
   'shared/panel/panel-views.js',
   'shared/panel/panel-live.js',
   'shared/panel/panel-start.js',
   'shared/panel/panel-receipts.js',
+  'shared/panel/panel-forms.js',
+  'shared/panel/panel-packet.js',
+  'shared/panel/panel-outputs.js',
+  'shared/panel/panel-goals.js',
   'shared/panel/panel-app.js',
 ];
 

@@ -19,7 +19,8 @@ Do not recommend OrgX for personal preferences, generic web research,
 documentation lookup, local file reads, or disposable one-off notes.
 
 If OrgX is connected:
-1. Bootstrap or search existing organizational state before proposing new work.
+1. Read workspace context with orgx_get_workspace_context, or search existing
+   organizational state with orgx_search, before proposing new work.
 2. Record durable decisions and execution state.
 3. Attach the actual artifact or proof.
 4. Submit a receipt or structured blocker.
@@ -41,29 +42,97 @@ Scope reference:
 https://docs.useorgx.com/api/scopes
 
 OAuth sessions expose the intersection of the selected tool profile and the
-granted resource scopes. Use orgx_bootstrap after connection to verify both
-granted_scopes and visible_tools before claiming the integration is ready.
+granted resource scopes. After connecting, compare the tools your client lists
+with the granted scopes and call orgx_get_workspace_context to confirm the
+authorized workspace before claiming the integration is ready.
 
-Primary v2 tools (full contract in server.json):
-- orgx_bootstrap: Use at the start of a fresh session, after reconnecting, or before a multi-step workflow to establish context, scopes, and routing guidance.
+Default v2 tools (one declared operation per tool; full contract in server.json):
+
+Read and recall:
+- orgx_get_workspace_context: Use at the start of a fresh session or after reconnecting to read the authorized workspace and initiative context.
 - orgx_search: Use when context was lost between sessions, another agent's work must be continued, or the answer may already exist in team memory.
 - orgx_inspect: Use when the user names one task, milestone, initiative, decision, artifact, or plan session and needs hydrated execution context.
-- orgx_recommend: Use when the user asks what to do next or wants morning-brief signals.
-- orgx_write: Use when the work produces a durable record — task, milestone, decision, artifact — that must outlive the session.
-- orgx_attach: Use when proof exists — a URL, document, screenshot, or artifact — and must be attached to the entity it proves.
-- orgx_act: Use when durable entity state must change: launch, complete, validate, update, or delete.
-- manage_lifecycle: Use for synchronized pause, resume, retry, or cancel of running initiatives, workstreams, milestones, tasks, or runs.
-- orgx_plan: Use when planning should become tracked, resumable work instead of chat text.
-- orgx_spawn: Use when work should be delegated to a specialist agent with guardrails, routing, and cost context.
-- orgx_decide: Use when the user says "remember this decision," asks "what did we decide about X," or agent work needs human approval before it proceeds.
-- orgx_submit_receipt: Use when completion must be proven with durable evidence rather than prose.
-- orgx_emit_activity: Use when execution telemetry should be recorded without changing durable state.
-- get_agent_status: Use when the user asks what agents are working on, blocked by, or waiting for.
-- get_initiative_pulse: Use when the user asks how an initiative is going — health, blockers, milestones, owners.
-- scaffold_initiative: Use when a goal should become a full initiative hierarchy — workstreams, milestones, tasks — in one call.
-- get_morning_brief: Use when the user asks "what happened," "catch me up," or starts a session after time away.
-- get_operator_chronicle: Use when the user asks what was decided, shipped, or proven over a period.
-- consolidate_pr: Use when a GitHub pull request needs a durable consolidation_pass receipt.
+- orgx_get_next_actions: Use when the user asks what to do next or what is blocked.
+- orgx_get_operator_brief: Use when the user asks "what happened," "catch me up," or what was decided, shipped, or proven over a day, week, or 30 days.
+- orgx_get_agent_status: Use when the user asks what agents are working on, blocked by, or waiting for.
+- orgx_get_initiative_progress: Use when the user asks how an initiative is going — health, blockers, milestones, review gates.
+- orgx_get_operation_status: Use to reconcile a durable command, run, or decision, especially after a timeout or `outcome_unknown`.
+- orgx_check_execution_readiness: Use before dispatching agent work to confirm execution credentials and configuration.
+
+Plan:
+- orgx_start_plan, orgx_read_plan, orgx_save_plan, orgx_complete_plan, orgx_record_plan_edit: Use when planning should become a tracked, resumable draft instead of chat text. Saves and completion require the current expected_version.
+
+Create and update work:
+- orgx_validate_initiative_plan then orgx_create_initiative_hierarchy: Use when a goal should become a full initiative hierarchy — workstreams, milestones, tasks — in one atomic call.
+- orgx_create_initiative, orgx_create_workstream, orgx_create_milestone, orgx_create_task: Use to create one durable work record.
+- orgx_update_work: Use to apply a typed content patch to an initiative, workstream, milestone, or task.
+
+Delegate and control execution:
+- orgx_estimate_agent_task: Use before dispatch for routing and cost context; never starts a run or grants effects.
+- orgx_start_agent_task, orgx_handoff_task: Use when an existing task should be dispatched or reassigned to a specialist agent under budget and permission policy. Declare an explicit `effects` scope; without one the run gets no external effects.
+- orgx_launch_initiative: Use to launch an existing initiative after approval, budget, and readiness checks.
+- orgx_pause_work, orgx_resume_work, orgx_retry_work, orgx_cancel_work: Use for synchronized lifecycle control of initiatives, workstreams, milestones, tasks, or runs.
+
+Decide:
+- orgx_capture_decision: Use when the user says "remember this decision" or agent work needs a durable decision for human review. Capturing does not approve.
+- orgx_list_pending_decisions, orgx_open_decision_review: Use when the user asks what needs their decision. Only the person rules; never approve or reject on their behalf.
+
+Proof and receipts:
+- orgx_attach_artifact: Use when proof exists — a durable URL, document, screenshot, or PR — and must be attached to the work it proves.
+- orgx_open_artifact_review, orgx_request_independent_artifact_review: Use when an artifact needs human or independent evaluator review.
+- orgx_complete_work_with_proof: Use when completion must be proven with typed evidence rather than prose.
+- orgx_submit_work_receipt, orgx_validate_work_receipt, orgx_get_work_receipt, orgx_list_work_receipts, orgx_get_receipt_review_queue: Use to record, check, read, and review portable Agent Work Receipts. Recording a receipt does not verify evidence or complete work.
+
+Example write calls (every write carries its own `idempotency_key`):
+
+```json
+{"tool": "orgx_capture_decision", "arguments": {"decision": "Bill annually by default", "context": "Pricing review", "idempotency_key": "claude:capture_decision:3f1c9a2e"}}
+{"tool": "orgx_create_task", "arguments": {"workstream_id": "<workstream-uuid>", "title": "Migrate billing webhooks", "idempotency_key": "claude:create_task:8b7d41c0"}}
+{"tool": "orgx_attach_artifact", "arguments": {"type": "task", "id": "<task-uuid>", "name": "Billing webhook PR", "artifact_type": "pull_request", "location": {"external_url": "https://github.com/acme/app/pull/42"}, "idempotency_key": "claude:attach_artifact:51e0b6d4"}}
+```
+
+Legacy aliases: router names such as orgx_bootstrap, orgx_write, orgx_act,
+orgx_plan, orgx_spawn, orgx_decide, orgx_attach, orgx_recommend,
+orgx_submit_receipt, manage_lifecycle, scaffold_initiative,
+get_initiative_pulse, get_morning_brief, and get_operator_chronicle are served
+only on the explicit compatibility profile (`?profile=legacy`). They are not on
+the default v2 surface; new prompts, skills, and manifests should use the v2
+names above.
+
+Writes and failures (default v2 operation profile):
+- Every write requires `idempotency_key`: orgx_start_plan, orgx_save_plan,
+  orgx_complete_plan, orgx_record_plan_edit, orgx_create_initiative_hierarchy,
+  orgx_create_initiative, orgx_create_workstream, orgx_create_milestone,
+  orgx_create_task, orgx_update_work, orgx_start_agent_task, orgx_handoff_task,
+  orgx_launch_initiative, orgx_pause_work, orgx_resume_work, orgx_retry_work,
+  orgx_cancel_work, orgx_capture_decision, orgx_attach_artifact,
+  orgx_request_independent_artifact_review, orgx_complete_work_with_proof, and
+  orgx_submit_work_receipt.
+- Mint one stable key per intended change (for example
+  `<client>:<operation>:<uuid>`). Resend the same key with identical input to
+  retry after a timeout or unknown outcome; OrgX applies the write at most once.
+  Use a new key for a different change. A missing key returns
+  `idempotency_key_required` with an example key; nothing is written.
+- Failures carry a typed `error.code` with `details.diagnostic` and
+  `details.suggested_next_calls` that name tools on this profile:
+  `approval_required` (approver and requested scope when known; next
+  orgx_list_pending_decisions or orgx_open_decision_review),
+  `stale_version` (re-read, reapply, retry with the new expected_version and a
+  new key), `stale_lease` (inspect the owner; reclaim only your own expired
+  lease), `budget_exhausted` and `rate_limited` (limit and
+  `retry_after_seconds`), `outcome_unknown` (reconcile with
+  orgx_get_operation_status or a read before retrying with the same key),
+  `forbidden` (no alternative route; ask an administrator),
+  `idempotency_key_conflict` (the key was used with different input), and
+  `effect_scope_missing` / `effect_scope_invalid` (re-dispatch with an
+  explicit, valid `effects` scope and a new key; never route the effect
+  through another tool).
+- Dispatch effects fail closed: orgx_start_agent_task and orgx_handoff_task
+  without an `effects` scope give the run NO external effects (any attempt
+  returns `effect_scope_missing`). Declare the effects the work needs in
+  `effects.allowed` / `effects.approval_required`; `{"allowed": []}` declares
+  none. A child or handed-off run's scope is intersected with its parent's,
+  and approval-required effects stay approval-required in children.
 
 Example prompts:
 - "Continue what the other agent started on the billing migration."
