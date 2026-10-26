@@ -2,6 +2,10 @@ name: Validate MCP worker
 description: Run the static, unit, upstream, and Wrangler checks shared by PRs and deploys
 
 inputs:
+  cache-enabled:
+    description: Restore and save the dependency cache; PR validation disables storage writes
+    required: false
+    default: 'true'
   wrangler-environment:
     description: Wrangler environment to validate during the dry-run
     required: false
@@ -19,7 +23,8 @@ runs:
       uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
       with:
         node-version: '22'
-        cache: pnpm
+        cache: ${{ inputs['cache-enabled'] == 'true' && 'pnpm' || '' }}
+        package-manager-cache: ${{ inputs['cache-enabled'] == 'true' }}
 
     - name: Validate server.json
       shell: bash
