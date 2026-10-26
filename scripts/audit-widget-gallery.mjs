@@ -1,4 +1,4 @@
-import { createReadStream, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
 import { chromium } from 'playwright';
@@ -7,6 +7,8 @@ const rootDir = resolve(process.cwd());
 const publicDir = join(rootDir, 'public');
 const outDir = join(rootDir, 'artifacts', 'widget-gallery', 'current');
 const port = 4329;
+const expectedWidgetCount = Object.keys(JSON.parse(readFileSync(join(publicDir, 'widgets/_manifest.json'), 'utf8')).widgets)
+  .filter(name => name !== 'index').length;
 
 const cases = [
   {
@@ -149,15 +151,29 @@ async function inspectCase(browser, config) {
     };
   });
 
-  await page.locator('#catalogSearch').fill('artifact');
-  const filteredRows = await page.locator('.catalog-item').count();
-  await page.locator('#catalogSearch').fill('');
-  const firstRow = page.locator('.catalog-item').first();
-  await firstRow.focus();
-  await page.keyboard.press('ArrowDown');
-  const keyboardMoved = await page.evaluate(
-    () => document.activeElement?.classList.contains('catalog-item') && document.activeElement !== document.querySelector('.catalog-item')
-  );
+  const catalogVisible = await page.locator('#catalogSearch').isVisible();
+  let filteredRows;
+  let keyboardMoved;
+  if (catalogVisible) {
+    await page.locator('#catalogSearch').fill('artifact');
+    filteredRows = await page.locator('.catalog-item').count();
+    await page.locator('#catalogSearch').fill('');
+    const firstRow = page.locator('.catalog-item').first();
+    await firstRow.focus();
+    await page.keyboard.press('ArrowDown');
+    keyboardMoved = await page.evaluate(
+      () => document.activeElement?.classList.contains('catalog-item') && document.activeElement !== document.querySelector('.catalog-item')
+    );
+  } else {
+    // On a phone the native Widget picker replaces the hidden catalog.
+    const picker = page.locator('#widgetSelect');
+    await picker.selectOption('artifact-review');
+    filteredRows = await picker.inputValue() === 'artifact-review' ? 1 : 0;
+    await picker.focus();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    keyboardMoved = await picker.inputValue() !== 'artifact-review';
+  }
 
   const screenshot = join(outDir, `${config.name}.png`);
   await page.screenshot({ path: screenshot, fullPage: true, animations: 'disabled' });
@@ -169,6 +185,7 @@ async function inspectCase(browser, config) {
     pageErrors,
     filteredRows,
     keyboardMoved,
+    catalogVisible,
     ...diagnostics,
     screenshot,
   };
@@ -182,12 +199,12 @@ function collectFailures(results) {
       add('runtime-error', [...result.consoleErrors, ...result.pageErrors]);
     }
     if (result.horizontalOverflow > 1) add('horizontal-overflow', result.horizontalOverflow);
-    if (result.registryCount !== 11) add('registry-coverage', result.registryCount);
-    if (!result.coverage.includes('11 widgets')) add('manifest-coverage', result.coverage);
+    if (result.registryCount !== expectedWidgetCount) add('registry-coverage', result.registryCount);
+    if (!result.coverage.includes(expectedWidgetCount + ' widgets')) add('manifest-coverage', result.coverage);
     if (!result.iframeUrl.includes('/widgets/')) add('missing-preview', result.iframeUrl);
     if (result.manifestWarning) add('manifest-warning', true);
     if (result.smallTargets.length) add('undersized-target', result.smallTargets);
-    if (!result.activeVisibleInRegistry) add('selected-row-not-visible', result.selected);
+    if (result.catalogVisible && !result.activeVisibleInRegistry) add('selected-row-not-visible', result.selected);
     if (result.filteredRows !== 1) add('filter-contract', result.filteredRows);
     if (!result.keyboardMoved) add('keyboard-navigation', false);
   }

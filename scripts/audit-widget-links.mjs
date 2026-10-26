@@ -49,6 +49,9 @@ try {
   for (const mode of modes) {
     const context = await browser.newContext({ viewport: { width: 1100, height: 1600 } });
     await context.addInitScript(({ mode }) => {
+      // This matrix checks returning-user links. The panel starts a first-use
+      // tour on a delayed timer; it must not cover a link after discovery.
+      try { localStorage.setItem('orgx.panel.tour.v1', 'done'); } catch (_) { /* host may block storage */ }
       window.__linkAudit = [];
       window.open = url => { window.__linkAudit.push({ channel: 'browser', url }); return null; };
       const snapshot = {
