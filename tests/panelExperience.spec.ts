@@ -46,15 +46,23 @@ describe('panel experience lifetime and recovery', () => {
     const m = await open();
     const D3 = '33333333-3333-4333-8333-333333333333';
     const base = snapshot();
+    const finish: ((value: unknown) => void)[] = [];
+    // Only hold explicit focus reads. Tab warming must not deliver the
+    // fixture's old two-item snapshot over the three-item host result.
+    m.calls.callServerTool.mockImplementation(async (request) => {
+      if (request.name === 'orgx_panel_snapshot' && request.arguments?.focus) {
+        return new Promise((resolve) => finish.push(resolve));
+      }
+      return { structuredContent: { items: [] } };
+    });
     m.app().ontoolresult({ structuredContent: snapshot({ queue: [...base.queue, { ...base.queue[1], id: D3, title: 'Review the deployment?' }] }) });
     await m.flush();
-    const finish: ((value: unknown) => void)[] = [];
-    m.calls.callServerTool.mockImplementation(() => new Promise((resolve) => finish.push(resolve)));
     review(m, D2); review(m, D3); await m.flush();
     finish[0]!({ structuredContent: selected(D2, 'Superseded packet') }); await m.flush();
     expect(m.dom.window.document.getElementById('pk-q')!.textContent).not.toBe('Superseded packet');
     expect(footer(m)?.getAttribute('heading')).toBe('Opening decision');
-    expect(m.calls.callServerTool.mock.calls[1]![0].arguments).toEqual({ focus: { type: 'decision', id: D3 } });
+    const focusCalls = m.calls.callServerTool.mock.calls.filter(([request]) => request.arguments?.focus);
+    expect(focusCalls[1]![0].arguments).toEqual({ focus: { type: 'decision', id: D3 } });
     finish[1]!({ structuredContent: selected(D3, 'Review the deployment?') }); await m.flush();
     expect(m.dom.window.document.getElementById('pk-q')!.textContent).toBe('Review the deployment?');
   });
@@ -137,6 +145,7 @@ describe('panel experience lifetime and recovery', () => {
     const finish: ((value: unknown) => void)[] = [];
     m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => {
       if (name === 'orgx_widget_decide') return { structuredContent: { action: 'approved' } };
+      if (name !== 'orgx_get_operation_status') return { structuredContent: snapshot() };
       return new Promise((resolve) => finish.push(resolve));
     });
     approve(m); await m.flush();
@@ -173,7 +182,7 @@ describe('panel experience lifetime and recovery', () => {
     expect(m.dom.window.document.querySelector('.error-line')!.textContent).not.toContain('Nothing changed');
     recovery.click(); await m.flush();
     expect(m.calls.callServerTool.mock.calls.filter(([p]) => p.name === 'orgx_widget_decide')).toHaveLength(1);
-    expect(m.calls.callServerTool.mock.calls.filter(([p]) => p.name === 'orgx_panel_snapshot')).toHaveLength(2);
+    expect(m.calls.callServerTool.mock.calls.filter(([p]) => p.name === 'orgx_panel_snapshot' && !p.arguments?.view)).toHaveLength(2);
   });
   it('ends exhausted polling in an unconfirmed receipt with no spinner', async () => {
     const m = await open();
