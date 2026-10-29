@@ -158,6 +158,260 @@
       line-height: 1.5;
     }
 
+    .quality-gauge {
+      --quality-signal: #94a3b8;
+      --quality-signal-rgb: 148, 163, 184;
+      display: grid;
+      gap: 7px;
+    }
+
+    .quality-gauge[data-quality-state="cleared"] {
+      --quality-signal: #00c9a7;
+      --quality-signal-rgb: 0, 201, 167;
+    }
+
+    .quality-gauge[data-quality-state="failed"],
+    .quality-gauge[data-quality-state="stale"] {
+      --quality-signal: #fbbf24;
+      --quality-signal-rgb: 251, 191, 36;
+    }
+
+    .quality-gauge[data-quality-state="error"] {
+      --quality-signal: #fb7185;
+      --quality-signal-rgb: 251, 113, 133;
+    }
+
+    .quality-gauge[data-quality-state="scoring"] {
+      --quality-signal: #6366f1;
+      --quality-signal-rgb: 99, 102, 241;
+    }
+
+    .quality-gauge__track {
+      position: relative;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.16);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+    }
+
+    .quality-gauge__fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      min-width: 2px;
+      border-radius: inherit;
+      background: var(--quality-signal);
+      box-shadow: 0 0 12px rgba(var(--quality-signal-rgb), 0.25);
+    }
+
+    .quality-gauge__threshold,
+    .quality-gauge__historical {
+      position: absolute;
+      z-index: 2;
+      top: -4px;
+      width: 2px;
+      height: 14px;
+      border-radius: 2px;
+    }
+
+    .quality-gauge__threshold {
+      background: var(--ox-text);
+      box-shadow: 0 0 0 3px rgba(242, 247, 255, 0.06);
+    }
+
+    .quality-gauge__historical {
+      z-index: 1;
+      width: 1px;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(148, 163, 184, 0.9) 0 3px,
+        transparent 3px 5px
+      );
+    }
+
+    .quality-gauge__legend {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono, ui-monospace, monospace);
+      font-size: 0.625rem;
+      font-weight: 650;
+      letter-spacing: 0.06em;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+
+    .quality-gauge__history-key {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .quality-gauge__history-key::before {
+      content: "";
+      width: 1px;
+      height: 10px;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(148, 163, 184, 0.9) 0 2px,
+        transparent 2px 4px
+      );
+    }
+
+    .quality-anatomy {
+      border-block: 1px solid var(--ox-border);
+    }
+
+    .quality-anatomy > summary {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) 18px;
+      align-items: center;
+      gap: 14px;
+      min-height: 48px;
+      padding: 7px 2px;
+      color: var(--ox-text);
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .quality-anatomy > summary::-webkit-details-marker { display: none; }
+
+    .quality-anatomy__title {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 7px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .quality-anatomy__freshness {
+      color: var(--ox-warning, #fbbf24);
+      font-family: var(--ox-mono, ui-monospace, monospace);
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .quality-anatomy__flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      align-items: center;
+      min-width: 0;
+    }
+
+    .quality-anatomy__flow-step {
+      position: relative;
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 5px;
+      min-width: 0;
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono, ui-monospace, monospace);
+      font-size: 0.58rem;
+      font-weight: 650;
+      letter-spacing: 0.055em;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+
+    .quality-anatomy__flow-step + .quality-anatomy__flow-step::before {
+      content: "→";
+      position: absolute;
+      inset-inline-start: -4px;
+      color: rgba(148, 163, 184, 0.55);
+      font-family: var(--ox-font, sans-serif);
+      font-size: 0.68rem;
+    }
+
+    .quality-anatomy__flow-step b {
+      color: var(--ox-text);
+      font-size: 0.7rem;
+      letter-spacing: -0.02em;
+    }
+
+    .quality-anatomy__chevron {
+      color: var(--ox-text-muted);
+      transition: transform 180ms var(--ox-ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+    }
+
+    .quality-anatomy[open] .quality-anatomy__chevron { transform: rotate(180deg); }
+
+    .quality-anatomy__grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-top: 1px solid var(--ox-border);
+    }
+
+    .quality-anatomy__stage {
+      --lens-signal: #94a3b8;
+      min-width: 0;
+      padding: 12px 11px 13px;
+    }
+
+    .quality-anatomy__stage + .quality-anatomy__stage {
+      border-inline-start: 1px solid var(--ox-border);
+    }
+
+    .quality-anatomy__stage[data-lens="judged"] { --lens-signal: #818cf8; }
+    .quality-anatomy__stage[data-lens="measured"] { --lens-signal: #22d3ee; }
+    .quality-anatomy__stage[data-lens="observed"] { --lens-signal: #fbbf24; }
+
+    .quality-anatomy__stage-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ox-text-muted);
+      font-family: var(--ox-mono, ui-monospace, monospace);
+      font-size: 0.575rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .quality-anatomy__stage-label::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--lens-signal);
+      box-shadow: 0 0 8px var(--lens-signal);
+      opacity: 0.82;
+    }
+
+    .quality-anatomy__stage-value {
+      margin-top: 7px;
+      color: var(--ox-text);
+      font-size: 0.74rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .quality-anatomy__stage-detail {
+      display: -webkit-box;
+      margin-top: 3px;
+      overflow: hidden;
+      color: var(--ox-text-muted);
+      font-size: 0.68rem;
+      line-height: 1.4;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .quality-anatomy__note {
+      margin: 0;
+      padding: 10px 11px 11px;
+      border-top: 1px solid var(--ox-border);
+      color: var(--ox-text-muted);
+      font-size: 0.68rem;
+      line-height: 1.45;
+    }
+
     .signals {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -168,20 +422,46 @@
     }
 
     .signal {
+      --axis-signal: #94a3b8;
       min-width: 0;
       padding: 11px 12px;
     }
     .signal + .signal { border-inline-start: 1px solid var(--ox-border); }
 
+    .signal[data-axis="quality"][data-state="cleared"] { --axis-signal: #00c9a7; }
+    .signal[data-axis="quality"][data-state="failed"],
+    .signal[data-axis="quality"][data-state="stale"] { --axis-signal: #fbbf24; }
+    .signal[data-axis="quality"][data-state="error"] { --axis-signal: #fb7185; }
+    .signal[data-axis="quality"][data-state="scoring"] { --axis-signal: #818cf8; }
+    .signal[data-axis="human"][data-state="accepted"] { --axis-signal: #d4ed31; }
+    .signal[data-axis="human"][data-state="changes_requested"] { --axis-signal: #fbbf24; }
+    .signal[data-axis="human"][data-state="rejected"] { --axis-signal: #fb7185; }
+    .signal[data-axis="outcome"]:not([data-state="unobserved"]):not([data-state="drafted"]) { --axis-signal: #d4ed31; }
+    .signal[data-axis="outcome"][data-state="scheduled"] { --axis-signal: #818cf8; }
+    .signal[data-axis="outcome"][data-state="held"] { --axis-signal: #fbbf24; }
+
     .signal-label {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 6px;
       margin-bottom: 5px;
       color: var(--ox-text-muted);
       font-family: var(--ox-mono, ui-monospace, monospace);
-      font-size: 0.57rem;
+      font-size: 0.625rem;
       font-weight: 700;
       letter-spacing: 0.11em;
       text-transform: uppercase;
+    }
+
+    .signal-label::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--axis-signal);
+      box-shadow: 0 0 7px var(--axis-signal);
+      opacity: 0.82;
     }
 
     .signal-value {
@@ -200,8 +480,8 @@
       margin-top: 2px;
       color: var(--ox-text-muted);
       font-family: var(--ox-mono, ui-monospace, monospace);
-      font-size: 0.6rem;
-      line-height: 1.35;
+      font-size: 0.6875rem;
+      line-height: 1.4;
     }
 
     .action-region {
@@ -240,6 +520,7 @@
       transform: translateY(-1px);
     }
     .primary-action:focus-visible,
+    .quality-anatomy > summary:focus-visible,
     .composer textarea:focus-visible,
     .composer button:focus-visible {
       outline: 2px solid var(--verification-signal);
@@ -328,6 +609,7 @@
       font-size: 0.72rem;
       line-height: 1.4;
     }
+    .action-status:empty { display: none; }
     .action-status[data-error="true"] { color: #fb7185; }
 
     .empty-state {
@@ -347,6 +629,23 @@
       .signal-value { white-space: normal; }
       .verdict { grid-template-columns: 32px minmax(0, 1fr); gap: 10px; }
       .verdict-mark { width: 32px; height: 32px; border-radius: 9px; }
+      .quality-anatomy > summary {
+        grid-template-columns: minmax(0, 1fr) 18px;
+        gap: 8px;
+        padding-block: 10px;
+      }
+      .quality-anatomy__flow {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+      .quality-anatomy__flow-step { justify-content: flex-start; }
+      .quality-anatomy__flow-step + .quality-anatomy__flow-step::before { display: none; }
+      .quality-anatomy__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .quality-anatomy__stage:nth-child(3) {
+        border-top: 1px solid var(--ox-border);
+        border-inline-start: 0;
+      }
+      .quality-anatomy__stage:nth-child(4) { border-top: 1px solid var(--ox-border); }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -376,6 +675,71 @@
         return typeof value === 'string' && value.trim() ? value.trim() : fallback;
       }
 
+      function asRecordArray(value) {
+        return Array.isArray(value)
+          ? value.map(asObject).filter(function (item) { return Object.keys(item).length > 0; })
+          : [];
+      }
+
+      function nonNegativeInteger(value) {
+        return typeof value === 'number' && Number.isFinite(value) && value >= 0
+          ? Math.floor(value)
+          : null;
+      }
+
+      function compactLabel(value, fallback) {
+        var label = cleanText(value, fallback).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+        return label.length > 72 ? label.slice(0, 69).trimEnd() + '…' : label;
+      }
+
+      function evidenceItemLabel(item, fallback) {
+        var record = asObject(item);
+        var candidates = [
+          record.label,
+          record.name,
+          record.title,
+          record.key,
+          record.layer,
+          record.layerKey,
+          record.criterion,
+          record.criterionId,
+          record.check,
+          record.metric,
+          record.kind,
+          record.summary,
+        ];
+        for (var i = 0; i < candidates.length; i += 1) {
+          if (typeof candidates[i] === 'string' && candidates[i].trim()) {
+            return compactLabel(candidates[i], fallback);
+          }
+        }
+        return fallback;
+      }
+
+      function topEvidenceLabels(items, fallback) {
+        var seen = {};
+        var labels = [];
+        for (var i = 0; i < items.length && labels.length < 2; i += 1) {
+          var label = evidenceItemLabel(items[i], '');
+          var key = label.toLowerCase();
+          if (!label || seen[key]) continue;
+          seen[key] = true;
+          labels.push(label);
+        }
+        return labels.length ? labels.join(' · ') : fallback;
+      }
+
+      function measuredVerdict(item) {
+        var record = asObject(item);
+        if (typeof record.passed === 'boolean') return record.passed;
+        if (typeof record.pass === 'boolean') return record.pass;
+        if (typeof record.result === 'boolean') return record.result;
+        var state = cleanText(record.status, cleanText(record.state, cleanText(record.verdict, ''))).toLowerCase();
+        if (['pass', 'passed', 'clear', 'cleared', 'success'].indexOf(state) >= 0) return true;
+        if (['fail', 'failed', 'blocked', 'error', 'invalid'].indexOf(state) >= 0) return false;
+        return null;
+      }
+
       function escapeHtml(value) {
         var node = document.createElement('div');
         node.textContent = cleanText(value, '');
@@ -395,12 +759,181 @@
 
       function scoreText(quality) {
         var state = cleanText(quality.state, 'unavailable').replace(/_/g, ' ');
-        var score = typeof quality.score === 'number' ? quality.score.toFixed(2) : null;
+        var current = quality.state === 'cleared' || quality.state === 'failed';
+        var score = current && typeof quality.score === 'number' ? quality.score.toFixed(2) : null;
+        var historical = typeof quality.previousScore === 'number'
+          ? quality.previousScore.toFixed(2)
+          : !current && typeof quality.score === 'number'
+            ? quality.score.toFixed(2)
+            : null;
         var threshold = typeof quality.threshold === 'number' ? quality.threshold.toFixed(2) : null;
         return {
           value: state,
-          detail: score && threshold ? score + ' / ' + threshold + ' bar' : cleanText(quality.reason, 'No current score'),
+          detail: score && threshold
+            ? score + ' / ' + threshold + ' bar'
+            : historical
+              ? historical + ' historical · no current score'
+              : cleanText(quality.reason, 'No current score'),
         };
+      }
+
+      function unitPercent(value) {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+        return Math.round(Math.max(0, Math.min(1, value)) * 100);
+      }
+
+      function renderQualityGauge(quality, reviewRequired) {
+        if (reviewRequired === false) return '';
+        var state = cleanText(quality.state, 'unscored');
+        var threshold = unitPercent(quality.threshold);
+        if (threshold === null) return '';
+        var score = state === 'cleared' || state === 'failed'
+          ? unitPercent(quality.score)
+          : null;
+        var historical = unitPercent(quality.previousScore);
+        var currentLabel = score !== null
+          ? 'Current ' + score
+          : historical !== null
+            ? 'Prior ' + historical + ' · historical'
+            : state === 'scoring'
+              ? 'Checking now'
+              : 'No current score';
+        var ariaParts = [
+          score !== null
+            ? 'Current quality score ' + score + ' out of 100.'
+            : 'No current quality score.',
+        ];
+        if (historical !== null) ariaParts.push('Historical score ' + historical + '.');
+        ariaParts.push('Quality bar ' + threshold + '.');
+        var ariaLabel = ariaParts.join(' ');
+
+        return (
+          '<section class="quality-gauge" data-quality-state="' + escapeHtml(state) + '" role="img" aria-label="' + escapeHtml(ariaLabel) + '">' +
+            '<div class="quality-gauge__track">' +
+              (score !== null ? '<span class="quality-gauge__fill" style="width:' + score + '%"></span>' : '') +
+              (historical !== null ? '<span class="quality-gauge__historical" style="left:calc(' + historical + '% - 1px)" title="Historical score ' + historical + '"></span>' : '') +
+              '<span class="quality-gauge__threshold" style="left:calc(' + threshold + '% - 1px)" title="Quality bar ' + threshold + '"></span>' +
+            '</div>' +
+            '<div class="quality-gauge__legend"><span>' + escapeHtml(currentLabel) + '</span>' +
+              (historical !== null && score !== null ? '<span class="quality-gauge__history-key">Prior ' + historical + '</span>' : '') +
+              '<span>Quality bar ' + threshold + '</span></div>' +
+          '</section>'
+        );
+      }
+
+      function buildQualityAnatomy(model) {
+        var contract = asObject(model.contract);
+        var quality = asObject(contract.quality);
+        var evidence = asObject(contract.evidence);
+        var counts = asObject(contract.counts);
+        var lineage = asObject(contract.lineage);
+        var layers = asRecordArray(evidence.layers);
+        var measured = asRecordArray(evidence.measured);
+        var observations = asRecordArray(evidence.observations);
+        var relationships = asRecordArray(evidence.relationships);
+        var evidenceRefs = nonNegativeInteger(counts.evidenceRefs);
+        if (evidenceRefs === null) evidenceRefs = relationships.length;
+        var gradedLayers = nonNegativeInteger(evidence.gradedLayers);
+        var judgedCount = Math.max(gradedLayers === null ? 0 : gradedLayers, layers.length);
+        var confidence = typeof evidence.confidence === 'number' && Number.isFinite(evidence.confidence)
+          ? Math.round(Math.max(0, Math.min(1, evidence.confidence)) * 100)
+          : null;
+        var clearChecks = 0;
+        var heldChecks = 0;
+        var unknownChecks = 0;
+        measured.forEach(function (item) {
+          var verdict = measuredVerdict(item);
+          if (verdict === true) clearChecks += 1;
+          else if (verdict === false) heldChecks += 1;
+          else unknownChecks += 1;
+        });
+        var measuredStatus = measured.length === 0
+          ? 'No measured checks'
+          : heldChecks > 0
+            ? measured.length + ' checks · ' + heldChecks + ' held' + (unknownChecks ? ' · ' + unknownChecks + ' unreported' : '')
+            : unknownChecks > 0
+              ? measured.length + ' checks · ' + unknownChecks + ' unreported'
+              : clearChecks + ' checks · all clear';
+        var version = nonNegativeInteger(lineage.version);
+        if (version === null) version = nonNegativeInteger(model.artifact.version) || 1;
+        var qualityState = cleanText(quality.state, 'unscored').replace(/_/g, ' ');
+        var evidenceIsCurrent = quality.state === 'cleared' || quality.state === 'failed';
+
+        return {
+          inputCount: 1 + relationships.length,
+          judgedCount: judgedCount,
+          measuredCount: measured.length,
+          observedCount: observations.length,
+          evidenceIsCurrent: evidenceIsCurrent,
+          qualityState: qualityState,
+          stages: [
+            {
+              lens: 'inputs',
+              label: 'Inputs',
+              value: '1 artifact · ' + relationships.length + ' linked ref' + (relationships.length === 1 ? '' : 's'),
+              detail: 'Current v' + version + ' · ' + evidenceRefs + ' evidence record' + (evidenceRefs === 1 ? '' : 's') + ' · ' + topEvidenceLabels(relationships, relationships.length ? 'Linked inputs returned by the contract' : 'No linked inputs returned'),
+            },
+            {
+              lens: 'judged',
+              label: 'Judged',
+              value: judgedCount > 0
+                ? judgedCount + ' layer' + (judgedCount === 1 ? '' : 's') + (confidence === null ? '' : ' · ' + confidence + '% confidence')
+                : 'No judged layers',
+              detail: topEvidenceLabels(layers, judgedCount ? 'Layer labels not exposed in this view' : 'No qualitative layer verdicts returned'),
+            },
+            {
+              lens: 'measured',
+              label: 'Measured',
+              value: measuredStatus,
+              detail: topEvidenceLabels(measured, 'No deterministic check records returned'),
+            },
+            {
+              lens: 'observed',
+              label: 'Observed',
+              value: observations.length
+                ? observations.length + ' record' + (observations.length === 1 ? '' : 's')
+                : 'No observations',
+              detail: topEvidenceLabels(observations, 'No direct observation records returned'),
+            },
+          ],
+        };
+      }
+
+      function renderQualityAnatomy(model) {
+        var anatomy = buildQualityAnatomy(model);
+        var expanded = new URLSearchParams(window.location.search).get('anatomy') === 'expanded';
+        var summaryLabel = 'Quality anatomy: ' + anatomy.inputCount + ' inputs, ' + anatomy.judgedCount + ' judged, ' + anatomy.measuredCount + ' measured, and ' + anatomy.observedCount + ' observed.' + (anatomy.evidenceIsCurrent ? '' : ' Evidence is context only.');
+        var flow = [
+          ['Inputs', anatomy.inputCount],
+          ['Judged', anatomy.judgedCount],
+          ['Measured', anatomy.measuredCount],
+          ['Observed', anatomy.observedCount],
+        ].map(function (item) {
+          return '<span class="quality-anatomy__flow-step"><span>' + item[0] + '</span><b>' + item[1] + '</b></span>';
+        }).join('');
+        var stages = anatomy.stages.map(function (stage) {
+          return (
+            '<div class="quality-anatomy__stage" data-lens="' + stage.lens + '" role="listitem">' +
+              '<div class="quality-anatomy__stage-label">' + escapeHtml(stage.label) + '</div>' +
+              '<div class="quality-anatomy__stage-value">' + escapeHtml(stage.value) + '</div>' +
+              '<div class="quality-anatomy__stage-detail">' + escapeHtml(stage.detail) + '</div>' +
+            '</div>'
+          );
+        }).join('');
+        var note = anatomy.evidenceIsCurrent
+          ? 'Observed evidence describes what the evaluator saw. External result receipts remain separate on the Outcome axis.'
+          : 'Current verification is ' + anatomy.qualityState + '; this evidence anatomy is context only and cannot clear the current version. External result receipts remain separate on the Outcome axis.';
+        return (
+          '<details class="quality-anatomy" data-quality-anatomy' + (expanded ? ' open' : '') + '>' +
+            '<summary aria-label="' + escapeHtml(summaryLabel) + '">' +
+              '<span class="quality-anatomy__title">Quality anatomy' + (anatomy.evidenceIsCurrent ? '' : '<span class="quality-anatomy__freshness">Context only</span>') + '</span>' +
+              '<span class="quality-anatomy__flow" aria-hidden="true">' + flow + '</span>' +
+              '<svg class="quality-anatomy__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>' +
+            '</summary>' +
+            '<div class="quality-anatomy__grid" role="list" aria-label="Quality evidence path">' + stages + '</div>' +
+            '<p class="quality-anatomy__note">' + escapeHtml(note) + '</p>' +
+          '</details>'
+        );
       }
 
       function choosePrimaryAction(model) {
@@ -409,6 +942,7 @@
         var authority = asObject(contract.authority);
         var quality = asObject(contract.quality);
         var ruling = asObject(contract.ruling);
+        var modalityGate = asObject(contract.modalityGate);
         var artifactId = cleanText(model.artifact.id, '');
         var href = APP_BASE_URL + '/artifacts/' + encodeURIComponent(artifactId);
 
@@ -416,14 +950,33 @@
         if (purpose.reviewRequired !== true || authority.canReview !== true) {
           return { kind: 'open', label: purpose.reviewRequired === false ? 'Inspect evidence in OrgX' : 'Open verification in OrgX', href: href };
         }
-        if (['accepted', 'changes_requested', 'rejected'].indexOf(ruling.state) >= 0) {
-          return { kind: 'open', label: 'Open ruling in OrgX', href: href };
+        if (quality.state === 'error') {
+          return { kind: 'open', label: 'Inspect current verification error', href: href };
+        }
+        if (quality.state === 'stale') {
+          return { kind: 'open', label: 'Refresh stale verification', href: href };
         }
         if (quality.state === 'failed') {
           return { kind: 'changes_requested', label: 'Request a stronger iteration', href: href };
         }
+        if (['scoring', 'unscored', 'skipped'].indexOf(quality.state) >= 0) {
+          return { kind: 'open', label: 'Inspect quality evidence', href: href };
+        }
+        if (modalityGate.blocksAdvance === true) {
+          var modalityLabel = cleanText(modalityGate.label, 'Modality proof incomplete')
+            .replace(/\s+incomplete$/i, '')
+            .toLowerCase();
+          return { kind: 'changes_requested', label: 'Request ' + modalityLabel, href: href };
+        }
+        if (['accepted', 'changes_requested', 'rejected'].indexOf(ruling.state) >= 0) {
+          return { kind: 'open', label: 'Open ruling in OrgX', href: href };
+        }
         if (quality.state === 'cleared') {
-          return { kind: 'approved', label: 'Hold to record approval', href: href };
+          return {
+            kind: 'approved',
+            label: 'Hold to accept & advance',
+            href: href,
+          };
         }
         return { kind: 'open', label: 'Inspect quality evidence', href: href };
       }
@@ -432,7 +985,10 @@
         var mode = new URLSearchParams(window.location.search).get('state') || 'ready';
         var evidenceOnly = mode === 'evidence';
         var failed = mode === 'failed';
-        var approved = mode === 'approved';
+        var errored = mode === 'error';
+        var visualBlocked = mode === 'visual-blocked';
+        var approved = mode === 'approved' || mode === 'observed';
+        var observed = mode === 'observed';
         return {
           artifact: {
             id: 'artifact-demo-verified',
@@ -446,26 +1002,87 @@
             purpose: { kind: evidenceOnly ? 'evidence' : 'deliverable', label: evidenceOnly ? 'Evidence' : 'Deliverable', reviewRequired: !evidenceOnly },
             modality: { kind: evidenceOnly ? 'web' : 'document', label: evidenceOnly ? 'Web experience' : 'Document' },
             quality: {
-              state: evidenceOnly ? 'skipped' : failed ? 'failed' : 'cleared',
-              score: evidenceOnly ? null : failed ? 0.71 : 0.91,
+              state: evidenceOnly ? 'skipped' : failed ? 'failed' : errored ? 'error' : 'cleared',
+              score: evidenceOnly || errored ? null : failed ? 0.71 : 0.91,
+              previousScore: errored || failed ? 0.91 : null,
               threshold: 0.85,
-              reason: evidenceOnly ? 'Evidence records are inspected, never passed.' : failed ? 'The current run found unsupported outcome claims.' : 'Current evaluation cleared the configured quality bar.',
+              thresholdSource: {
+                kind: 'eval_profile',
+                profileName: 'Enterprise launch package',
+                profileVersion: 4,
+                profileScope: 'workspace',
+              },
+              reason: evidenceOnly ? 'Evidence records are inspected, never passed.' : failed ? 'The current run found unsupported outcome claims.' : errored ? 'The current evaluation run could not be completed.' : 'Current evaluation cleared the configured quality bar.',
             },
             ruling: {
               state: approved ? 'accepted' : 'pending',
               label: approved ? 'Accepted' : 'Pending human ruling',
               actorKind: approved ? 'human' : 'unknown',
+              actorLabel: approved ? 'Workspace owner' : null,
+              at: approved ? '2026-08-01T12:00:00.000Z' : null,
               note: null,
             },
-            outcome: { state: approved ? 'validated' : 'unobserved', label: approved ? 'Outcome validated' : 'No outcome observed', count: approved ? 1 : 0 },
+            outcome: {
+              state: observed ? 'observed' : 'unobserved',
+              label: observed ? 'Outcome observed' : 'No outcome observed',
+              count: observed ? 1 : 0,
+              latestKind: observed ? 'published' : null,
+              source: observed ? 'release ledger' : null,
+              observedAt: observed ? '2026-08-01T12:04:00.000Z' : null,
+            },
+            evidence: {
+              confidence: evidenceOnly ? null : errored ? 0.91 : failed ? 0.78 : 0.94,
+              gradedLayers: evidenceOnly ? 0 : 4,
+              layers: evidenceOnly ? [] : [
+                { label: 'Audience fit' },
+                { label: 'Claim support' },
+                { label: 'Decision usefulness' },
+                { label: 'Brand coherence' },
+              ],
+              measured: evidenceOnly ? [] : [
+                { check: 'Citation coverage', passed: !failed },
+                { check: 'Required sections', passed: true },
+              ],
+              observations: evidenceOnly
+                ? [{ label: 'Browser receipt target resolved' }]
+                : [{ label: 'Rendered output inspected' }],
+              outcomes: observed ? [{ kind: 'published', source: 'release ledger' }] : [],
+              relationships: evidenceOnly
+                ? [{ label: 'Browser verification run' }]
+                : [{ label: 'Campaign brief' }, { label: 'Pinned launch rubric' }],
+            },
+            modalityGate: {
+              state: visualBlocked ? 'blocked' : 'not_required',
+              label: visualBlocked ? 'Visual proof incomplete' : 'No modality-specific gate',
+              blocksAdvance: visualBlocked,
+              reason: visualBlocked ? 'Required desktop and mobile captures are missing.' : null,
+            },
             workflow: {
-              headline: evidenceOnly ? 'Inspect evidence' : failed ? 'Below the quality bar' : approved ? 'Cleared to advance' : 'Ready for a decision',
-              reason: evidenceOnly ? 'This record supports another artifact; it is not an approval target.' : failed ? 'Machine evidence is current and the measured quality is below the configured bar.' : approved ? 'Current quality evidence cleared the bar and an authorized reviewer accepted the work.' : 'Quality cleared; an authorized human must now rule.',
-              tone: evidenceOnly ? 'neutral' : failed ? 'critical' : approved ? 'positive' : 'attention',
-              canAdvance: approved,
+              headline: evidenceOnly ? 'Inspect evidence' : failed ? 'Below the quality bar' : errored ? 'Verification needs attention' : visualBlocked ? 'Visual proof incomplete' : approved ? 'Cleared to advance' : 'Ready for a decision',
+              reason: evidenceOnly ? 'This record supports another artifact; it is not an approval target.' : failed ? 'Machine evidence is current and the measured quality is below the configured bar.' : errored ? 'The current run errored; the prior score is historical.' : visualBlocked ? 'Quality cleared, but required visual evidence is missing.' : approved ? 'Current quality evidence cleared the bar and an authorized reviewer accepted the work.' : 'Quality cleared; an authorized human must now rule.',
+              tone: evidenceOnly
+                ? 'neutral'
+                : failed
+                  ? 'attention'
+                  : errored
+                    ? 'critical'
+                    : visualBlocked
+                      ? 'attention'
+                      : approved
+                        ? 'positive'
+                        : 'attention',
+              canAdvance: approved && !visualBlocked,
             },
             authority: { canReview: !evidenceOnly, canRerun: false, canOverride: false, canEditPolicy: false },
             lineage: { version: 3, state: 'current' },
+            counts: {
+              artifactRecords: 1,
+              versions: 3,
+              qualityRuns: evidenceOnly ? 0 : 6,
+              rulings: approved ? 1 : 0,
+              outcomeObservations: observed ? 1 : 0,
+              evidenceRefs: evidenceOnly ? 1 : 6,
+            },
           },
         };
       }
@@ -475,6 +1092,66 @@
         if (tone === 'critical') return '<path d="M12 8v5"/><path d="M12 17h.01"/><path d="M10.3 3.7 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0Z"/>';
         if (tone === 'active') return '<path d="M12 2v4m0 12v4M4.9 4.9l2.8 2.8m8.6 8.6 2.8 2.8M2 12h4m12 0h4M4.9 19.1l2.8-2.8m8.6-8.6 2.8-2.8"/>';
         return '<path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/>';
+      }
+
+      function thresholdSourceText(quality) {
+        var source = asObject(quality.thresholdSource);
+        var kind = cleanText(source.kind, '');
+        if (kind === 'eval_profile') {
+          var name = cleanText(source.profileName, 'Evaluation profile');
+          var version = typeof source.profileVersion === 'number' ? ' v' + source.profileVersion : '';
+          var scope = cleanText(source.profileScope, '');
+          return name + version + (scope ? ' · ' + scope : '');
+        }
+        if (kind === 'eval_run_report') return 'Current eval run';
+        if (kind === 'embedded_eval') return 'Embedded artifact eval';
+        if (kind === 'contract_default') return 'Artifact contract default';
+        if (kind === 'system_default') return 'System fallback';
+        return 'Policy source unavailable';
+      }
+
+      function formatEvidenceTime(value) {
+        var raw = cleanText(value, '');
+        if (!raw) return '';
+        var parsed = new Date(raw);
+        if (Number.isNaN(parsed.getTime())) return raw;
+        try {
+          return new Intl.DateTimeFormat('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZoneName: 'short',
+          }).format(parsed);
+        } catch (_error) {
+          return raw;
+        }
+      }
+
+      function renderEvidenceTime(value) {
+        var raw = cleanText(value, '');
+        return raw
+          ? '<time datetime="' + escapeHtml(raw) + '">' + escapeHtml(formatEvidenceTime(raw)) + '</time>'
+          : '';
+      }
+
+      function renderHumanRulingDetail(ruling, purpose) {
+        if (ruling.state === 'pending') return 'No authorized ruling recorded';
+        if (ruling.state === 'none' && purpose.reviewRequired === false) return 'Not an approval target';
+        if (ruling.state === 'none') return 'No ruling recorded';
+        var actor = cleanText(ruling.actorLabel, cleanText(ruling.actorKind, 'No authority'));
+        var at = renderEvidenceTime(ruling.at);
+        return escapeHtml(actor) + (at ? ' · ' + at : '');
+      }
+
+      function renderOutcomeDetail(outcome) {
+        var count = typeof outcome.count === 'number' ? outcome.count : 0;
+        var parts = [escapeHtml(count + ' observation' + (count === 1 ? '' : 's'))];
+        var source = cleanText(outcome.source, '');
+        var observedAt = renderEvidenceTime(outcome.observedAt);
+        if (source) parts.push(escapeHtml(source));
+        if (observedAt) parts.push(observedAt);
+        return parts.join(' · ');
       }
 
       function renderAction(model, action) {
@@ -540,12 +1217,14 @@
                 '<div class="verdict-mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + iconForTone(tone) + '</svg></div>' +
                 '<div><h1>' + escapeHtml(cleanText(workflow.headline, 'Verification unavailable')) + '</h1><p>' + escapeHtml(cleanText(workflow.reason, 'No canonical verification reason was returned.')) + '</p></div>' +
               '</section>' +
+              renderQualityGauge(quality, purpose.reviewRequired) +
               '<section class="signals" aria-label="Verification signals">' +
-                '<div class="signal"><span class="signal-label">Machine quality</span><span class="signal-value">' + escapeHtml(machine.value) + '</span><span class="signal-detail">' + escapeHtml(machine.detail) + '</span></div>' +
-                '<div class="signal"><span class="signal-label">Human ruling</span><span class="signal-value">' + escapeHtml(cleanText(ruling.label, 'Not recorded')) + '</span><span class="signal-detail">' + escapeHtml(cleanText(ruling.actorKind, 'No authority')) + '</span></div>' +
-                '<div class="signal"><span class="signal-label">Outcome</span><span class="signal-value">' + escapeHtml(cleanText(outcome.label, 'Not observed')) + '</span><span class="signal-detail">' + (typeof outcome.count === 'number' ? outcome.count : 0) + ' observation' + (outcome.count === 1 ? '' : 's') + '</span></div>' +
+                '<div class="signal" data-axis="quality" data-state="' + escapeHtml(cleanText(quality.state, 'unscored').toLowerCase()) + '"><span class="signal-label">Machine quality</span><span class="signal-value">' + escapeHtml(machine.value) + '</span><span class="signal-detail">' + escapeHtml(machine.detail + ' · ' + thresholdSourceText(quality)) + '</span></div>' +
+                '<div class="signal" data-axis="human" data-state="' + escapeHtml(cleanText(ruling.state, 'none').toLowerCase()) + '"><span class="signal-label">Human ruling</span><span class="signal-value">' + escapeHtml(cleanText(ruling.label, 'Not recorded')) + '</span><span class="signal-detail">' + renderHumanRulingDetail(ruling, purpose) + '</span></div>' +
+                '<div class="signal" data-axis="outcome" data-state="' + escapeHtml(cleanText(outcome.state, 'unobserved').toLowerCase()) + '"><span class="signal-label">Outcome</span><span class="signal-value">' + escapeHtml(cleanText(outcome.label, cleanText(outcome.latestKind, 'Not observed'))) + '</span><span class="signal-detail">' + renderOutcomeDetail(outcome) + '</span></div>' +
               '</section>' +
               renderAction(model, action) +
+              (hasCanonicalContract ? renderQualityAnatomy(model) : '') +
             '</div>' +
           '</article>'
         );
@@ -654,6 +1333,9 @@
         normalizeReviewResponse: normalizeReviewResponse,
         choosePrimaryAction: choosePrimaryAction,
         scoreText: scoreText,
+        renderQualityGauge: renderQualityGauge,
+        buildQualityAnatomy: buildQualityAnatomy,
+        renderQualityAnatomy: renderQualityAnatomy,
       };
 
       function bootstrap() {

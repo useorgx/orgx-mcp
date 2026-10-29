@@ -22,9 +22,11 @@ function registration(toolId: string) {
 describe('canonical artifact review MCP tools', () => {
   it('hydrates an explicit or selected artifact from the canonical app route', () => {
     const source = registration('review_artifact');
-    expect(source).toContain('`/api/artifacts/${encodeURIComponent(artifactId)}`');
+    expect(source).toContain('selectArtifactForReview({');
     expect(source).toContain('structuredContent: result');
     expect(source).toContain('result.reviewContract');
+    expect(source).not.toContain("params.set('entity_id'");
+    expect(indexSource).toContain("from './artifactReviewSelection'");
     expect(source).not.toContain("type: 'artifact',\n            id:");
   });
 

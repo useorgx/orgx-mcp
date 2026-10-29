@@ -138,6 +138,10 @@ import {
 } from './spawnContract';
 import { validateWriteCreateContract } from './writeContract';
 import { buildLiveFeedWidget } from './liveFeedWidget';
+import {
+  ArtifactReviewSelectionExhaustedError,
+  selectArtifactForReview,
+} from './artifactReviewSelection';
 import { signStreamToken } from './streamToken';
 import { hydrateTaskContext } from './taskContextHydrator';
 import { buildWorkspaceCreateBody } from './workspaceTool';
@@ -11485,7 +11489,9 @@ export class OrgXMcp extends McpAgent<
             artifact_id: z
               .string()
               .optional()
-              .describe('Specific artifact ID to review. Defaults to the next in_review artifact.'),
+              .describe(
+                'Specific artifact ID to review. Defaults to the next artifact awaiting a human ruling.'
+              ),
             entity_id: z
               .string()
               .optional()
@@ -11530,40 +11536,36 @@ export class OrgXMcp extends McpAgent<
               this.sessionContext?.workspaceId ??
               null;
 
-            let artifactId = explicitArtifactId;
-            if (!artifactId) {
-              const params = new URLSearchParams();
-              params.set('type', 'artifact');
-              params.set('limit', '1');
-              params.set('status', 'in_review');
-              if (typeof args.entity_id === 'string' && args.entity_id.trim()) {
-                params.set('entity_id', args.entity_id.trim());
+            const authContext = {
+              userId: this.resolveUserId(),
+              userEmail: this.resolveUserEmail(),
+              orgxUserId: this.resolveOrgxUserId(this.resolveUserId()),
+            };
+            let result: Record<string, unknown> | null;
+            try {
+              result = await selectArtifactForReview({
+                explicitArtifactId,
+                entityId:
+                  typeof args.entity_id === 'string' ? args.entity_id : null,
+                workspaceId: wsId,
+                request: async (path) => {
+                  const apiResponse = await callOrgxApiJson(
+                    this.env,
+                    path,
+                    undefined,
+                    authContext
+                  );
+                  return (await apiResponse.json()) as Record<string, unknown>;
+                },
+              });
+            } catch (error) {
+              if (error instanceof ArtifactReviewSelectionExhaustedError) {
+                return this.toolError(error.message);
               }
-              if (wsId) params.set('workspace_id', wsId);
-
-              const selectionResponse = await callOrgxApiJson(
-                this.env,
-                `/api/entities?${params.toString()}`,
-                undefined,
-                {
-                  userId: this.resolveUserId(),
-                  userEmail: this.resolveUserEmail(),
-                  orgxUserId: this.resolveOrgxUserId(this.resolveUserId()),
-                }
-              );
-              const selection = (await selectionResponse.json()) as {
-                data?: Array<Record<string, unknown>>;
-              };
-              const selected = Array.isArray(selection.data)
-                ? selection.data[0]
-                : null;
-              artifactId =
-                selected && typeof selected.id === 'string'
-                  ? selected.id
-                  : null;
+              throw error;
             }
 
-            if (!artifactId) {
+            if (!result) {
               return {
                 content: [
                   {
@@ -11574,18 +11576,6 @@ export class OrgXMcp extends McpAgent<
                 structuredContent: { artifact: null, reviewContract: null },
               };
             }
-
-            const response = await callOrgxApiJson(
-              this.env,
-              `/api/artifacts/${encodeURIComponent(artifactId)}`,
-              undefined,
-              {
-                userId: this.resolveUserId(),
-                userEmail: this.resolveUserEmail(),
-                orgxUserId: this.resolveOrgxUserId(this.resolveUserId()),
-              }
-            );
-            const result = (await response.json()) as Record<string, unknown>;
             const artifact =
               result.artifact && typeof result.artifact === 'object'
                 ? (result.artifact as Record<string, unknown>)

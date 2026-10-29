@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-07-31T20:44:03.521Z",
+  "generatedAt": "2026-08-02T00:12:10.236Z",
   "allowlist": [
     "shared/components.css",
     "shared/components/domain-accent.css",
@@ -52,8 +52,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 26843,
-      "hash": "d0f2ca9b5722",
+      "bytes": 54158,
+      "hash": "7ee0a63c73be",
       "primaryRgb": "251,191,36",
       "sharedRefs": [
         "shared/mcp-apps-sdk.umd.js",
