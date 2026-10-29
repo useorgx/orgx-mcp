@@ -1,0 +1,23 @@
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+stderr | tests/profileDiscoveryPolicy.spec.ts > profile auxiliary discovery policy > unrecognized-profile preserves the six informational widgets independently of the directory
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'unrecognized-profile', effective: 'read-only' }
+
+stderr | tests/toolProfiles.compat.spec.ts > toolProfiles backward compatibility > fails unknown profiles closed to the read-only fallback surface
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+
+ ✓ tests/profileDiscoveryPolicy.spec.ts (7 tests) 5ms
+ ✓ tests/toolProfiles.compat.spec.ts (10 tests) 10ms
+ ✓ tests/claudeDirectoryWorkflow.spec.ts (34 tests) 749ms
+ ✓ tests/submissionProfileLocalSideEffects.spec.ts (3 tests) 1096ms
+   ✓ submission profile worker-local side-effect suppression > keeps Claude informational reads free of worker-local persistence and logging on the broader surface  872ms
+ ✓ tests/surfaceContract.spec.ts (106 tests) 4715ms
+   ✓ one public contract per profile > v2: bootstrap reports exactly the tools/list, split by who may call them  587ms
+
+ Test Files  5 passed (5)
+      Tests  160 passed (160)
+   Start at  10:20:26
+   Duration  5.88s (transform 1.06s, setup 0ms, collect 2.13s, tests 6.57s, environment 1ms, prepare 513ms)
+

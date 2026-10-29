@@ -1,0 +1,130 @@
+Refreshing run status every 30 seconds. Press Ctrl+C to quit.
+
+* main Deploy MCP Server · 37319409497
+Triggered via push about 1 minute ago
+
+JOBS
+* deploy (ID 111794323339)
+  ✓ Set up job
+  ✓ Set up runner
+  ✓ Run actions/checkout@v6
+  * Run ./.github/actions/validate
+  * Validate gateway parity probe syntax
+  * Determine version
+  * Update server.json version
+  * Validate gateway identity deployment inputs
+  * Sync production Worker secrets
+  * Sync preview Worker secrets
+  * Deploy to Cloudflare
+  * Upload Sentry source maps
+  * Sync Worker triggers
+  * Verify deployment
+  * Verify MCP-to-core actor signing parity
+  * Post Run ./.github/actions/validate
+  * Post Run actions/checkout@v6
+  * Complete runner
+- validate in 0s (ID 111794325554)
+Refreshing run status every 30 seconds. Press Ctrl+C to quit.
+
+* main Deploy MCP Server · 37319409497
+Triggered via push about 1 minute ago
+
+JOBS
+* deploy (ID 111794323339)
+  ✓ Set up job
+  ✓ Set up runner
+  ✓ Run actions/checkout@v6
+  * Run ./.github/actions/validate
+  * Validate gateway parity probe syntax
+  * Determine version
+  * Update server.json version
+  * Validate gateway identity deployment inputs
+  * Sync production Worker secrets
+  * Sync preview Worker secrets
+  * Deploy to Cloudflare
+  * Upload Sentry source maps
+  * Sync Worker triggers
+  * Verify deployment
+  * Verify MCP-to-core actor signing parity
+  * Post Run ./.github/actions/validate
+  * Post Run actions/checkout@v6
+  * Complete runner
+- validate in 0s (ID 111794325554)
+Refreshing run status every 30 seconds. Press Ctrl+C to quit.
+
+* main Deploy MCP Server · 37319409497
+Triggered via push about 2 minutes ago
+
+JOBS
+* deploy (ID 111794323339)
+  ✓ Set up job
+  ✓ Set up runner
+  ✓ Run actions/checkout@v6
+  * Run ./.github/actions/validate
+  * Validate gateway parity probe syntax
+  * Determine version
+  * Update server.json version
+  * Validate gateway identity deployment inputs
+  * Sync production Worker secrets
+  * Sync preview Worker secrets
+  * Deploy to Cloudflare
+  * Upload Sentry source maps
+  * Sync Worker triggers
+  * Verify deployment
+  * Verify MCP-to-core actor signing parity
+  * Post Run ./.github/actions/validate
+  * Post Run actions/checkout@v6
+  * Complete runner
+- validate in 0s (ID 111794325554)
+Refreshing run status every 30 seconds. Press Ctrl+C to quit.
+
+* main Deploy MCP Server · 37319409497
+Triggered via push about 2 minutes ago
+
+JOBS
+* deploy (ID 111794323339)
+  ✓ Set up job
+  ✓ Set up runner
+  ✓ Run actions/checkout@v6
+  ✓ Run ./.github/actions/validate
+  ✓ Validate gateway parity probe syntax
+  ✓ Determine version
+  - Update server.json version
+  ✓ Validate gateway identity deployment inputs
+  ✓ Sync production Worker secrets
+  - Sync preview Worker secrets
+  * Deploy to Cloudflare
+  * Upload Sentry source maps
+  * Sync Worker triggers
+  * Verify deployment
+  * Verify MCP-to-core actor signing parity
+  * Post Run ./.github/actions/validate
+  * Post Run actions/checkout@v6
+  * Complete runner
+- validate in 0s (ID 111794325554)
+✓ main Deploy MCP Server · 37319409497
+Triggered via push about 3 minutes ago
+
+JOBS
+✓ deploy in 2m45s (ID 111794323339)
+  ✓ Set up job
+  ✓ Set up runner
+  ✓ Run actions/checkout@v6
+  ✓ Run ./.github/actions/validate
+  ✓ Validate gateway parity probe syntax
+  ✓ Determine version
+  - Update server.json version
+  ✓ Validate gateway identity deployment inputs
+  ✓ Sync production Worker secrets
+  - Sync preview Worker secrets
+  ✓ Deploy to Cloudflare
+  ✓ Upload Sentry source maps
+  ✓ Sync Worker triggers
+  ✓ Verify deployment
+  ✓ Verify MCP-to-core actor signing parity
+  ✓ Post Run ./.github/actions/validate
+  ✓ Post Run actions/checkout@v6
+  ✓ Complete runner
+  ✓ Complete job
+- validate in 0s (ID 111794325554)
+- publish-registry in 0s (ID 111795596136)

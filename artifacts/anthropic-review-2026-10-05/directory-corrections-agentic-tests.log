@@ -1,0 +1,94 @@
+
+> orgx-mcp-worker@1.1.5 test:agentic-scale /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> vitest run tests/agenticScaleProof.spec.ts && pnpm verify:agentic-scale:js && pnpm verify:agentic-scale:python && node scripts/test-agentic-scale-verifiers.mjs && node scripts/benchmark-agentic-scale-proof.mjs /tmp/orgx-agentic-scale-proof.json
+
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+ ✓ tests/agenticScaleProof.spec.ts (7 tests) 4ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  11:22:44
+   Duration  349ms (transform 35ms, setup 0ms, collect 34ms, tests 4ms, environment 0ms, prepare 74ms)
+
+
+> orgx-mcp-worker@1.1.5 verify:agentic-scale:js /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> node scripts/verify-agentic-scale-proof.mjs
+
+{"implementation":"javascript-node-stdlib","input":"/Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp/docs/benchmarks/agentic-scale-proof/fixtures/proof-packet.json","valid":true,"failures":[]}
+
+> orgx-mcp-worker@1.1.5 verify:agentic-scale:python /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> python3 scripts/verify_agentic_scale_proof.py
+
+{"implementation":"python-stdlib","valid":true,"failures":[]}
+Both verifier implementations rejected 6 adversarial packets.
+{
+  "schema": "orgx.agentic-scale-benchmark.v1",
+  "generated_at": "2026-10-05T16:22:46.871Z",
+  "workload": {
+    "agent_identities": 50000,
+    "episode_nodes": 1000000,
+    "promoted_accountability_nodes": 50000,
+    "raw_to_accountability_ratio": 20
+  },
+  "measured": {
+    "wall_time_ms": 294.213,
+    "nodes_per_second": 3398895,
+    "bytes_for_exact_replay_bitset": 125000,
+    "graph_digest": "sha256:091fb1162436e0974eec805d8c7c3a2ce33272ee9778823e952116772ec0da4c",
+    "anomaly_detection_recall": 1
+  },
+  "adversarial": {
+    "duplicate_events": {
+      "injected": 4,
+      "detected": 4
+    },
+    "reordered_events": {
+      "injected": 9,
+      "detected": 9
+    },
+    "dropped_events": {
+      "injected": 3,
+      "detected": 3
+    },
+    "expired_leases": {
+      "injected": 3,
+      "detected": 3
+    },
+    "stale_policies": {
+      "injected": 2,
+      "detected": 2
+    },
+    "clock_skew": {
+      "injected": 2,
+      "detected": 2
+    },
+    "replay_attacks": {
+      "injected": 2,
+      "detected": 2
+    },
+    "hidden_branches": {
+      "injected": 1,
+      "detected": 1
+    },
+    "out_of_band_effects": {
+      "injected": 1,
+      "detected": 1
+    },
+    "correlated_judges": {
+      "injected": 1,
+      "detected": 1
+    }
+  },
+  "acceptance": {
+    "exact_scale": true,
+    "all_injected_anomalies_detected": true,
+    "bounded_accountability_volume": true
+  },
+  "limitations": [
+    "This is a deterministic local protocol benchmark, not a production network load test.",
+    "Latency and throughput describe this process and machine only.",
+    "The benchmark does not claim third-party review or a realized customer outcome."
+  ]
+}

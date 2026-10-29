@@ -1,0 +1,16 @@
+
+> orgx-mcp-worker@1.1.5 directory:preflight /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> node scripts/directory-preflight.mjs
+
+Directory preflight passed.
+Verified base URL: https://mcp.useorgx.com
+Remember to manually verify reviewer credentials and current OAuth callbacks:
+- hosted Claude callback supplied by the current client
+- http://localhost:<random-port>/...
+- http://127.0.0.1:<random-port>/...
+- PKCE S256 and protected-resource 401 with WWW-Authenticate
+- invalid Origin -> 403; trusted Claude Origin echoed; no-Origin CLI reaches OAuth
+Remember to verify the dedicated review workspace via the authenticated OrgX routes:
+- GET https://useorgx.com/api/review/sessions/<token>/status
+- POST https://useorgx.com/api/review/sessions/<token>/bootstrap
+- POST https://useorgx.com/api/review/sessions/<token>/reset

@@ -1,0 +1,141 @@
+
+> orgx-mcp-worker@1.1.5 test:mcp-contract /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> vitest run tests/mcpWorker.directoryProof.spec.ts tests/mcpWorker.bootstrapWorkspaceAccess.spec.ts tests/mcpWorker.resumeOwnership.spec.ts tests/claudeDirectoryWorkflow.spec.ts tests/liveToolAudit.spec.ts tests/promptTemplatePolicy.spec.ts tests/securityHeaders.spec.ts tests/mcpOriginValidation.spec.ts tests/mcpTransport.spec.ts tests/mcp.sessionStorage.spec.ts tests/submissionProfileLocalSideEffects.spec.ts tests/toolCatalogContractParity.spec.ts tests/mcpLifecycleActionAliases.spec.ts tests/reporting.mcp-tools.spec.ts tests/operatorChronicleFallback.spec.ts tests/mcpWorker.toolRegistration.spec.ts tests/entityUpdateRequest.spec.ts tests/standardOutputSchema.spec.ts tests/mcpWorker.contextAccessTier.spec.ts tests/mcpWorker.edgeRateLimit.spec.ts tests/mcpWorker.entityActionAttach.spec.ts tests/mcpWorker.entityActionShipBatch.spec.ts tests/mcpWorker.taskContextHydrator.spec.ts tests/mcpWorker.toolAccessGating.spec.ts tests/mcpWorker.accountTools.spec.ts tests/planSessionContract.spec.ts tests/schemaIntrospection.spec.ts tests/contractTools.spec.ts tests/controllerStatusContract.spec.ts tests/listEntitiesWorkspaceScope.spec.ts tests/loopReliabilityValidation.spec.ts tests/artifactContracts.spec.ts tests/founderTeamArtifactCatalog.spec.ts tests/toolCoverageMatrix.spec.ts tests/toolProfiles.compat.spec.ts tests/orgxSearch.spec.ts tests/liveContractRegressions.spec.ts tests/toolGuidance.spec.ts tests/agentSelection.fixture.spec.ts tests/agentSelectionRunner.spec.ts tests/surfaceContract.spec.ts tests/widgetRuntimeErrors.spec.ts tests/toolArgumentAliases.spec.ts
+
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+stdout | tests/mcpTransport.spec.ts > mcpTransport > normalizes tool name prefix "orgx-mcp:spawn_agent_task" for tools/call requests
+[mcp] Normalized tool name {
+  original: 'orgx-mcp:spawn_agent_task',
+  normalized: 'spawn_agent_task'
+}
+
+stdout | tests/mcpTransport.spec.ts > mcpTransport > normalizes tool name prefix "OrgX:spawn_agent_task" for tools/call requests
+[mcp] Normalized tool name { original: 'OrgX:spawn_agent_task', normalized: 'spawn_agent_task' }
+
+stdout | tests/mcpTransport.spec.ts > mcpTransport > normalizes tool name prefix "orgx-mcp.spawn_agent_task" for tools/call requests
+[mcp] Normalized tool name {
+  original: 'orgx-mcp.spawn_agent_task',
+  normalized: 'spawn_agent_task'
+}
+
+stdout | tests/mcpTransport.spec.ts > mcpTransport > normalizes tool name prefix "orgx-mcp/spawn_agent_task" for tools/call requests
+[mcp] Normalized tool name {
+  original: 'orgx-mcp/spawn_agent_task',
+  normalized: 'spawn_agent_task'
+}
+
+stdout | tests/mcpTransport.spec.ts > mcpTransport > normalizes tool name prefix "mcp__orgx__spawn_agent_task" for tools/call requests
+[mcp] Normalized tool name {
+  original: 'mcp__orgx__spawn_agent_task',
+  normalized: 'spawn_agent_task'
+}
+
+stdout | tests/mcpTransport.spec.ts > mcpTransport > normalizes tool name prefix "mcp__orgx-mcp__spawn_agent_task" for tools/call requests
+[mcp] Normalized tool name {
+  original: 'mcp__orgx-mcp__spawn_agent_task',
+  normalized: 'spawn_agent_task'
+}
+
+stderr | tests/mcpTransport.spec.ts > mcpTransport > preserves request context and fails unknown profiles closed before dispatch
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+
+stdout | tests/mcpTransport.spec.ts > mcpTransport > routes get_decision_history to recall_memory when no legacy-only filters are used
+[mcp] Normalized tool name {
+  original: 'mcp__orgx__get_decision_history',
+  normalized: 'get_decision_history'
+}
+
+stdout | tests/mcpTransport.spec.ts > mcpTransport > routes create_checkout_session to account_upgrade
+[mcp] Normalized tool name {
+  original: 'mcp__orgx__create_checkout_session',
+  normalized: 'create_checkout_session'
+}
+
+ ✓ tests/mcpTransport.spec.ts (29 tests) 57ms
+stderr | tests/mcpWorker.edgeRateLimit.spec.ts > edge rate limiting > falls back to memory when the Upstash pipeline exceeds the edge timeout
+[rate-limit] Distributed admission unavailable { source: 'memory', reason: 'upstash_unavailable' }
+
+stderr | tests/mcpWorker.edgeRateLimit.spec.ts > edge rate limiting > marks malformed Redis responses as degraded fallback: {}
+[rate-limit] Distributed admission unavailable { source: 'memory', reason: 'upstash_unavailable' }
+
+stderr | tests/mcpWorker.edgeRateLimit.spec.ts > edge rate limiting > marks malformed Redis responses as degraded fallback: {"error":"ERR script failed"}
+[rate-limit] Distributed admission unavailable { source: 'memory', reason: 'upstash_unavailable' }
+
+stderr | tests/mcpWorker.edgeRateLimit.spec.ts > edge rate limiting > marks malformed Redis responses as degraded fallback: {"result":[1]}
+[rate-limit] Distributed admission unavailable { source: 'memory', reason: 'upstash_unavailable' }
+
+stderr | tests/mcpWorker.edgeRateLimit.spec.ts > edge rate limiting > marks malformed Redis responses as degraded fallback: {"result":[1,-1,1]}
+[rate-limit] Distributed admission unavailable { source: 'memory', reason: 'upstash_unavailable' }
+
+stderr | tests/mcpWorker.edgeRateLimit.spec.ts > edge rate limiting > marks malformed Redis responses as degraded fallback: {"result":[1,101,1]}
+[rate-limit] Distributed admission unavailable { source: 'memory', reason: 'upstash_unavailable' }
+
+stderr | tests/mcpWorker.edgeRateLimit.spec.ts > edge rate limiting > marks malformed Redis responses as degraded fallback: {"result":[0,0,1]}
+[rate-limit] Distributed admission unavailable { source: 'memory', reason: 'upstash_unavailable' }
+
+stderr | tests/mcpWorker.edgeRateLimit.spec.ts > edge rate limiting > marks malformed Redis responses as degraded fallback: {"result":[1,"1",1]}
+[rate-limit] Distributed admission unavailable { source: 'memory', reason: 'upstash_unavailable' }
+
+stderr | tests/mcpWorker.edgeRateLimit.spec.ts > edge rate limiting > bounds Redis response-body waits as well as the initial fetch
+[rate-limit] Distributed admission unavailable { source: 'memory', reason: 'upstash_unavailable' }
+
+ ✓ tests/standardOutputSchema.spec.ts (3 tests) 33ms
+ ✓ tests/liveToolAudit.spec.ts (3 tests) 45ms
+ ✓ tests/mcpWorker.edgeRateLimit.spec.ts (18 tests) 205ms
+ ✓ tests/agentSelectionRunner.spec.ts (7 tests) 21ms
+ ✓ tests/toolCoverageMatrix.spec.ts (6 tests) 11ms
+stderr | tests/toolProfiles.compat.spec.ts > toolProfiles backward compatibility > fails unknown profiles closed to the read-only fallback surface
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+
+ ✓ tests/toolProfiles.compat.spec.ts (10 tests) 18ms
+ ✓ tests/contractTools.spec.ts (25 tests) 29ms
+ ✓ tests/mcpWorker.entityActionShipBatch.spec.ts (5 tests) 6ms
+ ✓ tests/mcpWorker.accountTools.spec.ts (4 tests) 24ms
+ ✓ tests/claudeDirectoryWorkflow.spec.ts (53 tests) 1071ms
+ ✓ tests/mcpWorker.directoryProof.spec.ts (5 tests) 1554ms
+ ✓ tests/mcpWorker.bootstrapWorkspaceAccess.spec.ts (24 tests) 1662ms
+ ✓ tests/orgxSearch.spec.ts (6 tests) 5ms
+ ✓ tests/planSessionContract.spec.ts (12 tests) 70ms
+ ✓ tests/mcpWorker.toolRegistration.spec.ts (23 tests) 21ms
+ ✓ tests/mcpWorker.contextAccessTier.spec.ts (8 tests) 9ms
+ ✓ tests/mcpOriginValidation.spec.ts (12 tests) 12ms
+ ✓ tests/toolGuidance.spec.ts (6 tests) 15ms
+ ✓ tests/reporting.mcp-tools.spec.ts (16 tests) 43ms
+ ✓ tests/promptTemplatePolicy.spec.ts (6 tests) 8ms
+ ✓ tests/controllerStatusContract.spec.ts (17 tests) 21ms
+ ✓ tests/mcpWorker.taskContextHydrator.spec.ts (3 tests) 6ms
+ ✓ tests/mcpWorker.entityActionAttach.spec.ts (9 tests) 12ms
+ ✓ tests/securityHeaders.spec.ts (3 tests) 5ms
+ ✓ tests/entityUpdateRequest.spec.ts (8 tests) 8ms
+ ✓ tests/loopReliabilityValidation.spec.ts (9 tests) 15ms
+ ✓ tests/mcpWorker.toolAccessGating.spec.ts (6 tests) 6ms
+ ✓ tests/founderTeamArtifactCatalog.spec.ts (4 tests) 3ms
+ ✓ tests/operatorChronicleFallback.spec.ts (7 tests) 4ms
+ ✓ tests/submissionProfileLocalSideEffects.spec.ts (3 tests) 2248ms
+   ✓ submission profile worker-local side-effect suppression > keeps Claude informational reads free of worker-local persistence and logging on the broader surface  1443ms
+   ✓ submission profile worker-local side-effect suppression > executes all nine submitted ChatGPT informational tools without worker-local persistence or logging  773ms
+ ✓ tests/agentSelection.fixture.spec.ts (10 tests | 1 skipped) 6ms
+ ✓ tests/mcpWorker.resumeOwnership.spec.ts (17 tests) 2807ms
+   ✓ resume_agent_run authenticates ownership before its mutation > also enforces ownership on the existing v2 profile without changing its annotations  1088ms
+ ✓ tests/mcp.sessionStorage.spec.ts (9 tests) 7ms
+ ✓ tests/liveContractRegressions.spec.ts (5 tests) 64ms
+ ✓ tests/schemaIntrospection.spec.ts (1 test) 3ms
+ ✓ tests/listEntitiesWorkspaceScope.spec.ts (5 tests) 10ms
+ ✓ tests/mcpLifecycleActionAliases.spec.ts (5 tests) 5ms
+ ✓ tests/artifactContracts.spec.ts (3 tests) 5ms
+ ✓ tests/toolArgumentAliases.spec.ts (6 tests) 5ms
+ ✓ tests/toolCatalogContractParity.spec.ts (2 tests) 3ms
+ ✓ tests/widgetRuntimeErrors.spec.ts (22 tests) 24ms
+ ✓ tests/surfaceContract.spec.ts (107 tests) 6234ms
+   ✓ one public contract per profile > does not request conversation tracking metadata on the directory profile  741ms
+   ✓ one public contract per profile > v2: bootstrap reports exactly the tools/list, split by who may call them  1120ms
+   ✓ one public contract per profile > chatgpt: bootstrap reports exactly the tools/list, split by who may call them  476ms
+
+ Test Files  43 passed (43)
+      Tests  541 passed | 1 skipped (542)
+   Start at  11:26:18
+   Duration  8.03s (transform 2.72s, setup 0ms, collect 12.14s, tests 16.42s, environment 485ms, prepare 4.10s)
+

@@ -1,0 +1,44 @@
+{
+  "status": "draft_prepared_not_submitted",
+  "portal": "https://claude.ai/directory/manage/new/connector",
+  "endpoint": "https://mcp.useorgx.com/mcp?profile=claude-directory",
+  "name": "OrgX MCP",
+  "slug": "orgx-mcp",
+  "pr": "https://github.com/useorgx/orgx-mcp/pull/462",
+  "merge_sha": "9a14cdf87f1a7b81d8bd9028640fb9175c8ccf06",
+  "ci_run": "https://github.com/useorgx/orgx-mcp/actions/runs/37318953880",
+  "ci_tests_passed": 2440,
+  "ci_tests_skipped": 2,
+  "deployment_run": "https://github.com/useorgx/orgx-mcp/actions/runs/37319409497",
+  "deployment": "success",
+  "tool_scan": {
+    "tools": 7,
+    "widget_templates": 6,
+    "resource_entries": 12,
+    "metadata_suggestions": 0,
+    "annotations_title_present": 7
+  },
+  "local_registration_tests_passed": 135,
+  "anthropic_review_tests_passed": 58,
+  "production_preflight": "passed",
+  "health": {
+    "status": "ok",
+    "upstream": "healthy",
+    "apiUrl": "https://useorgx.com",
+    "attempted": [
+      "https://useorgx.com",
+      "https://orgx-api-fallback-brain-buffet.vercel.app"
+    ]
+  },
+  "remaining": [
+    "dedicated_reviewer_account_and_populated_workspace",
+    "authenticated_all_seven_tool_tests",
+    "real_claude_response_screenshots",
+    "private_reviewer_credential_delivery_authorization",
+    "directory_policy_and_terms_consent",
+    "final_submission_and_provider_receipt"
+  ],
+  "observed_at": "2026-10-05T13:55:18.669758+00:00",
+  "scan_screenshot": "anthropic-review-2026-10-05/clean-tool-scan.jpg",
+  "draft_screenshot": "anthropic-review-2026-10-05/application-draft-review.jpg"
+}

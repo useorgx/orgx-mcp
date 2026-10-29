@@ -1,0 +1,13 @@
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+ ✓ tests/toolCatalogFreshness.spec.ts (2 tests) 17ms
+ ✓ tests/surfaceContract.spec.ts (107 tests) 4993ms
+   ✓ one public contract per profile > does not request conversation tracking metadata on the directory profile  819ms
+   ✓ one public contract per profile > v2: bootstrap reports exactly the tools/list, split by who may call them  344ms
+
+ Test Files  2 passed (2)
+      Tests  109 passed (109)
+   Start at  10:30:30
+   Duration  6.34s (transform 845ms, setup 0ms, collect 1.11s, tests 5.01s, environment 0ms, prepare 121ms)
+

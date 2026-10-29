@@ -1,0 +1,52 @@
+{
+  "plugin_id": "plugin_asdk_app_6a1083cac4788191a47b657dc58c4315",
+  "pr": "https://github.com/useorgx/orgx-mcp/pull/461",
+  "merge_sha": "e109306e183da3514fb5b5f13273bfff423873f4",
+  "deployment_run": "https://github.com/useorgx/orgx-mcp/actions/runs/37312770220",
+  "deployment": "success",
+  "server_version": "1.1.5",
+  "corrected_titles": [
+    {
+      "name": "approve_decision",
+      "title": "Open Decision Approval Review"
+    },
+    {
+      "name": "reject_decision",
+      "title": "Open Decision Rejection Review"
+    },
+    {
+      "name": "approve_agent_work",
+      "title": "Review Pending Agent Work"
+    }
+  ],
+  "health": {
+    "status": "ok",
+    "upstream": "healthy",
+    "apiUrl": "https://useorgx.com"
+  },
+  "openai_review_tests": 179,
+  "contract_tests_passed": 434,
+  "contract_tests_skipped": 1,
+  "legacy_descriptor_tests": 28,
+  "portal_scan": "complete",
+  "appeal": "submitted",
+  "ci_tests_passed": 2436,
+  "ci_tests_skipped": 2,
+  "portal_name_warnings": 0,
+  "portal_further_review_tools": [
+    "manage_lifecycle",
+    "orgx_write",
+    "orgx_act",
+    "orgx_plan",
+    "orgx_spawn",
+    "orgx_decide",
+    "approve_agent_work",
+    "scaffold_initiative"
+  ],
+  "streamlining_audit": "artifacts/tool-streamlining-2026-10-05/report.md",
+  "streamlining_focused_tests_passed": 166,
+  "appeal_provider_receipt": "Appeal submitted",
+  "appeal_observed_at": "2026-10-05T13:27:18.361120+00:00",
+  "appeal_screenshot": "artifacts/openai-review-2026-10-05/openai-appeal-submitted.jpg",
+  "anthropic_review_tests_passed": 57
+}

@@ -1,0 +1,41 @@
+
+> orgx-mcp-worker@1.1.5 test:anthropic-review /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> vitest run tests/mcpWorker.directoryProof.spec.ts tests/mcpWorker.bootstrapWorkspaceAccess.spec.ts tests/directoryReadiness.spec.ts tests/claudeDirectoryWorkflow.spec.ts tests/surfaceContract.spec.ts tests/submissionProfileLocalSideEffects.spec.ts tests/toolProfiles.compat.spec.ts tests/profileDiscoveryPolicy.spec.ts tests/smitheryMetadata.spec.ts tests/reviewerDeploymentConfig.spec.ts tests/mcpOriginValidation.spec.ts tests/requestToolProfile.spec.ts
+
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+ ✓ tests/mcpOriginValidation.spec.ts (12 tests) 16ms
+stderr | tests/requestToolProfile.spec.ts > request tool-profile propagation > fails an unknown URL profile closed to the read-only fallback, not v2 or the directory profile
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'not-a-profile', effective: 'read-only' }
+
+stderr | tests/requestToolProfile.spec.ts > request tool-profile propagation > fails an external full-profile request closed to read-only
+[mcp:profiles] External full profile request; failing closed to read-only surface
+
+stderr | tests/toolProfiles.compat.spec.ts > toolProfiles backward compatibility > fails unknown profiles closed to the read-only fallback surface
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+
+ ✓ tests/requestToolProfile.spec.ts (8 tests) 35ms
+ ✓ tests/toolProfiles.compat.spec.ts (10 tests) 25ms
+ ✓ tests/smitheryMetadata.spec.ts (9 tests) 56ms
+ ✓ tests/directoryReadiness.spec.ts (10 tests) 43ms
+stderr | tests/profileDiscoveryPolicy.spec.ts > profile auxiliary discovery policy > unrecognized-profile preserves the six informational widgets independently of the directory
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'unrecognized-profile', effective: 'read-only' }
+
+ ✓ tests/profileDiscoveryPolicy.spec.ts (7 tests) 5ms
+ ✓ tests/reviewerDeploymentConfig.spec.ts (2 tests) 4ms
+ ✓ tests/claudeDirectoryWorkflow.spec.ts (53 tests) 1035ms
+ ✓ tests/mcpWorker.directoryProof.spec.ts (5 tests) 1449ms
+ ✓ tests/mcpWorker.bootstrapWorkspaceAccess.spec.ts (24 tests) 1510ms
+ ✓ tests/submissionProfileLocalSideEffects.spec.ts (3 tests) 1681ms
+   ✓ submission profile worker-local side-effect suppression > keeps Claude informational reads free of worker-local persistence and logging on the broader surface  1423ms
+ ✓ tests/surfaceContract.spec.ts (107 tests) 5202ms
+   ✓ one public contract per profile > does not request conversation tracking metadata on the directory profile  677ms
+   ✓ one public contract per profile > v2: bootstrap reports exactly the tools/list, split by who may call them  378ms
+
+ Test Files  12 passed (12)
+      Tests  250 passed (250)
+   Start at  11:25:48
+   Duration  7.06s (transform 2.25s, setup 0ms, collect 7.60s, tests 11.06s, environment 2ms, prepare 1.53s)
+

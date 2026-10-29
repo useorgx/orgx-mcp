@@ -1,0 +1,23 @@
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+ ✓ tests/completeWithProof.spec.ts (10 tests) 13ms
+stderr | tests/toolProfiles.compat.spec.ts > toolProfiles backward compatibility > fails unknown profiles closed to the read-only fallback surface
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+
+ ✓ tests/toolProfiles.compat.spec.ts (10 tests) 14ms
+ ✓ tests/directoryReadiness.spec.ts (10 tests) 35ms
+ ✓ tests/claudeDirectoryWorkflow.spec.ts (53 tests) 847ms
+ ✓ tests/mcpWorker.bootstrapWorkspaceAccess.spec.ts (24 tests) 1244ms
+ ✓ tests/mcpWorker.resumeOwnership.spec.ts (17 tests) 1736ms
+   ✓ resume_agent_run authenticates ownership before its mutation > also enforces ownership on the existing v2 profile without changing its annotations  450ms
+ ✓ tests/surfaceContract.spec.ts (107 tests) 5055ms
+   ✓ one public contract per profile > does not request conversation tracking metadata on the directory profile  391ms
+   ✓ one public contract per profile > v2: bootstrap reports exactly the tools/list, split by who may call them  440ms
+
+ Test Files  7 passed (7)
+      Tests  231 passed (231)
+   Start at  11:19:41
+   Duration  6.74s (transform 1.65s, setup 0ms, collect 4.48s, tests 8.94s, environment 2ms, prepare 704ms)
+

@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+ ✓ tests/claudeDirectoryWorkflow.spec.ts (42 tests) 821ms
+
+ Test Files  1 passed (1)
+      Tests  42 passed (42)
+   Start at  10:21:07
+   Duration  1.40s (transform 737ms, setup 0ms, collect 325ms, tests 821ms, environment 0ms, prepare 85ms)
+

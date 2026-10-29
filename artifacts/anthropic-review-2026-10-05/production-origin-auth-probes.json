@@ -1,0 +1,26 @@
+{
+  "testedAt": "2026-10-05T15:43:28.468Z",
+  "cases": [
+    {
+      "origin": "https://untrusted.example",
+      "status": 403,
+      "allowOrigin": null,
+      "authenticate": null,
+      "body": "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32000,\"message\":\"Forbidden: invalid Origin header for this MCP endpoint.\",\"data\":{\"code\":\"invalid_origin\"}}}"
+    },
+    {
+      "origin": "https://claude.ai",
+      "status": 401,
+      "allowOrigin": "https://claude.ai",
+      "authenticate": "Bearer realm=\"OAuth\", resource_metadata=\"https://mcp.useorgx.com/.well-known/oauth-protected-resource/mcp\"",
+      "body": ""
+    },
+    {
+      "origin": "no-Origin CLI",
+      "status": 401,
+      "allowOrigin": null,
+      "authenticate": "Bearer realm=\"OAuth\", resource_metadata=\"https://mcp.useorgx.com/.well-known/oauth-protected-resource/mcp\"",
+      "body": ""
+    }
+  ]
+}

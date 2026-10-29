@@ -1,0 +1,12 @@
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+ ✓ tests/legacyToolAliases.spec.ts (28 tests | 27 skipped) 981ms
+   ✓ listed tool surfaces > profile "claude-directory" lists byte-identical tool descriptors  981ms
+
+  Snapshots  1 updated 
+ Test Files  1 passed (1)
+      Tests  1 passed | 27 skipped (28)
+   Start at  08:40:49
+   Duration  1.89s (transform 898ms, setup 0ms, collect 493ms, tests 981ms, environment 0ms, prepare 73ms)
+

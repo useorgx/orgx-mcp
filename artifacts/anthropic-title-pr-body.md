@@ -1,0 +1,5 @@
+The live Claude Connector Directory scan flagged all seven OrgX directory tools because it requires `annotations.title`, even when a top-level title is present. Its compliance form also requires tool descriptions without instructions about other tools. The `claude-directory` registration now mirrors each existing human-readable title into that annotation and supplies narrow descriptions of each tool's own function and accounting effects. Tool hints and any explicit annotation title are preserved.
+
+Other profiles retain their existing descriptors, including the OpenAI versions under appeal. The submission instructions point to the current Claude directory management portal and correct the documented widget family count to match the six served templates.
+
+Validation: typecheck, 135 targeted registration and descriptor tests, 58 Anthropic readiness tests, and `pnpm verify` (437 contract tests passed, one skipped, agentic-scale checks, and production SDK build) passed. Only the seven intended Claude directory descriptor hashes changed. After merge and worker deployment, reconnect the Claude submission and retain the live scan receipt before submitting.

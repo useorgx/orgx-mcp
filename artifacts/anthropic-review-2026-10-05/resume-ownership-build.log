@@ -1,0 +1,37 @@
+
+> orgx-mcp-worker@1.1.5 prebuild /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> pnpm widget:build && pnpm widget:theme && pnpm widget:version
+
+
+> orgx-mcp-worker@1.1.5 widget:build /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> node scripts/build-widgets.mjs
+
+✓ inlined assets minified — 22 files, 646.6 KB -> 508.7 KB in public/widgets/inline/
+✓ widget build OK — 16 widgets, manifest at public/widgets/_manifest.json
+
+> orgx-mcp-worker@1.1.5 widget:theme /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> node scripts/generate-widget-theme.mjs
+
+widget theme inlined: 19491 -> 12331 bytes -> src/generated/widgetThemeCss.ts
+
+> orgx-mcp-worker@1.1.5 widget:version /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> node scripts/generate-widget-build-info.mjs
+
+
+> orgx-mcp-worker@1.1.5 build /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> pnpm build:sdk
+
+
+> orgx-mcp-worker@1.1.5 build:sdk /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> node scripts/build-mcp-sdk.js
+
+Building MCP Apps SDK UMD bundle...
+vite v6.4.1 building for production...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/mcp-apps-sdk.umd.js  316.73 kB │ gzip: 74.95 kB
+✓ built in 420ms
+MCP Apps SDK bundle built successfully!
+Output: /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp/public/widgets/shared/mcp-apps-sdk.umd.js

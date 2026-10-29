@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+ ✓ tests/mcpWorker.bootstrapWorkspaceAccess.spec.ts (24 tests) 1567ms
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Start at  11:16:01
+   Duration  2.34s (transform 1.04s, setup 0ms, collect 204ms, tests 1.57s, environment 0ms, prepare 94ms)
+

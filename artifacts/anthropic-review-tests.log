@@ -1,0 +1,32 @@
+
+> orgx-mcp-worker@1.1.5 test:anthropic-review /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> vitest run tests/directoryReadiness.spec.ts tests/submissionProfileLocalSideEffects.spec.ts tests/toolProfiles.compat.spec.ts tests/profileDiscoveryPolicy.spec.ts tests/smitheryMetadata.spec.ts tests/reviewerDeploymentConfig.spec.ts tests/mcpOriginValidation.spec.ts tests/requestToolProfile.spec.ts
+
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+ ✓ tests/reviewerDeploymentConfig.spec.ts (2 tests) 4ms
+ ✓ tests/mcpOriginValidation.spec.ts (12 tests) 10ms
+stderr | tests/requestToolProfile.spec.ts > request tool-profile propagation > fails an unknown URL profile closed to the read-only fallback, not v2 or the directory profile
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'not-a-profile', effective: 'read-only' }
+
+stderr | tests/requestToolProfile.spec.ts > request tool-profile propagation > fails an external full-profile request closed to read-only
+[mcp:profiles] External full profile request; failing closed to read-only surface
+
+ ✓ tests/requestToolProfile.spec.ts (8 tests) 20ms
+stderr | tests/toolProfiles.compat.spec.ts > toolProfiles backward compatibility > fails unknown profiles closed to the read-only fallback surface
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+
+ ✓ tests/toolProfiles.compat.spec.ts (10 tests) 11ms
+ ✓ tests/profileDiscoveryPolicy.spec.ts (5 tests) 4ms
+ ✓ tests/directoryReadiness.spec.ts (9 tests) 15ms
+ ✓ tests/smitheryMetadata.spec.ts (9 tests) 21ms
+ ✓ tests/submissionProfileLocalSideEffects.spec.ts (3 tests) 1447ms
+   ✓ submission profile worker-local side-effect suppression > executes all seven Claude directory tools without worker-local persistence or logging  1143ms
+
+ Test Files  8 passed (8)
+      Tests  58 passed (58)
+   Start at  08:42:52
+   Duration  2.10s (transform 1.31s, setup 0ms, collect 2.18s, tests 1.53s, environment 2ms, prepare 939ms)
+

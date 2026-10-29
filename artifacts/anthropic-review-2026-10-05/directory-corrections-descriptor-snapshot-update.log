@@ -1,0 +1,11 @@
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+ ✓ tests/toolDiscoverySnapshot.spec.ts (27 tests) 13ms
+
+  Snapshots  1 updated 
+ Test Files  1 passed (1)
+      Tests  27 passed (27)
+   Start at  11:34:40
+   Duration  1.59s (transform 339ms, setup 0ms, collect 1.02s, tests 13ms, environment 0ms, prepare 204ms)
+

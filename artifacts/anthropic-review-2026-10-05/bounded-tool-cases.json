@@ -1,0 +1,770 @@
+{
+  "prepared_at": "2026-10-05T15:55:38.952Z",
+  "status": "prepared_only_not_executed",
+  "endpoint": "https://mcp.useorgx.com/mcp?profile=claude-directory",
+  "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+  "policy": {
+    "no_existing_record_mutation": true,
+    "model_spend_authorized_usd": 0,
+    "no_credentials_in_artifact": true,
+    "only_new_fixture_ids_for_writes": true
+  },
+  "source": {
+    "mcp_merge": "25b2e296c02032ac1ac90dbff3cf291a58a44366",
+    "core_main_read": "ba9203bcea570c9c312b33e503b1144a7843c206",
+    "core_deployed_sha": "not_established",
+    "mcp_resume_guard_merge": "cc3481dc3e620aedd26e6fc972058362dadfd2e0",
+    "directory_corrections": "pending branch codex/claude-directory-workspace-binding; revalidate schemas after merge/deploy"
+  },
+  "required_grants": [
+    "initiatives:read",
+    "initiatives:write",
+    "agents:read",
+    "agents:write",
+    "decisions:read",
+    "decisions:write",
+    "memory:read"
+  ],
+  "placeholders": {
+    "fixture_namespace": "Generate a unique timestamp/UUID namespace per test batch; preserve it across retries.",
+    "created_ids": "Extract actual returned UUIDs; never treat schema-validation placeholder UUIDs as production targets.",
+    "created_paused_run_id": "Unavailable in this directory-only no-spend fixture chain; the Resume case is held."
+  },
+  "ordered_fixture_setup": [
+    "orgx_bootstrap",
+    "read demo objective policy",
+    "orgx_create_entity initiative",
+    "helperFixtures workstream/milestone/two tasks",
+    "read back all created IDs/workspace membership; confirm no runs"
+  ],
+  "helperFixtures": [
+    {
+      "name": "created_workstream_id",
+      "tool": "orgx_create_entity",
+      "args": {
+        "type": "workstream",
+        "title": "Directory fixture workstream ${fixture_namespace}",
+        "initiative_id": "${created_initiative_id}",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "metadata": {
+          "directory_verification_fixture": true,
+          "verification_namespace": "${fixture_namespace}",
+          "no_agent_dispatch": true
+        },
+        "idempotency_key": "${fixture_namespace}:workstream"
+      }
+    },
+    {
+      "name": "created_milestone_id",
+      "tool": "orgx_create_entity",
+      "args": {
+        "type": "milestone",
+        "title": "Directory fixture milestone ${fixture_namespace}",
+        "initiative_id": "${created_initiative_id}",
+        "workstream_id": "${created_workstream_id}",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "metadata": {
+          "directory_verification_fixture": true,
+          "verification_namespace": "${fixture_namespace}",
+          "no_agent_dispatch": true
+        },
+        "idempotency_key": "${fixture_namespace}:milestone"
+      }
+    },
+    {
+      "name": "created_proof_task_id",
+      "tool": "orgx_create_entity",
+      "args": {
+        "type": "task",
+        "title": "Directory fixture proof task ${fixture_namespace}",
+        "initiative_id": "${created_initiative_id}",
+        "workstream_id": "${created_workstream_id}",
+        "milestone_id": "${created_milestone_id}",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "metadata": {
+          "directory_verification_fixture": true,
+          "verification_namespace": "${fixture_namespace}",
+          "no_agent_dispatch": true
+        },
+        "idempotency_key": "${fixture_namespace}:proof-task"
+      }
+    },
+    {
+      "name": "created_lifecycle_task_id",
+      "tool": "orgx_create_entity",
+      "args": {
+        "type": "task",
+        "title": "Directory fixture lifecycle task ${fixture_namespace}",
+        "initiative_id": "${created_initiative_id}",
+        "workstream_id": "${created_workstream_id}",
+        "milestone_id": "${created_milestone_id}",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "metadata": {
+          "directory_verification_fixture": true,
+          "verification_namespace": "${fixture_namespace}",
+          "no_agent_dispatch": true
+        },
+        "idempotency_key": "${fixture_namespace}:lifecycle-task"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "tool": "orgx_bootstrap",
+      "args": {
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd"
+      },
+      "disposition": "safe_read",
+      "expected": [
+        "profile=claude-directory",
+        "28 model-visible tools plus app-only Resume when authorized",
+        "workspace matches demo; no business record writes"
+      ]
+    },
+    {
+      "tool": "orgx_search",
+      "args": {
+        "type": "initiative",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "limit": 5
+      },
+      "disposition": "safe_read",
+      "expected": [
+        "bounded paginated response; no unscoped business search"
+      ]
+    },
+    {
+      "tool": "orgx_inspect",
+      "args": {
+        "type": "workspace",
+        "id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "hydrate_context": false,
+        "max_chars": 1000
+      },
+      "disposition": "safe_read",
+      "expected": [
+        "requested demo workspace identity"
+      ]
+    },
+    {
+      "tool": "orgx_recommend",
+      "args": {
+        "mode": "morning_brief",
+        "period": "day",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "limit": 1
+      },
+      "disposition": "safe_read",
+      "notes": "This mode reads the operator chronicle; it is not an autonomous-session brief."
+    },
+    {
+      "tool": "get_agent_status",
+      "args": {
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "include_idle": false
+      },
+      "disposition": "safe_read",
+      "notes": "Consumes metered MCP allowance; does not dispatch a run."
+    },
+    {
+      "tool": "get_initiative_pulse",
+      "args": {
+        "initiative_id": "${created_initiative_id}"
+      },
+      "disposition": "safe_read",
+      "requires": [
+        "created_initiative_id"
+      ],
+      "notes": "Consumes metered MCP allowance; only the new test initiative is selected."
+    },
+    {
+      "tool": "get_morning_brief",
+      "args": {
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd"
+      },
+      "disposition": "safe_read",
+      "notes": "May have no autonomous session. Empty or absence diagnostics are not a positive populated-session test; do not create a paid autonomous session to fill it."
+    },
+    {
+      "tool": "get_operator_chronicle",
+      "args": {
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "period": "day"
+      },
+      "disposition": "safe_read"
+    },
+    {
+      "tool": "check_execution_readiness",
+      "args": {
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd"
+      },
+      "disposition": "safe_read",
+      "expected": [
+        "credential readiness or precise missing prerequisites; creates no credentials"
+      ]
+    },
+    {
+      "tool": "orgx_command_status",
+      "args": {
+        "kind": "decision",
+        "id": "${created_decision_id}"
+      },
+      "disposition": "safe_read",
+      "requires": [
+        "created_decision_id"
+      ],
+      "expected": [
+        "new decision remains pending; no approval occurred"
+      ]
+    },
+    {
+      "tool": "review_artifact",
+      "args": {
+        "artifact_id": "${created_artifact_id}",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd"
+      },
+      "disposition": "safe_read",
+      "requires": [
+        "created_artifact_id"
+      ],
+      "expected": [
+        "new artifact preview/provenance; no automated approval"
+      ],
+      "notes": "Use exact new artifact ID. Do not pick or mutate an existing artifact review."
+    },
+    {
+      "tool": "orgx_create_entity",
+      "args": {
+        "type": "initiative",
+        "title": "Directory verification ${fixture_namespace}",
+        "summary": "Test-only fixture; no external work or model dispatch authorized.",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "metadata": {
+          "directory_verification_fixture": true,
+          "verification_namespace": "${fixture_namespace}",
+          "no_agent_dispatch": true
+        },
+        "idempotency_key": "${fixture_namespace}:initiative"
+      },
+      "disposition": "fixture_write",
+      "extract": {
+        "created_initiative_id": [
+          "structuredContent.id",
+          "structuredContent.entity_id",
+          "structuredContent.data.id"
+        ]
+      },
+      "notes": "If workspace policy requires primary objectives, add goal_ids from a read-only demo objective lookup. Never invent an objective UUID. Default workflow state only; no launch/public link."
+    },
+    {
+      "tool": "orgx_update_entity",
+      "args": {
+        "type": "task",
+        "id": "${created_proof_task_id}",
+        "fields": {
+          "description": "Fresh directory verification task; content update observed independently."
+        },
+        "idempotency_key": "${fixture_namespace}:content-update"
+      },
+      "disposition": "fixture_write",
+      "requires": [
+        "created_proof_task_id"
+      ],
+      "expected": [
+        "only fresh task content changes; workflow state unchanged"
+      ]
+    },
+    {
+      "tool": "orgx_start_plan",
+      "args": {
+        "feature_name": "Directory fixture plan ${fixture_namespace}",
+        "initial_plan": "# Directory fixture\nCreate isolated records; inspect them; attach real test evidence. No agent dispatch.",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd"
+      },
+      "disposition": "fixture_write",
+      "extract": {
+        "created_plan_session_id": [
+          "structuredContent.session_id",
+          "structuredContent.id",
+          "structuredContent.session.id"
+        ]
+      },
+      "notes": "Current API does not honor an idempotency key for this operation. Do not replay an uncertain response automatically; read back the actual fixture session/entity first."
+    },
+    {
+      "tool": "orgx_read_plan",
+      "args": {
+        "session_id": "${created_plan_session_id}"
+      },
+      "disposition": "safe_read",
+      "requires": [
+        "created_plan_session_id"
+      ],
+      "expected": [
+        "same session and initial plan; no planning mutation"
+      ]
+    },
+    {
+      "tool": "orgx_improve_plan",
+      "args": {
+        "session_id": "${created_plan_session_id}",
+        "plan_content": "# Directory fixture\nOnly inspect isolated test records."
+      },
+      "disposition": "held_paid_model",
+      "requires": [
+        "created_plan_session_id",
+        "separate explicit model-spend authorization"
+      ],
+      "notes": "Current API does not honor an idempotency key for this operation. Do not replay an uncertain response automatically; read back the actual fixture session/entity first."
+    },
+    {
+      "tool": "orgx_record_plan_edit",
+      "args": {
+        "session_id": "${created_plan_session_id}",
+        "edit_summary": "Added an explicit no-dispatch constraint to the fixture plan."
+      },
+      "disposition": "fixture_write",
+      "requires": [
+        "created_plan_session_id"
+      ],
+      "expected": [
+        "edit recorded on new session; no model invocation"
+      ],
+      "notes": "Current API does not honor an idempotency key for this operation. Do not replay an uncertain response automatically; read back the actual fixture session/entity first."
+    },
+    {
+      "tool": "orgx_complete_plan",
+      "args": {
+        "session_id": "${created_plan_session_id}",
+        "plan_content": "# Directory fixture\nIsolated records and proof links prepared. Actual live checks are recorded separately.",
+        "attach_to": {
+          "entity_type": "task",
+          "entity_id": "${created_proof_task_id}"
+        }
+      },
+      "disposition": "fixture_write",
+      "requires": [
+        "created_plan_session_id",
+        "created_proof_task_id"
+      ],
+      "expected": [
+        "new plan completed and attached only to new task; no dispatch"
+      ],
+      "notes": "Current API does not honor an idempotency key for this operation. Do not replay an uncertain response automatically; read back the actual fixture session/entity first."
+    },
+    {
+      "tool": "orgx_check_delegation",
+      "args": {
+        "action": "estimate",
+        "title": "Inspect a single local test fixture",
+        "instructions": "Read only; return one brief finding.",
+        "agent_type": "engineering",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "model_tier": "standard",
+        "budget_mode": "cheapest_valid",
+        "max_cost_usd": 0
+      },
+      "disposition": "safe_read",
+      "expected": [
+        "route/cost estimate; no task/run creation; no guard allowance consumed"
+      ]
+    },
+    {
+      "tool": "orgx_delegate_work",
+      "args": {
+        "action": "spawn",
+        "task_id": "${created_proof_task_id}",
+        "agent_type": "engineering",
+        "instructions": "Inspect this test fixture and return a structured blocker if no execution budget is available.",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "max_cost_usd": 0,
+        "model_tier": "standard",
+        "budget_mode": "cheapest_valid",
+        "idempotency_key": "${fixture_namespace}:dispatch-held"
+      },
+      "disposition": "held_paid_dispatch",
+      "requires": [
+        "created_proof_task_id",
+        "separate explicit dispatch/spend authorization"
+      ],
+      "notes": "Budget-cap denial can be a bounded negative probe after root review, but it does not prove successful agent execution. No successful dispatch is authorized by this test plan."
+    },
+    {
+      "tool": "orgx_list_pending_decisions",
+      "args": {
+        "initiative_id": "${created_initiative_id}",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd"
+      },
+      "disposition": "safe_read",
+      "requires": [
+        "created_initiative_id",
+        "created_decision_id"
+      ],
+      "expected": [
+        "new fixture decision is pending; no existing decision is settled"
+      ]
+    },
+    {
+      "tool": "orgx_record_decision",
+      "args": {
+        "action": "create",
+        "title": "Directory fixture decision ${fixture_namespace}",
+        "decision": "Test-only: no real approval or external action is requested.",
+        "context": "Verifies durable decision capture and the human review URL boundary.",
+        "initiative_id": "${created_initiative_id}",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "idempotency_key": "${fixture_namespace}:decision"
+      },
+      "disposition": "fixture_write",
+      "requires": [
+        "created_initiative_id"
+      ],
+      "extract": {
+        "created_decision_id": [
+          "structuredContent.id",
+          "structuredContent.entity_id",
+          "structuredContent.data.id",
+          "structuredContent.decision_id"
+        ]
+      }
+    },
+    {
+      "tool": "orgx_open_decision_review",
+      "args": {
+        "action": "approve",
+        "decision_id": "${created_decision_id}",
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd"
+      },
+      "disposition": "safe_read",
+      "requires": [
+        "created_decision_id"
+      ],
+      "expected": [
+        "authenticated human review URL returned; decision remains pending; no run resumes"
+      ],
+      "notes": "Despite read semantics, retains decisions:write grant. Do not submit approval or rejection in the human page."
+    },
+    {
+      "tool": "orgx_attach",
+      "args": {
+        "type": "task",
+        "id": "${created_proof_task_id}",
+        "name": "Directory fixture evidence ${fixture_namespace}",
+        "artifact_type": "eng.pull_request",
+        "external_url": "https://github.com/useorgx/orgx-mcp/pull/463",
+        "description": "Real implementation PR linked to a new test task; no artifact acceptance is claimed.",
+        "status": "in_review",
+        "metadata": {
+          "directory_verification_fixture": true,
+          "verification_namespace": "${fixture_namespace}",
+          "no_agent_dispatch": true
+        },
+        "idempotency_key": "${fixture_namespace}:artifact"
+      },
+      "disposition": "fixture_write",
+      "requires": [
+        "created_proof_task_id"
+      ],
+      "extract": {
+        "created_artifact_id": [
+          "structuredContent.artifact.id",
+          "structuredContent.data.id",
+          "structuredContent.id",
+          "structuredContent.artifact_id"
+        ]
+      }
+    },
+    {
+      "tool": "orgx_submit_receipt",
+      "args": {
+        "workspace_id": "127758d2-0509-4a76-9e43-850f845754fd",
+        "entity_type": "task",
+        "entity_id": "${created_proof_task_id}",
+        "receipt_type": "proof",
+        "summary": "Directory test fixture and real implementation link recorded; live checks remain separately evidenced.",
+        "evidence": {
+          "links": [
+            "https://github.com/useorgx/orgx-mcp/pull/463"
+          ],
+          "notes": "A fixture receipt is not acceptance, production proof, or successful model execution."
+        },
+        "artifact_type": "eng.pull_request",
+        "verification_status": "not_run",
+        "status": "in_progress",
+        "idempotency_key": "${fixture_namespace}:receipt"
+      },
+      "disposition": "fixture_write",
+      "requires": [
+        "created_proof_task_id"
+      ],
+      "expected": [
+        "durable bounded receipt; same retry key deduplicates"
+      ],
+      "notes": "Upgrade verification_status only after actual evidence exists. Do not fabricate a score or claim overall completion."
+    },
+    {
+      "tool": "orgx_complete_with_proof",
+      "args": {
+        "type": "task",
+        "id": "${created_proof_task_id}",
+        "artifact": {
+          "artifact_type": "eng.pull_request",
+          "external_url": "https://github.com/useorgx/orgx-mcp/pull/463",
+          "name": "Directory completion proof ${fixture_namespace}",
+          "status": "in_review",
+          "description": "Evidence linked; independent quality/acceptance is not claimed."
+        },
+        "verification": [
+          "https://github.com/useorgx/orgx-mcp/pull/463"
+        ],
+        "note": "Exercise proof gating on a newly created test task only."
+      },
+      "disposition": "gated_fixture_write",
+      "requires": [
+        "created_proof_task_id"
+      ],
+      "expected": [
+        "proof is attached",
+        "completion remains blocked unless genuine proof/quality/acceptance gates pass"
+      ],
+      "notes": "Current API does not honor an idempotency key for this operation. Do not replay an uncertain response automatically; read back the actual fixture session/entity first."
+    },
+    {
+      "tool": "orgx_change_entity_state",
+      "args": {
+        "type": "task",
+        "id": "${created_lifecycle_task_id}",
+        "action": "start",
+        "note": "Start the new fixture task state only; no agent dispatch requested.",
+        "idempotency_key": "${fixture_namespace}:task-state-start"
+      },
+      "disposition": "fixture_lifecycle",
+      "requires": [
+        "created_lifecycle_task_id"
+      ],
+      "expected": [
+        "new task moves todo to in_progress"
+      ],
+      "notes": "Use task start only, after readback confirms todo. Do not launch an initiative or start/resume a workstream; those may dispatch."
+    },
+    {
+      "tool": "manage_lifecycle",
+      "args": {
+        "level": "task",
+        "id": "${created_lifecycle_task_id}",
+        "action": "pause"
+      },
+      "disposition": "fixture_lifecycle",
+      "requires": [
+        "created_lifecycle_task_id",
+        "readback confirms no associated active agent runs"
+      ],
+      "expected": [
+        "new fixture node paused/blocked; zero active runs paused; no redispatch"
+      ],
+      "notes": "Pause only the new task, never the demo workspace, existing initiative, or existing run. Resume/retry can dispatch and are held."
+    },
+    {
+      "tool": "resume_agent_run",
+      "args": {
+        "run_id": "${created_paused_run_id}",
+        "note": "Human Resume verification on a separately created isolated reporting fixture."
+      },
+      "disposition": "held_fixture_prerequisite",
+      "requires": [
+        "new independently created owned paused reporting run with no executable job",
+        "fresh ownership preflight deployment verified",
+        "human widget activation"
+      ],
+      "notes": "App-only. No suitable run can be created through the 29-tool directory surface without agent dispatch. Do not substitute an existing run; successful Resume is not covered by this no-spend plan."
+    }
+  ],
+  "coverage": {
+    "captured_tools": 29,
+    "cases": 29,
+    "missing": [],
+    "validations": [
+      {
+        "tool": "orgx_bootstrap",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_search",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_inspect",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_recommend",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "get_agent_status",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "get_initiative_pulse",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "get_morning_brief",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "get_operator_chronicle",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "check_execution_readiness",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_command_status",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "review_artifact",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_create_entity",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_update_entity",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_start_plan",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_read_plan",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_improve_plan",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_record_plan_edit",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_complete_plan",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_check_delegation",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_delegate_work",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_list_pending_decisions",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_record_decision",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_open_decision_review",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_attach",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_submit_receipt",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_complete_with_proof",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_change_entity_state",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "manage_lifecycle",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "resume_agent_run",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_create_entity",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_create_entity",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_create_entity",
+        "schema_valid": true,
+        "errors": []
+      },
+      {
+        "tool": "orgx_create_entity",
+        "schema_valid": true,
+        "errors": []
+      }
+    ],
+    "eligible_without_paid_model": 26,
+    "held": [
+      {
+        "tool": "orgx_improve_plan",
+        "disposition": "held_paid_model"
+      },
+      {
+        "tool": "orgx_delegate_work",
+        "disposition": "held_paid_dispatch"
+      },
+      {
+        "tool": "resume_agent_run",
+        "disposition": "held_fixture_prerequisite"
+      }
+    ]
+  },
+  "cleanup": "Leave clearly marked fixture records for review or archive only the newly created initiative after evidence capture. No deletion, existing-record reset, or account-wide cleanup is authorized by this packet."
+}

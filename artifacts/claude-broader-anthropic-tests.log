@@ -1,0 +1,38 @@
+
+> orgx-mcp-worker@1.1.5 test:anthropic-review /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> vitest run tests/directoryReadiness.spec.ts tests/claudeDirectoryWorkflow.spec.ts tests/surfaceContract.spec.ts tests/submissionProfileLocalSideEffects.spec.ts tests/toolProfiles.compat.spec.ts tests/profileDiscoveryPolicy.spec.ts tests/smitheryMetadata.spec.ts tests/reviewerDeploymentConfig.spec.ts tests/mcpOriginValidation.spec.ts tests/requestToolProfile.spec.ts
+
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+ ✓ tests/reviewerDeploymentConfig.spec.ts (2 tests) 3ms
+ ✓ tests/mcpOriginValidation.spec.ts (12 tests) 9ms
+stderr | tests/profileDiscoveryPolicy.spec.ts > profile auxiliary discovery policy > unrecognized-profile preserves the six informational widgets independently of the directory
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'unrecognized-profile', effective: 'read-only' }
+
+ ✓ tests/profileDiscoveryPolicy.spec.ts (7 tests) 8ms
+ ✓ tests/smitheryMetadata.spec.ts (9 tests) 25ms
+stderr | tests/requestToolProfile.spec.ts > request tool-profile propagation > fails an unknown URL profile closed to the read-only fallback, not v2 or the directory profile
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'not-a-profile', effective: 'read-only' }
+
+stderr | tests/requestToolProfile.spec.ts > request tool-profile propagation > fails an external full-profile request closed to read-only
+[mcp:profiles] External full profile request; failing closed to read-only surface
+
+ ✓ tests/requestToolProfile.spec.ts (8 tests) 39ms
+stderr | tests/toolProfiles.compat.spec.ts > toolProfiles backward compatibility > fails unknown profiles closed to the read-only fallback surface
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+[mcp:profiles] Unknown tool profile; failing closed to read-only surface { requested: 'typo-admin', effective: 'read-only' }
+
+ ✓ tests/toolProfiles.compat.spec.ts (10 tests) 57ms
+ ✓ tests/directoryReadiness.spec.ts (10 tests) 34ms
+ ✓ tests/claudeDirectoryWorkflow.spec.ts (42 tests) 951ms
+ ✓ tests/submissionProfileLocalSideEffects.spec.ts (3 tests) 1300ms
+   ✓ submission profile worker-local side-effect suppression > keeps Claude informational reads free of worker-local persistence and logging on the broader surface  1081ms
+ ✓ tests/surfaceContract.spec.ts (106 tests) 4491ms
+   ✓ one public contract per profile > v2: bootstrap reports exactly the tools/list, split by who may call them  627ms
+
+ Test Files  10 passed (10)
+      Tests  209 passed (209)
+   Start at  10:24:05
+   Duration  6.02s (transform 1.85s, setup 0ms, collect 4.96s, tests 6.92s, environment 1ms, prepare 1.09s)
+

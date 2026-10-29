@@ -1,0 +1,33 @@
+Refreshing run status every 30 seconds. Press Ctrl+C to quit.
+
+* codex/claude-directory-resume-ownership Deploy MCP Server useorgx/orgx-mcp#464 · 37337312650
+Triggered via pull_request about 2 minutes ago
+
+JOBS
+* validate (ID 111855257430)
+  ✓ Set up job
+  ✓ Set up runner
+  ✓ Run actions/checkout@v6
+  * Run ./.github/actions/validate
+  * Validate gateway parity probe syntax
+  * Post Run ./.github/actions/validate
+  * Post Run actions/checkout@v6
+  * Complete runner
+- deploy in 0s (ID 111855259274)
+- publish-registry in 0s (ID 111855259492)
+✓ codex/claude-directory-resume-ownership Deploy MCP Server useorgx/orgx-mcp#464 · 37337312650
+Triggered via pull_request about 3 minutes ago
+
+JOBS
+✓ validate in 2m36s (ID 111855257430)
+  ✓ Set up job
+  ✓ Set up runner
+  ✓ Run actions/checkout@v6
+  ✓ Run ./.github/actions/validate
+  ✓ Validate gateway parity probe syntax
+  ✓ Post Run ./.github/actions/validate
+  ✓ Post Run actions/checkout@v6
+  ✓ Complete runner
+  ✓ Complete job
+- deploy in 0s (ID 111855259274)
+- publish-registry in 0s (ID 111855259492)

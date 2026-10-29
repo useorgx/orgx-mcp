@@ -1,0 +1,785 @@
+{
+  "chatgptListed": 27,
+  "modelVisible": 24,
+  "v2Listed": 45,
+  "knownDefinitions": 103,
+  "knownUnique": 103,
+  "rows": [
+    {
+      "id": "orgx_bootstrap",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "workspace_id",
+        "initiative_id",
+        "initiativeId",
+        "initiative",
+        "command_center_id",
+        "conversation_id",
+        "client_name",
+        "timezone"
+      ],
+      "actions": [],
+      "schemaBytes": 1161,
+      "descriptionBytes": 831,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/workspace-map.html?v=421c720d98ac"
+    },
+    {
+      "id": "orgx_search",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "created_from",
+        "created_to",
+        "query",
+        "type",
+        "status",
+        "initiative_id",
+        "workspace_id",
+        "limit",
+        "offset",
+        "cursor",
+        "fields",
+        "session_id",
+        "scope",
+        "receipt_id",
+        "workstream_id",
+        "view"
+      ],
+      "actions": [],
+      "schemaBytes": 2645,
+      "descriptionBytes": 1073,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/search-results.html?v=421c720d98ac"
+    },
+    {
+      "id": "orgx_inspect",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "type",
+        "id",
+        "hydrate_context",
+        "max_chars",
+        "session_id"
+      ],
+      "actions": [],
+      "schemaBytes": 904,
+      "descriptionBytes": 577,
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/entity-card.html?v=421c720d98ac"
+    },
+    {
+      "id": "orgx_recommend",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "mode",
+        "period",
+        "entity_type",
+        "entity_id",
+        "initiative_id",
+        "workspace_id",
+        "limit",
+        "session_id"
+      ],
+      "actions": [
+        "next_action",
+        "morning_brief"
+      ],
+      "schemaBytes": 1019,
+      "descriptionBytes": 661,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/morning-brief.html?v=421c720d98ac"
+    },
+    {
+      "id": "orgx_write",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "operation",
+        "type",
+        "id",
+        "title",
+        "name",
+        "summary",
+        "description",
+        "fields",
+        "initiative_id",
+        "workstream_id",
+        "milestone_id",
+        "workspace_id",
+        "goal_ids",
+        "priority",
+        "due_date",
+        "status",
+        "entity_type",
+        "entity_id",
+        "task_id",
+        "artifact_type",
+        "artifact_url",
+        "external_url",
+        "preview_markdown",
+        "run_id",
+        "step_id",
+        "blocker_type",
+        "resolution",
+        "live_visibility",
+        "live_public",
+        "live_reveal_title",
+        "metadata",
+        "tagline",
+        "narrative",
+        "key_metrics",
+        "roadmap_url",
+        "source_links",
+        "set_active",
+        "idempotency_key",
+        "session_id"
+      ],
+      "actions": [],
+      "schemaBytes": 7050,
+      "descriptionBytes": 1189,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      }
+    },
+    {
+      "id": "orgx_attach",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "type",
+        "id",
+        "name",
+        "artifact_type",
+        "artifact_url",
+        "external_url",
+        "description",
+        "preview_markdown",
+        "status",
+        "metadata",
+        "agent_type",
+        "company_stage",
+        "business_outcome",
+        "owner",
+        "review_date",
+        "verification",
+        "idempotency_key",
+        "session_id"
+      ],
+      "actions": [],
+      "schemaBytes": 3385,
+      "descriptionBytes": 1190,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "id": "orgx_act",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "type",
+        "id",
+        "action",
+        "fields",
+        "note",
+        "dry_run",
+        "force",
+        "spec",
+        "artifact",
+        "verification",
+        "quality_score",
+        "idempotency_key",
+        "session_id"
+      ],
+      "actions": [
+        "launch",
+        "pause",
+        "resume",
+        "complete",
+        "complete_with_proof",
+        "archive",
+        "start",
+        "flag_risk",
+        "cancel",
+        "block",
+        "unblock",
+        "reopen",
+        "activate",
+        "approve",
+        "decline",
+        "supersede",
+        "update",
+        "delete",
+        "validate",
+        "ship_batch",
+        "reassign_streams"
+      ],
+      "schemaBytes": 3613,
+      "descriptionBytes": 1153,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      }
+    },
+    {
+      "id": "manage_lifecycle",
+      "modelVisible": true,
+      "definitions": [
+        "stream"
+      ],
+      "fields": [
+        "level",
+        "id",
+        "action"
+      ],
+      "actions": [
+        "pause",
+        "resume",
+        "retry",
+        "cancel"
+      ],
+      "schemaBytes": 518,
+      "descriptionBytes": 404,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      }
+    },
+    {
+      "id": "orgx_plan",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "action",
+        "session_id",
+        "feature_name",
+        "initial_plan",
+        "plan_content",
+        "edit_summary",
+        "attach_to",
+        "workspace_id",
+        "idempotency_key"
+      ],
+      "actions": [
+        "start",
+        "resume",
+        "improve",
+        "record_edit",
+        "complete"
+      ],
+      "schemaBytes": 2224,
+      "descriptionBytes": 1120,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/plan-session-live.html?v=421c720d98ac"
+    },
+    {
+      "id": "orgx_spawn",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "action",
+        "title",
+        "task_id",
+        "initiative_id",
+        "workspace_id",
+        "agent_type",
+        "instructions",
+        "model_tier",
+        "model",
+        "provider",
+        "runtime",
+        "deadline",
+        "max_cost_usd",
+        "budget_mode",
+        "max_parallel",
+        "expected_artifacts",
+        "effects",
+        "acceptance",
+        "idempotency_key",
+        "session_id"
+      ],
+      "actions": [
+        "guard",
+        "estimate",
+        "spawn",
+        "handoff",
+        "classify"
+      ],
+      "schemaBytes": 6280,
+      "descriptionBytes": 1065,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "ui": "ui://widget/task-spawned.html?v=421c720d98ac"
+    },
+    {
+      "id": "orgx_decide",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "action",
+        "decision_id",
+        "title",
+        "decision",
+        "summary",
+        "context",
+        "reason",
+        "note",
+        "initiative_id",
+        "workspace_id",
+        "idempotency_key",
+        "session_id"
+      ],
+      "actions": [
+        "create",
+        "remember",
+        "list_pending",
+        "approve",
+        "reject"
+      ],
+      "schemaBytes": 2002,
+      "descriptionBytes": 908,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/decisions.html?v=421c720d98ac"
+    },
+    {
+      "id": "orgx_submit_receipt",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "workspace_id",
+        "entity_type",
+        "entity_id",
+        "receipt_type",
+        "summary",
+        "evidence",
+        "artifact_id",
+        "artifact_type",
+        "agent_type",
+        "business_outcome",
+        "verification_status",
+        "validation_rung",
+        "loop_validation",
+        "model_tier",
+        "budget_mode",
+        "max_cost_usd",
+        "status",
+        "started_at",
+        "idempotency_key",
+        "session_id"
+      ],
+      "actions": [],
+      "schemaBytes": 4570,
+      "descriptionBytes": 1188,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/proof-receipt.html?v=421c720d98ac"
+    },
+    {
+      "id": "approve_decision",
+      "modelVisible": true,
+      "definitions": [
+        "chatgpt"
+      ],
+      "fields": [
+        "decision_id",
+        "note",
+        "option_id"
+      ],
+      "actions": [],
+      "schemaBytes": 483,
+      "descriptionBytes": 638,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "ui": "ui://widget/decisions.html?v=421c720d98ac"
+    },
+    {
+      "id": "reject_decision",
+      "modelVisible": true,
+      "definitions": [
+        "chatgpt"
+      ],
+      "fields": [
+        "decision_id",
+        "reason",
+        "option_id"
+      ],
+      "actions": [],
+      "schemaBytes": 500,
+      "descriptionBytes": 589,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/decisions.html?v=421c720d98ac"
+    },
+    {
+      "id": "orgx_widget_decide",
+      "modelVisible": false,
+      "definitions": [
+        "chatgpt"
+      ],
+      "fields": [
+        "decision_id",
+        "kind",
+        "action",
+        "reason",
+        "answer",
+        "option_id",
+        "option_ids",
+        "approval_token"
+      ],
+      "actions": [
+        "approve",
+        "reject"
+      ],
+      "schemaBytes": 1342,
+      "descriptionBytes": 578,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "id": "orgx_command_status",
+      "modelVisible": true,
+      "definitions": [
+        "chatgpt"
+      ],
+      "fields": [
+        "kind",
+        "id"
+      ],
+      "actions": [],
+      "schemaBytes": 377,
+      "descriptionBytes": 447,
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "id": "orgx_panel_snapshot",
+      "modelVisible": false,
+      "definitions": [
+        "inline"
+      ],
+      "fields": [
+        "focus"
+      ],
+      "actions": [],
+      "schemaBytes": 533,
+      "descriptionBytes": 467,
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/orgx-panel.html?v=421c720d98ac"
+    },
+    {
+      "id": "get_agent_status",
+      "modelVisible": true,
+      "definitions": [
+        "chatgpt"
+      ],
+      "fields": [
+        "agent_id",
+        "workspace_id",
+        "command_center_id",
+        "initiative_id",
+        "include_idle"
+      ],
+      "actions": [],
+      "schemaBytes": 656,
+      "descriptionBytes": 539,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/agent-status.html?v=421c720d98ac"
+    },
+    {
+      "id": "get_initiative_pulse",
+      "modelVisible": true,
+      "definitions": [
+        "chatgpt"
+      ],
+      "fields": [
+        "initiative_id",
+        "initiative_name"
+      ],
+      "actions": [],
+      "schemaBytes": 376,
+      "descriptionBytes": 522,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/initiative-pulse.html?v=421c720d98ac"
+    },
+    {
+      "id": "scaffold_initiative",
+      "modelVisible": true,
+      "definitions": [
+        "inline"
+      ],
+      "fields": [
+        "title",
+        "summary",
+        "description",
+        "workspace_id",
+        "objective_ids",
+        "goal_ids",
+        "mode",
+        "response_mode",
+        "workstreams",
+        "idempotency_key",
+        "command_center_id",
+        "context",
+        "source_evidence",
+        "coordination_dependency",
+        "owner_id",
+        "user_id",
+        "continue_on_error",
+        "launch_after_create",
+        "external_sync",
+        "concurrency"
+      ],
+      "actions": [
+        "draft",
+        "scaffold",
+        "launch"
+      ],
+      "schemaBytes": 2516,
+      "descriptionBytes": 122
+    },
+    {
+      "id": "handoff_task",
+      "modelVisible": true,
+      "definitions": [
+        "chatgpt"
+      ],
+      "fields": [
+        "task_id",
+        "agent",
+        "note",
+        "reason",
+        "spawn",
+        "deadline",
+        "max_cost_usd",
+        "budget_mode",
+        "max_parallel",
+        "expected_artifacts",
+        "effects",
+        "acceptance",
+        "idempotency_key"
+      ],
+      "actions": [],
+      "schemaBytes": 4121,
+      "descriptionBytes": 376,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "ui": "ui://widget/task-spawned.html?v=421c720d98ac"
+    },
+    {
+      "id": "approve_agent_work",
+      "modelVisible": true,
+      "definitions": [
+        "contract"
+      ],
+      "fields": [
+        "decision_id",
+        "action",
+        "note",
+        "reason",
+        "limit",
+        "urgency_filter",
+        "initiative_id",
+        "workspace_id"
+      ],
+      "actions": [
+        "list",
+        "approve",
+        "reject"
+      ],
+      "schemaBytes": 1540,
+      "descriptionBytes": 802,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/decisions.html?v=421c720d98ac"
+    },
+    {
+      "id": "review_artifact",
+      "modelVisible": true,
+      "definitions": [
+        "inline"
+      ],
+      "fields": [
+        "artifact_id",
+        "entity_id",
+        "workspace_id"
+      ],
+      "actions": [],
+      "schemaBytes": 524,
+      "descriptionBytes": 442,
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "id": "get_morning_brief",
+      "modelVisible": true,
+      "definitions": [
+        "flywheel"
+      ],
+      "fields": [
+        "workspace_id",
+        "session_id"
+      ],
+      "actions": [],
+      "schemaBytes": 351,
+      "descriptionBytes": 406,
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "id": "get_operator_chronicle",
+      "modelVisible": true,
+      "definitions": [
+        "client_integration"
+      ],
+      "fields": [
+        "workspace_id",
+        "command_center_id",
+        "period"
+      ],
+      "actions": [],
+      "schemaBytes": 465,
+      "descriptionBytes": 675,
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "ui": "ui://widget/work-ledger.html?v=421c720d98ac"
+    },
+    {
+      "id": "check_execution_readiness",
+      "modelVisible": true,
+      "definitions": [
+        "client_integration"
+      ],
+      "fields": [
+        "workspace_id"
+      ],
+      "actions": [],
+      "schemaBytes": 281,
+      "descriptionBytes": 380,
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "id": "resume_agent_run",
+      "modelVisible": false,
+      "definitions": [
+        "inline"
+      ],
+      "fields": [
+        "run_id",
+        "note"
+      ],
+      "actions": [],
+      "schemaBytes": 335,
+      "descriptionBytes": 117,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

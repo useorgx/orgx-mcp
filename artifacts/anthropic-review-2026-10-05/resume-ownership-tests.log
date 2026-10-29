@@ -1,0 +1,588 @@
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "v2" lists byte-identical tool descriptors
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "v2" lists byte-identical tool descriptors
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "v2" lists byte-identical tool descriptors
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "v2" lists byte-identical tool descriptors
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "v2" lists byte-identical tool descriptors
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "v2" lists byte-identical tool descriptors
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+ ✓ tests/claudeDirectoryWorkflow.spec.ts (42 tests) 690ms
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "chatgpt" lists byte-identical tool descriptors
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "chatgpt" lists byte-identical tool descriptors
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "chatgpt" lists byte-identical tool descriptors
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "chatgpt" lists byte-identical tool descriptors
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "chatgpt" lists byte-identical tool descriptors
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "chatgpt" lists byte-identical tool descriptors
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+ ✓ tests/mcpWorker.resumeOwnership.spec.ts (17 tests) 1673ms
+   ✓ resume_agent_run authenticates ownership before its mutation > also enforces ownership on the existing v2 profile without changing its annotations  502ms
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "claude-plugin" lists byte-identical tool descriptors
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "claude-plugin" lists byte-identical tool descriptors
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "claude-plugin" lists byte-identical tool descriptors
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "claude-plugin" lists byte-identical tool descriptors
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "claude-plugin" lists byte-identical tool descriptors
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "claude-plugin" lists byte-identical tool descriptors
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "read-only" lists byte-identical tool descriptors
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "read-only" lists byte-identical tool descriptors
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "read-only" lists byte-identical tool descriptors
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "read-only" lists byte-identical tool descriptors
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "read-only" lists byte-identical tool descriptors
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "read-only" lists byte-identical tool descriptors
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "memory" lists byte-identical tool descriptors
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "memory" lists byte-identical tool descriptors
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "memory" lists byte-identical tool descriptors
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "memory" lists byte-identical tool descriptors
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "memory" lists byte-identical tool descriptors
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "memory" lists byte-identical tool descriptors
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "commander" lists byte-identical tool descriptors
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "commander" lists byte-identical tool descriptors
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "commander" lists byte-identical tool descriptors
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "commander" lists byte-identical tool descriptors
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "commander" lists byte-identical tool descriptors
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "commander" lists byte-identical tool descriptors
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "planner" lists byte-identical tool descriptors
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "planner" lists byte-identical tool descriptors
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "planner" lists byte-identical tool descriptors
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "planner" lists byte-identical tool descriptors
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "planner" lists byte-identical tool descriptors
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "planner" lists byte-identical tool descriptors
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "executor" lists byte-identical tool descriptors
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "executor" lists byte-identical tool descriptors
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "executor" lists byte-identical tool descriptors
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "executor" lists byte-identical tool descriptors
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "executor" lists byte-identical tool descriptors
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "executor" lists byte-identical tool descriptors
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "observer" lists byte-identical tool descriptors
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "observer" lists byte-identical tool descriptors
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "observer" lists byte-identical tool descriptors
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "observer" lists byte-identical tool descriptors
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "observer" lists byte-identical tool descriptors
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "observer" lists byte-identical tool descriptors
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "full" lists byte-identical tool descriptors
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "full" lists byte-identical tool descriptors
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "full" lists byte-identical tool descriptors
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "full" lists byte-identical tool descriptors
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "full" lists byte-identical tool descriptors
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > listed tool surfaces > profile "full" lists byte-identical tool descriptors
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > start_plan_session runs orgx_plan action=start
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > start_plan_session runs orgx_plan action=start
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > start_plan_session runs orgx_plan action=start
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > start_plan_session runs orgx_plan action=start
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > start_plan_session runs orgx_plan action=start
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > start_plan_session runs orgx_plan action=start
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > improve_plan runs orgx_plan action=improve
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > improve_plan runs orgx_plan action=improve
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > improve_plan runs orgx_plan action=improve
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > improve_plan runs orgx_plan action=improve
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > improve_plan runs orgx_plan action=improve
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > improve_plan runs orgx_plan action=improve
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > validate_studio_content runs orgx_act type=studio_content action=validate
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > validate_studio_content runs orgx_act type=studio_content action=validate
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > validate_studio_content runs orgx_act type=studio_content action=validate
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > validate_studio_content runs orgx_act type=studio_content action=validate
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > validate_studio_content runs orgx_act type=studio_content action=validate
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > validate_studio_content runs orgx_act type=studio_content action=validate
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > checks the legacy auth requirement, with the legacy message, before running the canonical tool
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > checks the legacy auth requirement, with the legacy message, before running the canonical tool
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'initiatives:read',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > checks the legacy auth requirement, with the legacy message, before running the canonical tool
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > checks the legacy auth requirement, with the legacy message, before running the canonical tool
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > checks the legacy auth requirement, with the legacy message, before running the canonical tool
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'initiatives:read'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > checks the legacy auth requirement, with the legacy message, before running the canonical tool
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stderr | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > checks the legacy auth requirement, with the legacy message, before running the canonical tool
+[auth] Tool blocked due to insufficient_scope {
+  toolId: 'start_plan_session',
+  requiresAuth: true,
+  allowsAnonymous: false,
+  isAuthenticated: true,
+  hasUserId: true,
+  grantedScopesKnown: true,
+  requiredScopeAlternatives: [ [ 'initiatives:write' ] ],
+  missingScopeAlternatives: [ [ 'initiatives:write' ] ]
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Migrated session_auth: added column { column: 'orgx_user_id' }
+[mcp:session] Migrated session_context: added column { column: 'client_name' }
+[mcp:session] Migrated session_context: added column { column: 'client_version' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:init] DO initialized {
+  hasProps: true,
+  propsUserId: 'alias-user',
+  propsScope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access',
+  propsWorkspaceId: '11111111-1111-4111-8111-111111111111',
+  propsInitiativeId: null,
+  sessionUserId: null
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] First-run welcome marked shown { userId: 'alias-user' }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Saved session auth to durable storage { userId: 'alias-user', sqlite: true }
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] User authenticated, stored in session {
+  userId: 'alias-user',
+  hasOrgxUserId: true,
+  scope: 'decisions:read decisions:write agents:read agents:write initiatives:read initiatives:write memory:read offline_access'
+}
+
+stdout | tests/legacyToolAliases.spec.ts > legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them
+[mcp:session] Captured initialize handshake clientInfo { clientName: 'orgx-legacy-tool-alias-test', clientVersion: '1.0.0' }
+
+ ✓ tests/legacyToolAliases.spec.ts (28 tests) 2851ms
+   ✓ listed tool surfaces > profile "v2" lists byte-identical tool descriptors  1156ms
+   ✓ legacy tool aliases run the canonical implementation > keeps alias names off every profile that did not already list them  541ms
+ ✓ tests/surfaceContract.spec.ts (107 tests) 4864ms
+   ✓ one public contract per profile > does not request conversation tracking metadata on the directory profile  330ms
+   ✓ one public contract per profile > v2: bootstrap reports exactly the tools/list, split by who may call them  482ms
+
+ Test Files  4 passed (4)
+      Tests  194 passed (194)
+   Start at  10:56:22
+   Duration  6.48s (transform 1.31s, setup 0ms, collect 3.01s, tests 10.08s, environment 1ms, prepare 323ms)
+

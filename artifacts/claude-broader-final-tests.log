@@ -1,0 +1,18 @@
+
+ RUN  v3.2.4 /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+
+ ✓ tests/surfaceMap.spec.ts (8 tests) 8ms
+ ✓ tests/bootstrapPayload.spec.ts (19 tests) 12ms
+ ✓ tests/directoryReadiness.spec.ts (10 tests) 27ms
+ ✓ tests/toolGuidance.spec.ts (6 tests) 7ms
+ ✓ tests/claudeDirectoryWorkflow.spec.ts (42 tests) 938ms
+ ✓ tests/submissionProfileLocalSideEffects.spec.ts (3 tests) 1299ms
+   ✓ submission profile worker-local side-effect suppression > keeps Claude informational reads free of worker-local persistence and logging on the broader surface  1065ms
+ ✓ tests/surfaceContract.spec.ts (106 tests) 5034ms
+   ✓ one public contract per profile > v2: bootstrap reports exactly the tools/list, split by who may call them  632ms
+
+ Test Files  7 passed (7)
+      Tests  194 passed (194)
+   Start at  10:29:33
+   Duration  6.34s (transform 1.26s, setup 0ms, collect 3.35s, tests 7.32s, environment 1ms, prepare 499ms)
+

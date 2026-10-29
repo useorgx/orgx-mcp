@@ -1,0 +1,33 @@
+Refreshing run status every 20 seconds. Press Ctrl+C to quit.
+
+* codex/anthropic-title-annotations Deploy MCP Server useorgx/orgx-mcp#462 · 37318953880
+Triggered via pull_request about 2 minutes ago
+
+JOBS
+* validate (ID 111792793159)
+  ✓ Set up job
+  ✓ Set up runner
+  ✓ Run actions/checkout@v6
+  * Run ./.github/actions/validate
+  * Validate gateway parity probe syntax
+  * Post Run ./.github/actions/validate
+  * Post Run actions/checkout@v6
+  * Complete runner
+- deploy (ID 111792794661)
+- publish-registry in 0s (ID 111792794880)
+✓ codex/anthropic-title-annotations Deploy MCP Server useorgx/orgx-mcp#462 · 37318953880
+Triggered via pull_request about 2 minutes ago
+
+JOBS
+✓ validate in 2m23s (ID 111792793159)
+  ✓ Set up job
+  ✓ Set up runner
+  ✓ Run actions/checkout@v6
+  ✓ Run ./.github/actions/validate
+  ✓ Validate gateway parity probe syntax
+  ✓ Post Run ./.github/actions/validate
+  ✓ Post Run actions/checkout@v6
+  ✓ Complete runner
+  ✓ Complete job
+- deploy (ID 111792794661)
+- publish-registry in 0s (ID 111792794880)

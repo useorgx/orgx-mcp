@@ -1,0 +1,7 @@
+
+> orgx-mcp-worker@1.1.5 catalog:generate /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp
+> tsx scripts/generate-tool-catalog.ts
+
+[generate-tool-catalog] OK — 107 tools, 19 categories
+[generate-tool-catalog] Output: /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp/docs/generated/tool-catalog.json
+[generate-tool-catalog] Authorization policy: /Users/hopeatina/.codex/worktrees/openai-resubmission-audit/orgx-mcp/docs/generated/authorization-policy.json
