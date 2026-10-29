@@ -2642,7 +2642,7 @@ export class OrgXMcp extends McpAgent<
       // Per-task ceiling passed. Now enforce WORKSPACE daily/monthly spend caps
       // via /api/client/spawn-gate (policy lives in orgx: enforceBudget). Skip
       // when no workspace is resolvable — caps can't be enforced without one.
-      const gateArgs = buildSpawnGateArgs(routeArgs, userId);
+      const gateArgs = buildSpawnGateArgs(routeArgs, userId, routeEval.preflight);
       if (gateArgs) {
         const gateResponse = await callOrgxApiJson(
           this.env,
