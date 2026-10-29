@@ -66,11 +66,15 @@
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "0.10.3",
-    "@modelcontextprotocol/ext-apps": "1.1.2",
-    "@modelcontextprotocol/sdk": "1.26.0",
+    "@modelcontextprotocol/ext-apps": "1.7.5",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@openai/mcp-extensions": "0.1.0",
     "@sentry/cloudflare": "10.65.0",
     "agents": "0.7.2",
     "zod": "^3.25.8"
+  },
+  "pnpm": {
+    "overrides": { "agents>@modelcontextprotocol/sdk": "1.29.0" }
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260103.0",

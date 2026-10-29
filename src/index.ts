@@ -7,6 +7,7 @@ import {
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { registerPanelTool, readPanelSnapshot, PANEL_RESOURCE_META } from './panelSurface';
 import * as Sentry from '@sentry/cloudflare';
 import {
   registerAppTool,
@@ -7314,6 +7315,49 @@ export class OrgXMcp extends McpAgent<
     // Register ChatGPT App tools (data-driven)
     this.registerChatGPTTools(allowedTools);
 
+    // Extension entrypoints are app-only and confined to the ChatGPT profile.
+    // A delegated run credential must not gain a workspace-wide read surface.
+    if (resolveToolProfile(this.props?.profile).name === 'chatgpt' && !this.hasScopedRunToken()) {
+      registerPanelTool(this.server, async ({ focus }) => {
+        const userId = this.resolveUserId();
+        const auth = this.buildAuthRequiredResponse({
+          toolId: 'orgx_panel_snapshot', securitySchemes: SECURITY_SCHEMES.decisionReadRequiresAuth,
+          userId: userId ?? undefined, serverUrl: this.env.MCP_SERVER_URL, featureDescription: 'read your decisions',
+        });
+        if (auth) return auth;
+        const identity = { userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(userId) };
+        try {
+          const snapshot = await readPanelSnapshot({
+            userId: this.resolveOrgxUserId(userId) ?? userId ?? '',
+            workspace: this.sessionContext.workspaceId ? { id: this.sessionContext.workspaceId, name: this.sessionContext.workspaceName ?? 'Workspace' } : null,
+            readPending: async (workspaceId) => {
+              // Preserve the existing allowance check and metered read policy.
+              const response = await callOrgxApiJson(this.env, '/api/tools/execute', {
+                method: 'POST', body: JSON.stringify({ tool_id: 'get_pending_decisions', args: { workspace_id: workspaceId, limit: 20 }, user_id: identity.orgxUserId ?? userId }),
+              }, identity);
+              return response.json();
+            },
+            readDecision: async (id, workspaceId) => {
+              const query = new URLSearchParams({ type: 'decision', id, workspace_id: workspaceId, limit: '1' });
+              const response = await callOrgxApiJson(this.env, `/api/entities?${query}`, undefined, identity);
+              const payload = await response.json() as { data?: unknown[] };
+              return payload.data?.[0] ?? null;
+            },
+            readArtifacts: async (workspaceId) => {
+              const artifactAuth = this.buildAuthRequiredResponse({ toolId: 'orgx_panel_snapshot', securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth, userId: userId ?? undefined, serverUrl: this.env.MCP_SERVER_URL, featureDescription: 'read artifact proof' });
+              if (artifactAuth) throw new Error('Artifact read unavailable');
+              const query = new URLSearchParams({ workspace_id: workspaceId, limit: '50' });
+              const response = await callOrgxApiJson(this.env, `/api/v1/artifacts?${query}`, undefined, identity);
+              return response.json();
+            },
+          }, focus);
+          return { content: [{ type: 'text', text: JSON.stringify(snapshot) }], structuredContent: snapshot };
+        } catch {
+          return { isError: true, content: [{ type: 'text', text: 'OrgX did not respond. Refresh to retry.' }] };
+        }
+      });
+    }
+
     // Register plan session tools for CLI-native planning
     this.registerPlanSessionTools(allowedTools);
 
@@ -14015,6 +14059,10 @@ export class OrgXMcp extends McpAgent<
 
     for (const widget of WIDGET_RESOURCES) {
       if (allowedWidgetUris && !allowedWidgetUris.has(widget.uri)) continue;
+      if (widget.uri === WIDGET_URIS.orgxPanel && activeProfile !== 'chatgpt') continue;
+      const contentMeta = widget.uri === WIDGET_URIS.orgxPanel
+        ? { ...mcpAppsContentMeta, 'openai/ui': PANEL_RESOURCE_META }
+        : mcpAppsContentMeta;
 
       registerAppResource(
         this.server,
@@ -14022,14 +14070,14 @@ export class OrgXMcp extends McpAgent<
         widget.uri,
         {
           description: widget.title,
-          _meta: mcpAppsContentMeta,
+          _meta: contentMeta,
         },
         async () =>
           this.buildWidgetResourceResponse(
             widget.uri,
             widget.title,
             RESOURCE_MIME_TYPE,
-            mcpAppsContentMeta
+            contentMeta
           )
       );
 
@@ -14040,14 +14088,14 @@ export class OrgXMcp extends McpAgent<
         {
           description: `${widget.title} (version-tolerant)`,
           mimeType: RESOURCE_MIME_TYPE,
-          _meta: mcpAppsContentMeta,
+          _meta: contentMeta,
         },
         async (uri) =>
           this.buildWidgetResourceResponse(
             uri.toString(),
             widget.title,
             RESOURCE_MIME_TYPE,
-            mcpAppsContentMeta
+            contentMeta
           )
       );
 

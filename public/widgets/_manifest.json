@@ -21,6 +21,7 @@
     "shared/widget-theme.css"
   ],
   "canonicalPrimaries": {
+    "orgx-panel": "251,191,36",
     "agent-status": "191,255,0",
     "initiative-pulse": "0,201,167",
     "scaffolded-initiative": "99,102,241",
@@ -168,6 +169,23 @@
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
+        "shared/mcp-apps-sdk.umd.js",
+        "shared/tokens.css",
+        "shared/widget-foundation.css",
+        "shared/widget-runtime.js",
+        "shared/widget-theme.css"
+      ],
+      "protocolBridge": "official-sdk",
+      "demoOnly": false
+    },
+    "orgx-panel": {
+      "file": "public/widgets/orgx-panel.html",
+      "bytes": 17539,
+      "hash": "003f691b331f",
+      "primaryRgb": "251,191,36",
+      "sharedRefs": [
+        "shared/interaction-kit.css",
+        "shared/interaction-kit.js",
         "shared/mcp-apps-sdk.umd.js",
         "shared/tokens.css",
         "shared/widget-foundation.css",

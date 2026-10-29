@@ -36,6 +36,7 @@ import { OAUTH_SCOPE, OAUTH_SCOPES_SUPPORTED } from './authorizationPolicy';
 // =============================================================================
 
 export const WIDGET_URIS = {
+  orgxPanel: withWidgetResourceVersion('ui://widget/orgx-panel.html', WIDGET_BUILD_VERSION),
   decisions: withWidgetResourceVersion(
     'ui://widget/decisions.html',
     WIDGET_BUILD_VERSION
@@ -107,6 +108,7 @@ export const OUTPUT_TEMPLATE_URIS = {
 } as const;
 
 export const WIDGET_RESOURCES = [
+  { name: 'orgx-panel-widget', uri: WIDGET_URIS.orgxPanel, title: 'OrgX Decision Panel' },
   {
     name: 'decisions-widget',
     uri: WIDGET_URIS.decisions,

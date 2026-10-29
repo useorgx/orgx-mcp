@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OrgX decisions</title>
+  <link rel="stylesheet" href="shared/tokens.css">
+  <link rel="stylesheet" href="shared/widget-theme.css">
+  <link rel="stylesheet" href="shared/widget-foundation.css">
+  <link rel="stylesheet" href="shared/interaction-kit.css">
+  <style>
+    :root { --ox-primary-rgb: 251,191,36; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; background: var(--ox-bg); color: var(--ox-text); font-family: var(--ox-font); }
+    main { max-width: 720px; margin: 0 auto; padding: 24px; background: var(--ox-card-bg); border-radius: var(--widget-shell-radius); border-top: 1px solid var(--ox-border); }
+    main[data-attention="true"] { border-top-color: var(--ox-warning); }
+    main[data-blocked="true"] { border-top-color: var(--ox-danger); }
+    header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    header > div { flex: 1; min-width: 0; }
+    h1 { margin: 0; font-size: 1.125rem; letter-spacing: -.02em; overflow-wrap: anywhere; }
+    h2 { font-size: clamp(1.4rem, 3.2vw, 1.92rem); line-height: 1.2; letter-spacing: -.04em; margin: 16px 0 12px; overflow-wrap: anywhere; }
+    p { line-height: 1.5; margin: 8px 0; overflow-wrap: anywhere; }
+    .meta { color: var(--ox-text-muted); font-size: .8rem; }
+    #attention { margin-top: 24px; font-weight: 600; color: var(--ox-warning); }
+    [data-blocked="true"] #attention { color: var(--ox-danger); }
+    button { font: inherit; min-height: 44px; min-width: 44px; padding: 8px 12px; cursor: var(--cursor-interaction, pointer); border: 0; border-radius: 12px; background: transparent; color: inherit; text-align: left; }
+    button:hover { background: var(--ox-surface-hover); }
+    button:focus-visible, summary:focus-visible { outline: 2px solid var(--ox-warning); outline-offset: 3px; }
+    button:disabled { opacity: .56; cursor: wait; }
+    .primary { min-height: 48px; width: 100%; background: rgb(var(--ox-primary-rgb)); color: #171717; font-weight: 700; margin: 16px 0 4px; }
+    .primary:hover { background: rgb(var(--ox-primary-rgb)); filter: brightness(.95); }
+    #queue button { display: block; width: 100%; border-radius: 0; border-top: 1px solid var(--ox-border); margin-top: 12px; }
+    #queue span { display: block; }
+    details { margin-top: 12px; }
+    summary { min-height: 44px; padding: 12px 0; cursor: var(--cursor-interaction, pointer); }
+    ul { padding-left: 20px; line-height: 1.5; overflow-wrap: anywhere; }
+    #proof { border-top: 1px solid var(--ox-border); margin-top: 24px; padding-top: 12px; }
+    #proof button { width: 100%; padding-left: 0; }
+    #notice { color: var(--ox-text-muted); margin-top: 16px; }
+    #notice:empty, [hidden] { display: none !important; }
+    .skeleton { margin: 16px 0; height: 20px; width: 80%; background: var(--ox-border); border-radius: 4px; }
+    .skeleton.short { width: 48%; }
+    @media (max-width: 480px) { body { padding: 12px; } main { padding: 16px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main id="panel" aria-labelledby="workspace-title">
+    <header><div><h1 id="workspace-title">OrgX</h1><p id="sync" class="meta">Loading decisions…</p></div><button id="refresh" type="button">Refresh</button></header>
+    <p id="attention" hidden></p>
+    <div id="loading" aria-label="Loading decisions"><div class="skeleton"></div><div class="skeleton short"></div></div>
+    <section id="selection" hidden><p id="unavailable">This item is unavailable in your current workspace.</p><button id="return" type="button">Back to decisions</button></section>
+    <section id="packet" hidden aria-labelledby="question">
+      <button id="back" type="button">Back to decisions</button>
+      <h2 id="question"></h2><p id="decision-meta" class="meta"></p><p id="recommendation"></p>
+      <details id="evidence"><summary id="evidence-label">Evidence</summary><ul id="evidence-items"></ul></details>
+      <p id="consequence"></p><button id="decide" class="primary" type="button">Decide in OrgX ↗</button>
+      <p class="meta">Approval uses your signed-in OrgX session.</p>
+      <button id="share" type="button" hidden>Share with chat</button><button id="stop-sharing" type="button" hidden>Stop sharing</button>
+    </section>
+    <p id="empty" hidden></p><nav id="queue" aria-label="Other decisions"></nav>
+    <section id="proof" hidden><button id="accepted" type="button" hidden></button><p id="unaccepted" class="meta"></p></section>
+    <button id="open-orgx" type="button" hidden>Open OrgX ↗</button><p id="notice" role="status" aria-live="polite"></p>
+  </main>
+  <script src="shared/mcp-apps-sdk.umd.js"></script>
+  <script src="shared/widget-runtime.js"></script>
+  <script src="shared/interaction-kit.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var kit = window.OrgXInteractionKit;
+    var runtime = window.OrgXWidgetRuntime;
+    var snapshot = null, connection = null, desired = null, denied = false, collapsed = false;
+    var busy = false, disposed = false, generation = 0, sharedId = null, hostKey = null, opener = null;
+    var el = function (id) { return document.getElementById(id); };
+    var uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    function parseDeepLink(value) {
+      if (typeof value !== 'string' || !value || value.length > 512) return null;
+      try {
+        if (!value.startsWith('/') && !value.startsWith('https://')) return null;
+        var url = new URL(value, 'https://useorgx.com');
+        if (url.protocol !== 'https:' || !['useorgx.com', 'www.useorgx.com'].includes(url.host) || url.username || url.password || url.search || url.hash) return null;
+        if (url.pathname === '/') return { type: 'global' };
+        var match = /^\/decisions\/([^/]+)$/.exec(url.pathname);
+        return match && uuid.test(match[1]) ? { type: 'decision', id: match[1] } : null;
+      } catch (_) { return null; }
+    }
+    function modelContext(data) {
+      var focus = data && data.focus;
+      if (!focus || !data.workspace || !uuid.test(focus.id) || !uuid.test(data.workspace.id)) return null;
+      return { content: [{ type: 'text', text: 'Selected OrgX decision. Fetch current authorized details before advising.' }], structuredContent: {
+        schema: 'orgx.panel-context.v1', workspace_id: data.workspace.id, entity: { type: 'decision', id: focus.id, version: focus.version }, url: 'https://useorgx.com/decisions/' + focus.id,
+      } };
+    }
+    function extensions() { return connection && connection.getExtensions ? connection.getExtensions() : null; }
+    function announce(message) { el('notice').textContent = message; if (kit && kit.announce) kit.announce(message); }
+    function navigate(url) { if (runtime.openWidgetLink(url) === true) window.open(url, '_blank', 'noopener,noreferrer'); }
+    function capabilities() {
+      var ext = extensions();
+      var available = !!(ext && ext.modelContext && typeof ext.modelContext.update === 'function');
+      el('share').hidden = !available || !snapshot || !snapshot.focus || denied || collapsed;
+      el('stop-sharing').hidden = !available || !sharedId;
+    }
+    function render(data) {
+      if (disposed) return;
+      if (data && (data.isError || data.ok === false || data.schema !== 'orgx.panel.v1')) {
+        if (data.auth_required || data.error === 'auth_required') { snapshot = null; announce('Sign in to OrgX to see your workspace.'); }
+        else announce('OrgX did not respond. Refresh to retry.');
+      } else if (data) snapshot = data;
+      el('loading').hidden = !!snapshot;
+      el('refresh').disabled = busy;
+      if (!snapshot) { el('packet').hidden = true; el('open-orgx').hidden = false; capabilities(); return; }
+      var s = snapshot;
+      el('workspace-title').textContent = 'OrgX · ' + (s.workspace ? s.workspace.name : 'Choose a workspace');
+      el('sync').textContent = 'Synced ' + new Date(s.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      el('panel').dataset.attention = String(s.attention.pending > 0);
+      el('panel').dataset.blocked = String(s.attention.blocking);
+      el('attention').hidden = !s.attention.pending;
+      el('attention').textContent = (s.degraded.includes('queue_bounded') ? 'At least ' : '') + s.attention.pending + ' need your decision' + (s.attention.blocking ? ' · Blocking work' : '');
+      var invalid = denied || s.selection === 'unavailable';
+      el('selection').hidden = !invalid;
+      var f = s.focus;
+      el('packet').hidden = invalid || collapsed || !f || (desired && f.id !== desired.id);
+      el('empty').hidden = invalid || !!f && !collapsed || s.queue.length > 0;
+      el('empty').textContent = !s.workspace ? 'Open OrgX to choose a workspace, then reconnect.' : s.proof.last_accepted ? 'Nothing needs your decision.' : 'This workspace has no decisions or accepted proof available.';
+      if (f) {
+        el('question').textContent = f.question;
+        el('decision-meta').textContent = f.status === 'pending' ? 'Pending' + (f.blocked ? ' · Blocking work' : '') : 'Decision ' + f.status + ' · Artifact acceptance is separate';
+        el('recommendation').textContent = f.recommendation.action ? 'Recommendation: ' + f.recommendation.action + (f.recommendation.status === 'unverified' ? ' · Unverified' : '') : 'No recommendation recorded.';
+        el('evidence').hidden = !f.evidence.length;
+        el('evidence-label').textContent = 'Evidence (' + f.evidence.length + (f.evidence_total > f.evidence.length ? ' of ' + f.evidence_total : '') + ')';
+        el('evidence-items').replaceChildren();
+        f.evidence.forEach(function (item) { var li = document.createElement('li'); li.textContent = item.title; el('evidence-items').append(li); });
+        el('consequence').textContent = f.consequence_if_approved ? 'If approved: ' + f.consequence_if_approved : 'Review the consequence in OrgX before ruling.';
+        el('decide').textContent = f.status === 'pending' ? 'Decide in OrgX ↗' : 'View decision in OrgX ↗';
+      }
+      el('queue').replaceChildren();
+      if (!invalid) s.queue.filter(function (row) { return collapsed || !f || row.id !== f.id; }).forEach(function (row) {
+        var button = document.createElement('button'); button.type = 'button'; button.dataset.id = row.id;
+        var title = document.createElement('span'); title.textContent = row.title;
+        var meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = row.urgency + ' · Open decision';
+        button.append(title, meta); button.addEventListener('click', function () { opener = row.id; desired = { type: 'decision', id: row.id }; collapsed = false; refresh(desired); });
+        el('queue').append(button);
+      });
+      el('proof').hidden = invalid || !s.proof.last_accepted && !s.proof.completed_unaccepted;
+      el('accepted').hidden = !s.proof.last_accepted;
+      if (s.proof.last_accepted) el('accepted').textContent = 'Last accepted: ' + s.proof.last_accepted.title + ' · accepted by ' + (s.proof.last_accepted.accepted_by === 'you' ? 'you' : 'a workspace member') + ' ↗';
+      el('unaccepted').textContent = s.proof.completed_unaccepted ? 'Acceptance not confirmed in this snapshot: ' + s.proof.completed_unaccepted : '';
+      el('open-orgx').hidden = !!f && !invalid;
+      if (s.degraded.length) el('notice').textContent = 'Snapshot coverage is incomplete. Open OrgX for the full queue and acceptance history.';
+      capabilities();
+    }
+    async function refresh(focus) {
+      if (busy || disposed) return;
+      busy = true; var current = ++generation; el('refresh').disabled = true;
+      try {
+        var result = await runtime.callTool('orgx_panel_snapshot', focus ? { focus: focus } : {});
+        if (disposed || current !== generation) return;
+        if (!result) { announce('Refresh is available when this panel is connected to OrgX.'); return; }
+        var data = runtime.extractStructuredWidgetData(result, true);
+        var oldVersion = snapshot && snapshot.focus && snapshot.focus.version;
+        denied = false; el('notice').textContent = ''; render(data);
+        if (snapshot && snapshot.focus && oldVersion && snapshot.focus.version !== oldVersion) announce('Decision changed. Review the refreshed packet before ruling.');
+        else if (!snapshot || !snapshot.degraded.length) announce('Decisions refreshed.');
+      } catch (_) { announce(snapshot ? 'Showing the last snapshot. OrgX did not respond. Refresh to retry.' : 'OrgX did not respond. Refresh to retry.'); }
+      finally { busy = false; if (!disposed) el('refresh').disabled = false; }
+    }
+    function back() {
+      desired = null; denied = false; collapsed = true;
+      if (snapshot) snapshot = Object.assign({}, snapshot, { selection: 'none' });
+      render(snapshot);
+      var buttons = Array.from(el('queue').querySelectorAll('button'));
+      var target = buttons.find(function (button) { return button.dataset.id === opener; }) || buttons[0] || el('refresh'); target.focus();
+    }
+    function syncHost() {
+      if (disposed || !connection) return;
+      var ext = extensions(); capabilities();
+      if (!ext) return;
+      var link = ext.deepLink && typeof ext.deepLink.getCurrent === 'function' ? ext.deepLink.getCurrent() : undefined;
+      var context = ext.modelContext && typeof ext.modelContext.getCurrent === 'function' ? ext.modelContext.getCurrent() : undefined;
+      var key = JSON.stringify([link, context && context.updateId]);
+      if (key === hostKey) return; hostKey = key;
+      if (link) {
+        var parsed = parseDeepLink(link.url);
+        if (!parsed) { denied = true; desired = null; render(snapshot); return; }
+        if (parsed.type === 'global') { back(); return; }
+        desired = parsed;
+      } else if (context && context.structuredContent && context.structuredContent.schema === 'orgx.panel-context.v1') {
+        var value = context.structuredContent;
+        if (!snapshot || !snapshot.workspace) { hostKey = null; return; }
+        if (value.workspace_id !== snapshot.workspace.id || !value.entity || value.entity.type !== 'decision' || !uuid.test(value.entity.id)) {
+          denied = true; desired = null; render(snapshot); return;
+        }
+        desired = { type: 'decision', id: value.entity.id }; sharedId = value.entity.id;
+      } else if (context === null) { sharedId = null; capabilities(); }
+      if (desired && (!snapshot || !snapshot.focus || snapshot.focus.id !== desired.id)) { collapsed = false; refresh(desired); }
+    }
+    el('refresh').addEventListener('click', function () { refresh(desired); });
+    el('back').addEventListener('click', back); el('return').addEventListener('click', back);
+    el('decide').addEventListener('click', function () { if (snapshot && snapshot.focus && !denied) navigate(snapshot.focus.url); });
+    el('accepted').addEventListener('click', function () { if (snapshot && snapshot.proof.last_accepted) navigate(snapshot.proof.last_accepted.url); });
+    el('open-orgx').addEventListener('click', function () { navigate('https://useorgx.com/command'); });
+    async function share(clear) {
+      var ext = extensions(); if (busy || !ext || !ext.modelContext || disposed) return;
+      var payload = clear ? { content: [], structuredContent: {} } : modelContext(snapshot); if (!payload || denied) return;
+      busy = true; el('share').disabled = true; el('stop-sharing').disabled = true;
+      try { await ext.modelContext.update(payload); if (disposed) return; sharedId = clear ? null : payload.structuredContent.entity.id; announce(clear ? 'Sharing stopped.' : 'Decision reference shared with this chat.'); }
+      catch (_) { if (!disposed) announce('Sharing did not complete. Try again.'); }
+      finally { busy = false; if (!disposed) { el('share').disabled = false; el('stop-sharing').disabled = false; capabilities(); } }
+    }
+    el('share').addEventListener('click', function () { share(false); });
+    el('stop-sharing').addEventListener('click', function () { share(true); });
+    function keyboard(event) {
+      if (event.key !== 'Escape') return;
+      if (el('evidence').open) { el('evidence').open = false; el('evidence-label').focus(); }
+      else if (!el('packet').hidden || !el('selection').hidden) back();
+    }
+    document.addEventListener('keydown', keyboard);
+    function dispose() { if (disposed) return; disposed = true; generation++; document.removeEventListener('keydown', keyboard); window.removeEventListener('pagehide', dispose); if (connection && connection.dispose) connection.dispose(); }
+    window.addEventListener('pagehide', dispose, { once: true });
+    window.OrgXPanel = { parseDeepLink: parseDeepLink, modelContext: modelContext, dispose: dispose };
+    connection = runtime.initWidget({ bridge: 'mcp-apps-sdk', render: render, onHostContext: syncHost });
+    if (connection.ready) connection.ready.then(function () { syncHost(); if (!snapshot && !desired) announce('Refresh to load decisions if the host has not supplied a snapshot.'); }).catch(function () { announce('The host connection is unavailable. Open OrgX or reconnect.'); });
+    var gallery = new URLSearchParams(window.location.search).get('gallery') === 'true';
+    if (gallery && window.__ORGX_PANEL_FIXTURE__) render(window.__ORGX_PANEL_FIXTURE__);
+  }());
+  </script>
+</body>
+</html>

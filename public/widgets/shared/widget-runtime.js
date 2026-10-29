@@ -339,11 +339,12 @@
     global.removeEventListener('message', this.handleMessage);
   };
 
-  function McpAppsSDKBridge() {
+  function McpAppsSDKBridge(beforeConnect) {
     this.app = null;
     this.connected = false;
     this.connectPromise = null;
     this.toolResultCallback = null;
+    this.beforeConnect = beforeConnect;
   }
 
   McpAppsSDKBridge.prototype.connect = function connect() {
@@ -370,7 +371,10 @@
       }
     };
     this.app.onhostcontextchanged = applyHostContext;
-    await this.app.connect();
+    var app = this.app;
+    if (this.beforeConnect) this.beforeConnect(app);
+    await app.connect();
+    if (this.app !== app) { if (app.close) app.close(); return; }
     this.connected = true;
     try {
       applyHostContext(this.app.getHostContext());
@@ -470,6 +474,9 @@
   }
 
   function initWidget(options) {
+    if (options.bridge === 'mcp-apps-sdk' && detectProtocol() !== 'standalone' && global.McpApps && global.McpApps.App) {
+      return initExtensionWidget(options);
+    }
     var render = options.render;
     var getData = options.getData || extractStructuredWidgetData;
     var currentData = null;
@@ -587,6 +594,57 @@
     return {
       getData: function getCurrentData() { return currentData; },
       getLiveFeed: function getLiveFeed() { return liveState.attached; },
+    };
+  }
+
+  // An opt-in connection for native entrypoints; legacy widgets keep their
+  // ChatGPT-first bridge. Register every handler before initialization.
+  function initExtensionWidget(options) {
+    var disposed = false;
+    var currentData = null;
+    var extensions = null;
+    var gate = createResultGate();
+    function receiveResult(result) {
+      if (disposed || !gate.accept(result)) return;
+      currentData = extractStructuredWidgetData(result, true);
+      options.render(currentData);
+    }
+    function onContext(event) {
+      if (disposed) return;
+      var context = event && event.detail || activeBridge.getHostContext();
+      applyHostContext(context);
+      if (options.onHostContext) options.onHostContext(context);
+    }
+    var activeBridge = new McpAppsSDKBridge(function beforeConnect(app) {
+      if (global.McpApps.OpenAIExtensions) extensions = new global.McpApps.OpenAIExtensions(app);
+      if (app.addEventListener) app.addEventListener('hostcontextchanged', onContext);
+    });
+    bridge = activeBridge;
+    protocol = 'mcp-apps-sdk';
+    document.documentElement.setAttribute('data-protocol', protocol);
+    activeBridge.toolResultCallback = receiveResult;
+    options.render(null);
+    var ready = activeBridge.connect().then(function initialized() {
+      if (!disposed) onContext();
+    });
+    function dispose() {
+      if (disposed) return;
+      disposed = true;
+      global.removeEventListener('pagehide', dispose);
+      var app = activeBridge.app;
+      if (app && app.removeEventListener) app.removeEventListener('hostcontextchanged', onContext);
+      activeBridge.toolResultCallback = null;
+      activeBridge.destroy();
+      extensions = null;
+    }
+    global.addEventListener('pagehide', dispose, { once: true });
+    return {
+      ready: ready,
+      getApp: function getApp() { return activeBridge.app; },
+      getExtensions: function getExtensions() { return extensions; },
+      getData: function getData() { return currentData; },
+      receiveResult: receiveResult,
+      dispose: dispose,
     };
   }
 

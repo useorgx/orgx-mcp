@@ -16,3 +16,6 @@ export {
   getDocumentTheme,
   applyDocumentTheme,
 } from '@modelcontextprotocol/ext-apps/app-with-deps';
+
+// Opt-in extensions. Existing widgets do not construct this adapter.
+export { OpenAIExtensions } from '@openai/mcp-extensions/app';

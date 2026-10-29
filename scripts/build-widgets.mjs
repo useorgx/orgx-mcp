@@ -40,6 +40,7 @@ const MANIFEST_PATH = join(WIDGETS_DIR, '_manifest.json');
 // Must mirror the allowlist in tests/widgetPrimaryPalette.spec.ts.
 // The build is the source of truth; the test now consumes the manifest.
 const CANONICAL_PRIMARIES = {
+  'orgx-panel': '251,191,36',
   'agent-status': '191,255,0',
   'initiative-pulse': '0,201,167',
   'scaffolded-initiative': '99,102,241',
