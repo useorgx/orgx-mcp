@@ -212,7 +212,7 @@ const commonCreateFields = ['title', 'summary', 'description', 'workspace_id', '
 const createTitle = z.string().trim().min(1).max(240).describe('Display title for the new work record.');
 const createOverrides = { title: createTitle, metadata: contentMetadataSchema.optional() };
 const spawnShape = canonical('orgx_spawn').inputSchema!;
-const dispatchFields = Object.keys(spawnShape).filter((field) => field !== 'action' && field !== 'title');
+const dispatchFields = Object.keys(spawnShape).filter((field) => field !== 'action' && field !== 'title' && field !== 'autonomous');
 const workActionFields = ['type', 'id', 'note', 'idempotency_key', 'session_id'] as const;
 
 // The legacy batch path remains explicit until all richer hierarchy material
@@ -398,7 +398,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     }),
   operation('orgx_start_agent_task', 'orgx_spawn', 'Start OrgX Agent Task',
     'Dispatch one existing OrgX task under budget, deadline, acceptance, eligibility, and permission policy. Can incur model costs and act on connected services within the declared effect constraints.',
-    project('orgx_spawn', dispatchFields, { task_id: id.describe('Existing task UUID to dispatch.') }), {
+    project('orgx_spawn', [...dispatchFields, 'autonomous'], { task_id: id.describe('Existing task UUID to dispatch.') }), {
       fixedArgs: { action: 'spawn' }, annotations: dispatchesWork, securitySchemes: SECURITY_SCHEMES.agentRequiresAuth,
     }),
   operation('orgx_handoff_task', 'orgx_spawn', 'Hand Off OrgX Task',
