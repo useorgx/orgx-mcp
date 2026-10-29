@@ -68,8 +68,10 @@
     "@cloudflare/workers-oauth-provider": "0.10.3",
     "@modelcontextprotocol/ext-apps": "1.1.2",
     "@modelcontextprotocol/sdk": "1.26.0",
+    "@modelcontextprotocol/server": "2.2.0",
     "@sentry/cloudflare": "10.65.0",
     "agents": "0.7.2",
+    "ipaddr.js": "2.5.0",
     "zod": "^3.25.8"
   },
   "devDependencies": {
@@ -77,6 +79,7 @@
     "@sentry/cli": "3.6.0",
     "jsdom": "^29.1.1",
     "playwright": "^1.61.1",
+    "standardwebhooks": "1.1.1",
     "tsx": "^4.22.5",
     "typescript": "^5.6.3",
     "vite": "^6.3.4",
