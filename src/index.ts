@@ -166,6 +166,7 @@ import {
 } from './workCommandContract';
 import { buildMetricExpectationRequest } from './metricExpectationContract';
 import { buildTaskPredictionRequest } from './taskPredictionContract';
+import { checkAutonomousSpawnSupport } from './autonomousDispatch';
 import { buildExecutionGraphEmission } from './agenticScaleProof';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
@@ -2623,6 +2624,18 @@ export class OrgXMcp extends McpAgent<
   ): Promise<SpawnBudgetPreflightEvaluation> {
     const routeArgs = buildSpawnBudgetPreflightArgs(args);
     try {
+      const support = await checkAutonomousSpawnSupport(args, async () => {
+        const response = await callOrgxApiJson(
+          this.env,
+          '/api/tools/execute?format=full',
+          { method: 'GET' },
+          { userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(),
+            orgxUserId: this.resolveOrgxUserId(userId), allowFallback: false }
+        );
+        if (!response.ok) throw new Error('Backend tool catalog unavailable');
+        return response.json();
+      });
+      if (!support.ok) return support;
       const response = await callOrgxApiJson(
         this.env,
         '/api/client/route-task',
@@ -3544,6 +3557,14 @@ export class OrgXMcp extends McpAgent<
     | { ok: false; result: CallToolResult }
   > {
     if (!DISPATCH_TOOL_IDS.has(toolId)) return { ok: true, args };
+
+    if (args.autonomous !== undefined &&
+        (args.autonomous !== true || !['orgx_spawn', 'spawn_agent_task'].includes(toolId))) {
+      return { ok: false, result: this.toolError(
+        'autonomous supports only the literal true on spawn/start operations.',
+        { code: 'invalid_autonomous_declaration', status: 422 }
+      ) };
+    }
 
     const normalized = normalizeDispatchContract(args);
     if (!normalized.ok || !normalized.contract) {

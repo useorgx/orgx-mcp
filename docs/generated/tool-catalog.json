@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-23T11:55:54.655Z",
-  "sourceHash": "38b8ee272286dd3e",
+  "generatedAt": "2026-10-29T05:56:04.024Z",
+  "sourceHash": "c87a00f11a403968",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -529,6 +529,11 @@
           "idempotency_key": {
             "type": "string",
             "description": "Optional client-supplied idempotency key for safe retries. The same key returns the same dispatch result without re-running the work."
+          },
+          "autonomous": {
+            "type": "boolean",
+            "const": true,
+            "description": "Set true for unattended or scheduled work. Narrows execution to the existing autonomous credential policy; never grants org-key fallback or additional effects. False is not supported and cannot clear inherited restrictions."
           },
           "execution_target": {
             "type": "string",
@@ -4553,6 +4558,11 @@
             ],
             "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
           },
+          "autonomous": {
+            "type": "boolean",
+            "const": true,
+            "description": "Set true for unattended or scheduled work. Narrows execution to the existing autonomous credential policy; never grants org-key fallback or additional effects. False is not supported and cannot clear inherited restrictions."
+          },
           "deadline": {
             "type": "string",
             "description": "Optional ISO-8601 instant by which the work must finish (e.g. \"2026-09-28T17:00:00Z\"). Validated and recorded; free text is rejected because a constraint that cannot be evaluated is not a constraint."
@@ -6349,6 +6359,11 @@
               "local"
             ],
             "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
+          },
+          "autonomous": {
+            "type": "boolean",
+            "const": true,
+            "description": "Set true for unattended or scheduled work. Narrows execution to the existing autonomous credential policy; never grants org-key fallback or additional effects. False is not supported and cannot clear inherited restrictions."
           },
           "deadline": {
             "type": "string",
@@ -18255,6 +18270,11 @@
           "session_id": {
             "type": "string",
             "description": "Optional OrgX conversation-session context."
+          },
+          "autonomous": {
+            "type": "boolean",
+            "const": true,
+            "description": "Set true for unattended or scheduled work. Narrows execution to the existing autonomous credential policy; never grants org-key fallback or additional effects. False is not supported and cannot clear inherited restrictions."
           }
         },
         "required": [
