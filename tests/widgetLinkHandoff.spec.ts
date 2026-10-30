@@ -107,6 +107,19 @@ describe('widget link handoff failures', () => {
     vi.clearAllTimers();
   });
 
+  it('replaces recovery idempotently after rejection and leaves its native click outside host dispatch', async () => {
+    const openExternal = vi.fn(() => Promise.reject(new Error('Refused')));
+    host.openai = { openExternal };
+    runtime.openWidgetLink(url, click());
+    await Promise.resolve();
+    expect(document.querySelectorAll('#ox-link-recovery')).toHaveLength(1);
+    expect(document.querySelectorAll('#ox-link-recovery a')).toHaveLength(1);
+    const event = click();
+    document.querySelector('#ox-link-recovery a')!.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(openExternal).toHaveBeenCalledTimes(1);
+  });
+
   it('does not route the same component event twice', () => {
     const openExternal = vi.fn();
     host.openai = { openExternal };
