@@ -203,6 +203,38 @@ describe('ready answers and a person’s own answer', () => {
 });
 
 describe('Outputs', () => {
+  it('keeps native recovery for the selected receipt when the connected SDK silently returns', async () => {
+    const p = await open(null, { outputs: { data: outputsView() } });
+    p.click('[data-tab="outputs"]');
+    await p.settle();
+    p.click(`[data-action="out-select"][data-id="${OUT}"]`);
+    await p.settle();
+    p.click('.pn-md-detail [data-action="open"]');
+    await p.settle();
+    expect(p.calls.openLink).toHaveBeenCalledExactlyOnceWith({ url: `https://useorgx.com/artifacts/${OUT}` });
+    const recovery = p.doc.querySelector('#ox-link-recovery a') as HTMLAnchorElement;
+    expect(recovery?.href).toBe(`https://useorgx.com/artifacts/${OUT}`);
+    expect(recovery?.target).toBe('_blank');
+    expect(recovery?.rel).toContain('noopener');
+    expect(recovery?.hasAttribute('data-ox-link')).toBe(false);
+    expect(decided(p)).toEqual([]);
+  });
+
+  it('rejects an unsafe receipt destination before host dispatch or native recovery', async () => {
+    const outputs = outputsView();
+    outputs.items[0]!.url = 'javascript:alert(1)';
+    const p = await open(null, { outputs: { data: outputs } });
+    p.click('[data-tab="outputs"]');
+    await p.settle();
+    p.click(`[data-action="out-select"][data-id="${OUT}"]`);
+    await p.settle();
+    p.click('.pn-md-detail [data-action="open"]');
+    await p.settle();
+    expect(p.calls.openLink).not.toHaveBeenCalled();
+    expect(p.doc.querySelector('#ox-link-recovery')).toBeNull();
+    expect(decided(p)).toEqual([]);
+  });
+
   it('hydrates the selected canonical answer and routes its decision to the existing controls', async () => {
     const p = await open(null, { outputs: { data: outputsView(), meta: { 'orgx/panelPreviews': { [OUT]: { summary: null, preview: PREVIEW, frontDoor: outputFrontDoor() } } } } });
     p.click('[data-tab="outputs"]');

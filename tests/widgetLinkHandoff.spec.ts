@@ -73,6 +73,40 @@ describe('widget link handoff failures', () => {
     expect(document.querySelector('#ox-link-recovery a')?.getAttribute('href')).toBe(url);
   });
 
+  it.each([() => undefined, () => Promise.resolve({})])('keeps recovery visible when a host silently completes without navigation', async (openExternal) => {
+    host.openai = { openExternal };
+    runtime.openWidgetLink(url, click());
+    await Promise.resolve();
+    const anchor = document.querySelector('#ox-link-recovery a') as HTMLAnchorElement;
+    expect(anchor?.href).toBe(url);
+    expect(anchor?.hasAttribute('data-ox-link')).toBe(false);
+    expect(document.querySelector('#ox-link-recovery')?.textContent).toContain('If OrgX didn’t open');
+  });
+
+  it('keeps a recovery anchor when browser fallback produces no window handle', () => {
+    host.openai = {};
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    const event = click();
+    event.preventDefault();
+    runtime.openWidgetLink(url, event);
+    expect(document.querySelector('#ox-link-recovery a')?.getAttribute('href')).toBe(url);
+  });
+
+  it.each([undefined, {}])('retains recovery after a legacy ui/open-link silent response: %j', async (result) => {
+    vi.useFakeTimers();
+    const postMessage = vi.fn();
+    Object.defineProperty(window, 'parent', { configurable: true, value: { postMessage } });
+    runtime.openWidgetLink(url, click());
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    const request = postMessage.mock.calls[0]![0];
+    expect(request).toMatchObject({ jsonrpc: '2.0', method: 'ui/open-link', params: { url } });
+    window.dispatchEvent(new MessageEvent('message', { data: { jsonrpc: '2.0', id: request.id, result } }));
+    await Promise.resolve();
+    expect(document.querySelector('#ox-link-recovery a')?.getAttribute('href')).toBe(url);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    vi.clearAllTimers();
+  });
+
   it('does not route the same component event twice', () => {
     const openExternal = vi.fn();
     host.openai = { openExternal };
