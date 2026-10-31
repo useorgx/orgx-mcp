@@ -117,10 +117,10 @@ describe('OpenAI ChatGPT app submission readiness', () => {
     expect(submission.app_info.display_name).toBe('OrgX');
     expect(submission.app_info.subtitle.length).toBeLessThanOrEqual(30);
     expect(submission.app_info.description).toContain(
-      'Organizational continuity for AI agents'
+      'Proof for AI-delivered work'
     );
     expect(submission.app_info.description).toContain(
-      'Make AI work resumable, reviewable, and provable across agents.'
+      'Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts.'
     );
     expect(submission.app_info.category).toBe('PRODUCTIVITY');
   });

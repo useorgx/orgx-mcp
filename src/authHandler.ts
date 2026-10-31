@@ -959,7 +959,7 @@ export const authHandler = {
               'orgx_submit_work_receipt',
             ],
             answer_engine_topics: [
-              'organizational continuity for AI agents',
+              'proof for AI-delivered work',
               'OrgX MCP integration',
               'organizational memory MCP server',
               'MCP initiative scaffolding',
@@ -992,9 +992,9 @@ export const authHandler = {
           {
             id: 'orgx-mcp',
             name: 'OrgX MCP',
-            category: 'Organizational continuity for AI agents',
+            category: 'Proof for AI-delivered work',
             description:
-              'Make AI work resumable, reviewable, and provable across agents. OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind.',
+              'Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts. OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind.',
             endpoints: {
               mcp: 'https://mcp.useorgx.com/mcp',
               llms: 'https://mcp.useorgx.com/llms.txt',

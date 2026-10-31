@@ -786,8 +786,8 @@ The `server.json` file describes OrgX MCP for the registry:
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.useorgx/orgx-mcp",
-  "title": "OrgX MCP — Organizational Continuity for AI Agents",
-  "description": "Make AI work resumable, reviewable, and provable across agents. OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind.",
+  "title": "OrgX MCP — Proof for AI-Delivered Work",
+  "description": "Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts. OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind.",
   "version": "<see server.json for the current version>",
   "remotes": [
     { "type": "streamable-http", "url": "https://mcp.useorgx.com/mcp" },
