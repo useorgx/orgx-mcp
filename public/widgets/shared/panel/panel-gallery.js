@@ -617,6 +617,89 @@
         case 'start-menu':
           ui.pop = 'start';
           break;
+        // Empty and all-clear states, one per tab (the empty-state review).
+        case 'clear':
+          // Nothing pending; the warm read of In progress has landed.
+          s = calmSnapshot();
+          s.proof.completed_unaccepted = 0;
+          tokens = {};
+          ui.work = galleryWork(); ui.workPhase = 'ready';
+          break;
+        case 'cleared':
+          // The moment after the last decision: the queue is empty, the
+          // receipt line is up, and Done holds what was just settled.
+          s = calmSnapshot();
+          tokens = {};
+          ui.work = galleryWork(); ui.workPhase = 'ready';
+          ui.session = [
+            { id: IDS.d1, title: 'Ship release 4.2 to production?', action: 'approve', verb: 'Approved', phase: 'confirmed', detail: 'the agent can continue', at: clock(new Date(NOW - 1 * 60 * 1000)), url: decisionUrl(IDS.d1) },
+            { id: IDS.d2, title: 'Rotate billing API keys?', action: 'approve', verb: 'Approved', phase: 'confirmed', detail: 'the agent can continue', at: clock(new Date(NOW - 3 * 60 * 1000)), url: decisionUrl(IDS.d2) },
+            { id: IDS.d3, title: 'Publish the onboarding checklist v2?', action: 'reject', verb: 'Sent back', phase: 'rejected', detail: '', at: clock(new Date(NOW - 5 * 60 * 1000)), url: decisionUrl(IDS.d3) },
+          ];
+          ui.lastRuling = { id: IDS.d1, action: 'approve', title: 'Ship release 4.2 to production?', elsewhere: false, verb: 'Approved' };
+          break;
+        case 'work-empty':
+          s = calmSnapshot();
+          s.proof.completed_unaccepted = 0;
+          tokens = {};
+          ui.tab = 'work';
+          ui.work = { status: 'ok', items: [], total: 0 };
+          ui.workPhase = 'ready';
+          break;
+        case 'outputs-reviewed': {
+          // Outputs exist and every one has been looked at: nothing to review.
+          place(s);
+          ui.tab = 'outputs';
+          var reviewed = galleryOutputs();
+          reviewed.items = reviewed.items.filter(function seen(o) { return o.accepted.state !== 'waiting' && o.accepted.state !== 'not_reviewed'; });
+          reviewed.total = reviewed.items.length;
+          ui.outputs = reviewed;
+          ui.outputsPhase = 'ready';
+          ui.outPreviews = galleryPreviews();
+          ui.goals = galleryGoals(); ui.goalReasons = galleryGoalReasons();
+          ui.goalsPhase = 'ready';
+          break;
+        }
+        case 'done-empty':
+          s = calmSnapshot();
+          s.proof = { last_accepted: null, completed_unaccepted: 0 };
+          tokens = {};
+          ui.tab = 'done';
+          ui.receipts['7d'] = { status: 'ok', query: 'since:', total: 0, reason: null, items: [] };
+          ui.receiptsPhase = 'ready';
+          if (params.get('lens') === 'decisions') ui.doneLens = 'decisions';
+          break;
+        case 'done-all':
+          // Everything is done: nothing pending, the session's decisions
+          // settled, and the week's receipts in.
+          s = calmSnapshot();
+          s.proof.completed_unaccepted = 0;
+          tokens = {};
+          ui.tab = 'done';
+          ui.receipts['7d'] = galleryReceipts('7d');
+          ui.receiptsPhase = 'ready';
+          ui.session = [
+            { id: IDS.d2, title: 'Rotate billing API keys?', action: 'approve', verb: 'Approved', phase: 'confirmed', detail: 'the agent can continue', at: clock(new Date(NOW - 6 * 60 * 1000)), url: decisionUrl(IDS.d2) },
+            { id: IDS.d3, title: 'Publish the onboarding checklist v2?', action: 'reject', verb: 'Sent back', phase: 'recorded', detail: '', at: clock(new Date(NOW - 15 * 60 * 1000)), url: decisionUrl(IDS.d3) },
+          ];
+          if (params.get('lens') === 'decisions') ui.doneLens = 'decisions';
+          break;
+        case 'brand-new':
+          // A new workspace with nothing anywhere: every tab's read is empty.
+          s = calmSnapshot();
+          s.proof = { last_accepted: null, completed_unaccepted: 0 };
+          tokens = {};
+          ui.work = { status: 'ok', items: [], total: 0 }; ui.workPhase = 'ready';
+          ui.outputs = { status: 'ok', items: [], total: 0 }; ui.outputsPhase = 'ready';
+          ui.goals = { status: 'ok', items: [], total: 0, unlinked: [], unlinked_total: 0, quality_bars: [] }; ui.goalsPhase = 'ready';
+          ui.receipts['7d'] = { status: 'ok', query: 'since:', total: 0, reason: null, items: [] }; ui.receiptsPhase = 'ready';
+          break;
+        case 'disconnected':
+          // The queue itself could not be read: nothing to show but the error.
+          s = calmSnapshot();
+          s.state = 'degraded';
+          tokens = {};
+          break;
         default:
           break;
       }
