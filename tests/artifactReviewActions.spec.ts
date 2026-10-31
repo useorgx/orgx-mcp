@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it, vi } from 'vitest';
 import { installSharedFoundations } from './fixtures/sharedFoundations';
+import { outputFrontDoor, FRONT_DOOR_ARTIFACT_ID } from './fixtures/outputFrontDoor';
 
 const widgetHtml = readFileSync(join(process.cwd(), 'public', 'widgets', 'artifact-review.html'), 'utf8');
 const scriptSource =
@@ -39,6 +40,25 @@ function mount(query: string, callTool = vi.fn().mockImplementation((name: strin
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('artifact review actions in the kit footer', () => {
+  it('keeps the canonical answer through a same-version action and clears it on a newer subject', async () => {
+    const id = FRONT_DOOR_ARTIFACT_ID;
+    const callTool = vi.fn().mockResolvedValue({ structuredContent: { ok: true, artifact: { id, status: 'approved' } } });
+    const { doc, renderIncoming } = mount('', callTool, 'chatgpt', { [id]: 'hidden-review-token' });
+    renderIncoming({ artifact: { id, name: 'Client deck', version: 2, status: 'in_review', artifact_type: 'document' }, reviewContractSource: 'canonical', reviewContract: { schemaVersion: 'artifact_review_contract.v1', purpose: { reviewRequired: true }, authority: { canReview: true }, quality: { state: 'passed', blocksAdvance: false }, modalityGate: { blocksAdvance: false }, frontDoor: outputFrontDoor() } });
+    expect(doc.querySelector('[data-front-door]')).not.toBeNull();
+    doc.querySelector<HTMLButtonElement>('[data-action="approve"]')!.click();
+    await wait(400);
+    expect(doc.querySelector('[data-front-door]')).not.toBeNull();
+    expect(callTool).toHaveBeenCalledExactlyOnceWith('orgx_widget_approve_artifact', { artifact_id: id, expected_version: 2, approval_token: 'hidden-review-token' });
+    renderIncoming({ artifact: { id, name: 'Updated deck', version: 3, status: 'in_review' } });
+    expect(doc.querySelector('[data-front-door]')).toBeNull();
+  });
+
+  it('ignores summary metadata without a canonical projection', () => {
+    const { doc, renderIncoming } = mount('', vi.fn(), 'chatgpt');
+    renderIncoming({ artifact: { id: FRONT_DOOR_ARTIFACT_ID, name: 'Deck', metadata: { output_front_door: outputFrontDoor() } }, reviewContractSource: 'entity_fallback', reviewContract: { schemaVersion: 'artifact_review_contract.v1', frontDoor: outputFrontDoor() } });
+    expect(doc.querySelector('[data-front-door]')).toBeNull();
+  });
   it('keeps approve and request changes as slotted footer controls', () => {
     const { doc } = mount('state=ready');
     const footer = doc.getElementById('reviewFooter')!;

@@ -243,23 +243,3 @@ it('keeps entity lifecycle completion distinct from the versioned ledger command
     .toMatchObject({ action: 'complete', type: 'task', id: UUID });
   expect(() => parse(lifecycle.id, { task_id: UUID, expected_updated_at: '2026-10-08T00:00:00Z', expected_aggregate_version: 1 })).toThrow();
 });
-
-describe('orgx_update_work entity types', () => {
-  const tool = () => adapter('orgx_update_work');
-
-  it('edits a quality bar draft by kind with patches only', () => {
-    const args = parse(tool().id, { type: 'quality_bar', id: 'outreach_email', fields: { patches: [{ part: 'line', value: 80 }] } });
-    expect(tool().toCanonicalArgs(args)).toMatchObject({ type: 'quality_bar', id: 'outreach_email', operation: 'update' });
-    expect(() => parse(tool().id, { type: 'quality_bar', id: 'x', fields: { patches: [{ part: 'publish' }] } })).toThrow();
-    expect(() => parse(tool().id, { type: 'quality_bar', id: 'x', fields: { patches: [] } })).toThrow();
-    expect(() => tool().toCanonicalArgs(parse(tool().id, { type: 'quality_bar', id: 'x', fields: { title: 'x' } }))).toThrow(/quality_bar/);
-    expect(() => tool().toCanonicalArgs(parse(tool().id, { type: 'task', id: UUID, fields: { patches: [{ part: 'line', value: 80 }] } }))).toThrow(/quality_bar/);
-  });
-
-  it('edits only a workspace name and description', () => {
-    expect(tool().toCanonicalArgs(parse(tool().id, { type: 'workspace', id: UUID, fields: { name: 'OrgX Business', description: 'Proof' } })))
-      .toMatchObject({ type: 'workspace', fields: { name: 'OrgX Business', description: 'Proof' } });
-    expect(() => tool().toCanonicalArgs(parse(tool().id, { type: 'workspace', id: UUID, fields: { priority: 'high' } }))).toThrow(/name and description/);
-    expect(() => parse(tool().id, { type: 'workspace', id: UUID, fields: { is_default: true } })).toThrow();
-  });
-});

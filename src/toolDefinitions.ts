@@ -20,6 +20,7 @@ import {
 } from './shared/entity';
 import { CONFIGURE_ORG_POLICY_TYPES } from './configureOrgPolicy';
 import { DISPATCH_CONTRACT_SHAPE } from './dispatchContract';
+import { autonomousSpawnSchema } from './autonomousDispatch';
 import {
   compatibilityAliasDescription,
   preferredToolCallout,
@@ -954,6 +955,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       // tool's own budget_mode/max_cost_usd/deadline/expected_artifacts so the
       // legacy verb and orgx_spawn accept exactly the same thing.
       ...DISPATCH_CONTRACT_SHAPE,
+      autonomous: autonomousSpawnSchema,
       execution_target: z
         .enum(['auto', 'cloud', 'local', 'local_preferred'])
         .optional()

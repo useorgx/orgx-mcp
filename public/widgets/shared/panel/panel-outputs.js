@@ -121,7 +121,7 @@
         return k ? '<span class="' + k + '">' + esc(l) + '</span>' : esc(l);
       }).join('\n') + '</pre>';
     }
-    return '<div class="pv pv-doc">' + (summary && text !== summary ? '<p class="pv-sum">' + esc(summary) + '</p>' : '') + (text ? '<p>' + esc(text) + '</p>' : '') + '</div>';
+    return '<div class="pv pv-doc ox-markdown">' + (summary && text !== summary ? '<p class="pv-sum">' + esc(summary) + '</p>' : '') + (text ? global.OrgXMarkdown.render(text) : '') + '</div>';
   }
 
   function checksHtml(o) {
@@ -157,14 +157,25 @@
       (at.goalTitle ? '<button type="button" class="crumb" data-action="goal-open" data-id="' + esc(at.goal) + '">' + levelIcon('goal') + esc(at.goalTitle) + '</button><span class="crumb-sep" aria-hidden="true">/</span>' : '') +
       '<span class="crumb">' + levelIcon('initiative') + esc(at.title) + '</span></nav>' : '';
     var decision = o.decision_id && opts.decision ? opts.decision(o.decision_id) : null;
+    var said = opts.previewFor ? opts.previewFor(o.id) : null;
+    var frontDoor = said && said.frontDoor && global.OrgXOutputFrontDoor ? global.OrgXOutputFrontDoor.render(said.frontDoor, {
+      artifactId: o.id,
+      decisionAction: function action(id) {
+        var current = opts.decision ? opts.decision(id) : null;
+        return current
+          ? '<button type="button" class="pn-btn" data-action="out-decide" data-id="' + esc(id) + '" data-mode="open">Review in Needs you</button>'
+          : '<a ' + global.OrgXLinks.attrs('/decisions/' + id) + '>Review decision</a>';
+      },
+    }) : '';
     return '<div class="md-card oc-detail" role="region" aria-label="Output">' + V().backHtml('out-select', 'Back to Outputs') +
       '<p class="md-kicker oc-kind"><span class="oc-chip">' + outIcon(o.type, 14) + esc(typeLabel(o)) + '</span>' +
       (o.made_by ? '<span class="md-av">' + avatar(o.made_by) + '</span><span>' + esc(o.made_by) + '</span>' : '') + (o.made_at ? '<span>· ' + esc(ago(o.made_at)) + '</span>' : '') + '</p>' +
       '<h3 class="md-title">' + esc(o.title) + '</h3>' + crumbs +
+      frontDoor +
       '<ol class="oc-chain" aria-label="What happened">' + chain.map(function step(c) {
         return '<li data-s="' + c.s + '"><span class="oc-cd" aria-hidden="true"></span><span class="oc-cn">' + c.name + '</span><span class="oc-cl">' + esc(c.line) + '</span></li>';
       }).join('') + '</ol>' +
-      previewHtml(o, opts.previewFor ? opts.previewFor(o.id) : null) + checksHtml(o) + actbarHtml(o, decision) +
+      previewHtml(o, said) + checksHtml(o) + actbarHtml(o, decision) +
       '<div class="md-acts"><button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(o.url) + '">Open in OrgX ↗</button>' +
       (o.external_url ? '<button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(o.external_url) + '">Open the ' + esc(typeLabel(o).toLowerCase()) + ' ↗</button>' : '') + '</div></div>';
   }

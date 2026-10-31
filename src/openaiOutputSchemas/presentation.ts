@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { artifactOutputFrontDoorSchema } from '../outputFrontDoor';
+import { artifactQualityPresentationSchema, artifactCurrentChecksSchema } from '../nativeArtifactQuality';
 
 import {
   artifactSchema,
@@ -80,6 +82,7 @@ export const chronicleSchema = z.object({
  */
 export const reviewContractSchema = z.object({
   schemaVersion: z.string(),
+  frontDoor: artifactOutputFrontDoorSchema.optional(),
   purpose: z
     .object({
       kind: z
@@ -98,11 +101,8 @@ export const reviewContractSchema = z.object({
         .optional(),
     })
     .optional(),
-  quality: z.object({
-    state: z.string().optional(),
-    score: nullableNumber.optional(),
-    summary: z.string().optional(),
-  }),
+  quality: artifactQualityPresentationSchema,
+  checks: artifactCurrentChecksSchema.optional(),
   workflow: z.object({
     state: z.string().optional(),
     headline: z.string().optional(),

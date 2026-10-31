@@ -145,6 +145,67 @@ completion denominators without a validated migration query. MCP handler-local
 events are diagnostics; only canonical invocations define call volume. Dashboard
 provisioning and production ingestion verification have not been performed.
 
+## MCP pairing journey (October 21 visibility repair)
+
+`pairing_attempt_id` is an opaque UUID generated at `/authorize`, separate from
+OAuth `state_key`, client `state`, identity proofs, authorization codes and tokens.
+It is stored in the existing OAuth KV state, passed to the web callback, and
+retained in verified credential props after authorization. Attempts already in
+progress without the field continue to work. The worker uses its stored attempt
+as authority, never a browser or tool argument's claimed account or attempt.
+
+The existing `mcp_pairing_step` event now covers these worker stages:
+
+| Stage | Established fact | `event_outcome` |
+| --- | --- | --- |
+| `sign_in_redirect` | Worker issued the web sign-in redirect | `attempt` |
+| `identity_verified` | Worker accepted the signed web identity proof | `success` |
+| `consent_redirect` | Worker issued the consent redirect | `attempt` |
+| `consent_viewed` | Same-origin consent page reported its loaded UI | `success` |
+| `consent_reviewed` | Same-origin UI entered permission review | `success` |
+| `consent_approved` | OAuth provider successfully created the scoped grant | `success` |
+| `consent_denied` | User denied authorization | `failure` |
+| `consent_expired` | Required stored state or identity is unavailable | `failure` |
+| `failed`, `consent_failed` | Identity verification, provider, UI, or bounded request failure | `failure` |
+| `client_return_issued` | Server returned the registered client callback | `attempt` |
+
+Issued redirects do not establish destination arrival or a working connection.
+Browser breadcrumbs are best effort and do not prove absence of activity when
+missing. The same-origin trace endpoint accepts only bounded stages/reasons and
+loads account identity and attempt correlation from existing KV records; it
+does not accept client-supplied identity, scopes, callback destinations, or
+authorization success. The verified internal account UUID remains the sole
+identified `distinct_id`. Before verification or when mapping is unavailable,
+events remain anonymous and carry no person profile.
+
+`destination_host` contains only the hostname. `destination_path` is limited to
+a closed vocabulary of static auth/callback route segments; other registered
+paths become `/other`. No URL query, fragment, password, state capability,
+arbitrary callback path text, email, or provider error prose is exported.
+`elapsed_ms` is measured from the worker's `/authorize` attempt start; the web
+callback's `duration_ms` measures its local handoff leg and is not interchangeable.
+
+The signed web identity can carry `telemetry_opt_out=true`. Stored attempt DNT,
+signed optout, and request DNT are combined so a false/absent value cannot
+re-enable that attempt's optional capture. The resulting optout is persisted in
+the OAuth grant and honored by the canonical transport observer even when the
+client's later request has no DNT header. A request's DNT still independently
+suppresses optional telemetry; operational receipts retain their existing rules.
+
+Canonical `mcp_tool_invocation` carries `pairing_attempt_id` from verified OAuth
+credential props. Tool arguments and `_context` cannot replace it. First use is
+still derived from the earliest observed semantic success, not an extra event
+on each retry. This allows signup → consent approval → client return issued →
+first successful invocation to be inspected without calling token mint a
+completed connection. Historical events lacking these fields are not backfilled.
+
+Consent loads and submissions have a 15-second browser deadline covering both
+fetch and body parsing. Read-only loading can be retried. Approval timeout can
+occur after a grant was created, so recovery asks the user to restart from the
+client rather than automatically resubmit approval. Duplicate clicks are
+suppressed. Recording token-bearing handoff and consent pages remains excluded;
+these stage events provide visibility without replaying credentials.
+
 ## Identity reconciliation dry run
 
 With separately approved existing-log/project access, export a narrow snapshot

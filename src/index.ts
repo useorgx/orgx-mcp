@@ -166,6 +166,7 @@ import {
 } from './workCommandContract';
 import { buildMetricExpectationRequest } from './metricExpectationContract';
 import { buildTaskPredictionRequest } from './taskPredictionContract';
+import { checkAutonomousSpawnSupport } from './autonomousDispatch';
 import { buildExecutionGraphEmission } from './agenticScaleProof';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
@@ -270,6 +271,8 @@ import {
 } from './artifactReview';
 import { buildWorkspaceCreateBody } from './workspaceTool';
 import { buildEntityUpdateRequest } from './entityUpdateRequest';
+import { buildWorkOutputAttachmentRequest, readWorkOutputAttachmentAcknowledgement } from './workOutputAttachment';
+import { executeProfileWorkUpdate } from './profileWorkUpdate';
 import { buildEntityCollectionSearchParams } from './entityCollectionSearch';
 import {
   buildBroadSearchPagination,
@@ -603,6 +606,8 @@ interface OrgXMcpProps extends Record<string, unknown> {
   userId?: string;
   // Internal Supabase user UUID resolved at MCP login. Optional — see SessionAuth.
   orgxUserId?: string;
+  pairingAttemptId?: string;
+  telemetryOptOut?: boolean;
   scope?: string;
   email?: string;
   profile?: string;
@@ -2620,6 +2625,18 @@ export class OrgXMcp extends McpAgent<
   ): Promise<SpawnBudgetPreflightEvaluation> {
     const routeArgs = buildSpawnBudgetPreflightArgs(args);
     try {
+      const support = await checkAutonomousSpawnSupport(args, async () => {
+        const response = await callOrgxApiJson(
+          this.env,
+          '/api/tools/execute?format=full',
+          { method: 'GET' },
+          { userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(),
+            orgxUserId: this.resolveOrgxUserId(userId), allowFallback: false }
+        );
+        if (!response.ok) throw new Error('Backend tool catalog unavailable');
+        return response.json();
+      });
+      if (!support.ok) return support;
       const response = await callOrgxApiJson(
         this.env,
         '/api/client/route-task',
@@ -2639,7 +2656,7 @@ export class OrgXMcp extends McpAgent<
       // Per-task ceiling passed. Now enforce WORKSPACE daily/monthly spend caps
       // via /api/client/spawn-gate (policy lives in orgx: enforceBudget). Skip
       // when no workspace is resolvable — caps can't be enforced without one.
-      const gateArgs = buildSpawnGateArgs(routeArgs, userId);
+      const gateArgs = buildSpawnGateArgs(routeArgs, userId, routeEval.preflight);
       if (gateArgs) {
         const gateResponse = await callOrgxApiJson(
           this.env,
@@ -3232,6 +3249,11 @@ export class OrgXMcp extends McpAgent<
           workspaceId,
           limit,
         }),
+      fetchArtifactReview: (artifact) => loadArtifactReviewEnvelope({
+        env: this.env,
+        artifact,
+        actor: actor(userId()) ?? {},
+      }),
       // Read only when the person opens In progress; the same read
       // get_agent_status uses, normalized the same way.
       fetchAgentStatus: async ({ workspaceId }) => {
@@ -3536,6 +3558,14 @@ export class OrgXMcp extends McpAgent<
     | { ok: false; result: CallToolResult }
   > {
     if (!DISPATCH_TOOL_IDS.has(toolId)) return { ok: true, args };
+
+    if (args.autonomous !== undefined &&
+        (args.autonomous !== true || !['orgx_spawn', 'spawn_agent_task'].includes(toolId))) {
+      return { ok: false, result: this.toolError(
+        'autonomous supports only the literal true on spawn/start operations.',
+        { code: 'invalid_autonomous_declaration', status: 422 }
+      ) };
+    }
 
     const normalized = normalizeDispatchContract(args);
     if (!normalized.ok || !normalized.contract) {
@@ -6063,6 +6093,24 @@ export class OrgXMcp extends McpAgent<
           const operation =
             typeof args.operation === 'string' ? args.operation : 'create';
           if (operation === 'update') {
+            if (args.artifact !== undefined) {
+              const attachment = buildWorkOutputAttachmentRequest(args);
+              const response = await callOrgxApiJson(this.env, '/api/v1/workflows/attach-output', {
+                method: 'POST', headers: { 'Idempotency-Key': attachment.idempotencyKey },
+                body: JSON.stringify(attachment.body),
+              }, { userId: resolvedUserId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(resolvedUserId), allowFallback: false });
+              const data = readWorkOutputAttachmentAcknowledgement(await response.json());
+              const artifact = data.artifact;
+              const payload = canonicalizeOrgxWriteResponse({
+                _v2_tool: 'orgx_write', operation: 'update', ok: true,
+                id: artifact.id, data,
+                message: 'Output attached for review. Attachment does not approve or complete work.',
+              }, 'artifact');
+              return {
+                content: [{ type: 'text', text: `${payload.message} Inspect artifact ${artifact.id} for its canonical output summary and review link.` }],
+                structuredContent: payload,
+              };
+            }
             const fields =
               args.fields && typeof args.fields === 'object' && !Array.isArray(args.fields)
                 ? (args.fields as Record<string, unknown>)
@@ -7922,6 +7970,10 @@ export class OrgXMcp extends McpAgent<
           }));
         }, tool.id, effective);
         const canonicalArgs = tool.toCanonicalArgs(effective);
+        if (tool.id === 'orgx_update_work' && (canonicalArgs.type === 'quality_bar' || canonicalArgs.type === 'workspace')) return this.withOrgx(async () => {
+          const payload = await executeProfileWorkUpdate(canonicalArgs, (path, init) => this.requestPublicOperation(path, init, { allowFallback: false }));
+          return { content: [{ type: 'text', text: JSON.stringify(payload) }], structuredContent: payload };
+        }, tool.id, effective);
         if (tool.id === 'orgx_open_artifact_review' && typeof canonicalArgs.artifact_id === 'string') return this.withOrgx(async () => {
           const params = new URLSearchParams({ widget_meta: '1', ...(effective.workspace_id ? { workspace_id: String(effective.workspace_id) } : {}) });
           const raw = await this.requestPublicOperation(`/api/v1/workflows/artifact-review/${encodeURIComponent(canonicalArgs.artifact_id as string)}?${params}`);
@@ -7953,28 +8005,6 @@ export class OrgXMcp extends McpAgent<
           if (!canonicalArgs.kind || !canonicalArgs.id) return this.toolError('Supply a typed operation_id or kind and id.', { code: 'invalid_operation_reference', status: 400 });
           return this.executeChatGPTTool(tool.canonicalToolId, canonicalArgs, schemes);
         }
-        // Quality bars and the workspace profile are entity types of the same
-        // update operation, served by their own v1 routes.
-        if (tool.id === 'orgx_update_work' && (canonicalArgs.type === 'quality_bar' || canonicalArgs.type === 'workspace')) return this.withOrgx(async () => {
-          const fields = canonicalArgs.fields as Record<string, unknown>;
-          const workspaceId = this.sessionContext?.workspaceId;
-          const request = canonicalArgs.type === 'quality_bar'
-            ? { path: '/api/v1/quality-bars/drafts', method: 'POST', body: { kind_key: canonicalArgs.id, patches: fields.patches, ...(workspaceId ? { workspace_id: workspaceId } : {}) } }
-            : { path: '/api/v1/workspaces/profile', method: 'PATCH', body: { ...fields, workspace_id: canonicalArgs.id } };
-          const raw = await this.requestPublicOperation(request.path, { method: request.method, body: JSON.stringify(request.body) });
-          const data = (raw.data ?? {}) as Record<string, unknown>;
-          const draft = (data.draft ?? null) as Record<string, unknown> | null;
-          const payload = {
-            _v2_tool: 'orgx_write' as const, operation: 'update' as const, ok: true, updated: true,
-            type: String(canonicalArgs.type), id: String(canonicalArgs.id),
-            data: draft
-              ? { id: String(draft.id), type: 'quality_bar', name: String(canonicalArgs.id), status: String(draft.status ?? 'open'), review_path: data.review_path, publish: data.publish, draft }
-              : (data.workspace as Record<string, unknown>),
-            message: draft ? `Draft saved. A person publishes it at ${String(data.review_path)}.` : 'Workspace updated.',
-            ...(raw.meta ? { meta: raw.meta } : {}),
-          };
-          return { content: [{ type: 'text', text: JSON.stringify(payload) }], structuredContent: payload };
-        }, tool.id, effective);
         const implementation = privateOperations.get(tool.canonicalToolId);
         if (!implementation) return this.toolError(`Operation implementation unavailable: ${tool.id}`, { code: 'operation_unavailable', status: 503 });
         const result = await implementation.handler(canonicalArgs, extra) as CallToolResult;
@@ -15597,6 +15627,7 @@ function observeVerifiedMcpTransport(handler: typeof profileAwareHttpHandler) {
       const props = (ctx as ExecutionContext & { props?: OrgXMcpProps }).props;
       return handleMcpRequest(request, env, ctx, handler, async () => ({
         userId: props?.userId, orgxUserId: props?.orgxUserId,
+        pairingAttemptId: props?.pairingAttemptId, telemetryOptOut: props?.telemetryOptOut,
         scope: props?.scope, email: props?.email,
       }));
     },

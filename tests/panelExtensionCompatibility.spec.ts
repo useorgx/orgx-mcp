@@ -47,12 +47,13 @@ describe('ChatGPT extension workspace and receipt operation contract', () => {
     const m = await open();
     expect(m.dom.window.document.body.textContent).toContain(privateSummary);
     m.calls.callServerTool.mockResolvedValue({ structuredContent: { ok: true, total: 0, results: [], window_days: 120 } });
-    const before = m.calls.callServerTool.mock.calls.length;
+    const receiptReads = () => m.calls.callServerTool.mock.calls.filter(([call]) => call.name === 'orgx_list_work_receipts');
+    const before = receiptReads().length;
     m.app().ontoolresult({ structuredContent: snapshot({ workspace: { id: 'workspace-b', name: 'Workspace B' } }) });
     await m.flush();
     click(m, '[data-tab="done"]');
     await m.flush(); await m.flush();
-    expect(m.calls.callServerTool.mock.calls.length).toBe(before + 1);
+    expect(receiptReads()).toHaveLength(before + 1);
     expect(m.dom.window.document.body.textContent).not.toContain(privateSummary);
     expect(m.dom.window.document.querySelector('[data-action="receipt-call"]')).toBeNull();
   });
@@ -189,12 +190,16 @@ describe('ChatGPT extension workspace and receipt operation contract', () => {
     await m.flush(); await m.flush();
     click(m, '[data-action="switch-workspace"][data-id="workspace-b"]');
     await m.flush();
-    expect(m.calls.callServerTool.mock.calls.length).toBe(2);
+    const workspaceCalls = () => m.calls.callServerTool.mock.calls.filter(([call]) =>
+      call.name === 'orgx_widget_select_workspace' ||
+      (call.name === 'orgx_panel_snapshot' && call.arguments?.view !== 'work')
+    );
+    expect(workspaceCalls()).toHaveLength(2);
     m.app().ontoolresult({ structuredContent: snapshot({ workspace: { id: 'workspace-c', name: 'Workspace C' } }) });
     await m.flush();
     finish({ structuredContent: { ok: true } });
     await m.flush(); await m.flush();
-    expect(m.calls.callServerTool.mock.calls.length).toBe(2);
+    expect(workspaceCalls()).toHaveLength(2);
     expect(m.dom.window.document.querySelector('.ws-btn')?.textContent).toContain('Workspace C');
     expect(m.dom.window.document.getElementById('pn-live')?.textContent).not.toBe('Switched to Workspace B.');
   });

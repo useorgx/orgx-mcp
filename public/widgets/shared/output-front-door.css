@@ -1,0 +1,25 @@
+.ox-front-door { min-width: 0; max-width: 100%; display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; color: var(--ox-text-2); font: 13px/1.5 var(--ox-font); overflow-wrap: anywhere; }
+.ox-front-door h3,.ox-front-door h4,.ox-front-door p { margin: 0; }
+.ox-front-door h3 { color: var(--ox-text-muted); font-size: 12px; font-weight: 650; }
+.ox-front-door h4 { color: var(--ox-text); font-size: 13px; font-weight: 650; margin-bottom: 8px; }
+.ox-front-door .ox-fd-answer { font-size: 17px; font-weight: 650; line-height: 1.45; letter-spacing: -.015em; color: var(--ox-text); }
+.ox-front-door a { color: var(--ox-text); text-underline-offset: 3px; }
+.ox-front-door a:focus-visible,.ox-front-door summary:focus-visible { outline: 2px solid var(--ox-focus); outline-offset: 3px; }
+.ox-fd-context { border-left: 2px solid var(--ox-warning); padding: 8px 10px; background: var(--ox-surface-subtle); border-radius: 0 8px 8px 0; }
+.ox-fd-context[data-state="loaded"] { border-left-color: var(--ox-teal); }
+.ox-fd-decisions { padding: 0; margin: 0; list-style: none; display: grid; gap: 10px; }
+.ox-fd-decisions li { border: 1px solid var(--ox-border); border-radius: 10px; padding: 12px; display: grid; gap: 7px; }
+.ox-fd-decisions strong { color: var(--ox-text); }
+.ox-fd-checks { border-top: 1px solid var(--ox-border); padding-top: 12px; }
+.ox-front-door summary { cursor: pointer; color: var(--ox-text); font-weight: 650; min-height: 32px; }
+.ox-fd-checks p { color: var(--ox-text-muted); font-size: 12px; margin: 8px 0 12px; }
+.ox-fd-checks ul { padding-left: 18px; margin: 0 0 12px; }
+.ox-fd-files { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 0; margin: 0; gap: 8px; list-style: none; }
+.ox-fd-files a { display: grid; gap: 4px; border: 1px solid var(--ox-border); padding: 10px; border-radius: 8px; text-decoration: none; }
+.ox-fd-files a[aria-current] { border-color: var(--ox-border-strong); background: var(--ox-surface-subtle); }
+.ox-fd-files span { color: var(--ox-text-muted); font-size: 12px; }
+.ox-fd-receipt { border-top: 1px solid var(--ox-border); padding-top: 12px; }
+.ox-fd-receipt dl { display: grid; grid-template-columns: max-content minmax(0,1fr); gap: 5px 14px; margin: 0 0 8px; }
+.ox-fd-receipt dt { color: var(--ox-text-muted); }
+.ox-fd-receipt dd { margin: 0; color: var(--ox-text); font-family: var(--ox-font-code); font-variant-numeric: tabular-nums; }
+@media(max-width:480px) { .ox-fd-files { grid-template-columns: minmax(0,1fr); } .ox-front-door .ox-fd-answer { font-size: 16px; } }

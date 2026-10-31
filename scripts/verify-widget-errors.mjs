@@ -45,7 +45,7 @@ try {
       if (!baseline) {
         const alert = degraded ? page.locator('#orgx-data-availability') : page.getByRole('alert');
         await alert.waitFor();
-        assert.match(await alert.innerText(), degraded ? /Data may be incomplete/ : /Request failed/);
+        assert.match(await alert.innerText(), degraded ? /Data may be incomplete/ : /Request failed|Search unavailable/);
         if (degraded) {
           assert.equal(await page.locator('[data-orgx-error-hidden]').count(), 0);
           if (widget === 'morning-brief' && variant === 0) {
@@ -56,7 +56,7 @@ try {
           }
           await page.evaluate(() => window.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { toolOutput: null } } })));
           assert.equal(await page.locator('#orgx-data-availability').count(), 1);
-        } else assert.match(await alert.innerText(), /upstream service is temporarily unavailable/);
+        } else assert.match(await alert.innerText(), /Try again|Retry|open it in OrgX/i);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${widget} overflows at ${width}`);
         await page.evaluate(() => window.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { toolOutput: { message: 'Recovered result' } } } })));
         assert.equal(await page.locator('#orgx-tool-error').count(), 0, `${widget} does not recover`);

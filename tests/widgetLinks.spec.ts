@@ -76,6 +76,7 @@ const CASES: Array<[string, string, string]> = [
   ['task in its initiative', links.task(ID, { initiativeId: INI }), '/live/[initiativeId]'],
   ['decision', links.decision(ID), '/decisions/[id]'],
   ['decisions queue', links.decisions(), '/decisions'],
+  ['decisions in a workspace', links.decisions({ center: ID }), '/decisions'],
   ['artifact', links.artifact(ID), '/artifacts/[artifactId]'],
   ['artifact without id', links.artifact(''), '/workspace-hub'],
   ['run', links.run(ID), '/runs/[runId]'],
@@ -101,6 +102,10 @@ describe('widget link builder', () => {
 
   it('uses https://useorgx.com', () => {
     expect(links.origin).toBe('https://useorgx.com');
+  });
+
+  it('keeps the workspace on a decisions queue link', () => {
+    expect(new URL(links.decisions({ center: ID })).searchParams.get('center')).toBe(ID);
   });
 
   it.each(CASES)('%s -> a real app route', (_name, url, route) => {

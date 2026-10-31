@@ -353,6 +353,10 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'Claude Code plugin surface: the informational read set plus lean writes for activity, receipts, artifact attach, decisions, and session bootstrap',
     tools: [...CLAUDE_PLUGIN_SURFACE],
   },
+  'claude-code': {
+    description: 'Claude Code native OAuth: the seven informational operations plus explicit user-invoked content updates and reviewable output attachment. No automatic local capture or lifecycle actions.',
+    tools: [...INFORMATIONAL_SURFACE, 'orgx_update_work'],
+  },
   'claude-code-legacy': {
     description: 'Compatibility for the seven-tool informational Claude Code package. Preserves its declared permissions and response contracts without adding reporting or widget actions.',
     tools: [...LEGACY_INFORMATIONAL_SURFACE],
@@ -386,6 +390,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
       'orgx_command_status',
       'orgx_recommend',
       'orgx_write',
+      'orgx_update_work',
       'orgx_attach',
       'orgx_act',
       'orgx_plan',
@@ -484,7 +489,7 @@ export const TOOL_PROFILES: Record<string, ToolProfile> = {
 };
 
 for (const [name, profile] of Object.entries(TOOL_PROFILES)) {
-  if (name === READ_ONLY_FALLBACK_PROFILE || name === 'claude-plugin' || name === 'claude-code-legacy' || profile.tools === null) continue;
+  if (name === READ_ONLY_FALLBACK_PROFILE || name === 'claude-plugin' || name === 'claude-code' || name === 'claude-code-legacy' || profile.tools === null) continue;
   profile.tools = withWidgetDependencies(profile.tools);
 }
 

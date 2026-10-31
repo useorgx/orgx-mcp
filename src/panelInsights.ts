@@ -114,6 +114,8 @@ export const PANEL_PREVIEW_META_KEY = 'orgx/panelPreviews';
 export interface PanelOutputPreview {
   summary: string | null;
   preview: string | null;
+  /** Authenticated detail read only, never artifact metadata. */
+  frontDoor?: import('./outputFrontDoor').ArtifactOutputFrontDoor;
 }
 
 const LANDED_KEYS: Array<[string, string]> = [

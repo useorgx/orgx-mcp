@@ -1,0 +1,319 @@
+{
+  "schemaVersion": "artifact_review_contract.v1",
+  "frontDoor": {
+    "schemaVersion": "artifact_output_front_door.v1",
+    "answer": "Start with one weekly client report; owner review and client acceptance remain explicit.",
+    "decisions": [],
+    "checked": [
+      "Read the canonical task brief and the frozen quality examples."
+    ],
+    "notChecked": [
+      "Client acceptance and actual human time have not been observed."
+    ],
+    "evidenceBasis": "producer_reported",
+    "context": {
+      "state": "loaded",
+      "summary": "Read 2 frozen context sources for this output. Workspace brand configuration could not be read.",
+      "runId": "55623fb4-d0a5-4b64-87b8-e19435c29b11"
+    },
+    "files": [
+      {
+        "artifactId": "8907ad6b-8261-4832-99eb-60f4f9c1a7b1",
+        "name": "Agency client delivery plan",
+        "mimeType": "text/markdown",
+        "sizeBytes": 402,
+        "purpose": "Start with one weekly report and make customer review explicit.",
+        "href": "/artifacts/8907ad6b-8261-4832-99eb-60f4f9c1a7b1"
+      }
+    ],
+    "receipt": {
+      "runId": "55623fb4-d0a5-4b64-87b8-e19435c29b11",
+      "costUsd": 0.001,
+      "expertMinutes": null,
+      "qualityBar": "Client written report release bar v1",
+      "href": "/console/runs/55623fb4-d0a5-4b64-87b8-e19435c29b11"
+    }
+  },
+  "purpose": {
+    "kind": "deliverable",
+    "label": "Deliverable",
+    "reviewRequired": true,
+    "reviewAction": "sign"
+  },
+  "modality": {
+    "kind": "document",
+    "label": "Document"
+  },
+  "modalityGate": {
+    "state": "not_required",
+    "label": "No modality-specific gate",
+    "blocksAdvance": false,
+    "reason": "No additional modality-specific proof is required.",
+    "missingFields": []
+  },
+  "lifecycle": {
+    "state": "in_review",
+    "label": "In review",
+    "terminal": false
+  },
+  "quality": {
+    "state": "cleared",
+    "required": true,
+    "score": 0.9801,
+    "scoreBasis": "judged_lower_bound",
+    "previousScore": null,
+    "threshold": 0.9,
+    "thresholdSource": {
+      "kind": "native_quality_bar",
+      "profileName": "Client written report release bar",
+      "profileScope": "workspace",
+      "profileVersion": 1
+    },
+    "isFresh": true,
+    "blocksAdvance": false,
+    "reason": "all_quality_gates_passed",
+    "runId": null,
+    "anatomy": {
+      "schemaVersion": "artifact_evaluation_anatomy.v1",
+      "source": "native_four_lens",
+      "runId": null,
+      "artifactVersion": 1,
+      "profile": {
+        "id": null,
+        "name": "Client written report release bar",
+        "version": 1,
+        "scope": "workspace",
+        "policyDigest": "sha256:7a70e9e1a25c58a2676ed78625581aa4bb8872606393c71a2561dba2eafde812"
+      },
+      "threshold": 0.9,
+      "runner": {
+        "key": null,
+        "label": "Independent native verification",
+        "model": "anthropic/claude-haiku-4.5"
+      },
+      "inputSummary": {
+        "artifactType": "research.synthesis_brief",
+        "modality": "text",
+        "referenceCount": 2,
+        "contentDigest": "sha256:91f676ba20eb84181a9984265c8c413a55213d48cf0db0812330dcac5fc91867"
+      },
+      "criteria": [
+        {
+          "key": "measured:complete-material:v1",
+          "label": "Complete written material",
+          "score": 1,
+          "passed": true,
+          "weight": null
+        },
+        {
+          "key": "judged:task-fit:v1",
+          "label": "Specific task fit",
+          "score": 0.99,
+          "passed": true,
+          "weight": 1
+        }
+      ],
+      "aggregation": {
+        "method": "unknown",
+        "count": 2
+      },
+      "decision": {
+        "score": 0.9801,
+        "status": "passed"
+      },
+      "completedAt": "2026-10-23T15:31:10.979Z"
+    },
+    "findings": [
+      {
+        "label": "Complete written material",
+        "score": 1,
+        "tone": "good"
+      },
+      {
+        "label": "Specific task fit",
+        "score": 0.99,
+        "tone": "good"
+      }
+    ],
+    "native": {
+      "source": "native_four_lens",
+      "verificationId": "46b1b2f0-460f-4747-aef5-4a52bcf85556",
+      "report": {
+        "id": "1c70f659-936b-4498-a98f-b46b933ce70c",
+        "uri": "orgx://agent-run-artifacts/1c70f659-936b-4498-a98f-b46b933ce70c",
+        "digest": "sha256:a7fd51e3769ea486f26ed6419e997bd857b2d0af697e157abe6c6bc1d2fa1fca",
+        "mediaType": "application/json"
+      },
+      "subjectDigest": "sha256:91f676ba20eb84181a9984265c8c413a55213d48cf0db0812330dcac5fc91867"
+    }
+  },
+  "checks": {
+    "state": "passed",
+    "total": 5,
+    "passed": 5,
+    "reason": null,
+    "checks": [
+      {
+        "profileId": null,
+        "profileName": "Complete written material",
+        "profileVersion": null,
+        "status": "passed",
+        "score": 1,
+        "threshold": null,
+        "runId": null
+      },
+      {
+        "profileId": null,
+        "profileName": "Specific task fit",
+        "profileVersion": null,
+        "status": "passed",
+        "score": 0.99,
+        "threshold": null,
+        "runId": null
+      },
+      {
+        "profileId": null,
+        "profileName": "Judged lower bound",
+        "profileVersion": null,
+        "status": "passed",
+        "score": 0.9801,
+        "threshold": 0.9,
+        "runId": null
+      },
+      {
+        "profileId": null,
+        "profileName": "Minimum verdict confidence",
+        "profileVersion": null,
+        "status": "passed",
+        "score": 0.99,
+        "threshold": 0.9,
+        "runId": null
+      },
+      {
+        "profileId": null,
+        "profileName": "Critical observation limit",
+        "profileVersion": null,
+        "status": "passed",
+        "score": null,
+        "threshold": null,
+        "runId": null
+      }
+    ]
+  },
+  "ruling": {
+    "state": "pending",
+    "label": "Awaiting decision",
+    "note": null,
+    "actorKind": "unknown",
+    "actorLabel": null,
+    "at": null
+  },
+  "outcome": {
+    "state": "unobserved",
+    "label": "No outcome observed",
+    "count": 0,
+    "latestKind": null,
+    "observedAt": null,
+    "source": null
+  },
+  "lineage": {
+    "state": "current",
+    "version": 1,
+    "parentId": null,
+    "supersededBy": null,
+    "items": []
+  },
+  "evidence": {
+    "confidence": 1,
+    "gradedLayers": 0,
+    "domain": "research",
+    "stackSource": "domain",
+    "provisional": false,
+    "barVersion": null,
+    "judgeModel": null,
+    "evalLinkage": {
+      "currentEvalRunId": null,
+      "latestJudgedEvalRunId": null,
+      "selectedJudgedEvalRunIds": [],
+      "selectedMeasuredEvalRunIds": [],
+      "latestJudgedBelongsToCurrentEval": null
+    },
+    "layers": [
+      {
+        "key": "source_quality",
+        "label": "Source quality",
+        "question": "Named, primary, verifiable sources \u2014 URLs that resolve?",
+        "weight": 0.25,
+        "anchors": [
+          "Taste-mining rule: named individuals and specific works, not \"experts say\"."
+        ],
+        "verdict": null
+      },
+      {
+        "key": "synthesis_over_summary",
+        "label": "Synthesis over summary",
+        "question": "Does it produce a NEW claim the sources don\u2019t state alone?",
+        "weight": 0.25,
+        "anchors": [
+          "The convergent finding across sources IS the deliverable."
+        ],
+        "verdict": null
+      },
+      {
+        "key": "falsifiability",
+        "label": "Falsifiability",
+        "question": "Are the claims testable \u2014 and is the killing test named?",
+        "weight": 0.2,
+        "anchors": [
+          "Each thesis ships with its cheapest falsifier."
+        ],
+        "verdict": null
+      },
+      {
+        "key": "coverage",
+        "label": "Coverage",
+        "question": "Were the disconfirming lanes searched, not just the friendly ones?",
+        "weight": 0.15,
+        "anchors": [
+          "Multi-modal sweep: by-source, by-counter-case, by-time."
+        ],
+        "verdict": null
+      },
+      {
+        "key": "actionable_findings",
+        "label": "Actionable findings",
+        "question": "Does it end in decisions someone can execute this week?",
+        "weight": 0.15,
+        "anchors": [
+          "Findings ranked by leverage, each with an owner-shaped verb."
+        ],
+        "verdict": null
+      }
+    ],
+    "measured": [],
+    "observations": [],
+    "outcomes": [],
+    "relationships": []
+  },
+  "workflow": {
+    "artifactStatus": "in_review",
+    "canAdvance": false,
+    "headline": "Ready for a decision",
+    "reason": "Quality cleared; an authorized human or external reviewer must rule.",
+    "tone": "attention"
+  },
+  "authority": {
+    "canReview": false,
+    "canRerun": false,
+    "canOverride": false,
+    "canEditPolicy": false
+  },
+  "counts": {
+    "artifactRecords": 1,
+    "versions": 1,
+    "qualityRuns": 1,
+    "rulings": 0,
+    "outcomeObservations": 0,
+    "evidenceRefs": 5
+  }
+}

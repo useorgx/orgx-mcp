@@ -88,3 +88,23 @@ describe('OrgX API response body deadline', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('OrgX API configuration failures', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('reports a missing API URL as setup, not as an outage', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callOrgxApiJson({ ...env, ORGX_API_URL: '  ' }, '/api/test')
+    ).rejects.toMatchObject({
+      name: 'OrgXApiError',
+      message: expect.stringContaining('not configured'),
+      internalDetails: 'No OrgX API base URL was configured',
+    } satisfies Partial<OrgXApiError>);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

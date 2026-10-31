@@ -1596,7 +1596,7 @@
       return cleanId(id) ? orgxUrl('/decisions/' + seg(id)) : links.decisions();
     },
     decisions: function (options) {
-      return orgxUrl('/decisions', { status: (options && options.status) || 'pending' });
+      return orgxUrl('/decisions', { status: (options && options.status) || 'pending', center: options && options.center });
     },
     artifact: function (id) {
       return cleanId(id) ? orgxUrl('/artifacts/' + seg(id)) : orgxUrl('/workspace-hub');

@@ -5,6 +5,7 @@ import { chromium } from 'playwright';
 import { describe, expect, it } from 'vitest';
 
 const consentHtml = readFileSync(resolve('public/consent.html'), 'utf8');
+const consentScript = readFileSync(resolve('public/consent.js'), 'utf8');
 
 describe('OAuth consent browser handoff', () => {
   it('completes consent through same-origin fetch before navigating to the client callback', async () => {
@@ -42,6 +43,11 @@ describe('OAuth consent browser handoff', () => {
           },
           body: consentHtml,
         });
+        return;
+      }
+
+      if (url.pathname === '/consent.js') {
+        await route.fulfill({ status: 200, contentType: 'application/javascript', body: consentScript });
         return;
       }
 

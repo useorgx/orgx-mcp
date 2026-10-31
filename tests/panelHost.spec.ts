@@ -56,6 +56,28 @@ describe('who the panel is inside', () => {
     expect(doc(m).querySelector('.pn-asks-h')!.textContent).toBe('Ask ChatGPT');
   });
 
+  it('knows OrgX for Mac: names no chat, copies prompts, and leaves the first-run tour to the app', async () => {
+    // jsdom has no layout; give the panel a sidebar's width so the first-run tour can start at all.
+    const wide = (win: Window) => {
+      const proto = (win as unknown as { HTMLElement: typeof HTMLElement }).HTMLElement.prototype;
+      const real = proto.getBoundingClientRect;
+      proto.getBoundingClientRect = function rect(this: HTMLElement) {
+        return this.id === 'panel' ? ({ width: 380, height: 600, top: 0, left: 0, right: 380, bottom: 600, x: 0, y: 0, toJSON() { return {}; } } as DOMRect) : real.call(this);
+      };
+    };
+    // Control: another host gets the tour on first open.
+    const other = await open({ userAgent: 'SomeOtherHost/1.0' }, snapshot(), wide);
+    await wait(other, 700);
+    expect(doc(other).querySelector('.pn-tour')).not.toBeNull();
+
+    const m = await open({ userAgent: 'OrgX Desktop/0.1.0' }, snapshot(), wide);
+    await wait(m, 700);
+    expect(html(m).getAttribute('data-host')).toBe('orgx-desktop');
+    expect(doc(m).querySelector('.pn-asks-h')!.textContent).toBe('Copy a prompt');
+    expect(doc(m).querySelector('.pn-tour')).toBeNull();
+    expect(text(m)).not.toMatch(/ChatGPT|Claude/);
+  });
+
   it('never names a host it cannot identify', async () => {
     const m = await open({ userAgent: 'SomeOtherHost/1.0' });
     expect(html(m).getAttribute('data-host')).toBe('unknown');
