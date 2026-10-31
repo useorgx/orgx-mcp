@@ -1566,7 +1566,7 @@
       }
       if (s.state === 'degraded' && !s.queue.length) {
         return html + '<div class="notice" data-tone="amber" role="status"><p>The decision queue could not be loaded.</p>' +
-          '<button type="button" class="text-btn" data-action="refresh">Refresh</button></div>' + proofHtml(s, false);
+          '<button type="button" class="text-btn" data-action="refresh">Refresh</button></div>';
       }
       if (ui.limited || s.selection.status === 'unavailable') {
         return html + limitedHtml('p');
@@ -1743,45 +1743,39 @@
     }
 
     /**
-     * Nothing needs a decision. Say so once, show the work that is moving
-     * without the person (so "clear" never reads as "idle"), and invite the
-     * next thing: a prompt that opens Start with the cursor already in it.
+     * Nothing needs a decision. One calm line, one sentence on what happens
+     * next, and one way on: the prompt that opens Start with the cursor in it.
+     * No proof rows, starter chips or second links underneath; Done keeps the
+     * receipts and Start keeps the ideas.
      */
     function calmHtml(s, firstUse) {
-      var w = workView().work;
-      var items = w && w.items ? w.items : [];
-      var agents = {};
-      items.forEach(function n(i) { agents[i.agent] = true; });
-      var nAgents = Object.keys(agents).length;
-      var blocked = items.filter(function b(i) { return i.state === 'blocked'; }).length;
-      // Only say what is known: before In progress has been read, say nothing about it.
-      var moving = !w ? ''
-        : items.length ? nAgents + (nAgents === 1 ? ' agent is' : ' agents are') + ' working on ' + items.length + (items.length === 1 ? ' task' : ' tasks') + (blocked ? ', ' + blocked + ' blocked' : '') + '.'
-        : 'No agent work is running right now.';
-      var glyph = '<span class="cm-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>';
       var prompt = Start && ui.mode === 'global'
         ? '<button type="button" class="cm-prompt" data-action="start-open"><span class="cm-pp">What should get done next?</span><span class="cm-go" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span></button>'
-        : '';
-      var see = items.length ? '<button type="button" class="text-btn" data-action="tab" data-tab="work">See what’s running</button>' : '';
-      // Ways in, the way the other apps do it: a rail of concrete jobs under
-      // the prompt. Each one opens Start with the words already in the box.
-      var rail = Start && ui.mode === 'global'
-        ? '<div class="cm-rail" role="list" aria-label="Try">' + Start.starters(launchContext(s).initiative).map(function chip(x) {
-          return '<button type="button" class="st-idea" role="listitem" data-action="start-fill" data-id="' + esc(x.agent) + '" data-text="' + esc(x.text) + '">' + esc(x.text) + '</button>';
-        }).join('') + '</div>'
         : '';
       if (firstUse) {
         // A new workspace: nothing to be clear of yet. Invite the first job.
         return '<section class="pn-calm is-first" aria-labelledby="cm-h">' +
           (Brand ? '<span class="cm-mark is-brand" aria-hidden="true">' + Brand.mark(26) + '</span>' : '') +
           '<h2 class="cm-h" id="cm-h">Start your first piece of work.</h2>' +
-          '<p class="cm-sub">Say what should get done. OrgX plans it, runs it with your agents and brings decisions back here.</p>' +
-          (prompt || '<button type="button" class="pn-btn st-cta" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>') + rail + '</section>';
+          '<p class="cm-sub">Say what should get done; OrgX plans it with your agents and brings decisions here.</p>' +
+          (prompt || '<button type="button" class="pn-btn st-cta" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>') + '</section>';
       }
+      var w = workView().work;
+      var items = w && w.items ? w.items : [];
+      var agents = {};
+      items.forEach(function n(i) { agents[i.agent] = true; });
+      var nAgents = Object.keys(agents).length;
+      // Finished work waiting on a person is the one thing still asked of them.
+      var waiting = (s.proof && s.proof.completed_unaccepted) || 0;
+      var heading = waiting ? 'Nothing to decide.' : 'Nothing needs you.';
+      // Only say what is known: before In progress has been read, say nothing about it.
+      var next = waiting ? waiting.toLocaleString() + (waiting === 1 ? ' finished output waits' : ' finished outputs wait') + ' for your review in Outputs.'
+        : items.length ? nAgents + (nAgents === 1 ? ' agent is' : ' agents are') + ' on ' + items.length + (items.length === 1 ? ' task' : ' tasks') + '; anything that needs you lands here.'
+        : 'New decisions land here.';
+      var glyph = '<span class="cm-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>';
       return '<section class="pn-calm" aria-labelledby="cm-h">' + glyph +
-        '<h2 class="cm-h" id="cm-h">You’re clear.</h2>' +
-        '<p class="cm-sub">Nothing needs your decision. ' + esc(moving) + (see ? ' ' + see : '') + '</p>' +
-        prompt + rail + '</section>' + proofHtml(s, true);
+        '<h2 class="cm-h" id="cm-h">' + heading + '</h2>' +
+        '<p class="cm-sub">' + esc(next) + '</p>' + prompt + '</section>';
     }
 
     /** The receipt behind the open decision, once read; starts the read the first time. */

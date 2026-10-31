@@ -160,9 +160,8 @@
       : '';
     var text = form.text || '';
     return '<div class="gl-form' + (first ? ' is-first' : '') + '">' +
-      (first ? '<span class="pn-empty-art" aria-hidden="true">' + levelIcon('goal', 28) + '</span>' : '') +
-      '<h3 class="pn-empty-h" id="gl-form-h">What should all this work move?</h3>' +
-      '<p class="pn-empty-p">One number and a date. Initiatives sit under it, and outputs that move it show up here.</p>' +
+      '<h3 class="pn-empty-h" id="gl-form-h">' + (first ? 'No goals yet.' : 'What should all this work move?') + '</h3>' +
+      '<p class="pn-empty-p">' + (first ? 'Set one number and a date; work that moves it shows up here.' : 'One number and a date. Initiatives sit under it, and outputs that move it show up here.') + '</p>' +
       '<div class="gl-form-row"><label class="sr-only" for="gl-goal">Goal</label><input id="gl-goal" type="text" data-action="goal-text" maxlength="200" autocomplete="off" placeholder="40 paid workspaces by Dec 31" value="' + esc(text) + '">' +
       '<button type="button" class="pn-btn is-primary" data-action="goal-send"' + (text.trim() ? '' : ' disabled') + '>Set goal</button></div>' +
       '<p class="steer-hint">Goes to the chat as “' + esc(sentence(text || '…')) + '”</p>' + status + '</div>';
@@ -192,7 +191,8 @@
       return open('<div class="notice" data-tone="amber" role="status"><p>' + esc((data && data.reason) || 'Goals could not be read right now.') + '</p>' +
         '<button type="button" class="text-btn" data-action="goals-retry">Try again</button></div>');
     }
-    if (!data.items.length && !data.unlinked_total) return open(formHtml(opts.form, true) + barsHtml(data.quality_bars, opts.qualityUrl));
+    // No goals: the form is the whole view. Quality bars wait until there is work to judge.
+    if (!data.items.length && !data.unlinked_total) return open(formHtml(opts.form, true));
     var entries = data.items.map(function g(x) { return { id: x.id, goal: x }; });
     if (data.unlinked_total) entries.push({ id: 'none', goal: null });
     var sel = entries.filter(function f(e) { return e.id === opts.sel; })[0] || entries[0];

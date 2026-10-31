@@ -179,7 +179,7 @@ describe('panel v2 start work in chat', () => {
     expect(doc(m).querySelectorAll('[data-action="start-open"]')).toHaveLength(1);
     expect(doc(m).querySelector('.pn-tip')).toBeNull();
     // In progress has not been read: the empty state claims nothing about it.
-    expect(doc(m).querySelector('.cm-sub')!.textContent!.trim()).toBe('Nothing needs your decision.');
+    expect(doc(m).querySelector('.cm-sub')!.textContent!.trim()).toBe('1 finished output waits for your review in Outputs.');
   });
 });
 

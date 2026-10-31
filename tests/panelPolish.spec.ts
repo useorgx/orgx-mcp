@@ -57,20 +57,21 @@ describe('the OrgX mark', () => {
 });
 
 describe('ways in when nothing needs you', () => {
-  it('offers a rail of jobs, and a tap opens Start with the words in the box', async () => {
+  it('offers one prompt and nothing stacked under it; the prompt opens Start, where the ideas are', async () => {
     const m = await mountPanel({}, {});
     mounted.push(m);
     m.app().ontoolresult({ structuredContent: calm() });
     await m.flush();
-    const chips = Array.from(doc(m).querySelectorAll('.pn-calm .cm-rail .st-idea'));
-    expect(chips.length).toBe(4);
-    expect(chips[0]!.textContent).toBe('Draft the launch post for the new pricing');
     expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('needs');
-    click(m, '.pn-calm .cm-rail .st-idea');
+    expect(doc(m).querySelector('.cm-h')!.textContent).toBe('Nothing needs you.');
+    // No starter chips, proof row or second link under the empty state.
+    expect(doc(m).querySelector('.pn-calm .cm-rail')).toBeNull();
+    expect(doc(m).querySelector('.proof')).toBeNull();
+    expect(doc(m).querySelectorAll('.pn-calm button')).toHaveLength(1);
+    click(m, '.pn-calm [data-action="start-open"]');
     await m.flush();
     expect(doc(m).querySelector('.pn-start')).not.toBeNull();
-    expect((doc(m).querySelector('#st-text') as HTMLTextAreaElement).value).toBe('Draft the launch post for the new pricing');
-    expect(doc(m).querySelector('.st-preview')!.textContent).toContain('In OrgX, hand this to Mark (Marketing) and start it now: Draft the launch post for the new pricing.');
+    expect(doc(m).activeElement!.id).toBe('st-text');
   });
 });
 

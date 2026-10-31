@@ -478,7 +478,6 @@
 .pn-row-main { display: grid; gap: 1px; min-width: 0; }
 .pn-row-t { font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .pn-row-m { font-size: 12px; color: var(--ox-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pn-empty-t { margin: 12px 0 4px; font-size: 15px; font-weight: 650; }
 .pn-sk-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 84px; gap: 10px; align-items: center; min-height: 56px; border-top: 1px solid var(--ox-border); }
 .pn-sk-av { width: 32px; height: 32px; border-radius: 50%; }
 .pn-sk-lines .sk-line { margin: 6px 0; }
@@ -748,8 +747,8 @@
 .secondary-btn:active, .quiet-btn:active, .text-btn:active { opacity: 0.75; }
 
 /* The receipt: one line, a check, and a way to the full record. */
-.notice.receipt { gap: 8px; padding-block: 4px; }
-.notice.receipt p { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notice.receipt { gap: 8px; padding-block: 4px; flex-wrap: nowrap; }
+.notice.receipt p { flex: 1 1 0; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .notice.receipt code { font-size: 12px; }
 .receipt-ic { width: 16px; height: 16px; color: var(--ox-teal, #00c9a7); }
 
@@ -1171,7 +1170,6 @@
   .pn-calm > :nth-child(2) { --i: 1; } .pn-calm > :nth-child(3) { --i: 2; } .pn-calm > :nth-child(4) { --i: 3; }
 }
 
-.pn-calm + .proof { max-width: 560px; margin-left: auto; margin-right: auto; }
 
 /* ── Transitions: what leaves and what arrives move together ───────────────
    View transitions (panel-app.js transition()) snapshot the panel before and
@@ -1726,9 +1724,15 @@ button.crumb:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); col
 /* Empty states with a mark, a line and one way forward. */
 .pn-empty { display: grid; justify-items: center; gap: 6px; padding: 28px 12px; text-align: center; }
 .pn-empty.is-small { padding: 14px 8px; }
-.pn-empty-art { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--ox-hover, rgba(127, 127, 127, 0.1)); color: var(--ox-text-muted); margin-bottom: 4px; }
 .pn-empty-h { margin: 0; font: 650 16px/1.3 var(--ox-font); }
 .pn-empty-p { margin: 0 0 8px; max-width: 420px; font-size: 13px; color: var(--ox-text-muted); }
+/* Empty views: one line, one sentence, one action. The launch link sheds its divider here. */
+.pn-empty { padding: 40px 12px 24px; }
+.pn-empty.is-small { padding: 24px 8px; }
+.pn-empty .st-link { margin: 4px 0 0; padding: 0; border: 0; }
+.md-links { gap: 4px 16px; }
+/* Narrow: the outputs overview would only repeat the count line beneath the list. */
+@container pn (max-width: 759px) { .pn-md:not(.has-sel) > .pn-md-detail:has(> .oc-overview) { display: none; } }
 
 /* Goals. */
 .gl-rows { list-style: none; margin: 0; padding: 0; }
