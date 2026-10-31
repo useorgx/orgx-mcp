@@ -29,8 +29,8 @@ _Revised 2026-10-21 to match the site's decision of record (orgx
    Never present "agent orchestration" or "organizational memory" as the
    category — they are mechanisms and may appear only as such (including as
    search keywords in listing metadata).
-2. One outcome sentence: "Make AI work resumable, reviewable, and provable
-   across agents."
+2. One outcome sentence: "Agents in ChatGPT, Claude, Cursor, and Codex share
+   one record of decisions and work receipts."
 3. Market the failure moment, not the product name: lead with the broken
    handoff ("The task outlives the chat"), then show the recovery.
 4. No tool counts, persona counts, or version claims in prose — they drift.
