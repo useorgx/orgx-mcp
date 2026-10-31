@@ -514,6 +514,28 @@
             ] },
           });
           break;
+        case 'question-suggestions':
+          s.queue[0].title = s.focus.question = 'What should the launch post lead with?';
+          s.focus.recommendation = null;
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Send answers', reject: 'Send back' },
+            questions: { fields: [
+              { id: 'lead', step_title: 'Launch post', type: 'text', label: 'Opening line', description: 'Mark writes the post around it.', placeholder: null, required: true, min_select: null, max_select: null, max_length: 200, options: [],
+                suggestions: ['Exports now run on a schedule', 'Your data, where you want it, every night'] },
+            ] },
+          });
+          break;
+        case 'quality-bar':
+          s.queue[0].title = s.focus.question = 'Approve the launch post draft?';
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Approve', reject: 'Send back' }, reject_requires_reason: true,
+            quality_bar: { id: 'qb-post', name: 'Launch post' },
+          });
+          ui.composer = { id: IDS.d1, draft: 'It never says which customers asked for this.', focus: false, opener: IDS.d1 };
+          if (params.get('bar') !== '0') ui.barCriteria[IDS.d1] = { on: true, text: 'Every launch post names the customers who asked for it.' };
+          break;
         case 'own-answer':
           s.queue[0].title = s.focus.question = 'When does release 4.2 go to production?';
           s.queue[0].option_count = 3;
@@ -769,10 +791,11 @@
         items: [
           { id: IDS.g1, title: '40 paid workspaces by Dec 31', status: 'active', unit: 'workspaces', due: new Date(NOW + 74 * D).toISOString().slice(0, 10), target: 40, current: 23, baseline: 12,
             history: hist([12, 14, 15, 18, 19, 21, 23], 60), moves: [{ at: isoAgo(4 * D), from: 21, to: 23, delta: 2, has_reason: true, decision_id: null }],
-            initiatives: [init(IDS.init, 'Release initiative', 3, 5), init(IDS.billing, 'Billing hardening', 1, 4, 'at_risk')], initiative_total: 2, url: L.goal(IDS.g1) },
+            initiatives: [init(IDS.init, 'Release initiative', 3, 5), init(IDS.billing, 'Billing hardening', 1, 4, 'at_risk')], initiative_total: 2,
+            pace: { per_week: 1.6, direction: 'up', remaining: 17, weeks_left: 10.6 }, url: L.goal(IDS.g1) },
           { id: IDS.g2, title: 'Trial activation to 45%', status: 'active', unit: '%', due: 'Q4 2026', target: 45, current: 32, baseline: null,
             history: hist([24, 26, 26, 32], 30), moves: [{ at: isoAgo(9 * D), from: 26, to: 32, delta: 6, has_reason: true, decision_id: IDS.d3 }],
-            initiatives: [init(IDS.activation, 'Activation', 2, 6)], initiative_total: 1, url: L.goal(IDS.g2) },
+            initiatives: [init(IDS.activation, 'Activation', 2, 6)], initiative_total: 1, pace: null, url: L.goal(IDS.g2) },
         ],
         unlinked: [init(IDS.docs, 'Docs refresh', 0, 0)], unlinked_total: 1,
         quality_bars: [

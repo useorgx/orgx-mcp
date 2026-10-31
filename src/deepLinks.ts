@@ -15,6 +15,12 @@ export interface EntityLinkOptions {
   commandCenterId?: string;
   label?: string;
   query?: Record<string, string>;
+  /**
+   * Who opens the link (lib/deepLinks.ts semantics). `internal`: a signed-in
+   * workspace member, so an initiative opens its own page (/initiatives/:id)
+   * rather than its live room. Omitted: the live room, as before.
+   */
+  audience?: 'internal' | 'public';
 }
 
 export interface EntityLink {
@@ -123,8 +129,9 @@ function getEntityPath(
 
   switch (type) {
     case 'initiative':
-      // The initiative's live room; no id -> the initiatives index.
-      return id ? `/live/${seg(id)}` : '/initiatives';
+      // The initiative's live room (its own page for a member); no id -> the initiatives index.
+      if (!id) return '/initiatives';
+      return opts.audience === 'internal' ? `/initiatives/${seg(id)}` : `/live/${seg(id)}`;
     case 'project':
       return id ? `/projects/${seg(id)}` : fallback();
     case 'task':

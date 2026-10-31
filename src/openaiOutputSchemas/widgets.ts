@@ -129,6 +129,10 @@ const panelGoalsSchema = z
           ),
           initiatives: z.array(panelGoalInitiativeSchema),
           initiative_total: z.number(),
+          pace: z
+            .object({ per_week: z.number(), direction: z.enum(['up', 'down']), remaining: z.number(), weeks_left: z.number() })
+            .strict()
+            .nullable(),
           url: z.string(),
         })
         .strict()
@@ -196,6 +200,7 @@ const panelWidgetActionsSchema = z
                 .object({ min: z.number(), max: z.number(), step: z.number(), unit: z.string().nullable(), recommended: z.number().nullable() })
                 .strict()
                 .optional(),
+              suggestions: z.array(z.string()).optional(),
             })
             .strict()
         ),
@@ -221,6 +226,7 @@ const panelWidgetActionsSchema = z
       })
       .strict()
       .nullable(),
+    quality_bar: z.object({ id: z.string(), name: z.string() }).strict().nullable().optional(),
   })
   .strict();
 
@@ -263,6 +269,8 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       option_id: z.string().nullable().optional(),
       option_ids: z.array(z.string()).nullable().optional(),
       remembered: z.boolean().optional(),
+      /** "Add to the quality bar" on a send-back: proposed in the bar's draft, already there, or not saved. */
+      quality_bar_criterion: z.enum(['proposed', 'unchanged', 'failed']).optional(),
       message: z.string().optional(),
     })
     .strict(),
@@ -319,6 +327,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             agreement: z.boolean().optional(),
             task_id: z.string().nullable().optional(),
             artifact_id: z.string().nullable().optional(),
+            artifact_type: z.string().nullable().optional(),
             url: z.string(),
           })
           .strict()

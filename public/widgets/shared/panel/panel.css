@@ -225,6 +225,10 @@
     .composer.field { margin-bottom: 10px; }
     .composer .opts { margin-bottom: 2px; }
     .composer textarea[aria-invalid="true"] { border-color: var(--ox-danger); }
+    /* "Add to the quality bar": the box opens under its checkbox, full width at any size. */
+    .composer .bar-add { display: grid; gap: 6px; margin-top: 2px; }
+    .composer .bar-add .remember { margin: 0; color: var(--ox-text); }
+    .composer .bar-add textarea.bar-text { min-height: 56px; }
     .error-line .text-btn { min-height: 44px; font-size: 12.5px; }
 
     /* Level and output icons sit on the text baseline and take its color. */
@@ -1733,6 +1737,7 @@ button.crumb:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); col
 .gl-now { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
 .gl-big { font: 700 30px/1.1 var(--ox-font); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .gl-of { font-size: 13px; color: var(--ox-text-muted); }
+.gl-needs { margin: 0 0 8px; font-size: 13px; color: var(--ox-text-muted); }
 .gl-pace { font-weight: 650; }
 .gl-pace[data-pace="behind"] { color: var(--ox-warning-text, var(--ox-warning)); }
 .gl-pace[data-pace="on"], .gl-pace[data-pace="ahead"], .gl-pace[data-pace="reached"] { color: var(--ox-success, var(--ox-teal)); }

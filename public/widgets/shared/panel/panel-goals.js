@@ -59,6 +59,16 @@
     if (t >= 1) return { key: 'behind', text: 'Past due' };
     return gap >= 0.1 ? { key: 'ahead', text: 'Ahead of pace' } : gap >= -0.05 ? { key: 'on', text: 'On pace' } : { key: 'behind', text: 'Behind pace' };
   }
+  /**
+   * "Needs 2.6 a week": OrgX's own figure from the recorded baseline, target
+   * and due date (the goal's `pace`); nothing when it did not compute one.
+   */
+  function needsText(g) {
+    var p = g.pace;
+    if (!p || !isNum(p.per_week) || p.per_week <= 0) return '';
+    var amount = fmt(p.per_week, g.unit);
+    return 'Needs ' + (p.direction === 'down' ? amount + ' less' : amount) + ' a week to land on time';
+  }
   function shareOf(g) {
     if (!isNum(g.current) || !isNum(g.target) || g.target <= 0) return null;
     return Math.max(0, Math.min(1, g.current / g.target));
@@ -210,7 +220,8 @@
         '<h3 class="md-title">' + esc(g.title) + '</h3>' +
         (isNum(g.current)
           ? '<p class="gl-now"><span class="gl-big">' + esc(fmt(g.current, g.unit, true)) + '</span><span class="gl-of">' + (isNum(g.target) ? 'of ' + esc(fmt(g.target, g.unit)) : 'No target recorded') +
-            (pace ? ' · <span class="gl-pace" data-pace="' + pace.key + '">' + esc(pace.text) + '</span>' : '') + '</span></p>'
+            (pace ? ' · <span class="gl-pace" data-pace="' + pace.key + '">' + esc(pace.text) + '</span>' : '') + '</span></p>' +
+            (needsText(g) ? '<p class="gl-needs">' + esc(needsText(g)) + '</p>' : '')
           : '<p class="oc-quiet">No number has been recorded for this goal yet.</p>') +
         sparkHtml(g) +
         '<h4 class="oc-cap">Initiatives · ' + g.initiative_total + '</h4>' + initiativeRows(g.initiatives, opts, false) +
@@ -240,6 +251,6 @@
   }
 
   global.OrgXPanelGoals = {
-    html: html, paceOf: paceOf, sentence: sentence, linkSentence: linkSentence, goalOfInitiative: goalOfInitiative, fmt: fmt, goalMeta: goalMeta,
+    html: html, paceOf: paceOf, needsText: needsText, sentence: sentence, linkSentence: linkSentence, goalOfInitiative: goalOfInitiative, fmt: fmt, goalMeta: goalMeta,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

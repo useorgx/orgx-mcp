@@ -774,9 +774,9 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .optional()
         .describe('The options the person chose, when widget_actions.selection.mode is multiple'),
       answers: z
-        .record(z.union([z.string().max(2000), z.boolean(), z.array(z.string().min(1).max(120)).max(10)]))
+        .record(z.union([z.string().max(2000), z.number(), z.boolean(), z.array(z.string().min(1).max(120)).max(10)]))
         .optional()
-        .describe('Answers by field id, when widget_actions.questions lists fields'),
+        .describe('Answers by field id, when widget_actions.questions lists fields; a number field takes a number'),
       item_reviews: z
         .array(
           z.object({
@@ -793,6 +793,11 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .boolean()
         .optional()
         .describe('Propose the typed answer as a rule for next time, when widget_actions.answer.save_as_precedent'),
+      quality_bar_criterion: z
+        .string()
+        .max(240)
+        .optional()
+        .describe('On a send-back, one criterion to propose in the output\'s quality bar draft, when widget_actions.quality_bar names one'),
       approval_token: z.string().min(1).max(2048).describe('Widget approval token'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
@@ -1445,7 +1450,7 @@ const externalQuestionOptionSchema = z.union([
 
 const attentionQuestionFieldSchema = z.object({
   id: z.string().min(1).max(120),
-  type: z.enum(['text', 'textarea', 'boolean', 'single_select', 'multi_select']),
+  type: z.enum(['text', 'textarea', 'boolean', 'single_select', 'multi_select', 'number']),
   label: z.string().min(1).max(500),
   description: z.string().max(2000).optional(),
   placeholder: z.string().max(200).optional(),
@@ -1463,6 +1468,22 @@ const attentionQuestionFieldSchema = z.object({
     .optional(),
   min_select: z.number().int().min(0).max(10).optional(),
   max_select: z.number().int().min(1).max(10).optional(),
+  number: z
+    .object({
+      min: z.number(),
+      max: z.number(),
+      step: z.number().positive().optional(),
+      unit: z.string().min(1).max(16).optional(),
+      recommended: z.number().optional(),
+    })
+    .strict()
+    .optional()
+    .describe('Required when type is number: the range the owner chooses in, its step and unit, and your recommended value'),
+  suggestions: z
+    .array(z.string().min(1).max(200))
+    .max(6)
+    .optional()
+    .describe('Ready answers to a text question; the owner can pick one and edit it'),
 });
 
 const attentionReviewItemSchema = z.object({
