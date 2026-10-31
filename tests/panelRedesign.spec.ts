@@ -319,3 +319,80 @@ describe('steering a running task', () => {
     expect(decided(p)).toEqual([]);
   });
 });
+
+describe('a send back that adds to the quality bar', () => {
+  const bar = { id: 'qb-post', name: 'Launch post' };
+
+  it('offers the bar only when OrgX names one, and sends the criterion only when ticked and written', async () => {
+    const without = await open({ widget_actions: contract() });
+    without.click('.packet [data-action="sendback"]');
+    await without.settle();
+    expect(without.doc.querySelector('[data-action="bar-toggle"]')).toBeNull();
+
+    const p = await open({ widget_actions: contract({ quality_bar: bar }) });
+    p.calls.callServerTool.mockImplementation(async (params: Call) => {
+      if (params.name === 'orgx_widget_decide') return { structuredContent: { decision_id: params.arguments.decision_id, action: 'rejected', quality_bar_criterion: 'proposed' } };
+      if (params.name === 'orgx_get_operation_status') return { structuredContent: { kind: 'decision', id: params.arguments.id, state: 'succeeded', next_poll_after_ms: null } };
+      return new Promise(() => undefined);
+    });
+    p.click('.packet [data-action="sendback"]');
+    await p.settle();
+    expect(p.doc.querySelector('.bar-add')!.textContent).toContain('Add to the Launch post quality bar');
+    expect(p.doc.querySelector('textarea[data-bar-criterion]')).toBeNull();
+    p.type(`textarea[data-reason="${D1}"]`, 'It never says which customers asked for this.');
+    p.click('[data-action="bar-toggle"]');
+    await p.settle();
+    // Ticked but empty: the send back waits for the criterion.
+    expect((p.doc.querySelector(`[data-action="submit-sendback"][data-id="${D1}"]`) as HTMLButtonElement).disabled).toBe(true);
+    p.type(`textarea[data-bar-criterion="${D1}"]`, '  Every launch post names the customers who asked for it.  ');
+    await p.settle();
+    p.click(`[data-action="submit-sendback"][data-id="${D1}"]`);
+    await p.settle();
+    expect(decided(p)[0]!.arguments).toMatchObject({
+      decision_id: D1, action: 'reject', reason: 'It never says which customers asked for this.',
+      quality_bar_criterion: 'Every launch post names the customers who asked for it.',
+    });
+  });
+
+  it('sends no criterion when the box is unticked', async () => {
+    const p = await open({ widget_actions: contract({ quality_bar: bar }) });
+    p.click('.packet [data-action="sendback"]');
+    await p.settle();
+    p.type(`textarea[data-reason="${D1}"]`, 'Too long.');
+    await p.settle();
+    p.click(`[data-action="submit-sendback"][data-id="${D1}"]`);
+    await p.settle();
+    expect(decided(p)[0]!.arguments.quality_bar_criterion).toBeUndefined();
+  });
+});
+
+describe('a text question with suggestions', () => {
+  it('fills the answer from a suggestion without sending it', async () => {
+    const questions = { fields: [{
+      id: 'lead', step_title: null, type: 'text', label: 'Opening line', description: null, placeholder: null, required: true,
+      min_select: null, max_select: null, max_length: 200, options: [], suggestions: ['Exports run nightly', 'Your data, every night'],
+    }] };
+    const p = await open({ widget_actions: contract({ labels: { approve: 'Send answer', reject: 'Send back' }, questions }) });
+    p.click('[data-action="q-suggest"][data-field="lead"][data-value="Your data, every night"]');
+    await p.settle();
+    expect((p.doc.querySelector('[data-qfield="lead"]') as HTMLInputElement).value).toBe('Your data, every night');
+    expect(decided(p)).toEqual([]);
+  });
+});
+
+describe('a goal’s pace', () => {
+  it('says what it needs a week only when OrgX computed a pace', async () => {
+    const goal = (pace: unknown) => ({
+      id: GOAL, title: '40 paid workspaces', status: 'active', unit: 'workspaces', due: '2026-12-31', target: 40, current: 23, baseline: 12,
+      history: [], moves: [], initiatives: [], initiative_total: 0, pace, url: `https://useorgx.com/objectives/${GOAL}`,
+    });
+    const p = await open(null, { goals: { data: goalsView([goal({ per_week: 1.6, direction: 'up', remaining: 17, weeks_left: 10.6 })]) } });
+    p.click('[data-tab="goals"]');
+    await p.settle();
+    expect(p.doc.querySelector('.gl-needs')!.textContent).toContain('1.6');
+    const none = await open(null, { goals: { data: goalsView([goal(null)]) } });
+    none.click('[data-tab="goals"]');
+    await none.settle();
+    expect(none.doc.querySelector('.gl-needs')).toBeNull();
+  });
+});

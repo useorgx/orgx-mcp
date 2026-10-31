@@ -2743,6 +2743,8 @@ export class OrgXMcp extends McpAgent<
     fields?: string[] | null;
     orderBy?: string;
     orderDirection?: 'asc' | 'desc';
+    /** Extra projections the entities read adds (artifact: quality_bar). */
+    include?: string[];
   }): Promise<Array<Record<string, unknown>>> {
     const page = await this.fetchEntityCollectionPage(params);
     return page.records;
@@ -2763,6 +2765,8 @@ export class OrgXMcp extends McpAgent<
     createdTo?: string;
     orderBy?: string;
     orderDirection?: 'asc' | 'desc';
+    /** Extra projections the entities read adds (artifact: quality_bar). */
+    include?: string[];
   }): Promise<EntitySearchPage> {
     const search = buildEntityCollectionSearchParams(params);
 
@@ -3248,6 +3252,8 @@ export class OrgXMcp extends McpAgent<
           userId: userId(),
           workspaceId,
           limit,
+          // Names the quality bar each output's checks belong to (Outputs).
+          include: ['quality_bar'],
         }),
       fetchArtifactReview: (artifact) => loadArtifactReviewEnvelope({
         env: this.env,

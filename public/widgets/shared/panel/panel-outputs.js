@@ -180,8 +180,9 @@
       (o.external_url ? '<button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(o.external_url) + '">Open the ' + esc(typeLabel(o).toLowerCase()) + ' ↗</button>' : '') + '</div></div>';
   }
 
-  function emptyHtml(icon, h, p, act) {
-    return '<div class="pn-empty"><span class="pn-empty-art" aria-hidden="true">' + icon + '</span><h3 class="pn-empty-h">' + esc(h) + '</h3><p class="pn-empty-p">' + esc(p) + '</p>' + (act || '') + '</div>';
+  /** An empty view: one calm line, at most one sentence, at most one action. */
+  function emptyHtml(h, p, act) {
+    return '<div class="pn-empty"><h3 class="pn-empty-h">' + esc(h) + '</h3>' + (p ? '<p class="pn-empty-p">' + esc(p) + '</p>' : '') + (act || '') + '</div>';
   }
 
   /**
@@ -200,8 +201,7 @@
         '<button type="button" class="text-btn" data-action="outputs-retry">Try again</button></div>');
     }
     if (!data.items.length) {
-      return open(emptyHtml(outIcon('doc', 28), 'No outputs yet', 'Code, posts, videos, decks, pipelines and routines your agents make land here, with what happened after.',
-        '<button type="button" class="pn-btn" data-action="tab" data-tab="work">See work</button>'));
+      return open(emptyHtml('No outputs yet.', 'What your agents make lands here, with what happened after.'));
     }
     var idx = goalIndex(opts.goals);
     var range = RANGE_SHORT[opts.range] ? opts.range : '7d';
@@ -223,11 +223,12 @@
     var inits = {};
     list.forEach(function n(o) { if (o.initiative_id) inits[o.initiative_id] = true; });
     var nInits = Object.keys(inits).length;
-    var sum = '<p class="pn-done-sum"><b>' + count(list.length, 'output', 'outputs') + '</b>' + (nInits ? ' · ' + count(nInits, 'initiative', 'initiatives') : '') + ' · latest first' +
-      (toReview.length ? ' · <b>' + toReview.length + '</b> to review' : '') + (data.total > data.items.length ? ' · newest ' + data.items.length + ' of ' + data.total + ' read' : '') + '</p>';
+    var sum = '<p class="pn-done-sum"><b>' + count(list.length, 'output', 'outputs') + '</b>' + (nInits ? ' · ' + count(nInits, 'initiative', 'initiatives') : '') +
+      (toReview.length ? ' · <b>' + toReview.length + '</b> to review' : ' · nothing to review') + (data.total > data.items.length ? ' · newest ' + data.items.length + ' of ' + data.total + ' read' : '') + '</p>';
     if (!list.length) {
-      return open(scope + sum + '<div class="pn-empty is-small"><p class="pn-empty-p">Nothing in this range.</p>' +
-        '<button type="button" class="pn-btn" data-action="out-clear">Show 30 days, all types</button></div>');
+      // The filters stay so they can be changed; the empty count line does not repeat the message.
+      return open(scope + '<div class="pn-empty is-small"><h3 class="pn-empty-h">No outputs match these filters.</h3>' +
+        '<button type="button" class="text-btn" data-action="out-clear">Clear filters</button></div>');
     }
     var ordered = toReview.concat(list.filter(function rest(o) { return toReview.indexOf(o) === -1; }));
     var sel = ordered.filter(function f(o) { return o.id === opts.sel; })[0] || null;
@@ -235,11 +236,12 @@
     var rows = '';
     ordered.forEach(function each(o) {
       var g = toReview.indexOf(o) !== -1 ? 'To review' : 'Latest';
-      if (g !== group) { rows += (group ? '</ul>' : '') + '<h3 class="pn-cap">' + g + '</h3><ul class="oc-rows" role="list">'; group = g; }
+      // The caption only tells the two groups apart; with nothing to review there is one group and no caption.
+      if (g !== group) { rows += (group ? '</ul>' : '') + (toReview.length ? '<h3 class="pn-cap">' + g + '</h3>' : '') + '<ul class="oc-rows" role="list">'; group = g; }
       rows += rowHtml(o, Boolean(sel && sel.id === o.id), idx);
     });
     rows += '</ul>';
-    var overview = '<div class="md-card md-overview" role="region" aria-label="Outputs overview"><p class="md-kicker">' + esc(RANGE_SHORT[range]) + '</p>' +
+    var overview = '<div class="md-card md-overview oc-overview" role="region" aria-label="Outputs overview"><p class="md-kicker">' + esc(RANGE_SHORT[range]) + '</p>' +
       '<h3 class="md-title">' + count(list.length, 'output', 'outputs') + '</h3>' +
       '<ul class="oc-key" role="list">' + ['Made', 'Accepted', 'Landed', 'Moved'].map(function k(n, i) {
         var c = list.filter(function on(o) { return chainOf(o)[i].s === 'on'; }).length;

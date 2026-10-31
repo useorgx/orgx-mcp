@@ -68,6 +68,8 @@
       reviews: {},
       limitHits: {},
       remember: {},
+      // "Add to the quality bar" on a send-back: { on, text } per decision.
+      barCriteria: {},
       fieldErrors: {},
       rulings: {},
       lastRuling: null,
@@ -412,6 +414,8 @@
     }
     var KINDS = ['decision', 'approval', 'action', 'link'];
     var TEXT_MAX = 2000;
+    /** At most this many characters of a send-back's quality bar criterion. */
+    var BAR_CRITERION_MAX = 240;
     function has(list, value) { return Array.isArray(list) && list.indexOf(value) !== -1; }
     function kindOf(f) {
       var actions = f && f.widget_actions && !Array.isArray(f.widget_actions) ? f.widget_actions : null;
@@ -461,6 +465,9 @@
           selection: null,
           questions: null,
           items: null,
+          // The bar a send-back can add one criterion to; only when OrgX names one.
+          qualityBar: raw.quality_bar && raw.quality_bar.id && raw.quality_bar.name && has(raw.actions, 'reject')
+            ? { id: String(raw.quality_bar.id), name: String(raw.quality_bar.name) } : null,
         };
         if (Forms && raw.questions) {
           var fields = Forms.fieldsOf(raw.questions);
@@ -595,6 +602,12 @@
       var reason = String((action === 'reject' ? (ui.composer && ui.composer.id === id ? ui.composer.draft : ui.bulkNotes[id] || '') : ui.notes[id]) || '').trim();
       if (reason) args.reason = reason.slice(0, TEXT_MAX);
       else if (reasonNeeded) missing.push('reason');
+      var bar = action === 'reject' && c.qualityBar ? ui.barCriteria[id] : null;
+      if (bar && bar.on) {
+        var criterion = String(bar.text || '').replace(/\s+/g, ' ').trim();
+        if (criterion) args.quality_bar_criterion = criterion.slice(0, BAR_CRITERION_MAX);
+        else missing.push('criterion');
+      }
       var answerNeeded = Boolean(c.answer && c.answer[action]);
       if (answerNeeded) {
         var answer = String(ui.answers[id] || '').trim();
@@ -624,6 +637,7 @@
       if (draft.missing.indexOf('answers') !== -1) return 'answer the questions first';
       if (draft.missing.indexOf('notes') !== -1) return 'add a note to each one going back';
       if (draft.missing.indexOf('reason') !== -1) return draft.action === 'reject' ? 'write a note first' : 'say why first';
+      if (draft.missing.indexOf('criterion') !== -1) return 'write the criterion, or untick it';
       return '';
     }
     function quickDecide(item) {
@@ -1058,9 +1072,24 @@
         '<label for="reason-' + esc(id) + '">' + (own ? 'Your own answer' : 'What should change?') + (draft.reasonNeeded || own ? ' · required' : ' · optional') + '</label>' +
         '<textarea id="reason-' + esc(id) + '" data-reason="' + esc(id) + '" maxlength="' + TEXT_MAX + '" placeholder="' + (own ? 'Write what you want instead. It goes back to the agent.' : 'Tell the agent what to fix or do instead.') + '"' +
         (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'reason' && ui.fieldErrors[id].message ? ' aria-invalid="true"' : '') + '>' + esc(value) + '</textarea>' +
-        fieldErrorHtml(id, 'reason', 'reject') +
+        fieldErrorHtml(id, 'reason', 'reject') + (own ? '' : barCriterionHtml(id, c)) +
         '<div class="composer-row"><button type="button" class="secondary-btn" data-action="cancel-sendback" data-id="' + esc(id) + '">Cancel</button>' +
         '<button type="button" class="secondary-btn" data-action="submit-sendback" data-id="' + esc(id) + '"' + (draft.missing.length || (own && !value.trim()) ? ' disabled' : '') + '>' + esc(own ? 'Send my answer' : label) + '</button></div></div>';
+    }
+
+    /**
+     * "Add to the quality bar": one criterion, proposed in the bar's draft.
+     * Only when OrgX names the bar this output is judged against; a person
+     * still publishes the bar in Settings > Quality.
+     */
+    function barCriterionHtml(id, c) {
+      if (!c.qualityBar) return '';
+      var bar = ui.barCriteria[id] || { on: false, text: '' };
+      return '<div class="bar-add">' +
+        '<label class="remember"><input type="checkbox" data-action="bar-toggle" data-id="' + esc(id) + '"' + (bar.on ? ' checked' : '') + '>' +
+        '<span>Add to the ' + esc(c.qualityBar.name) + ' quality bar<span class="remember-hint">Proposed in its draft. Nothing changes until someone publishes the bar.</span></span></label>' +
+        (bar.on ? '<label class="sr-only" for="bar-' + esc(id) + '">Criterion</label><textarea id="bar-' + esc(id) + '" class="bar-text" data-bar-criterion="' + esc(id) + '" rows="2" maxlength="' + BAR_CRITERION_MAX + '" placeholder="Every post names the customer it is about.">' + esc(bar.text || '') + '</textarea>' : '') +
+        fieldErrorHtml(id, 'bar', 'reject') + '</div>';
     }
 
     function footerSpec(f) {
@@ -1340,6 +1369,9 @@
           '<button type="button" class="mini approve" data-action="approve" data-id="' + esc(item.id) + '" aria-label="' + esc(c.approve.label + ': ' + item.title) + '">' + esc(c.approve.label) + '</button></div>';
       }
       var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
+      // The open decision's send-back note is written in the focus card above;
+      // its queue row only marks it as open, so the form is never drawn twice.
+      var rowComposer = !current && ui.composer && ui.composer.id === item.id ? composerHtml(item) : '';
       var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : item.kind === 'link' ? 'Session link · ' : '';
       // Started but not sent: the answers wait here, and the row says so.
       if (!ruling && hasDraft(item.id)) kindTag = 'Draft · ' + kindTag;
@@ -1348,7 +1380,7 @@
         // Inside a group the title is the group's; the line is what differs.
         return '<li class="row grow' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + ' ' + (item.detail || '') + '. ' + meta) + '">' +
           (opts.sub || distinguisherHtml(item)) + '<span class="row-meta"><span>' + metaHtml('') + '</span></span></button>' + acts +
-          (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
+          rowComposer + error + '</li>';
       }
       return '<li class="row' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
         '<span class="row-av" aria-hidden="true">' + askerAvatar(item.asker_kind, item.asker, 'row') + '</span>' +
@@ -1357,7 +1389,7 @@
           ? distinguisherHtml(item) + '<span class="row-title is-repeat">' + esc(splitHeadline(item.title).headline) + '</span>'
           : '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span>') +
         '<span class="row-meta"><span>' + metaHtml(kindTag) + '</span></span></button>' + acts +
-        (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
+        rowComposer + error + '</li>';
     }
 
     /**
@@ -1534,7 +1566,7 @@
       }
       if (s.state === 'degraded' && !s.queue.length) {
         return html + '<div class="notice" data-tone="amber" role="status"><p>The decision queue could not be loaded.</p>' +
-          '<button type="button" class="text-btn" data-action="refresh">Refresh</button></div>' + proofHtml(s, false);
+          '<button type="button" class="text-btn" data-action="refresh">Refresh</button></div>';
       }
       if (ui.limited || s.selection.status === 'unavailable') {
         return html + limitedHtml('p');
@@ -1711,45 +1743,39 @@
     }
 
     /**
-     * Nothing needs a decision. Say so once, show the work that is moving
-     * without the person (so "clear" never reads as "idle"), and invite the
-     * next thing: a prompt that opens Start with the cursor already in it.
+     * Nothing needs a decision. One calm line, one sentence on what happens
+     * next, and one way on: the prompt that opens Start with the cursor in it.
+     * No proof rows, starter chips or second links underneath; Done keeps the
+     * receipts and Start keeps the ideas.
      */
     function calmHtml(s, firstUse) {
-      var w = workView().work;
-      var items = w && w.items ? w.items : [];
-      var agents = {};
-      items.forEach(function n(i) { agents[i.agent] = true; });
-      var nAgents = Object.keys(agents).length;
-      var blocked = items.filter(function b(i) { return i.state === 'blocked'; }).length;
-      // Only say what is known: before In progress has been read, say nothing about it.
-      var moving = !w ? ''
-        : items.length ? nAgents + (nAgents === 1 ? ' agent is' : ' agents are') + ' working on ' + items.length + (items.length === 1 ? ' task' : ' tasks') + (blocked ? ', ' + blocked + ' blocked' : '') + '.'
-        : 'No agent work is running right now.';
-      var glyph = '<span class="cm-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>';
       var prompt = Start && ui.mode === 'global'
         ? '<button type="button" class="cm-prompt" data-action="start-open"><span class="cm-pp">What should get done next?</span><span class="cm-go" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span></button>'
-        : '';
-      var see = items.length ? '<button type="button" class="text-btn" data-action="tab" data-tab="work">See what’s running</button>' : '';
-      // Ways in, the way the other apps do it: a rail of concrete jobs under
-      // the prompt. Each one opens Start with the words already in the box.
-      var rail = Start && ui.mode === 'global'
-        ? '<div class="cm-rail" role="list" aria-label="Try">' + Start.starters(launchContext(s).initiative).map(function chip(x) {
-          return '<button type="button" class="st-idea" role="listitem" data-action="start-fill" data-id="' + esc(x.agent) + '" data-text="' + esc(x.text) + '">' + esc(x.text) + '</button>';
-        }).join('') + '</div>'
         : '';
       if (firstUse) {
         // A new workspace: nothing to be clear of yet. Invite the first job.
         return '<section class="pn-calm is-first" aria-labelledby="cm-h">' +
           (Brand ? '<span class="cm-mark is-brand" aria-hidden="true">' + Brand.mark(26) + '</span>' : '') +
           '<h2 class="cm-h" id="cm-h">Start your first piece of work.</h2>' +
-          '<p class="cm-sub">Say what should get done. OrgX plans it, runs it with your agents and brings decisions back here.</p>' +
-          (prompt || '<button type="button" class="pn-btn st-cta" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>') + rail + '</section>';
+          '<p class="cm-sub">Say what should get done; OrgX plans it with your agents and brings decisions here.</p>' +
+          (prompt || '<button type="button" class="pn-btn st-cta" data-action="open" data-url="' + ORGX_HOME + '">Open OrgX ↗</button>') + '</section>';
       }
+      var w = workView().work;
+      var items = w && w.items ? w.items : [];
+      var agents = {};
+      items.forEach(function n(i) { agents[i.agent] = true; });
+      var nAgents = Object.keys(agents).length;
+      // Finished work waiting on a person is the one thing still asked of them.
+      var waiting = (s.proof && s.proof.completed_unaccepted) || 0;
+      var heading = waiting ? 'Nothing to decide.' : 'Nothing needs you.';
+      // Only say what is known: before In progress has been read, say nothing about it.
+      var next = waiting ? waiting.toLocaleString() + (waiting === 1 ? ' finished output waits' : ' finished outputs wait') + ' for your review in Outputs.'
+        : items.length ? nAgents + (nAgents === 1 ? ' agent is' : ' agents are') + ' on ' + items.length + (items.length === 1 ? ' task' : ' tasks') + '; anything that needs you lands here.'
+        : 'New decisions land here.';
+      var glyph = '<span class="cm-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span>';
       return '<section class="pn-calm" aria-labelledby="cm-h">' + glyph +
-        '<h2 class="cm-h" id="cm-h">You’re clear.</h2>' +
-        '<p class="cm-sub">Nothing needs your decision. ' + esc(moving) + (see ? ' ' + see : '') + '</p>' +
-        prompt + rail + '</section>' + proofHtml(s, true);
+        '<h2 class="cm-h" id="cm-h">' + heading + '</h2>' +
+        '<p class="cm-sub">' + esc(next) + '</p>' + prompt + '</section>';
     }
 
     /** The receipt behind the open decision, once read; starts the read the first time. */
@@ -2718,7 +2744,7 @@
       'option_unavailable', 'option_action_mismatch', 'selection_out_of_range', 'invalid_decision_option_material',
       'answers_required', 'answers_not_accepted', 'answer_invalid',
       'item_reviews_required', 'item_reviews_not_accepted', 'item_review_invalid', 'item_note_required', 'item_action_mismatch',
-      'remember_not_accepted'];
+      'remember_not_accepted', 'quality_bar_criterion_invalid', 'quality_bar_criterion_not_accepted', 'quality_bar_unavailable'];
     var VALIDATION_COPY = {
       reason_required: 'Say what should change.',
       answer_required: 'Type an answer to send.',
@@ -2732,6 +2758,9 @@
       answers_required: 'Answer the required questions first.',
       answers_not_accepted: 'The questions changed. Answer them again.',
       answer_invalid: 'One answer is not one OrgX accepts. Check it and try again.',
+      quality_bar_criterion_invalid: 'Keep the criterion to one short line.',
+      quality_bar_criterion_not_accepted: 'A criterion can only go with a send-back.',
+      quality_bar_unavailable: 'This output has no quality bar any more. Send it back without the criterion.',
       item_reviews_required: 'Keep or send back each one first.',
       item_reviews_not_accepted: 'The list changed. Review it again.',
       item_review_invalid: 'The list changed. Review it again.',
@@ -2836,6 +2865,7 @@
         if (c.kind === 'action') return action === 'approve' ? 'the action can run' : 'the action does not run';
         if (c.kind === 'link') return action === 'approve' ? 'its work now counts toward this initiative' : 'OrgX stops suggesting it';
         if (c.kind === 'approval') return action === 'approve' ? 'the run continues' : 'the run stops at this step';
+        if (action === 'reject' && ui.rulings[id] && ui.rulings[id].barAdded) return 'the agent reworks it; your criterion waits in the quality bar draft';
         return action === 'approve' ? 'the agent can continue' : 'the agent reworks it';
       }
       var pressed = performance.now();
@@ -2861,6 +2891,7 @@
         delete ui.forms[id];
         delete ui.reviews[id];
         delete ui.remember[id];
+        delete ui.barCriteria[id];
         delete ui.limitHits[id];
         announce(pastTense(action === 'approve' ? ui.rulings[id].approveLabel : ui.rulings[id].rejectLabel, action) + ': ' + title);
         if (Host) Host.haptic('success');
@@ -2875,6 +2906,8 @@
           settle({ state: 'succeeded', status: data && data.status });
           return;
         }
+        var decided = R.extractStructuredWidgetData ? R.extractStructuredWidgetData(result, true) : null;
+        if (decided && (decided.quality_bar_criterion === 'proposed' || decided.quality_bar_criterion === 'unchanged')) ui.rulings[id].barAdded = true;
         ui.rulings[id].phase = 'waiting';
         render();
         // The ruling is recorded. A status read that fails does not undo it.
@@ -2895,8 +2928,13 @@
             pruneDrafts(id);
           }
           var field = code === 'reason_required' ? 'reason' : code === 'answer_required' ? 'answer' : code === 'answer_not_accepted' || code === 'remember_not_accepted' ? 'form'
-            : /^answers?_/.test(code) ? 'answers' : /^item_/.test(code) ? 'items' : 'options';
+            : /^answers?_/.test(code) ? 'answers' : /^item_/.test(code) ? 'items' : /^quality_bar_/.test(code) ? 'bar' : 'options';
           if (code === 'remember_not_accepted') delete ui.remember[id];
+          if (code === 'quality_bar_unavailable') {
+            // The bar is gone: drop the option, keep the note.
+            eachCopy(id, function noBar(copy) { if (copy.widget_actions && typeof copy.widget_actions === 'object') copy.widget_actions.quality_bar = null; });
+            delete ui.barCriteria[id];
+          }
           ui.fieldErrors[id] = { action: action, field: field, message: refusalCopy(error, VALIDATION_COPY[code]) };
           if (action === 'reject') ui.composer = { id: id, draft: note, focus: field === 'reason', opener: id };
           render();
@@ -3034,6 +3072,15 @@
           break;
         }
         case 'remember': ui.remember[id] = el.checked === true; break;
+        case 'bar-toggle': {
+          var barState = ui.barCriteria[id] || { on: false, text: '' };
+          barState.on = el.checked === true;
+          ui.barCriteria[id] = barState;
+          if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'bar') clearFieldError(id);
+          keepScroll(render);
+          if (barState.on) focusFirst('textarea[data-bar-criterion="' + cssId(id) + '"]');
+          break;
+        }
         case 'sendback': ui.composer = { id: id, draft: '', focus: true, opener: id }; ui.actionError = null; render(); break;
         case 'cancel-sendback': closeComposer(); break;
         case 'submit-sendback': {
@@ -3265,6 +3312,20 @@
         case 'ladder': transition('expand', function ladder() { ui.ladderOpen[id] = !ui.ladderOpen[id]; render(); focusFirst('[data-action="ladder"][data-id="' + cssId(id) + '"]'); if (ui.ladderOpen[id] && !ui.goals && ui.goalsPhase === 'idle') fetchGoals(); }); break;
         case 'ev-raw': ui.evidenceRaw = !ui.evidenceRaw; if (ui.evidenceRaw) ui.evidenceOpen = true; keepScroll(render); focusFirst('[data-action="ev-raw"]'); break;
         case 'own-open': ui.composer = { id: id, draft: '', focus: true, opener: id, own: true }; ui.actionError = null; render(); break;
+        case 'q-suggest': {
+          var sugItem = findItem(id);
+          var sugChoices = sugItem ? choicesFor(sugItem) : null;
+          if (!sugChoices || !sugChoices.questions || ui.rulings[id]) break;
+          var sugForm = formFor(sugItem, sugChoices);
+          var sugField = el.getAttribute('data-field');
+          sugForm.values[sugField] = el.getAttribute('data-value') || '';
+          sugForm.touched = true;
+          if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'answers') delete ui.fieldErrors[id];
+          keepScroll(render);
+          var sugBox = root.querySelector('textarea[data-qfield="' + cssId(sugField) + '"][data-id="' + cssId(id) + '"]');
+          if (sugBox) { sugBox.focus({ preventScroll: true }); try { sugBox.setSelectionRange(sugBox.value.length, sugBox.value.length); } catch (_) { /* not a text field */ } }
+          break;
+        }
         case 'answer-suggest': {
           ui.answers[id] = el.getAttribute('data-value') || '';
           clearFieldError(id);
@@ -3313,6 +3374,10 @@
         id = area.getAttribute('data-reason');
         if (ui.composer && ui.composer.id === id) ui.composer.draft = area.value;
         if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'reason') clearFieldError(id);
+      } else if (area.matches('textarea[data-bar-criterion]')) {
+        id = area.getAttribute('data-bar-criterion');
+        ui.barCriteria[id] = { on: true, text: area.value };
+        if (ui.fieldErrors[id] && ui.fieldErrors[id].field === 'bar') clearFieldError(id);
       } else if (area.matches('textarea[data-qfield]')) {
         id = area.getAttribute('data-id');
         var qItem = findItem(id);

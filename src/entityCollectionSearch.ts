@@ -13,6 +13,8 @@ export type EntityCollectionSearchInput = {
   /** A column the API allows ordering by, e.g. updated_at. */
   orderBy?: string;
   orderDirection?: 'asc' | 'desc';
+  /** Extra projections the API adds, e.g. ['quality_bar'] on artifacts. */
+  include?: string[];
 };
 
 /**
@@ -40,5 +42,6 @@ export function buildEntityCollectionSearchParams(
   if (input.fields?.length) search.set('fields', input.fields.join(','));
   if (input.orderBy) search.set('order_by', input.orderBy);
   if (input.orderDirection) search.set('order_direction', input.orderDirection);
+  if (input.include?.length) search.set('include', input.include.join(','));
   return search;
 }

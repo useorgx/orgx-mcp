@@ -102,6 +102,11 @@
   var ROWS_PER_AGENT = 4;
 
   /** Close on a wide panel (×); Back on a narrow one, where the detail replaces the list. */
+  /** An empty view: one calm line, at most one sentence, at most one action. */
+  function emptyHtml(h, p, act) {
+    return '<div class="pn-empty"><h3 class="pn-empty-h">' + esc(h) + '</h3>' + (p ? '<p class="pn-empty-p">' + esc(p) + '</p>' : '') + (act || '') + '</div>';
+  }
+
   function backHtml(action, label) {
     return '<button type="button" class="md-close" data-action="' + action + '" data-id="" aria-label="' + esc(label) + '"><span class="md-x" aria-hidden="true">×</span>' +
       '<span class="md-back" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</span></button>';
@@ -242,8 +247,9 @@
         '<button type="button" class="text-btn" data-action="work-retry">Try again</button></div></section>';
     }
     if (!work.items.length) {
-      return '<section class="pn-work" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-work">' + head +
-        '<p class="pn-empty-t">Nothing is running right now.</p><p class="sub">Agents pick up work you start or delegate; it shows here with its state.</p>' + (launch || '') + '</section>';
+      // Empty: one line, one sentence, the one way to start. No runs link to an empty list.
+      return '<section class="pn-work" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-work"><div class="pn-view-head"><h2 class="pn-view-h">In progress</h2></div>' +
+        emptyHtml('Nothing is running right now.', 'Work you start or delegate shows here with its state.', launch) + '</section>';
     }
     var totals = { blocked: 0, running: 0, queued: 0 };
     work.items.forEach(function t(i) { totals[i.state] += 1; });
@@ -439,7 +445,8 @@
         '<button type="button" class="text-btn" data-action="open" data-url="' + esc(ledger0) + '">Open the work ledger ↗</button></span></div>', detail: '' };
     }
     if (!data.items.length) {
-      return { body: '<p class="pn-done-sum">No receipts in this range. Work agents finish lands here with what done meant and whether it was met.</p>', detail: '' };
+      var when = opts.range === 'today' ? 'today' : opts.range === '30d' ? 'in the last 30 days' : 'in the last 7 days';
+      return { body: emptyHtml('Nothing finished ' + when + '.', 'Finished work lands here with its receipt.'), detail: '', empty: true };
     }
     var sel = opts.rsel ? data.items.filter(function f(r) { return r.id === opts.rsel; })[0] || null : null;
     var detail = opts.rsel ? R.detailHtml(opts.receiptDetail, sel, { workspaceId: opts.workspaceId, phase: opts.receiptPhase, call: opts.receiptCall }) : qualityHtml(data.items);
@@ -468,6 +475,10 @@
         return '<button type="button" class="seg-b" data-action="done-range" data-id="' + r[0] + '" aria-pressed="' + (wrange === r[0]) + '">' + r[1] + '</button>';
       }).join('') + '</div>';
       var w = workReceiptsBody(Object.assign({}, opts, { range: wrange }));
+      if (w.empty) {
+        return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
+          '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + wseg + '</div></div>' + w.body + '</section>';
+      }
       return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
         '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + wseg + '</div></div>' + (w.summary || '') +
         '<div class="pn-md' + (w.selected ? ' has-sel' : '') + '"><div class="pn-md-list">' + w.body + '</div>' +
@@ -504,7 +515,14 @@
       summary = entries.length
         ? '<p class="pn-done-sum"><b>' + count(entries.length, 'decision settled', 'decisions settled') + '</b> ' + (range === 'session' ? 'since you opened the panel' : label === 'today' ? 'today' : 'in the last ' + label) +
           (approved ? ' <span aria-hidden="true">·</span> ' + approved + ' approved' : '') + (other ? ' <span aria-hidden="true">·</span> ' + other + (range === 'session' ? ' sent back' : ' declined or closed') : '') + '</p>'
-        : '<p class="pn-done-sum">' + (range === 'session' ? 'Nothing settled here yet. What you decide in Needs you lands here with its receipt; pick a range for what was settled in OrgX.' : 'Nothing was settled ' + (label === 'today' ? 'today' : 'in the last ' + label) + '.') + '</p>';
+        : '';
+      if (!entries.length) {
+        // Empty: one line and one sentence. No acceptance card, links or launch under nothing.
+        return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
+          '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + seg + '</div></div>' +
+          (range === 'session' ? emptyHtml('Nothing decided here yet.', 'What you decide in Needs you lands here with its receipt.')
+            : emptyHtml('Nothing was settled ' + (label === 'today' ? 'today' : 'in the last ' + label) + '.', '')) + '</section>';
+      }
       var page = Math.max(1, opts.page || 1);
       var shown = entries.slice(0, page * DONE_PAGE);
       body = shown.length ? '<ul class="dn-rows" role="list">' + shown.map(function r(e) {
@@ -516,8 +534,8 @@
       if (!selected && opts.sel) selected = entries.filter(function f(e) { return e.id === opts.sel; })[0] || null;
     }
     var overview = (opts.overviewHtml || '') +
-      '<div class="md-links"><button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(historyUrl) + '">Decision history ↗</button>' +
-      '<button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(ledgerUrl) + '">Work ledger ↗</button></div>';
+      '<div class="md-links"><button type="button" class="text-btn" data-action="open" data-url="' + esc(historyUrl) + '">Decision history ↗</button>' +
+      '<button type="button" class="text-btn" data-action="open" data-url="' + esc(ledgerUrl) + '">Work ledger ↗</button></div>';
     return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
       '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + seg + '</div></div>' + summary +
       '<div class="pn-md' + (selected ? ' has-sel' : '') + '"><div class="pn-md-list">' + (body || '') + '</div>' +

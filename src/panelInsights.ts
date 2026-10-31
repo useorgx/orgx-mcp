@@ -267,7 +267,19 @@ export interface PanelGoal {
   moves: PanelGoalMove[];
   initiatives: PanelGoalInitiative[];
   initiative_total: number;
+  /**
+   * What the goal needs a week to land on its due date, as OrgX computed it
+   * from the recorded baseline, target and due date; null when one is missing.
+   */
+  pace: PanelGoalPace | null;
   url: string;
+}
+
+export interface PanelGoalPace {
+  per_week: number;
+  direction: 'up' | 'down';
+  remaining: number;
+  weeks_left: number;
 }
 
 export interface PanelQualityBarSummary {
@@ -292,6 +304,16 @@ export interface PanelGoals {
 function count(value: unknown): number {
   const n = finite(value);
   return n !== null && n >= 0 ? Math.floor(n) : 0;
+}
+
+function goalPace(value: unknown): PanelGoalPace | null {
+  const pace = asRecord(value);
+  const perWeek = finite(pace?.per_week);
+  const remaining = finite(pace?.remaining);
+  const weeksLeft = finite(pace?.weeks_left);
+  const direction = pace?.direction === 'up' || pace?.direction === 'down' ? pace.direction : null;
+  if (perWeek === null || perWeek <= 0 || remaining === null || remaining <= 0 || weeksLeft === null || weeksLeft <= 0 || !direction) return null;
+  return { per_week: perWeek, direction, remaining, weeks_left: weeksLeft };
 }
 
 function goalInitiative(raw: unknown): PanelGoalInitiative | null {
@@ -364,6 +386,7 @@ export function buildPanelGoalsWithReasons(payload: unknown, reason: string | nu
       moves,
       initiatives,
       initiative_total: Math.max(initiatives.length, count(o.initiative_total)),
+      pace: goalPace(o.pace),
       url: buildEntityLink('objective', id).url,
     });
     if (items.length >= PANEL_GOAL_LIMIT) break;

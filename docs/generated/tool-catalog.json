@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-31T05:41:57.208Z",
-  "sourceHash": "5d12a77b2162e350",
+  "generatedAt": "2026-10-31T22:41:21.399Z",
+  "sourceHash": "8e5bb4c986ad93fe",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -7468,7 +7468,8 @@
                     "textarea",
                     "boolean",
                     "single_select",
-                    "multi_select"
+                    "multi_select",
+                    "number"
                   ]
                 },
                 "label": {
@@ -7527,6 +7528,45 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 10
+                },
+                "number": {
+                  "type": "object",
+                  "properties": {
+                    "min": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    },
+                    "step": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "unit": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 16
+                    },
+                    "recommended": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "min",
+                    "max"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Required when type is number: the range the owner chooses in, its step and unit, and your recommended value"
+                },
+                "suggestions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "maxItems": 6,
+                  "description": "Ready answers to a text question; the owner can pick one and edit it"
                 }
               },
               "required": [
@@ -8313,6 +8353,9 @@
                   "maxLength": 2000
                 },
                 {
+                  "type": "number"
+                },
+                {
                   "type": "boolean"
                 },
                 {
@@ -8326,7 +8369,7 @@
                 }
               ]
             },
-            "description": "Answers by field id, when widget_actions.questions lists fields"
+            "description": "Answers by field id, when widget_actions.questions lists fields; a number field takes a number"
           },
           "item_reviews": {
             "type": "array",
@@ -8363,6 +8406,11 @@
           "remember": {
             "type": "boolean",
             "description": "Propose the typed answer as a rule for next time, when widget_actions.answer.save_as_precedent"
+          },
+          "quality_bar_criterion": {
+            "type": "string",
+            "maxLength": 240,
+            "description": "On a send-back, one criterion to propose in the output's quality bar draft, when widget_actions.quality_bar names one"
           },
           "approval_token": {
             "type": "string",
