@@ -18,7 +18,7 @@ import {
 } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 
-import OAuthProvider from '@cloudflare/workers-oauth-provider';
+import { createSmokeRegistrationProvider } from './smokeClientRegistration';
 import { createSentryOptions, type SentryWorkerEnv } from './sentryConfig';
 import { recoverDurableObjectTransportRequest } from './durableObjectTransportRecovery';
 
@@ -15646,7 +15646,7 @@ const observedSseHandler = observeVerifiedMcpTransport(profileAwareSseHandler);
 // - Everything else → authHandler (Clerk flow, health, landing, codex, etc.)
 // =============================================================================
 
-const oauthProvider = new OAuthProvider({
+const oauthProvider = createSmokeRegistrationProvider<Env>({
   apiHandlers: {
     '/mcp': observedHttpHandler,
     '/sse': observedSseHandler,

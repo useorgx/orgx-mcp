@@ -51,7 +51,10 @@ async function setup() {
     ? new Response('event: endpoint\ndata: /sse/message?sessionId=signed-session&profile=chatgpt\n\n', { headers: { 'content-type': 'text/event-stream' } })
     : new Response('Accepted', { status: 202 }));
   transport.oauth.mockResolvedValue(Response.json({ error: 'invalid_token' }, { status: 401 }));
-  const env = { ORGX_RUN_MCP_TOKEN_SECRET: SECRET, MCP_OBJECT: {}, MCP_SERVER_URL: 'http://localhost:8787' };
+  const env = { ORGX_RUN_MCP_TOKEN_SECRET: SECRET, MCP_OBJECT: {}, MCP_SERVER_URL: 'http://localhost:8787',
+    // The real worker binding exists even when this fixture mocks OAuth.fetch.
+    OAUTH_KV: {},
+  };
   const request = async (url = '/sse/message?sessionId=signed-session&profile=chatgpt', claims: Record<string, unknown> = {}, origin?: string) =>
     new Request(`http://localhost:8787${url}`, {
       method: 'POST', headers: { authorization: `Bearer ${await signedBearer(claims)}`, 'content-type': 'application/json', ...(origin ? { origin } : {}) },
