@@ -2,8 +2,8 @@
 
 One category, one failure moment, one measurable claim.
 
-- **Category (verbatim):** organizational continuity for AI agents
-- **Outcome sentence (verbatim):** Make AI work resumable, reviewable, and provable across agents.
+- **Category (verbatim):** proof for AI-delivered work
+- **Outcome sentence (verbatim):** Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts.
 - **Failure moment (verbatim):** The task outlives the chat.
 - **Elevator (verbatim):** OrgX lets the next agent continue from the
   decisions, artifacts, approvals, owners, and proof the last agent left

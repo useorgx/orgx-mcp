@@ -4,10 +4,10 @@ Use these files as the source copy for directory and curated-list submissions.
 Canonical positioning lives in `docs/positioning.md` — copy its lines verbatim.
 
 Title:
-OrgX MCP — Organizational Continuity for AI Agents
+OrgX MCP — Proof for AI-Delivered Work
 
 Short description:
-Make AI work resumable, reviewable, and provable across agents. OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind.
+Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts. OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind.
 
 Categories:
 Memory, Productivity, Project Management, Team Collaboration, Workflow Automation, Developer Tools
