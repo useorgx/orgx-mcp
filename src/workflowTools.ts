@@ -12,6 +12,7 @@ import { SECURITY_SCHEMES, SCAFFOLD_INITIATIVE_WIDGET_META, OUTPUT_TEMPLATE_URIS
 import { jsonValueSchema } from './openaiOutputSchemas/shared';
 import { idempotencyKeySchema } from './idempotencyKeySchema';
 import { validateWorkUpdateSelection, workOutputArtifactSchema } from './workOutputAttachment';
+import { qualityBarPatchFields, workspaceProfileFields, validateProfileWorkUpdate } from './profileWorkUpdate';
 
 /** A public operation is bound to one implementation, never a caller-selected verb. */
 export interface WorkflowBackendRequest {
@@ -381,11 +382,14 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       fixedArgs: { operation: 'create', type: 'task' }, annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
   operation('orgx_update_work', 'orgx_write', 'Update OrgX Work Content',
-    'Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records.',
-    { type: workType, id, fields: WORK_CONTENT_PATCH_SCHEMA.optional(), artifact: workOutputArtifactSchema.optional(), workspace_id: workspaceId, idempotency_key: retryKey, session_id: id.optional() }, {
+    'Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. type workspace edits only name and description (owner only). type quality_bar takes the kind of work as id and fields.patches; edits save an open draft, and a person publishes from the returned review_path. Read current bars in orgx_get_workspace_context.',
+    { type: z.enum([...workType.options, 'workspace', 'quality_bar']), id, fields: z.union([WORK_CONTENT_PATCH_SCHEMA, qualityBarPatchFields, workspaceProfileFields]).optional(), artifact: workOutputArtifactSchema.optional(), workspace_id: workspaceId, idempotency_key: retryKey, session_id: id.optional() }, {
       fixedArgs: { operation: 'update' }, annotations: { ...modifiesRecords, openWorldHint: true }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
       transformArgs: (args) => {
         validateWorkUpdateSelection(args);
+        validateProfileWorkUpdate(args);
+        if (args.type !== 'workspace' && args.type !== 'quality_bar' && args.fields !== undefined)
+          WORK_CONTENT_PATCH_SCHEMA.parse(args.fields);
         return args;
       },
     }),
