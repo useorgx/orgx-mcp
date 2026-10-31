@@ -1369,6 +1369,9 @@
           '<button type="button" class="mini approve" data-action="approve" data-id="' + esc(item.id) + '" aria-label="' + esc(c.approve.label + ': ' + item.title) + '">' + esc(c.approve.label) + '</button></div>';
       }
       var error = ui.actionError && ui.actionError.id === item.id ? actionErrorHtml('flex:1 1 100%') : '';
+      // The open decision's send-back note is written in the focus card above;
+      // its queue row only marks it as open, so the form is never drawn twice.
+      var rowComposer = !current && ui.composer && ui.composer.id === item.id ? composerHtml(item) : '';
       var kindTag = item.kind === 'action' ? 'Action · ' : item.kind === 'approval' ? 'Run approval · ' : item.kind === 'link' ? 'Session link · ' : '';
       // Started but not sent: the answers wait here, and the row says so.
       if (!ruling && hasDraft(item.id)) kindTag = 'Draft · ' + kindTag;
@@ -1377,7 +1380,7 @@
         // Inside a group the title is the group's; the line is what differs.
         return '<li class="row grow' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + ' ' + (item.detail || '') + '. ' + meta) + '">' +
           (opts.sub || distinguisherHtml(item)) + '<span class="row-meta"><span>' + metaHtml('') + '</span></span></button>' + acts +
-          (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
+          rowComposer + error + '</li>';
       }
       return '<li class="row' + (arrived ? ' arrive' : '') + (current ? ' is-current' : '') + '" data-row="' + esc(item.id) + '"' + (current ? ' aria-current="true"' : '') + '><button type="button" class="row-main" data-action="select" data-id="' + esc(item.id) + '"' + (opening ? ' aria-disabled="true"' : '') + ' aria-label="' + esc(item.title + '. ' + meta) + '">' +
         '<span class="row-av" aria-hidden="true">' + askerAvatar(item.asker_kind, item.asker, 'row') + '</span>' +
@@ -1386,7 +1389,7 @@
           ? distinguisherHtml(item) + '<span class="row-title is-repeat">' + esc(splitHeadline(item.title).headline) + '</span>'
           : '<span class="row-title">' + esc(splitHeadline(item.title).headline) + '</span>') +
         '<span class="row-meta"><span>' + metaHtml(kindTag) + '</span></span></button>' + acts +
-        (ui.composer && ui.composer.id === item.id ? composerHtml(item) : '') + error + '</li>';
+        rowComposer + error + '</li>';
     }
 
     /**

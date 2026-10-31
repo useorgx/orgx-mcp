@@ -1804,3 +1804,31 @@ html[data-platform="mobile"] .pn-tok, html[data-platform="mobile"] .crumb, html[
 html[data-platform="mobile"] .ev-raw-t, html[data-platform="mobile"] .sugg-c, html[data-platform="mobile"] .queue-sel,
 html[data-platform="mobile"] .pn-chip { min-height: 44px; }
 html[data-platform="mobile"] .rung-open { width: 44px; height: 44px; }
+
+/* Layout pass (phone and narrow panes). */
+/* Where an output sits: one line, each level truncating, never a stray "/". */
+.oc-detail .crumbs { flex-wrap: nowrap; min-width: 0; }
+.oc-detail .crumbs .crumb { flex: 0 1 auto; min-width: 0; display: inline-block; line-height: 32px; }
+.oc-detail .crumbs .crumb > svg { vertical-align: -2px; margin-right: 5px; }
+.oc-detail .crumbs .crumb-sep { flex: none; }
+@container pn (max-width: 420px) {
+  /* The chain stays one row of four; an unrecorded step is its hollow dot. */
+  .oc-chain { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 0; }
+  .oc-chain li:nth-child(2)::after { display: block; }
+  .oc-chain li[data-s="off"] .oc-cl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* The decision's two buttons share one row under its line, the primary last. */
+  .oc-act-t { flex-basis: 100%; }
+  .oc-act .pn-btn { flex: 1 1 0; }
+  /* An initiative's "needs you" reads as a chip on the meta row, not a slab. */
+  .gl-init-r .pn-chip.is-warn { position: relative; min-height: 28px; padding: 0 10px; }
+  .gl-init-r .pn-chip.is-warn::after { content: ""; position: absolute; inset: -8px 0; }
+}
+/* Touch: compact controls keep a 44px hit area without growing the row. */
+@media (pointer: coarse) {
+  .ws-btn, .seg-b { position: relative; }
+  .ws-btn::after, .seg-b::after { content: ""; position: absolute; inset: -6px 0; }
+  .gl-init-t { min-height: 44px; margin: -8px 0; }
+}
+html[data-platform="mobile"] .ws-btn, html[data-platform="mobile"] .seg-b { position: relative; }
+html[data-platform="mobile"] .ws-btn::after, html[data-platform="mobile"] .seg-b::after { content: ""; position: absolute; inset: -6px 0; }
+html[data-platform="mobile"] .gl-init-t { min-height: 44px; margin: -8px 0; }
