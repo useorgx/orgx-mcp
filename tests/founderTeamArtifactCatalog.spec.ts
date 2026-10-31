@@ -127,7 +127,7 @@ describe('founder/team artifact catalog', () => {
     // The one category phrase, verbatim — never "agent orchestration" or
     // "organizational memory" as the category.
     expect(skill?.description).toContain(
-      'organizational continuity for AI agents'
+      'proof for AI-delivered work'
     );
 
     // Compare against docs/positioning.md with line wraps normalized so the

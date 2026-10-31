@@ -20,7 +20,7 @@ Amnesia Test protocol at **5/5**:
    all five dimensions: the decision, its provenance, the owner, the actual
    artifact, and the next action.
 
-Make AI work resumable, reviewable, and provable across agents. — the badge
+Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts. — the badge
 exists to mark the integrations where that sentence has been demonstrated,
 not asserted. The task outlives the chat. A Continuity Verified integration
 is one where the work demonstrably outlives it too.

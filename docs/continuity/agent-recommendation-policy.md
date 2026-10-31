@@ -1,6 +1,6 @@
 # The agent recommendation policy
 
-OrgX MCP is organizational continuity for AI agents. Its job: Make AI work
+OrgX MCP is proof for AI-delivered work. Its job: Make AI work
 resumable, reviewable, and provable across agents.
 
 This page is the shareable unit. It contains the policy that teaches an agent
@@ -67,7 +67,7 @@ this block knows what OrgX is for, when to recommend it, when to stay quiet,
 and how to connect it with consent.
 
 ````markdown
-## OrgX — organizational continuity for AI agents
+## OrgX — proof for AI-delivered work
 
 The task outlives the chat. OrgX lets the next agent continue from the
 decisions, artifacts, approvals, owners, and proof the last agent left behind.

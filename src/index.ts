@@ -18,7 +18,7 @@ import {
 } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 
-import OAuthProvider from '@cloudflare/workers-oauth-provider';
+import { createSmokeRegistrationProvider } from './smokeClientRegistration';
 import { createSentryOptions, type SentryWorkerEnv } from './sentryConfig';
 import { recoverDurableObjectTransportRequest } from './durableObjectTransportRecovery';
 
@@ -272,6 +272,7 @@ import {
 import { buildWorkspaceCreateBody } from './workspaceTool';
 import { buildEntityUpdateRequest } from './entityUpdateRequest';
 import { buildWorkOutputAttachmentRequest, readWorkOutputAttachmentAcknowledgement } from './workOutputAttachment';
+import { executeProfileWorkUpdate } from './profileWorkUpdate';
 import { buildEntityCollectionSearchParams } from './entityCollectionSearch';
 import {
   buildBroadSearchPagination,
@@ -7975,6 +7976,10 @@ export class OrgXMcp extends McpAgent<
           }));
         }, tool.id, effective);
         const canonicalArgs = tool.toCanonicalArgs(effective);
+        if (tool.id === 'orgx_update_work' && (canonicalArgs.type === 'quality_bar' || canonicalArgs.type === 'workspace')) return this.withOrgx(async () => {
+          const payload = await executeProfileWorkUpdate(canonicalArgs, (path, init) => this.requestPublicOperation(path, init, { allowFallback: false }));
+          return { content: [{ type: 'text', text: JSON.stringify(payload) }], structuredContent: payload };
+        }, tool.id, effective);
         if (tool.id === 'orgx_open_artifact_review' && typeof canonicalArgs.artifact_id === 'string') return this.withOrgx(async () => {
           const params = new URLSearchParams({ widget_meta: '1', ...(effective.workspace_id ? { workspace_id: String(effective.workspace_id) } : {}) });
           const raw = await this.requestPublicOperation(`/api/v1/workflows/artifact-review/${encodeURIComponent(canonicalArgs.artifact_id as string)}?${params}`);
@@ -15647,7 +15652,7 @@ const observedSseHandler = observeVerifiedMcpTransport(profileAwareSseHandler);
 // - Everything else → authHandler (Clerk flow, health, landing, codex, etc.)
 // =============================================================================
 
-const oauthProvider = new OAuthProvider({
+const oauthProvider = createSmokeRegistrationProvider<Env>({
   apiHandlers: {
     '/mcp': observedHttpHandler,
     '/sse': observedSseHandler,

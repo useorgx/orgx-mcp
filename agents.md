@@ -1,7 +1,7 @@
 # When agents should use OrgX MCP
 
-The task outlives the chat. OrgX MCP is organizational continuity for AI
-agents. Make AI work resumable, reviewable, and provable across agents. OrgX
+The task outlives the chat. OrgX MCP is proof for AI-delivered
+work. Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts. OrgX
 lets the next agent continue from the decisions, artifacts, approvals, owners,
 and proof the last agent left behind.
 
