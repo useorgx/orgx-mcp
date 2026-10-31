@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-29T05:56:04.024Z",
-  "sourceHash": "c87a00f11a403968",
+  "generatedAt": "2026-10-31T05:41:57.208Z",
+  "sourceHash": "5d12a77b2162e350",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -18552,7 +18552,7 @@
     {
       "id": "orgx_update_work",
       "title": "Update OrgX Work Content",
-      "description": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records.",
+      "description": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. type workspace edits only name and description (owner only). type quality_bar takes the kind of work as id and fields.patches; edits save an open draft, and a person publishes from the returned review_path. Read current bars in orgx_get_workspace_context.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -18563,7 +18563,9 @@
               "initiative",
               "workstream",
               "milestone",
-              "task"
+              "task",
+              "workspace",
+              "quality_bar"
             ]
           },
           "id": {
@@ -18571,67 +18573,350 @@
             "minLength": 1
           },
           "fields": {
-            "type": "object",
-            "properties": {
-              "title": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 240
-              },
-              "name": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 240
-              },
-              "summary": {
-                "type": "string",
-                "maxLength": 4000
-              },
-              "description": {
-                "type": "string",
-                "maxLength": 20000
-              },
-              "priority": {
-                "type": "string",
-                "enum": [
-                  "low",
-                  "medium",
-                  "high",
-                  "urgent"
-                ]
-              },
-              "due_date": {
-                "type": "string",
-                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              "goal_ids": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              },
-              "metadata": {
+            "anyOf": [
+              {
                 "type": "object",
                 "properties": {
-                  "notes": {
+                  "title": {
                     "type": "string",
-                    "maxLength": 8000
+                    "minLength": 1,
+                    "maxLength": 240
                   },
-                  "tags": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  },
+                  "summary": {
+                    "type": "string",
+                    "maxLength": 4000
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high",
+                      "urgent"
+                    ]
+                  },
+                  "due_date": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "goal_ids": {
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "minLength": 1,
-                      "maxLength": 100
+                      "format": "uuid"
+                    }
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "properties": {
+                      "notes": {
+                        "type": "string",
+                        "maxLength": 8000
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "maxItems": 50
+                      }
                     },
-                    "maxItems": 50
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "patches": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "criteria"
+                            },
+                            "decide": {
+                              "type": "boolean"
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                  },
+                                  "weight": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  },
+                                  "question": {
+                                    "type": "string",
+                                    "maxLength": 600
+                                  },
+                                  "source": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "maxLength": 40
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "maxLength": 400
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "label"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "name",
+                                  "weight",
+                                  "question",
+                                  "source"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 12
+                            },
+                            "checks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 160
+                                  },
+                                  "description": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 600
+                                  },
+                                  "blocking": {
+                                    "type": "boolean"
+                                  },
+                                  "checkerId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 160
+                                  },
+                                  "checkerVersion": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "added": {
+                                    "type": "boolean"
+                                  },
+                                  "source": {
+                                    "$ref": "#/properties/fields/anyOf/1/properties/patches/items/anyOf/0/properties/items/items/properties/source"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "label",
+                                  "description",
+                                  "blocking",
+                                  "checkerId",
+                                  "checkerVersion",
+                                  "added",
+                                  "source"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 20
+                            }
+                          },
+                          "required": [
+                            "part"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "line"
+                            },
+                            "value": {
+                              "type": "number",
+                              "minimum": 30,
+                              "maximum": 100
+                            },
+                            "decide": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "part"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "references"
+                            },
+                            "pinned": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "boolean"
+                              },
+                              "propertyNames": {
+                                "format": "uuid"
+                              }
+                            },
+                            "decide": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "part"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "calibration"
+                            },
+                            "choice": {
+                              "type": "string",
+                              "enum": [
+                                "after_publish",
+                                "not_now"
+                              ]
+                            },
+                            "decide": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "part"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "shipRule"
+                            },
+                            "choice": {
+                              "type": "string",
+                              "enum": [
+                                "approve_every",
+                                "clear_when_trusted"
+                              ]
+                            },
+                            "decide": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "part"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "reopen"
+                            },
+                            "target": {
+                              "type": "string",
+                              "enum": [
+                                "criteria",
+                                "line",
+                                "references",
+                                "calibration",
+                                "shipRule"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "part",
+                            "target"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 8
+                  }
+                },
+                "required": [
+                  "patches"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
               }
-            },
-            "additionalProperties": false
+            ]
           },
           "artifact": {
             "type": "object",
