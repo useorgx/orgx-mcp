@@ -40,6 +40,8 @@ If there are no matches, say so. Do not start or change work.
 
 Replace `release` with a topic your workspace has recorded. **Success:** the client returns workspace context and either a source-backed decision with its rationale or an explicit empty result. Compare the cited record in OrgX with the summary. A widget, receipt import, or producer completion claim alone does not establish verified delivery or human acceptance.
 
+For an account-free example of the proof boundary, [reproduce an agent receipt and inspect a cross-client handoff](https://useorgx.com/agent-work-receipts/proof). The downloadable package separates actual local conformance, historical first-party observations, and a synthetic review example. It does not prove universal client parity, customer acceptance, or independent adoption.
+
 ## Docs and troubleshooting
 
 - [Server/transport and operation contract](server.json), [generated tool catalog](docs/generated/tool-catalog.json), and [profile definitions](src/toolProfiles.ts) are the shipped capability sources.
