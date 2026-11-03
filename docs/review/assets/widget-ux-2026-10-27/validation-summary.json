@@ -1,0 +1,115 @@
+{
+  "reviewed_at": "2026-10-27",
+  "source_commit": "cf4620ea7c931d30d07a965d85af755b98da5dd4",
+  "render_sweep": {
+    "cases": 160,
+    "reported_failures": 0,
+    "widgets": 12
+  },
+  "interaction_sweep": {
+    "cases": 112,
+    "widgets": 15,
+    "controls": 1680,
+    "contractAssertions": 56,
+    "links": 240,
+    "click_failures": 0,
+    "page_errors": 0,
+    "unresolved": 182,
+    "fixture_refusals": 32,
+    "unresolved_by_widget": {
+      "agent-status": 32,
+      "artifact-review": 8,
+      "decisions": 32,
+      "morning-brief": 14,
+      "orgx-panel": 44,
+      "proof-receipt": 4,
+      "scaffolded-initiative": 36,
+      "search-results": 8,
+      "task-spawned": 4
+    }
+  },
+  "focused_tests": {
+    "files": 7,
+    "passed": 84
+  },
+  "additional_capture_matrix": {
+    "captures": 86,
+    "page_exceptions": 0,
+    "document_horizontal_overflows": 0,
+    "rejected_loaded_state_captures": [
+      "decisions-populated-800 (blank/transient)",
+      "decisions-populated-375 (transient)",
+      "orgx-panel-done-800 (skeleton)",
+      "orgx-panel-done-375 (skeleton)"
+    ]
+  },
+  "targeted_probes": {
+    "ledgerNormalization": {
+      "client": [
+        {
+          "status": "met",
+          "value": "Verified"
+        }
+      ],
+      "entries": [
+        {
+          "label": "Repeated work \u00d74",
+          "status": "met",
+          "href": "https://github.com/acme/x/pull/1"
+        }
+      ],
+      "stats": "receipts\n1.234\nin value\n$1.174",
+      "explore": false
+    },
+    "focusAfterExplore": {
+      "tag": "BUTTON",
+      "text": "Back to summary"
+    },
+    "focusAfterFilter": {
+      "tag": "BUTTON",
+      "text": "All 19"
+    },
+    "criterionPips": "<span class=\"rc-pips\" role=\"img\" aria-label=\"8 of 10 checks met, 1 not met, 1 with no evidence\"><i data-s=\"met\"></i><i data-s=\"met\"></i><i data-s=\"met\"></i><i data-s=\"met\"></i><i data-s=\"met\"></i><i data-s=\"met\"></i><i data-s=\"met\"></i><i data-s=\"met\"></i></span><span class=\"rc-pn\">8/10</span>",
+    "calendarDate": "23 of 40 workspaces \u00b7 Dec 30"
+  },
+  "adapted_read_transition_cases": [
+    {
+      "theme": "light",
+      "width": 800,
+      "feedbackMs": 13,
+      "overflow": false,
+      "animations": 0,
+      "errors": []
+    },
+    {
+      "theme": "light",
+      "width": 375,
+      "feedbackMs": 12.300000000046566,
+      "overflow": false,
+      "animations": 0,
+      "errors": []
+    },
+    {
+      "theme": "dark",
+      "width": 800,
+      "feedbackMs": 23.5,
+      "overflow": false,
+      "animations": 0,
+      "errors": []
+    },
+    {
+      "theme": "dark",
+      "width": 375,
+      "feedbackMs": 25.300000000046566,
+      "overflow": false,
+      "animations": 0,
+      "errors": []
+    }
+  ],
+  "limits": [
+    "Synthetic host responses do not establish production mutation success.",
+    "The validation workspace is not representative of every customer workspace.",
+    "Unknown and fixture-refused controls remain unverified.",
+    "No production CLS or full accessibility compliance claim."
+  ]
+}
