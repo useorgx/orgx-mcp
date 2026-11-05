@@ -283,7 +283,7 @@ const legacyScaffoldInput = {
 export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   operation('orgx_get_workspace_context', 'orgx_bootstrap', 'Read OrgX Workspace Context',
     'Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, and capture health (which clients reported recently and how many sessions are unlinked). Does not select a workspace or create a session.',
-    { workspace_id: workspaceId, initiative_id: id.optional() }, {
+    { workspace_id: workspaceId.describe('Workspace UUID. Omit to read the credential-bound workspace, or the account\'s unique saved default when the credential is unbound.'), initiative_id: id.optional() }, {
       annotations: readOnly, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
       backendRequest: (args) => ({ method: 'GET', path: query('/api/v1/workflows/workspace-context', args) }),
     }),

@@ -7968,7 +7968,7 @@ export class OrgXMcp extends McpAgent<
         const schemes = resolveWorkflowInvocationSecuritySchemes(tool.id, args);
         const blocked = auth(tool.id, schemes);
         if (blocked) return blocked;
-        const effective = { ...args, ...(args.workspace_id === undefined && this.sessionContext?.workspaceId && 'workspace_id' in tool.inputSchema ? { workspace_id: this.sessionContext.workspaceId } : {}) };
+        const effective = { ...args, ...(tool.id !== 'orgx_get_workspace_context' && args.workspace_id === undefined && this.sessionContext?.workspaceId && 'workspace_id' in tool.inputSchema ? { workspace_id: this.sessionContext.workspaceId } : {}) };
         if (tool.backendRequest) return this.withOrgx(async () => {
           const request = tool.backendRequest!(effective);
           return directResult(await this.requestPublicOperation(request.path, {
