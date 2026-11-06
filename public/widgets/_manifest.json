@@ -151,8 +151,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 173068,
-      "hash": "9c8104ef10ae",
+      "bytes": 176838,
+      "hash": "4c4f5e8d8f13",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",

@@ -37,8 +37,8 @@ let browser: Browser;
 beforeAll(async () => { browser = await chromium.launch({ headless: true }); });
 afterAll(async () => { await browser?.close(); });
 
-async function openWidget(path: string, host: { toolOutput?: unknown; meta?: unknown; launchError?: string } = {}): Promise<Page> {
-  const page = await browser.newPage({ viewport: { width: 375, height: 900 } });
+async function openWidget(path: string, host: { toolOutput?: unknown; meta?: unknown; launchError?: string } = {}, width = 375): Promise<Page> {
+  const page = await browser.newPage({ viewport: { width, height: 900 } });
   page.setDefaultTimeout(5_000);
   await page.route('**/*', (route) => route.abort());
   await page.route('https://mcp.useorgx.test/**', async (route) => {
@@ -170,6 +170,44 @@ describe('decisions widget: an Agree on done decision', () => {
       expect(await ft.getAttribute('heading')).toBe('Agree on done');
       expect(await page.locator('.dq-batch-copy').textContent()).toBe('2 need only your approval');
       expect(await noOverflow(page)).toBe(true);
+    } finally { await page.close(); }
+  });
+});
+
+describe('decisions widget: batch review', () => {
+  it.each([375, 960])('wraps long names and keeps the current card stable at %ipx', async width => {
+    const long = 'Handoff-' + 'customer-acceptance-'.repeat(15) + 'contract';
+    const page = await openWidget('decisions.html', {
+      toolOutput: {
+        decisions: [
+          { id: DECISION, title: long, type: 'decision', status: 'pending' },
+          { id: INITIATIVE, title: 'Resume the import run', type: 'approval', status: 'pending' },
+        ],
+      },
+      meta: { 'orgx/widgetApproval': { approval_tokens: { [DECISION]: 'private-token-1', [INITIATIVE]: 'private-token-2' } } },
+    }, width);
+    try {
+      const button = page.locator('[data-action="approve-ready"]');
+      await button.waitFor();
+      const current = page.locator('.decision-card').first();
+      const initial = await current.evaluate(node => ({
+        width: node.getBoundingClientRect().width,
+        top: node.getBoundingClientRect().top + scrollY,
+      }));
+      await button.click();
+      const review = page.locator('.dq-batch.is-review');
+      expect(await review.locator('li strong').allTextContents()).toEqual([long, 'Resume the import run']);
+      expect(await review.textContent()).toContain('Lets the agent run continue.');
+      expect(await review.innerHTML()).not.toContain('private-token');
+      expect(await noOverflow(page)).toBe(true);
+      expect(await current.evaluate(node => ({
+        width: node.getBoundingClientRect().width,
+        top: node.getBoundingClientRect().top + scrollY,
+      }))).toEqual(initial);
+      expect(await page.evaluate(() => document.activeElement?.id)).toBe('dq-batch-review-title');
+      expect(await page.evaluate(() => (window as unknown as { calls: unknown[] }).calls)).toEqual([]);
+      await review.getByRole('button', { name: 'Cancel' }).click();
+      expect(await button.evaluate(node => node === document.activeElement)).toBe(true);
     } finally { await page.close(); }
   });
 });
