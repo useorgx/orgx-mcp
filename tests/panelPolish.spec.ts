@@ -198,7 +198,7 @@ describe('fast by default', () => {
     expect(read!.arguments.query).toMatch(/^since:\d{4}-\d{2}-\d{2}$/);
   });
 
-  it('warms In progress and Done › Work in the background once the first snapshot is on screen', async () => {
+  it('warms Work and Done › Work in the background once the first snapshot is on screen', async () => {
     const m = await mountPanel({}, {}, (win) => {
       (win as unknown as { requestIdleCallback: (fn: () => void) => number }).requestIdleCallback = (fn) => { fn(); return 1; };
     });

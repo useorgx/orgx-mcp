@@ -435,7 +435,7 @@ export interface PanelWhy {
   initiative_url: string | null;
 }
 
-export type PanelWorkState = 'blocked' | 'running' | 'queued';
+export type PanelWorkState = 'blocked' | 'running' | 'queued' | 'planned' | 'held';
 
 export interface PanelWorkItem {
   id: string;
@@ -1427,10 +1427,10 @@ export function normalizeAppProof(value: unknown): PanelSnapshot['proof'] | null
 
 const WORK_STATE: Record<string, PanelWorkState> = {
   running: 'running', in_progress: 'running', active: 'running', working: 'running', executing: 'running', verifying: 'running',
-  blocked: 'blocked', stalled: 'blocked', waiting: 'blocked', paused_for_input: 'blocked', needs_input: 'blocked', needs_you: 'blocked', held: 'blocked',
-  queued: 'queued', pending: 'queued', scheduled: 'queued', todo: 'queued',
+  blocked: 'blocked', stalled: 'blocked', waiting: 'blocked', paused_for_input: 'blocked', needs_input: 'blocked', needs_you: 'blocked',
+  queued: 'queued', pending: 'planned', scheduled: 'planned', todo: 'planned', planned: 'planned', paused: 'held', held: 'held',
 };
-const WORK_RANK: Record<PanelWorkState, number> = { blocked: 0, running: 1, queued: 2 };
+const WORK_RANK: Record<PanelWorkState, number> = { blocked: 0, held: 1, running: 2, queued: 3, planned: 4 };
 
 function workState(value: unknown): PanelWorkState | null {
   const slug = typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s-]+/g, '_') : '';
@@ -1482,7 +1482,7 @@ function workPlace(task: Record<string, unknown>, agent: Record<string, unknown>
   if (initiative) out.initiative_id = initiative;
   if (workstream) out.workstream_id = workstream;
   if (milestone) out.milestone_id = milestone;
-  const blocker = state === 'blocked' ? clipText(task.blocker, PANEL_TEXT_MAX) : null;
+  const blocker = state === 'blocked' || state === 'held' ? clipText(task.blocker, PANEL_TEXT_MAX) : null;
   if (blocker) out.blocker = blocker;
   const rawSteps = Array.isArray(task.steps) ? task.steps : Array.isArray(task.checklist) ? task.checklist : null;
   if (rawSteps) {
@@ -1536,7 +1536,8 @@ export function buildPanelWork(data: Record<string, unknown> | null): PanelWork 
         ...workPlace(task, agent, state),
       });
     }
-    if (!tasks.length && agentState) {
+    if (!tasks.length && agentState && agentState !== 'planned' &&
+        !(agentState === 'queued' && !str(agent.run_id) && !str(agent.job_id))) {
       const current = clipText(str(asRecord(agent.current_task)?.title) ?? str(agent.current_activity) ?? str(agent.status_detail), PANEL_TITLE_MAX);
       items.push({
         id: `agent:${str(agent.agent_id) ?? name}`, agent: name, title: current ?? 'Working', state: agentState,
