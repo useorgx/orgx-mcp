@@ -1,4 +1,5 @@
 import { summarizeValidationIssues, type ValidationTelemetrySummary } from './mcpValidationTelemetry';
+import { readToolPerformance } from './toolPerformance';
 import {
   MCP_COMPATIBILITY_RETIREMENT_POLICY,
   resolveDeprecatedToolCall,
@@ -663,6 +664,7 @@ function observationForBatchCall(observation: McpResponseObservation, toolCall: 
       : { isError: true, errorCode: 'mcp_response_missing', errorKind: 'mcp_response_missing' };
   const { validationIssueCount, validationIssueCodes, validationIssuesTruncated, ...outcome } = logical;
   return { ...timing, ...outcome,
+    logicalResponseRecords: matched !== undefined ? [matched] : [],
     ...(matched !== undefined ? { validationIssueCount, validationIssueCodes, validationIssuesTruncated } : {}),
     logicalResultObserved: matched !== undefined || globalError !== undefined };
 }
@@ -787,6 +789,7 @@ async function captureMcpToolCallVisibility<Env>(
     session_ms: knownServerTimings.get('session'),
     request_normalization_ms: journey.normalizationMs,
     handler_ms: journey.handlerMs,
+    ...readToolPerformance(observation.logicalResponseRecords ?? []),
     response_headers_ms: journey.responseHeadersMs,
     response_shaping_ms:
       knownServerTimings.get('response_shaping') ??
