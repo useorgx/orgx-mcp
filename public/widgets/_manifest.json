@@ -280,8 +280,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 68778,
-      "hash": "e9bb3feba96a",
+      "bytes": 69895,
+      "hash": "7f26dc8d83cf",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -407,13 +407,15 @@
     },
     "proof-receipt": {
       "file": "public/widgets/proof-receipt.html",
-      "bytes": 32171,
-      "hash": "8bcbe414ebd4",
+      "bytes": 32576,
+      "hash": "370252a93fe7",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
         "shared/kit/ox-elements.js",
         "shared/kit/ox-tokens.css",
+        "shared/markdown.css",
+        "shared/markdown.js",
         "shared/mcp-apps-sdk.umd.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
@@ -592,8 +594,8 @@
     },
     "workspace-map": {
       "file": "public/widgets/workspace-map.html",
-      "bytes": 25452,
-      "hash": "e4ffef0d985f",
+      "bytes": 25338,
+      "hash": "5d3fdcf039dc",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",

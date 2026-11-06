@@ -11,6 +11,8 @@
   <script src="shared/agent-identity.js"></script>
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
+  <link rel="stylesheet" href="shared/markdown.css" />
+  <script src="shared/markdown.js"></script>
   <style>
     /*
      * Receipt — the orgx_submit_work_receipt result as canvas Q5 "the proof, the
@@ -359,7 +361,12 @@
       } else if (verified && lv.promotable === true && !gaps.length) {
         view = { edge: 'teal', tone: 'teal', headline: 'Verified, with ' + plural(proofItems, 'piece', 'pieces') + ' of evidence.' };
       } else if (verified) {
-        view = { edge: 'amber', tone: 'amber', headline: 'Verified, with ' + plural(gaps.length, 'gap', 'gaps') + ' before it counts as proof.' };
+        var proofHeadline = gaps.length
+          ? 'Verified, with ' + plural(gaps.length, 'gap', 'gaps') + ' before it counts as proof.'
+          : lv.promotable === false
+            ? 'Verified. This receipt has not met the proof requirements.'
+            : 'Verified. Proof eligibility has not been confirmed.';
+        view = { edge: 'amber', tone: 'amber', headline: proofHeadline };
       } else if (verification === 'blocked') {
         view = { edge: 'amber', tone: 'amber', headline: 'Recorded. Verification is blocked.' };
       } else if (!hasAssessment && reportedVerification === 'passed') {
@@ -482,7 +489,7 @@
             '<span class="visually-hidden">' + (step[1] === 'ok' ? ', done' : step[1] === 'fail' ? ', failed' : step[1] === 'warn' ? ', partly' : ', not yet') + '</span></li>';
         }).join('') + '</ol>' +
         '<h1 class="pk-q">' + escapeHtml(view.headline) + '</h1>' +
-        (str(payload.summary) ? '<p class="claim">' + escapeHtml(str(payload.summary)) + '</p>' : '') +
+        (summaryLine ? '<div class="claim ox-markdown">' + window.OrgXMarkdown.render(summaryLine, { htmlAsText: true, linkAllowed: linkable }) + '</div>' : '') +
         (proofCount
           ? '<div class="sec"><p class="lbl">Evidence</p><div class="rows" role="list">' + evidenceRows(view) + '</div>' +
             (folded ? '<button type="button" class="more-btn" data-evidence="all" aria-expanded="false">Show ' + folded + ' more</button>' : '') +

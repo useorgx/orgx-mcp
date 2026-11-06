@@ -429,8 +429,8 @@
       return shell('teal', '<div class="wm-state"><span class="wm-kicker">OrgX workspace</span><h1>' +
         escapeHtml(workspace.name || workspace.title || workspace.id) + '</h1><p>This is the connected workspace.' +
         (initiative ? ' Current initiative: ' + escapeHtml(initiative.title || initiative.name || initiative.id) + '.' : '') +
-        '</p><button type="button" class="ox-open" style="align-self:flex-start" data-action="open" data-url="' + ORGX_URL + '">Open OrgX</button></div>',
-        '<ox-footer variant="reads" state="fresh" heading="Context read" detail="work and approvals stay in OrgX" action-label="Open OrgX ↗"></ox-footer>');
+        '</p><p>Chat permissions are unavailable in this view.</p></div>',
+        '<ox-footer variant="reads" state="fresh" heading="Workspace connected" action-label="Open OrgX ↗"></ox-footer>');
     };
 
     var render = function (payload) {

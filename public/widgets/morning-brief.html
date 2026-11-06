@@ -132,6 +132,10 @@
     }
     .priority-note { font-size: 12.5px; line-height: 1.4; color: var(--ox-text-muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+    .brief-coverage { padding-inline: 16px; color: var(--ox-text-2); overflow-wrap: anywhere; }
+    .brief-coverage summary { min-height: 44px; padding-block: 12px; cursor: pointer; }
+    .brief-coverage ul { padding: 0 0 12px 20px; }
+
     /* One honest degraded notice, inside the card: which source is missing, and what that means. */
     .brief-partial {
       display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border-radius: 10px;
@@ -676,6 +680,9 @@
           top_priorities: payload.top_priorities ?? chronicle.topPriorities,
           artifacts_produced: payload.artifacts_produced ?? chronicle.artifactLedger,
           brief_markdown: payload.brief_markdown ?? asObject(chronicle.reportingNarrative).briefMarkdown,
+          degraded: payload.degraded ?? chronicle.degraded,
+          degraded_sources: payload.degraded_sources ?? chronicle.degraded_sources,
+          dataGaps: payload.dataGaps ?? chronicle.dataGaps,
         });
       }
 
@@ -908,6 +915,7 @@
         blockedWork,
         isPartial,
         partialNotice: isPartial ? partialNotice(payload) : '',
+        dataGaps: asArray(payload.dataGaps).filter((gap) => typeof gap === 'string' && gap.trim()).slice(0, 10),
         isStale: exceptions.some((item) => String(asObject(item).exception_type || asObject(item).type || '').toLowerCase().includes('stale')) || isOlderThan(payload.generated_at || payload.created_at || workspacePulse.generatedAt, 18),
         shortDateLabel: formatShortDay(payload.generated_at || payload.created_at || workspacePulse.generatedAt),
         clockLabel: formatClock(payload.generated_at || payload.created_at || workspacePulse.generatedAt),
@@ -1237,6 +1245,11 @@
             ${has.receipts ? sectionHtml('receipts', 'cost', 'Value receipts', brief.metricDisplays.receipts, `<div class="receipt-list app-list-stack">${renderReceiptRows(brief)}</div>`) : ''}
             ${has.attention ? sectionHtml('attention', 'needs-you', 'Needs attention', String(brief.counts.attention), `<div class="attention-list app-list-stack">${renderAttentionRows(brief)}</div>`) : ''}
 
+            ${brief.dataGaps.length ? `<details class="brief-coverage">
+              <summary>Reporting coverage · ${brief.dataGaps.length} notes</summary>
+              <ul>${brief.dataGaps.map((gap) => `<li>${escapeHtml(gap)}</li>`).join('')}</ul>
+            </details>` : ''}
+
             <ox-footer variant="reads" class="brief-footer" state="${footer.state}" heading="${escapeHtml(footer.heading)}" detail="${escapeHtml(footer.detail)}" action-label="${escapeHtml(footer.action)}"${
               brief.footerUrl ? ` data-url="${escapeHtml(brief.footerUrl)}"` : ''
             }></ox-footer>
@@ -1271,6 +1284,11 @@
               <div class="brief-calm-title">Morning brief unavailable</div>
               <div class="brief-calm-copy">The latest brief could not be loaded. Open live view to retry when the workspace is reachable.</div>
             </div>
+            ${brief.dataGaps.length ? `<details class="brief-coverage">
+              <summary>Reporting coverage · ${brief.dataGaps.length} notes</summary>
+              <ul>${brief.dataGaps.map((gap) => `<li>${escapeHtml(gap)}</li>`).join('')}</ul>
+            </details>` : ''}
+
             <ox-footer variant="reads" class="brief-footer" state="failed" heading="Couldn’t load" detail="nothing was changed" action-label="Live view ↗" data-url="${FALLBACK_REVIEW_URL}"></ox-footer>
           </div>
         </div>
