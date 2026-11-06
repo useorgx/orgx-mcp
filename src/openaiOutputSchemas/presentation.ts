@@ -71,6 +71,12 @@ export const chronicleSchema = z.object({
   initiatives: z.array(resourceSchema),
   goals: z.array(resourceSchema),
   dataGaps: z.array(z.string()),
+  overview: z.object({
+    fullCall: z.object({
+      tool: z.literal('orgx_get_operator_brief'),
+      args: z.object({ workspace_id: z.string().optional(), period: z.string().optional(), detail: z.literal('full') }),
+    }),
+  }).optional(),
 });
 
 /**
