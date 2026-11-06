@@ -375,8 +375,8 @@
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 52985,
-      "hash": "f3ee2526d98e",
+      "bytes": 52289,
+      "hash": "3919675fad2a",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",

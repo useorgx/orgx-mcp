@@ -122,6 +122,22 @@ describe('plan session widget', () => {
     expect(rendered).not.toContain('<img');
   });
 
+  it('keeps the full long section behind a native disclosure', () => {
+    const dom = createWidget('https://example.test/widgets/plan-session-live.html?demo=true&state=long');
+    const doc = dom.window.document;
+    doc.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
+    const section = Array.from(doc.querySelectorAll<HTMLButtonElement>('[data-section-index]'))
+      .find((button) => button.textContent?.includes('Verification matrix'))!;
+    section.click();
+    const details = doc.querySelector<HTMLDetailsElement>('.plan-section__reading')!;
+    expect(details.open).toBe(false);
+    expect(details.querySelector('summary')?.textContent).toContain('Read full section');
+    (details.querySelector('summary') as HTMLElement).click();
+    expect(details.open).toBe(true);
+    expect(details.querySelectorAll('[data-section-body] li')).toHaveLength(14);
+    dom.window.close();
+  });
+
   it('uses one H1, accessible interaction geometry, the official runtime, and the v2 edit action', () => {
     const dom = createWidget(
       'https://example.test/widgets/plan-session-live.html?demo=true&theme=dark'
