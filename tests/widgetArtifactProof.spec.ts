@@ -4,6 +4,8 @@ import {
   SUPPORTED_WIDGET_SURFACES,
   buildWidgetProofCards,
   buildWidgetProofHandoff,
+  compactAgentReadout,
+  compactInitiativeReadout,
   enrichAgentStatusWithArtifacts,
   enrichInitiativePulseWithArtifacts,
   enrichMorningBriefWithArtifacts,
@@ -552,5 +554,30 @@ describe('widget artifact proof helpers', () => {
       SUPPORTED_WIDGET_SURFACES
     );
     expect(handoff.primary_prompt).toContain('preserve the tool result links');
+  });
+});
+
+describe('compact readout artifact heads', () => {
+  it('preserves exact artifact refs and strips repeated source bodies without mutating full data', () => {
+    const body = 'abcdefghij'.repeat(1829);
+    const proof = { id: 'a1', title: 'Public launch', reviewRequired: true, version: 3, content: body, preview_markdown: body, metadata: { preview_markdown: body }, summary: 'Evidence is ready.\n\n' + body };
+    const data = { recent_artifacts: [proof], proof_cards: [proof], review_items: [proof], pending_decisions: 4 };
+    const overview = compactInitiativeReadout(data);
+    expect(overview).toMatchObject({
+      recent_artifacts: [{ id: 'a1', title: 'Public launch', version: 3, reviewRequired: true, primary_url: 'https://useorgx.com/artifacts/a1', summary: 'Evidence is ready.' }],
+      pending_decisions: 4,
+    });
+    expect(JSON.stringify(overview)).not.toContain('abcdefghij');
+    expect(JSON.stringify(overview).length).toBeLessThan(1024);
+    expect(data.recent_artifacts[0]?.content).toBe(body);
+  });
+
+  it('keeps legacy entries with no detail identity and leaves workload untouched', () => {
+    const legacy = { title: 'Legacy item', content: 'Only available copy' };
+    const tasks = [{ title: 'Work in progress' }];
+    const data = { agents: [{ tasks, outputs: [legacy, { id: 'a2', content: 'Stored body' }] }] };
+    expect(compactAgentReadout(data)).toEqual({
+      agents: [{ tasks, outputs: [legacy, { id: 'a2', primary_url: 'https://useorgx.com/artifacts/a2' }] }],
+    });
   });
 });

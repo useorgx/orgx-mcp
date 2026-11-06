@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-31T22:41:21.399Z",
-  "sourceHash": "8e5bb4c986ad93fe",
+  "generatedAt": "2026-11-06T08:18:28.082Z",
+  "sourceHash": "d5db5b7fae31abc9",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -39,6 +39,14 @@
           "agent_id": {
             "type": "string",
             "description": "Optional agent ID to inspect"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "description": "Overview returns compact artifact heads; full includes artifact details."
           },
           "workspace_id": {
             "type": "string",
@@ -3153,6 +3161,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
+          "view": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "description": "Overview returns compact artifact heads; full includes artifact details."
+          },
           "initiative_id": {
             "type": "string",
             "description": "Optional: Initiative UUID to check."
@@ -16083,6 +16099,15 @@
           "include_idle": {
             "type": "boolean",
             "description": "Include idle agents in the response"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "default": "overview",
+            "description": "Overview uses compact artifact heads. Full includes artifact details."
           }
         },
         "additionalProperties": false,
@@ -16134,6 +16159,15 @@
             "type": "string",
             "minLength": 1,
             "description": "Initiative UUID."
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "default": "overview",
+            "description": "Overview uses compact artifact heads. Full includes artifact details."
           }
         },
         "required": [
