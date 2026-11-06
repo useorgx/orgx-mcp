@@ -284,7 +284,7 @@ const QUEUED_TASK_STATES = new Set(['queued', 'pending', 'not_started', 'todo'])
 // Still the agent's current work, but not moving. The app reports a live task
 // this way while its agent's run is stalled or blocked
 // (lib/agents/tools/agentStatusTaskState.ts, CURRENT_TASK_STATUSES).
-const HELD_TASK_STATES = new Set(['blocked', 'stalled']);
+const HELD_TASK_STATES = new Set(['blocked', 'stalled', 'held', 'paused']);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -659,7 +659,7 @@ export function enrichAgentStatusWithDurableEvidence(
       );
 
       const focusTask =
-        newest(activeTasks) ?? newest(queuedTasks) ?? newest(terminalTasks);
+        newest(activeTasks) ?? newest(heldTasks) ?? newest(queuedTasks) ?? newest(terminalTasks);
       const latestArtifact = [...matchedArtifacts]
         .sort((left, right) => compareArtifactTimestamps(right, left))[0] ?? null;
       const heartbeat =
@@ -696,9 +696,16 @@ export function enrichAgentStatusWithDurableEvidence(
           activityState = 'active';
           observabilityState = 'fresh';
         }
+      } else if (heldTasks.length > 0) {
+        const stalled = heldTasks.every(task => taskState(task.status ?? task.state ?? task.phase) === 'stalled');
+        status = stalled ? 'stalled' : 'blocked';
+        activityState = stalled ? 'stalled' : 'held';
+        observabilityState = stalled ? 'stale' : 'fresh';
       } else if (queuedTasks.length > 0) {
-        status = 'queued';
-        activityState = 'queued';
+        const admitted = Boolean(recordString(agent, ['run_id', 'job_id'])) ||
+          queuedTasks.some(task => Boolean(recordString(task, ['run_id', 'job_id'])));
+        status = admitted ? 'queued' : 'planned';
+        activityState = status;
         observabilityState = heartbeat ? (isFresh ? 'fresh' : 'stale') : 'unknown';
         if (observabilityState !== 'fresh') {
           staleReason = heartbeat
@@ -815,7 +822,7 @@ export function normalizeAgentStatusPayload(
         : {}),
     };
   });
-  const statusCounts = ['running', 'stalled', 'queued', 'blocked', 'idle', 'unknown', 'done']
+  const statusCounts = ['running', 'stalled', 'queued', 'planned', 'blocked', 'idle', 'unknown', 'done']
     .map((status) => ({ status, count: countAgentsByStatus(agents, status) }))
     .filter(({ count }) => count > 0);
 
@@ -839,6 +846,7 @@ export function normalizeAgentStatusPayload(
       running: countAgentsByStatus(agents, 'running'),
       stalled: countAgentsByStatus(agents, 'stalled'),
       queued: countAgentsByStatus(agents, 'queued'),
+      planned: countAgentsByStatus(agents, 'planned'),
       blocked: countAgentsByStatus(agents, 'blocked'),
       idle: countAgentsByStatus(agents, 'idle'),
       unknown: countAgentsByStatus(agents, 'unknown'),
