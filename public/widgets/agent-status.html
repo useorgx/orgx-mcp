@@ -557,12 +557,20 @@
       return rows;
     }
 
+    function reportedProgress() {
+      for (var index = 0; index < arguments.length; index += 1) {
+        var value = asNumber(arguments[index]);
+        if (value != null && value >= 0 && value <= 100) return value;
+      }
+      return null;
+    }
+
     function normalizeStream(stream, index) {
       if (!stream || typeof stream !== 'object') return null;
       return {
         id: firstString([stream.id, stream.ref]) || 'stream-' + index,
         name: firstString([stream.name, stream.title]) || 'Stream ' + (index + 1),
-        progress: Math.max(0, Math.min(100, asNumber(stream.progress || stream.progress_pct || stream.percent) || 0))
+        progress: reportedProgress(stream.progress, stream.progress_pct, stream.percent)
       };
     }
 
@@ -612,10 +620,7 @@
       if (status === 'done' && !tasks.length) currentTask = 'No active task right now';
       if (status === 'stalled' && !tasks.length) currentTask = 'Last execution needs a refresh';
 
-      var progress = asNumber(raw.progress || raw.progress_pct || raw.percent_complete);
-      if (progress == null && (tasks.length > 0 || completedTasks.length > 0)) {
-        progress = Math.round((completedTasks.length / (tasks.length + completedTasks.length)) * 100);
-      }
+      var progress = reportedProgress(raw.progress, raw.progress_pct, raw.percent_complete);
 
       return {
         id: firstString([raw.agent_id, raw.id, raw.agent_name]) || 'agent-' + index,
@@ -686,7 +691,7 @@
           currentTask: keepIncoming ? (agent.currentTask || existing.currentTask) : (existing.currentTask || agent.currentTask),
           currentMeta: existing.currentMeta || agent.currentMeta,
           accentRgb: existing.accentRgb || agent.accentRgb,
-          progress: Math.max(existing.progress || 0, agent.progress || 0),
+          progress: selected.progress,
           blockers: blockers,
           tasks: mergeUniqueItems(existing.tasks, agent.tasks),
           completedTasks: mergeUniqueItems(existing.completedTasks, agent.completedTasks),
@@ -926,8 +931,8 @@
       });
       var streamRows = agent.streams.map(function (stream) {
         return {
-          title: stream.name, state: stream.progress + '%', tone: stream.progress >= 100 ? 'done' : 'running',
-          bar: '<span class="command-progress-bar" aria-hidden="true"><span style="width:' + stream.progress + '%"></span></span>'
+          title: stream.name, state: stream.progress == null ? 'Progress unavailable' : stream.progress + '%', tone: stream.progress >= 100 ? 'done' : 'running',
+          bar: stream.progress == null ? '' : '<span class="command-progress-bar" aria-hidden="true"><span style="width:' + stream.progress + '%"></span></span>'
         };
       });
 
