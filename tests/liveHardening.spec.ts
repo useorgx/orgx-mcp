@@ -454,19 +454,11 @@ describe('the stream credential stays out of the transcript', () => {
     expect(attached).toBeNull();
   });
 
-  it('does not give the generated widget the short grant lifetime', async () => {
-    // Shortening it looked like a security win and was a regression: that widget
-    // is standalone HTML with no MCP tool handle, so it cannot mint a
-    // replacement. The short life only works for a grant that can refresh
-    // itself, and applying it here cut the widget's updates from an hour to
-    // fifteen minutes with no way to recover.
-    const { LIVE_GRANT_TTL_MS, GENERATED_WIDGET_TTL_MS } = await import(
-      '../src/live/streamGrant'
-    );
-    expect(GENERATED_WIDGET_TTL_MS).toBeGreaterThan(LIVE_GRANT_TTL_MS);
-
+  it('keeps stream credentials in widget metadata instead of model-facing results', () => {
     const source = readFileSync(join(REPO_ROOT, 'src', 'index.ts'), 'utf8');
-    expect(source).toContain('ttlMs: GENERATED_WIDGET_TTL_MS');
+    expect(source).toContain("'orgx/liveGrant': liveGrant");
+    expect(source).not.toContain('widgetHtml: _liveFeedWidgetHtml');
+    expect(source).not.toMatch(/\.live\s*=\s*liveGrant/);
   });
 
 });
