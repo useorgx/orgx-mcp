@@ -697,8 +697,10 @@ export function enrichAgentStatusWithDurableEvidence(
           observabilityState = 'fresh';
         }
       } else if (heldTasks.length > 0) {
-        status = 'blocked';
-        activityState = 'held';
+        const stalled = heldTasks.every(task => taskState(task.status ?? task.state ?? task.phase) === 'stalled');
+        status = stalled ? 'stalled' : 'blocked';
+        activityState = stalled ? 'stalled' : 'held';
+        observabilityState = stalled ? 'stale' : 'fresh';
       } else if (queuedTasks.length > 0) {
         const admitted = Boolean(recordString(agent, ['run_id', 'job_id'])) ||
           queuedTasks.some(task => Boolean(recordString(task, ['run_id', 'job_id'])));
