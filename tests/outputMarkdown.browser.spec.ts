@@ -12,6 +12,27 @@ beforeAll(async () => {
 afterAll(async () => { await browser?.close(); });
 
 describe.each(['light', 'dark'] as const)('output Markdown on a 390px %s phone', (theme) => {
+  it('reads a promoted Markdown technical spec as a document, preserving task hierarchy', async () => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: theme });
+    const page = await context.newPage();
+    await installHostedWidgetFixtures(page);
+    await page.addInitScript(({ theme }) => {
+      (window as unknown as Record<string, unknown>).openai = { theme, setWidgetHeight() {}, toolOutput: {
+        artifact: { id: 'promoted-spec', name: 'Checkout review', artifact_type: 'eng.tech_spec', status: 'in_review', metadata: { source_content_preview: '# Rollout\n\n- [x] Regression checked\n  - Provider timeout\n- [ ] Client acceptance\n\n[Evidence](https://useorgx.com/artifacts/a)' } },
+        reviewContractSource: 'canonical', reviewContract: { schemaVersion: 'artifact_review_contract.v1', quality: { state: 'unscored', score: null }, workflow: { headline: 'Review the output' } },
+      } };
+    }, { theme });
+    try {
+      await page.goto(`${WIDGET_FIXTURE_ORIGIN}/widgets/artifact-review.html`);
+      const preview = page.locator('.artifact-preview__markdown');
+      await preview.waitFor();
+      expect(await preview.locator('h1').innerText()).toBe('Rollout');
+      expect(await preview.locator('li ul li').innerText()).toBe('Provider timeout');
+      expect(await preview.locator('[aria-label="Completed"]').count()).toBe(1);
+      expect(await preview.locator('a').innerText()).toBe('Evidence');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    } finally { await context.close(); }
+  }, 30000);
   it('hydrates the actual panel summary and renders the same safe Markdown', async () => {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: theme, reducedMotion: 'reduce' });
     const page = await context.newPage();

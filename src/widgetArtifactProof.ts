@@ -402,8 +402,8 @@ export function normalizeArtifactRecord(input: unknown): NormalizedArtifact | nu
     milestone_id: firstString(record, ['milestone_id', 'milestoneId']),
     context: normalizeArtifactContext(record.context),
     ...(record.description !== undefined ? { description: typeof record.description === 'string' ? record.description : null } : {}),
-    ...(record.content !== undefined || metadata.content !== undefined || metadata.content_markdown !== undefined
-      ? { content: record.content !== undefined ? record.content : metadata.content ?? metadata.content_markdown ?? null } : {}),
+    ...(record.content !== undefined || metadata.content !== undefined || metadata.content_markdown !== undefined || metadata.source_content_preview !== undefined
+      ? { content: record.content !== undefined ? record.content : metadata.content ?? metadata.content_markdown ?? metadata.source_content_preview ?? null } : {}),
     ...(record.verification !== undefined || metadata.verification !== undefined
       ? { verification: record.verification !== undefined ? asRecord(record.verification) : asRecord(metadata.verification) } : {}),
     ...(record.version !== undefined ? { version: typeof record.version === 'string' || typeof record.version === 'number' ? record.version : null } : {}),

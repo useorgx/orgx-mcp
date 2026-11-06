@@ -1005,10 +1005,10 @@
       } else if (textOf(current) && !isEmptyUnknown(textOf(current))) {
         lines.push(sentence(textOf(current)));
       }
-      const uncertainty = textOf(packet.uncertainty);
-      if (uncertainty && !isEmptyUnknown(uncertainty) && !/\bno\b.*\brecommendation\b/i.test(uncertainty)) {
-        lines.push('Still uncertain: ' + sentence(uncertainty));
-      }
+      const uncertainties = Array.isArray(packet.uncertainty) ? packet.uncertainty : [packet.uncertainty];
+      uncertainties.map(textOf).forEach((uncertainty) => {
+        if (uncertainty && !isEmptyUnknown(uncertainty) && !/\bno\b.*\brecommendation\b/i.test(uncertainty)) lines.push('Still uncertain: ' + sentence(uncertainty));
+      });
       return lines;
     };
     var contextLines = (packet, raw) => {

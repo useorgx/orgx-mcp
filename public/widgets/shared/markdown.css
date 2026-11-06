@@ -5,6 +5,9 @@
 .ox-markdown h1 { font-size: 20px; } .ox-markdown h2 { font-size: 18px; } .ox-markdown h3 { font-size: 16px; }
 .ox-markdown p { margin: 0 0 10px; } .ox-markdown ul,.ox-markdown ol { margin: 0 0 12px; padding-left: 20px; }
 .ox-markdown li { margin: 4px 0; } .ox-markdown a { color: var(--ox-text); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.ox-markdown li > ul,.ox-markdown li > ol { margin: 6px 0; }
+.ox-markdown .ox-md-task { list-style: none; position: relative; }
+.ox-md-task-state { position: absolute; left: -20px; color: var(--ox-text-muted); font-size: 13px; }
 .ox-markdown code { font: 12px/1.5 var(--ox-font-code); background: var(--ox-hover); padding: 2px 4px; border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .ox-markdown pre { max-width: 100%; margin: 10px 0; padding: 12px; border: 1px solid var(--ox-border); border-radius: 8px; background: var(--ox-well-bg); white-space: pre-wrap; overflow-wrap: anywhere; }
 .ox-markdown pre code { padding: 0; background: none; } .ox-markdown blockquote { margin: 12px 0; border-left: 2px solid var(--ox-border-strong); padding-left: 12px; color: var(--ox-text-muted); }

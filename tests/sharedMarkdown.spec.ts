@@ -14,6 +14,15 @@ function preview(value: string, options?: Record<string, unknown>) {
 }
 
 describe('shared output Markdown', () => {
+  it('preserves nested mixed lists and describes task states without fake controls', () => {
+    const doc = preview('- [x] Regression checked\n  1. Provider timeout\n  2. Client cancellation\n- [ ] Client acceptance');
+    expect(doc.querySelectorAll('ul > li')).toHaveLength(2);
+    expect(doc.querySelectorAll('li ol > li')).toHaveLength(2);
+    expect(doc.querySelector('[aria-label="Completed"]')).not.toBeNull();
+    expect(doc.querySelector('[aria-label="Not completed"]')).not.toBeNull();
+    expect(doc.querySelector('button,input')).toBeNull();
+    expect(doc.body.textContent).not.toMatch(/\[[ x]\]/);
+  });
   it('renders headings, lists, inline formatting and source links as structured content', () => {
     const doc = preview('# Answer\n\n**Ship the deck.** Keep `v2`.\n\n- Brand checked\n- Data checked\n\n[Receipt](/console/runs/abc)');
     expect(doc.querySelector('h1')?.textContent).toBe('Answer');
