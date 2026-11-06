@@ -110,6 +110,11 @@ afterEach(() => {
 });
 
 describe('decisions widget actions', () => {
+  it('preserves canonical uncertainty arrays alongside the recommendation', async () => {
+    mount([decision(D1, { review_packet: { question: 'Confirm the rollout?', current: { state: 'pending' }, recommendation: { status: 'ready', action: 'Wait for the client.' }, uncertainty: ['Client acceptance has not been recorded.', 'The rollout window is unconfirmed.'] } })], {});
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Client acceptance has not been recorded.'));
+    expect(document.body.textContent).toContain('The rollout window is unconfirmed.');
+  });
   it('renders a singular core review packet without calling an empty queue caught up', async () => {
     mountWidget('decisions', { payload: { data: { decision_id: D1, decision: decision(D1), requires_human_review: true, review_url: 'https://useorgx.com/decisions/' + D1 }, meta: { apiVersion: '1' } }, callTool: vi.fn() });
     await vi.waitFor(() => expect(document.querySelector('.dq-q')?.textContent).toContain('Decision'));

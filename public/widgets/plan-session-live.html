@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="shared/tokens.css" />
   <link rel="stylesheet" href="shared/widget-foundation.css" />
   <link rel="stylesheet" href="shared/interaction-kit.css" />
+  <link rel="stylesheet" href="shared/markdown.css" />
   <script src="shared/kit/ox-elements-core.js"></script>
   <script src="shared/kit/ox-elements-footer.js"></script>
 
@@ -228,6 +229,7 @@
   <script src="shared/mcp-apps-sdk.umd.js"></script>
   <script src="shared/widget-runtime.js"></script>
   <script src="shared/orgx-icons.js"></script>
+  <script src="shared/markdown.js"></script>
   <script src="shared/live-machine.js"></script>
   <script src="shared/live-store.js"></script>
   <script src="shared/live-panel.js"></script>
@@ -285,10 +287,14 @@
         var title = fallbackTitle || 'New plan';
         var sections = [];
         var current = null;
-        var intro = [];
+        var intro = [], fence = null;
 
         lines.forEach(function parseLine(line) {
-          var heading = line.match(/^(#{1,6})\s+(.+?)\s*$/);
+          var fenceLine = line.trim().match(/^(`{3,}|~{3,})(.*)$/);
+          var inFence = Boolean(fence);
+          if (fenceLine && !fence) fence = fenceLine[1];
+          else if (fenceLine && fenceLine[1][0] === fence[0] && fenceLine[1].length >= fence.length && !fenceLine[2].trim()) fence = null;
+          var heading = !inFence && !fenceLine && line.match(/^(#{1,6})\s+(.+?)\s*$/);
           if (heading) {
             if (heading[1].length === 1 && title === (fallbackTitle || 'New plan')) {
               title = heading[2].trim();
@@ -438,57 +444,8 @@
         return label ? 'updated ' + label : 'recently updated';
       }
 
-      function renderInline(value) {
-        return escapeHtml(value)
-          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-          .replace(/`([^`]+)`/g, '<code>$1</code>');
-      }
-
       function renderMarkdownBody(value) {
-        var lines = String(value || '').split('\n');
-        var html = [];
-        var paragraph = [];
-        var listType = '';
-        var listItems = [];
-
-        function flushParagraph() {
-          if (!paragraph.length) return;
-          html.push('<p>' + renderInline(paragraph.join(' ')) + '</p>');
-          paragraph = [];
-        }
-
-        function flushList() {
-          if (!listItems.length) return;
-          html.push('<' + listType + '>' + listItems.map(function renderItem(item) {
-            return '<li>' + renderInline(item) + '</li>';
-          }).join('') + '</' + listType + '>');
-          listItems = [];
-          listType = '';
-        }
-
-        lines.forEach(function renderLine(line) {
-          var unordered = line.match(/^\s*[-*]\s+(.+)$/);
-          var ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
-          if (unordered || ordered) {
-            flushParagraph();
-            var nextType = unordered ? 'ul' : 'ol';
-            if (listType && listType !== nextType) flushList();
-            listType = nextType;
-            listItems.push((unordered || ordered)[1]);
-            return;
-          }
-          if (!line.trim()) {
-            flushParagraph();
-            flushList();
-            return;
-          }
-          flushList();
-          paragraph.push(line.trim());
-        });
-
-        flushParagraph();
-        flushList();
-        return html.join('') || '<p>Plan details are still being shaped.</p>';
+        return window.OrgXMarkdown.render(value, { htmlAsText: true }) || '<p>Plan details are still being shaped.</p>';
       }
 
       function icon(name, size) {
@@ -588,7 +545,7 @@
           '<section class="plan-well" aria-labelledby="selected-section-title">' +
             '<h2 class="plan-section__title" id="selected-section-title">' + escapeHtml(section.heading) + '</h2>' +
             '<div class="plan-section__body-wrap" data-section-body-wrap>' +
-              '<div class="plan-section__body" data-section-body>' + renderMarkdownBody(section.body) + '</div>' +
+              '<div class="plan-section__body ox-markdown" data-section-body>' + renderMarkdownBody(section.body) + '</div>' +
             '</div>' +
             '<button type="button" class="plan-expand" data-expand-section aria-expanded="false">Show full section</button>' +
           '</section>'

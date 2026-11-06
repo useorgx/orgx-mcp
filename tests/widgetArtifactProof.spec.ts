@@ -10,6 +10,14 @@ import {
   normalizeArtifactRecord,
 } from '../src/widgetArtifactProof';
 
+describe('promoted document content', () => {
+  it('keeps the admitted source preview when promotion is the only body source', () => {
+    const content = '# Review\n\n**Keep** the bounded retry.';
+    expect(normalizeArtifactRecord({ id: 'promoted', metadata: { source_content_preview: content } })?.content).toBe(content);
+    expect(normalizeArtifactRecord({ id: 'promoted', content: 'Current body', metadata: { source_content_preview: content } })?.content).toBe('Current body');
+  });
+});
+
 describe('widget artifact proof helpers', () => {
   it('normalizes artifact entity records', () => {
     expect(

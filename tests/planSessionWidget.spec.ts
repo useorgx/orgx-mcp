@@ -57,6 +57,15 @@ function getModel(dom: JSDOM): PlanWidgetModel {
 }
 
 describe('plan session widget', () => {
+  it('renders document tables, links and fenced code through the shared formatter', () => {
+    const dom = createWidget();
+    const html = getModel(dom).renderMarkdownBody('| Owner | State |\n| --- | --- |\n| Alex | Ready |\n\n[Evidence](https://useorgx.com/artifacts/a)\n\n```json\n{"ready":true}\n```');
+    const doc = new JSDOM(html).window.document;
+    expect(doc.querySelector('table td')?.textContent).toBe('Alex');
+    expect(doc.querySelector('a')?.textContent).toBe('Evidence');
+    expect(doc.querySelector('pre code')?.textContent).toBe('{"ready":true}');
+    dom.window.close();
+  });
   it('renders the live current_plan contract instead of requiring synthetic steps', () => {
     const model = getModel(createWidget());
     const plan = model.normalizePlanPayload({

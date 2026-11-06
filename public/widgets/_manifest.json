@@ -111,8 +111,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 115437,
-      "hash": "3f305676ab5a",
+      "bytes": 116084,
+      "hash": "222543c68724",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -151,8 +151,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 172962,
-      "hash": "d766438edc55",
+      "bytes": 173068,
+      "hash": "9c8104ef10ae",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -375,8 +375,8 @@
     },
     "plan-session-live": {
       "file": "public/widgets/plan-session-live.html",
-      "bytes": 54063,
-      "hash": "ba332bf65294",
+      "bytes": 52985,
+      "hash": "f3ee2526d98e",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/interaction-kit.css",
@@ -386,6 +386,8 @@
         "shared/live-machine.js",
         "shared/live-panel.js",
         "shared/live-store.js",
+        "shared/markdown.css",
+        "shared/markdown.js",
         "shared/mcp-apps-sdk.umd.js",
         "shared/orgx-icons.js",
         "shared/tokens.css",

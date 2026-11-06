@@ -657,7 +657,7 @@
           artifact_type: firstString([artifact.artifact_type, artifact.artifactType, artifact.type, artifact.kind]) || 'document',
           artifact_url: firstString([artifact.artifact_url, artifact.artifactUrl, artifact.preview_url, artifact.previewUrl, artifact.url]),
           summary: firstString([artifact.summary, artifact.description, metadata.summary]),
-          content: firstString([artifact.content, artifact.body, artifact.markdown, metadata.content, metadata.body]),
+          content: firstString([artifact.content, artifact.body, artifact.markdown, metadata.content, metadata.source_content_preview, metadata.body, metadata.markdown, metadata.preview_markdown]),
           code: firstString([artifact.code, artifact.diff, metadata.code, metadata.diff]),
           status: firstString([artifact.status, artifact.review_status, artifact.reviewStatus]) || 'in_review',
           version: firstNumber([artifact.version, artifact.version_number, artifact.versionNumber]) || 1,
@@ -1017,6 +1017,10 @@
         const content = artifact.content || artifact.summary || '';
         const code = artifact.code || '';
         const payload = readablePayload(artifact);
+        const metadata = asRecord(artifact.metadata);
+        const mode = firstString([artifact.render_mode, metadata.render_mode, metadata.renderMode]).toLowerCase();
+        const mime = firstString([artifact.mime_type, metadata.mime_type, metadata.content_type]).toLowerCase();
+        const documentFormat = ['markdown', 'text', 'html'].includes(mode) || /^(text\/(markdown|x-markdown|plain|html))$/.test(mime);
 
         if (isSafeMediaUrl(url, true) && (type.startsWith('image') || type.includes('mockup') || type.includes('screenshot') || type.includes('design'))) {
           return '<img src="' + escapeAttribute(url) + '" alt="' + escapeAttribute(artifact.name || 'artifact') + '" />';
@@ -1030,9 +1034,11 @@
           return renderDiff(code || content);
         }
 
-        if (type.includes('code') || type.includes('pull_request') || type.includes('tech_spec') || code) {
+        if (code || (!documentFormat && (type.includes('code') || type.includes('pull_request')))) {
           return '<pre>' + escapeHtml(code || content) + '</pre>';
         }
+
+        if (mode === 'text' || mime === 'text/plain') return '<div class="artifact-preview__text">' + escapeHtml(content).replace(/\n/g, '<br>') + '</div>';
 
         if (type.includes('markdown') || type.includes('doc') || type.includes('report') || type.includes('brief') || content) {
           return '<div class="artifact-preview__markdown ox-markdown">' + window.OrgXMarkdown.render(humanizeCodes(content), { linkAllowed: isAllowedArtifactLinkUrl }) + '</div>';
