@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-06T08:18:28.082Z",
-  "sourceHash": "d5db5b7fae31abc9",
+  "generatedAt": "2026-11-06T08:35:07.156Z",
+  "sourceHash": "a20f5ad0795f723a",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -39,14 +39,6 @@
           "agent_id": {
             "type": "string",
             "description": "Optional agent ID to inspect"
-          },
-          "view": {
-            "type": "string",
-            "enum": [
-              "overview",
-              "full"
-            ],
-            "description": "Overview returns compact artifact heads; full includes artifact details."
           },
           "workspace_id": {
             "type": "string",
@@ -3161,14 +3153,6 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "view": {
-            "type": "string",
-            "enum": [
-              "overview",
-              "full"
-            ],
-            "description": "Overview returns compact artifact heads; full includes artifact details."
-          },
           "initiative_id": {
             "type": "string",
             "description": "Optional: Initiative UUID to check."

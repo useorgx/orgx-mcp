@@ -815,7 +815,6 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       'Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Successful calls record metered MCP allowance usage but do not change business records. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read the related blocker context. DO NOT USE: to check initiative health — use get_initiative_pulse instead.',
     inputSchema: {
       agent_id: z.string().optional().describe('Optional agent ID to inspect'),
-      view: z.enum(['overview', 'full']).optional().describe('Overview returns compact artifact heads; full includes artifact details.'),
       workspace_id: z.string().uuid().optional().describe('Optional workspace UUID to scope agent status'),
       command_center_id: z.string().uuid().optional().describe('Deprecated alias for workspace_id'),
       initiative_id: z.string().uuid().optional().describe('Optional initiative UUID to scope agent status'),
@@ -870,7 +869,6 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     description:
       'Use when the user asks how a project is going, what is blocked, or whether an initiative is on track. Successful calls record metered MCP allowance usage but do not change business records. Also known as: project status, roadmap progress, execution health, blockers. USE WHEN: user asks how an initiative is going, or wants a status update. NEXT: If blockers exist, use orgx_inspect for one blocker or orgx_search for related records. DO NOT USE: for an org-wide brief — use orgx_recommend with mode=morning_brief instead.',
     inputSchema: {
-      view: z.enum(['overview', 'full']).optional().describe('Overview returns compact artifact heads; full includes artifact details.'),
       initiative_id: z
         .string()
         .optional()
