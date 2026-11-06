@@ -137,5 +137,14 @@
     flush(); return result.join('');
   }
 
-  global.OrgXMarkdown = { render: render, inline: inline, safeHref: safeHref };
+  function excerpt(source, max) {
+    var root = global.document.createElement('div');
+    root.innerHTML = render(source, { htmlAsText: true });
+    var first = root.querySelector('p') || root.firstElementChild;
+    var text = String(first ? first.textContent : source || '').replace(/\s+/g, ' ').trim();
+    var chars = Array.from(text), limit = max || 280, head = chars.slice(0, limit).join(''), boundary = head.lastIndexOf(' ');
+    return { preview: chars.length > limit ? (boundary > limit / 2 ? head.slice(0, boundary) : head) + '…' : text, isExcerpt: root.children.length > 1 || chars.length > limit };
+  }
+
+  global.OrgXMarkdown = { render: render, inline: inline, safeHref: safeHref, excerpt: excerpt };
 })(typeof window !== 'undefined' ? window : globalThis);

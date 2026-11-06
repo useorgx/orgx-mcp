@@ -166,6 +166,9 @@
     .structured-preview { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 13px; }
     .structured-preview dt { color: var(--ox-text-muted); text-transform: capitalize; }
     .structured-preview dd { margin: 0; color: var(--ox-text); }
+    .structured-preview .structured-preview { grid-template-columns: minmax(70px, .7fr) minmax(0, 1fr); padding-left: 10px; }
+    .structured-preview ul { margin: 0; padding-left: 18px; }
+    .structured-preview summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
     .artifact-preview__placeholder { display: flex; align-items: center; gap: 12px; color: var(--ox-text-muted); }
     .preview-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 4px; }
     .preview-toggle {
@@ -990,14 +993,25 @@
       }
 
       function renderStructured(value) {
-        const entries = Object.entries(asRecord(value)).slice(0, 12);
-        if (!entries.length) return '';
-        return '<dl class="structured-preview">' + entries.map(function (entry) {
-          const raw = entry[1];
-          const serialized = raw && typeof raw === 'object' ? JSON.stringify(raw) : String(raw ?? '—');
-          const display = serialized.length > 260 ? serialized.slice(0, 257) + '…' : serialized;
-          return '<dt>' + escapeHtml(entry[0].replace(/[_-]+/g, ' ')) + '</dt><dd>' + escapeHtml(display) + '</dd>';
-        }).join('') + '</dl>';
+        let nodes = 0;
+        function read(raw, depth) {
+          if (++nodes > 300 || depth > 8) return '<p>Open the full artifact to inspect the remaining data.</p>';
+          if (raw === null || raw === undefined) return 'Not recorded';
+          if (typeof raw === 'boolean') return raw ? 'Yes' : 'No';
+          if (typeof raw === 'string') return window.OrgXMarkdown.render(raw, { htmlAsText: true });
+          if (typeof raw !== 'object') return escapeHtml(String(raw));
+          if (Array.isArray(raw)) {
+            function rows(items) { return '<ul>' + items.map(item => '<li>' + read(item, depth + 1) + '</li>').join('') + '</ul>'; }
+            return rows(raw.slice(0, 3)) + (raw.length > 3 ? '<details><summary>Show all ' + raw.length + ' items</summary>' + rows(raw.slice(3)) + '</details>' : '');
+          }
+          const entries = Object.entries(raw);
+          function rows(items) {
+            return '<dl class="structured-preview">' + items.map(([key, item]) => '<dt>' + escapeHtml(key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ')) + '</dt><dd>' + read(item, depth + 1) + '</dd>').join('') + '</dl>';
+          }
+          const technical = entries.filter(([key]) => /(?:^|_)(id|uuid|hash|sha|key)$|Id$/.test(key));
+          return rows(entries.filter(entry => !technical.includes(entry))) + (technical.length ? '<details><summary>Technical details</summary>' + rows(technical) + '</details>' : '');
+        }
+        return read(value, 0);
       }
 
       function renderDiff(text) {
@@ -1020,7 +1034,7 @@
         const metadata = asRecord(artifact.metadata);
         const mode = firstString([artifact.render_mode, metadata.render_mode, metadata.renderMode]).toLowerCase();
         const mime = firstString([artifact.mime_type, metadata.mime_type, metadata.content_type]).toLowerCase();
-        const documentFormat = ['markdown', 'text', 'html'].includes(mode) || /^(text\/(markdown|x-markdown|plain|html))$/.test(mime);
+        const documentFormat = ['markdown', 'text', 'html', 'json'].includes(mode) || /^(text\/(markdown|x-markdown|plain|html))$/.test(mime);
 
         if (isSafeMediaUrl(url, true) && (type.startsWith('image') || type.includes('mockup') || type.includes('screenshot') || type.includes('design'))) {
           return '<img src="' + escapeAttribute(url) + '" alt="' + escapeAttribute(artifact.name || 'artifact') + '" />';
@@ -1039,6 +1053,12 @@
         }
 
         if (mode === 'text' || mime === 'text/plain') return '<div class="artifact-preview__text">' + escapeHtml(content).replace(/\n/g, '<br>') + '</div>';
+
+        if (mode === 'json' || mime === 'application/json') {
+          if (payload) return renderStructured(payload);
+          try { return renderStructured(JSON.parse(content)); }
+          catch (_) { return '<p>Data preview unavailable. Open the full artifact to inspect the source.</p>'; }
+        }
 
         if (type.includes('markdown') || type.includes('doc') || type.includes('report') || type.includes('brief') || content) {
           return '<div class="artifact-preview__markdown ox-markdown">' + window.OrgXMarkdown.render(humanizeCodes(content), { linkAllowed: isAllowedArtifactLinkUrl }) + '</div>';
@@ -1949,12 +1969,7 @@
         const summaryText = humanizeCodes(summary);
         const restatesVerdict = held && showQuality && !chip && /\b(bar|quality|scor(e|ed|ing))\b/i.test(summaryText);
 
-        stage.innerHTML = (
-          '<article class="wcard ox-surface" data-edge="' + (tone || 'mute') + '">' +
-          renderHeader(artifact, tone, mode === 'resolve' ? 'asking' : 'verifying', mode) +
-          '<div class="bd">' +
-          '<div class="review-desk animate-in">' +
-          frontDoorHtml +
+        const reviewControlHtml = (
           '<div class="review-control">' +
           (chip ? '<div class="review-status">' + chip + '</div>' : '') +
           '<h2 class="review-question">' + escapeHtml(question) + '</h2>' +
@@ -1962,7 +1977,15 @@
           (evidence.rulingNote ? '<p class="ruling-note"><b>Reviewer note</b> · ' + escapeHtml(evidence.rulingNote) + '</p>' : '') +
           (showQuality ? renderQualityGauge(evidence, artifact, activeReviewContract) : '') +
           '<p class="review-consequence">' + escapeHtml(consequence) + '</p>' +
-          '</div>' +
+          '</div>'
+        );
+
+        stage.innerHTML = (
+          '<article class="wcard ox-surface" data-edge="' + (tone || 'mute') + '">' +
+          renderHeader(artifact, tone, mode === 'resolve' ? 'asking' : 'verifying', mode) +
+          '<div class="bd">' +
+          '<div class="review-desk animate-in">' +
+          frontDoorHtml +
           '<div class="review-evidence">' +
           '<div class="artifact-preview" data-preview>' +
           '<div class="viewer-tabs" role="tablist" aria-label="Artifact viewer">' +
@@ -1980,6 +2003,7 @@
           '<div class="viewer-panel viewer-panel--readout" id="artifact-history-panel" role="tabpanel" data-view-panel="history" hidden>' + renderHistory(artifact) + '</div>' +
           '</div>' +
           '</div>' +
+          reviewControlHtml +
           (canReview ? renderDecisionRow(evidence) : '') +
           '</div>' +
           '</div>' +
