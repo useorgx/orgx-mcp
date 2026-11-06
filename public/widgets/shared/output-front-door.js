@@ -12,6 +12,9 @@
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return '';
     return value < 1024 ? value + ' B' : value < 1048576 ? Math.round(value / 1024) + ' KB' : (value / 1048576).toFixed(1) + ' MB';
   }
+  function fileType(value) {
+    return ({ 'text/markdown': 'Markdown', 'text/html': 'HTML', 'text/csv': 'CSV', 'application/json': 'JSON', 'application/pdf': 'PDF' })[value] || text(value) || 'File';
+  }
   function list(values) {
     var items = Array.isArray(values) ? values.filter(function valid(value) { return typeof value === 'string'; }).slice(0, 8) : [];
     return items.length ? '<ul>' + items.map(function item(value) { return '<li>' + esc(value) + '</li>'; }).join('') + '</ul>' : '<p>No producer notes.</p>';
@@ -27,24 +30,27 @@
     var files = Array.isArray(value.files) ? value.files.filter(function valid(file) {
       return file && uuid(file.artifactId) && text(file.name) && file.href === '/artifacts/' + file.artifactId;
     }).slice(0, 100) : [];
+    files.sort(function currentFirst(a, b) { return Number(b.artifactId === options.artifactId) - Number(a.artifactId === options.artifactId); });
     function fileRow(file) {
       var current = file.artifactId === options.artifactId;
-      return '<li><a ' + attrs(file.href) + (current ? ' aria-current="page"' : '') + '><strong>' + esc(file.name) + '</strong><span>' + esc([text(file.mimeType) || 'File', bytes(file.sizeBytes)].filter(Boolean).join(' · ')) + '</span><span>' + esc(text(file.purpose)) + '</span></a></li>';
+      return '<li><a ' + attrs(file.href) + (current ? ' aria-current="page"' : '') + '><strong>' + esc(file.name) + '</strong><span>' + esc([fileType(file.mimeType), bytes(file.sizeBytes)].filter(Boolean).join(' · ')) + '</span><span>' + esc(text(file.purpose)) + '</span></a></li>';
     }
-    var fileList = files.length ? '<nav aria-label="Output files"><h4>Files</h4><ul class="ox-fd-files">' + files.slice(0, 4).map(fileRow).join('') + '</ul>' +
-      (files.length > 4 ? '<details><summary>Show all ' + files.length + ' files</summary><ul class="ox-fd-files">' + files.slice(4).map(fileRow).join('') + '</ul></details>' : '') + '</nav>' : '';
+    var fileList = files.length ? '<nav aria-label="Output files"><h4>Files · ' + files.length + '</h4><ul class="ox-fd-files">' + files.slice(0, 2).map(fileRow).join('') + '</ul>' +
+      (files.length > 2 ? '<details><summary>Show all ' + files.length + ' files</summary><ul class="ox-fd-files">' + files.slice(2).map(fileRow).join('') + '</ul></details>' : '') + '</nav>' : '';
     var decisionList = decisions.length ? '<section aria-label="Decisions"><h4>Linked decisions · ' + decisions.length + (decisions.length === 1 ? ' decision' : ' decisions') + '</h4><ol class="ox-fd-decisions">' + decisions.map(function decision(d) {
       return '<li><strong>' + esc(d.question) + '</strong><p><b>Recommend:</b> ' + esc(d.recommendation) + '</p><p>' + esc(d.impact) + '</p>' +
         (typeof options.decisionAction === 'function' ? options.decisionAction(d.id) : link(d.href, 'Review decision')) + '</li>';
     }).join('') + '</ol></section>' : '';
     var runLink = uuid(receipt.runId) && receipt.href === '/console/runs/' + receipt.runId ? link(receipt.href, 'Open run receipt') : 'Run not recorded';
+    var excerpt = global.OrgXMarkdown.excerpt(value.answer);
+    var answer = excerpt.isExcerpt ? '<p>' + esc(excerpt.preview) + '</p><details class="ox-fd-full"><summary>Read full answer</summary><div class="ox-markdown">' + global.OrgXMarkdown.render(value.answer, { htmlAsText: true }) + '</div></details>' : '<div class="ox-markdown">' + global.OrgXMarkdown.render(value.answer, { htmlAsText: true }) + '</div>';
     return '<section class="ox-front-door" aria-label="Output summary" data-front-door>' +
-      '<h3>The answer</h3><p class="ox-fd-answer">' + esc(value.answer) + '</p>' +
+      '<h3>The answer</h3><div class="ox-fd-answer">' + answer + '</div>' +
       '<p class="ox-fd-context" data-state="' + contextState + '"><strong>Context ' + contextState + '.</strong> ' + esc(text(context.summary) || 'OrgX context status was not recorded for this output.') + '</p>' + decisionList +
       '<details class="ox-fd-checks"><summary>Checked / Not checked</summary><p>Reported by the producer. Quality results and client acceptance are recorded separately below.</p><h4>Checked</h4>' + list(value.checked) + '<h4>Not checked</h4>' + list(value.notChecked) + '</details>' +
-      fileList + '<section class="ox-fd-receipt" aria-label="Run receipt"><h4>Run receipt</h4><dl><dt>Run cost</dt><dd>' +
+      fileList + '<details class="ox-fd-receipt"><summary>Run details</summary><dl><dt>Run cost</dt><dd>' +
       (typeof receipt.costUsd === 'number' && Number.isFinite(receipt.costUsd) && receipt.costUsd >= 0 ? receipt.costUsd > 0 && receipt.costUsd < 0.01 ? '&lt;$0.01' : '$' + receipt.costUsd.toFixed(2) : 'Not recorded') +
-      '</dd><dt>Expert minutes</dt><dd>' + esc(amount(receipt.expertMinutes, ' min')) + '</dd><dt>Quality bar</dt><dd>' + esc(text(receipt.qualityBar) || 'Not recorded') + '</dd></dl><p>' + runLink + '</p></section></section>';
+      '</dd><dt>Expert minutes</dt><dd>' + esc(amount(receipt.expertMinutes, ' min')) + '</dd><dt>Quality bar</dt><dd>' + esc(text(receipt.qualityBar) || 'Not recorded') + '</dd></dl><p>' + runLink + '</p></details></section>';
   }
   global.OrgXOutputFrontDoor = { render: render };
 })(typeof window !== 'undefined' ? window : globalThis);

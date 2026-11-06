@@ -185,6 +185,12 @@ describe('where a task sits', () => {
 });
 
 describe('Outputs', () => {
+  it('keeps promoted source previews private and labels an incomplete document excerpt', () => {
+    const built = buildPanelOutputs([artifact(ART, { description: null, metadata: { source_content_preview: 'Ready for review.\n\n```text\n' + 'x'.repeat(1000) + '\n```' } })], { viewerIds: [] });
+    expect(built.previews[ART]).toMatchObject({ preview: 'Ready for review.', preview_truncated: true });
+    expect(built.outputs.items[0]!.has_preview).toBe(true);
+    expect(JSON.stringify(built.outputs)).not.toContain('Ready for review.');
+  });
   it('places each output on its chain from what the record says, newest first', () => {
     const { outputs } = buildPanelOutputs([
       artifact(ART, { artifact_type: 'pull_request', status: 'in_review', created_at: '2026-10-03T00:00:00.000Z', primary_url: 'https://github.com/acme/repo/pull/7' }),

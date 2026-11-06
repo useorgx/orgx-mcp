@@ -12,6 +12,55 @@ beforeAll(async () => {
 afterAll(async () => { await browser?.close(); });
 
 describe.each(['light', 'dark'] as const)('output Markdown on a 390px %s phone', (theme) => {
+  it('presents declared JSON as labelled facts and keeps technical identifiers secondary', async () => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: theme });
+    const page = await context.newPage();
+    await installHostedWidgetFixtures(page);
+    await page.addInitScript(({ theme }) => {
+      (window as unknown as Record<string, unknown>).openai = { theme, setWidgetHeight() {}, toolOutput: {
+        artifact: { id: 'data-output', name: 'Rollout evidence', artifact_type: 'document', status: 'in_review', metadata: { render_mode: 'json' }, content: JSON.stringify({ recommendation: 'Confirm the rollout window.', checks: { regression_checked: true, client_accepted: false }, source_run_id: 'run-source' }) },
+      } };
+    }, { theme });
+    try {
+      await page.goto(`${WIDGET_FIXTURE_ORIGIN}/widgets/artifact-review.html`);
+      const body = page.locator('[data-preview-body]');
+      await body.waitFor();
+      expect(await body.innerText()).toContain('Confirm the rollout window.');
+      expect(await body.innerText()).toContain('Yes');
+      expect(await body.innerText()).not.toContain('run-source');
+      expect(await body.locator('pre').count()).toBe(0);
+      await body.getByText('Technical details', { exact: true }).click();
+      expect(await body.innerText()).toContain('run-source');
+    } finally { await context.close(); }
+  }, 30000);
+  it('keeps the initial answer compact and expands the complete answer, files and run details', async () => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: theme });
+    const page = await context.newPage();
+    await installHostedWidgetFixtures(page);
+    const door = outputFrontDoor();
+    door.answer = '**Ready for review.**\n\n## Supporting evidence\n\nThe complete original explanation is still available.';
+    door.files = Array.from({ length: 7 }, (_,i) => ({ ...door.files[0]!, artifactId: `b1111111-1111-4111-8111-${String(i).padStart(12, '0')}`, href: `/artifacts/b1111111-1111-4111-8111-${String(i).padStart(12, '0')}`, name: `Evidence ${i}.md` }));
+    await page.addInitScript(({ theme, door }) => {
+      (window as unknown as Record<string, unknown>).openai = { theme, setWidgetHeight() {}, toolOutput: {
+        artifact: { id: 'reading', name: 'Review', artifact_type: 'document', status: 'in_review', content: '# Actual output\n\nRead the document first.' },
+        reviewContractSource: 'canonical', reviewContract: { schemaVersion: 'artifact_review_contract.v1', quality: { state: 'unscored', score: null }, workflow: { headline: 'Review the output' }, frontDoor: door },
+      } };
+    }, { theme, door });
+    try {
+      await page.goto(`${WIDGET_FIXTURE_ORIGIN}/widgets/artifact-review.html`);
+      const summary = page.locator('[data-front-door]');
+      await summary.waitFor();
+      expect(await summary.locator('.ox-fd-answer > p').innerText()).toBe('Ready for review.');
+      expect(await summary.getByRole('heading', { name: 'Supporting evidence' }).isVisible()).toBe(false);
+      expect(await summary.getByRole('navigation', { name: 'Output files' }).getByRole('link').count()).toBe(2);
+      await summary.getByText('Read full answer', { exact: true }).click();
+      expect(await summary.getByRole('heading', { name: 'Supporting evidence' }).isVisible()).toBe(true);
+      await summary.getByText('Show all 7 files', { exact: true }).click();
+      expect(await summary.getByRole('navigation', { name: 'Output files' }).getByRole('link').count()).toBe(7);
+      expect(await page.locator('.artifact-preview').evaluate(node => Boolean(node.compareDocumentPosition(document.querySelector('[data-quality-gauge]')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    } finally { await context.close(); }
+  }, 30000);
   it('reads a promoted Markdown technical spec as a document, preserving task hierarchy', async () => {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: theme });
     const page = await context.newPage();
@@ -55,8 +104,8 @@ describe.each(['light', 'dark'] as const)('output Markdown on a 390px %s phone',
       expect(await summary.locator('.ox-fd-answer').innerText()).toContain('Review the client deck');
       expect(await page.locator('.pn-md-detail .ox-markdown h1').innerText()).toBe('Client answer');
       expect(await page.locator('.pn-md-detail .ox-markdown img').count()).toBe(0);
-      expect(await page.locator('.pn-md-detail .ox-markdown').innerText()).toContain('Diagram preview unavailable; a rendered file is needed.');
-      expect(await page.locator('.pn-md-detail .ox-markdown').innerText()).not.toContain('flowchart');
+      expect(await page.locator('.pn-md-detail .pv-doc').innerText()).toContain('Diagram preview unavailable; a rendered file is needed.');
+      expect(await page.locator('.pn-md-detail .pv-doc').innerText()).not.toContain('flowchart');
       expect(await page.locator('.pn-md-detail table[data-stack]').count()).toBe(1);
       expect(await page.evaluate(() => (window as unknown as Record<string, unknown>).compromised)).toBeUndefined();
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
@@ -81,6 +130,8 @@ describe.each(['light', 'dark'] as const)('output Markdown on a 390px %s phone',
       expect(await summary.locator('.ox-fd-answer').innerText()).toContain('Review the client deck');
       expect(await summary.locator('.ox-fd-context').innerText()).toContain('Budget was not recorded.');
       expect(await summary.locator('[aria-current="page"]').innerText()).toContain('Client deck.md');
+      expect(await summary.locator('.ox-fd-receipt').getAttribute('open')).toBeNull();
+      await summary.locator('.ox-fd-receipt summary').click();
       expect(await summary.locator('.ox-fd-receipt').innerText()).toContain('$0.00');
       expect(await summary.locator('.ox-fd-receipt dt').allTextContents()).toContain('Expert minutes');
       expect(await summary.locator('.ox-fd-receipt').innerText()).not.toContain('minutes left');

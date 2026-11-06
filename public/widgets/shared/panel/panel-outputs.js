@@ -114,14 +114,16 @@
     said = said || {};
     var text = typeof said.preview === 'string' ? said.preview : '';
     var summary = typeof said.summary === 'string' ? said.summary : '';
+    var notice = said.preview_truncated ? '<p class="oc-quiet pv-excerpt">Excerpt · <a ' + global.OrgXLinks.attrs(o.url) + '>Read full output</a></p>' : '';
+    if (!text && !summary && notice) return notice;
     if (!text && !summary) return o.has_preview ? '<p class="oc-quiet">The preview did not come with this read. Open it in OrgX.</p>' : '';
     if (text && o.family === 'code') {
       return '<pre class="pv pv-code" data-swipe="off">' + text.split('\n').map(function line(l) {
         var k = /^\+(?!\+\+)/.test(l) ? 'a' : /^-(?!--)/.test(l) ? 'd' : '';
         return k ? '<span class="' + k + '">' + esc(l) + '</span>' : esc(l);
-      }).join('\n') + '</pre>';
+      }).join('\n') + '</pre>' + notice;
     }
-    return '<div class="pv pv-doc ox-markdown">' + (summary && text !== summary ? '<p class="pv-sum">' + esc(summary) + '</p>' : '') + (text ? global.OrgXMarkdown.render(text) : '') + '</div>';
+    return '<div class="pv pv-doc ox-markdown">' + (summary && text !== summary ? '<p class="pv-sum">' + esc(summary) + '</p>' : '') + (text ? global.OrgXMarkdown.render(text) : '') + '</div>' + notice;
   }
 
   function checksHtml(o) {

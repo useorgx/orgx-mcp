@@ -4,8 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { outputFrontDoor } from './fixtures/outputFrontDoor';
 
 const source = readFileSync('public/widgets/shared/output-front-door.js', 'utf8');
+const markdown = readFileSync('public/widgets/shared/markdown.js', 'utf8');
 function mount(value: unknown, options: Record<string, unknown> = {}) {
   const dom = new JSDOM('<!doctype html><main></main>', { runScripts: 'outside-only' });
+  dom.window.eval(markdown);
   dom.window.eval(source);
   const renderer = (dom.window as unknown as { OrgXOutputFrontDoor: { render(value: unknown, options: unknown): string } }).OrgXOutputFrontDoor;
   dom.window.document.querySelector('main')!.innerHTML = renderer.render(value, options);
@@ -13,6 +15,15 @@ function mount(value: unknown, options: Record<string, unknown> = {}) {
 }
 
 describe('shared output summary presentation', () => {
+  it('provides a short reading entry and keeps the full authored answer expandable', () => {
+    const answer = '**Ready for review.**\n\n## Evidence\n\nThe complete source remains available.';
+    const doc = mount({ ...outputFrontDoor(), answer });
+    expect(doc.querySelector('.ox-fd-answer > p')?.textContent).toBe('Ready for review.');
+    expect(doc.querySelector('.ox-fd-full')?.hasAttribute('open')).toBe(false);
+    expect(doc.querySelector('.ox-fd-full summary')?.textContent).toBe('Read full answer');
+    expect(doc.querySelector('.ox-fd-full h2')?.textContent).toBe('Evidence');
+    expect(doc.querySelector('.ox-fd-receipt')?.hasAttribute('open')).toBe(false);
+  });
   it('leads with the answer and visible context, and keeps producer checks distinct', () => {
     const door = outputFrontDoor(), doc = mount(door, { artifactId: door.files[0]!.artifactId });
     expect(doc.querySelector('[data-front-door]')?.children[0]?.textContent).toBe('The answer');
