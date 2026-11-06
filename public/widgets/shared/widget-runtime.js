@@ -612,7 +612,7 @@
 
   /**
    * Attach the live control-flow panel when a payload carries a subscription
-   * grant and the widget opted in via `options.live`.
+   * grant in widget metadata and the widget opted in via `options.live`.
    *
    * This lives in initWidget because initWidget is the one place every widget
    * already routes its payload through. Doing it per widget meant each one
@@ -621,8 +621,8 @@
    * this file, and a widget without it simply stays static.
    */
   function maybeAttachLive(options, data, state) {
-    if (!options.live || state.attached) return;
-    var grant = data && data.live;
+    if (!options.live || state.attached || !data) return;
+    var grant = getToolResponseMetadata('orgx/liveGrant') || data.live;
     if (!grant || !grant.streamUrl) return;
     var store = global.OrgXLiveStore;
     if (!store || !store.attachLiveFeed) return;
@@ -768,8 +768,9 @@
           if (globals.theme !== undefined) applyTheme(globals.theme, 'host');
           if (globals.toolInput !== undefined && globals.toolInput !== null) markToolInput();
           if (globals.toolOutput === undefined) {
-            if (options.getData && globals.toolResponseMetadata !== undefined) {
-              receiveResult(global.openai && global.openai.toolOutput);
+            if (globals.toolResponseMetadata !== undefined) {
+              if (options.getData) receiveResult(global.openai && global.openai.toolOutput);
+              else maybeAttachLive(options, currentData, liveState);
             }
             return;
           }
