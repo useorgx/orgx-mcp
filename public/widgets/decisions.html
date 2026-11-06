@@ -329,7 +329,7 @@
     .dq-batch-head { display: flex; align-items: center; gap: 8px; min-height: 44px; }
     .dq-batch-head .dq-batch-copy { font-weight: 600; color: var(--ox-text); }
 
-    .dq-batch.is-review > h3 { margin: 8px 0; color: var(--ox-text); }
+    .dq-batch.is-review > h3 { scroll-margin-block-start: 12px; margin: 8px 0; color: var(--ox-text); }
     .dq-batch-list { margin: 4px 0 12px; padding-inline-start: 22px; overflow-wrap: anywhere; }
     .dq-batch-list li + li { margin-block-start: 8px; }
     .dq-batch-detail { display: block; color: var(--ox-text-2); }
@@ -602,7 +602,7 @@
       },
       'gateway-action': {
         id: 'c4', urgency: 'high', agent_name: 'Mark', type: 'action', short_id: 'c4c4c4c4',
-        summary: 'send_email (gmail.send)',
+        summary: 'Send email',
         created_at: new Date(demoNow - 6 * 60 * 1000).toISOString(),
         context: { mission_id: 'm-42' },
         options: [],
@@ -2428,7 +2428,14 @@
       if (items.length < 2) return;
       batchReview = { items, stale: false };
       render();
-      focusBatch('#dq-batch-review-title');
+      const heading = document.getElementById('dq-batch-review-title');
+      heading?.focus({ preventScroll: true });
+      heading?.scrollIntoView?.({ block: 'start', inline: 'nearest' });
+    };
+    var cancelBatchReview = () => {
+      batchReview = null;
+      render();
+      focusBatch('[data-action="approve-ready"]');
     };
     var approveReviewed = async () => {
       if (pendingDecisionId || !batchReview || batchReview.stale) return;
@@ -2559,11 +2566,7 @@
       switch (button.getAttribute('data-action')) {
         case 'approve-ready': reviewReady(); break;
         case 'batch-confirm': void approveReviewed(); break;
-        case 'batch-cancel':
-          batchReview = null;
-          render();
-          focusBatch('[data-action="approve-ready"]');
-          break;
+        case 'batch-cancel': cancelBatchReview(); break;
         case 'batch-dismiss':
           if (batchState && !batchState.running) { batchState = null; render(); }
           break;
@@ -2986,7 +2989,7 @@
       pageDirection = 'forward';
 
       const cardsHtml = paginated.map((d) => `
-        <div class="decision-card urgency-${escapeHtml(d.urgency)}">
+        <div class="decision-card urgency-${escapeHtml(d.urgency)}"${batchReview ? ' inert' : ''}>
           <article class="ox-card ox-surface" data-card-for="${escapeHtml(d.id)}" data-edge="${edgeFor(d)}" aria-label="Decision: ${escapeHtml(d.headline || d.summary)}">
             ${attentionHtml(pending.length, oldestAge(pending), '')}
             ${decisionBodyHtml(d)}
@@ -2997,7 +3000,12 @@
     };
 
     document.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape' || !rejectComposerId || pendingDecisionId) return;
+      if (event.key !== 'Escape' || pendingDecisionId) return;
+      if (batchReview) {
+        cancelBatchReview();
+        return;
+      }
+      if (!rejectComposerId) return;
       const decisionId = rejectComposerId;
       rejectComposerId = null;
       scheduleDecisionStatePersistence();

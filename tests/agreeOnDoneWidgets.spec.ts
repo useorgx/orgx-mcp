@@ -199,6 +199,11 @@ describe('decisions widget: batch review', () => {
       expect(await review.locator('li strong').allTextContents()).toEqual([long, 'Resume the import run']);
       expect(await review.textContent()).toContain('Lets the agent run continue.');
       expect(await review.innerHTML()).not.toContain('private-token');
+      expect(await current.getAttribute('inert')).toBe('');
+      expect(await review.evaluate(node => {
+        const bounds = node.getBoundingClientRect();
+        return bounds.top >= 0 && bounds.bottom <= innerHeight;
+      })).toBe(true);
       expect(await noOverflow(page)).toBe(true);
       expect(await current.evaluate(node => ({
         width: node.getBoundingClientRect().width,
@@ -206,7 +211,8 @@ describe('decisions widget: batch review', () => {
       }))).toEqual(initial);
       expect(await page.evaluate(() => document.activeElement?.id)).toBe('dq-batch-review-title');
       expect(await page.evaluate(() => (window as unknown as { calls: unknown[] }).calls)).toEqual([]);
-      await review.getByRole('button', { name: 'Cancel' }).click();
+      await page.keyboard.press('Escape');
+      expect(await current.getAttribute('inert')).toBeNull();
       expect(await button.evaluate(node => node === document.activeElement)).toBe(true);
     } finally { await page.close(); }
   });
