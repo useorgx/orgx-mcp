@@ -69,7 +69,7 @@ describe('the production decision shapes', () => {
   });
 });
 
-describe('In progress rows', () => {
+describe('Work rows', () => {
   const now = Date.now();
   const work = buildPanelWork({
     agents: [
@@ -190,7 +190,7 @@ describe('Needs you with production data', () => {
   });
 });
 
-describe('In progress at scale', () => {
+describe('Work at scale', () => {
   const items = [
     { id: 't1', agent: 'Orion', domain: 'Operations', title: 'Agent routing fixture', state: 'blocked', url: 'https://useorgx.com/tasks/t1' },
     { id: 't2', agent: 'Eli', domain: 'Engineering', title: 'Upgrade the Mac', state: 'running', stale: true, updated_at: '2026-10-02T00:00:00.000Z', url: 'https://useorgx.com/tasks/t2' },

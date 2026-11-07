@@ -6,7 +6,7 @@ function projectTask(value: unknown): unknown {
   // Status is a workload preview. Full task bodies/metadata belong to inspect;
   // copying them into four alias lists makes payload size grow with prose.
   const fields = ['id', 'name', 'created_at', 'started_at', 'completed_at', 'due_date',
-    'progress', 'progress_pct', 'run_id', 'assigned_agent_id', 'assigned_agent_ids', 'url', 'live_url'];
+    'progress', 'progress_pct', 'run_id', 'job_id', 'assigned_agent_id', 'assigned_agent_ids', 'url', 'live_url'];
   const statusFields = Object.fromEntries(fields.filter(key => task[key] !== undefined).map(key => [key, task[key]]));
   const description = typeof task.description === 'string' ? task.description :
     typeof task.detail === 'string' ? task.detail : null;

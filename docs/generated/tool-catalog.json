@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-06T08:35:07.156Z",
-  "sourceHash": "a20f5ad0795f723a",
+  "generatedAt": "2026-11-07T17:50:02.020Z",
+  "sourceHash": "c1c28e60455f1630",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -1930,6 +1930,11 @@
               "30d"
             ],
             "description": "For decision history: today, 7d or 30d. Defaults to 7d."
+          },
+          "output_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "For view \"outputs\": the selected output id (UUID) whose canonical summary to read."
           }
         },
         "additionalProperties": false,

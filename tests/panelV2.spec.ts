@@ -19,16 +19,30 @@ async function open(data = snapshot(), tokens: Record<string, string> = { [D1]: 
 }
 
 describe('panel v2 tabs', () => {
-  it('shows Needs you, In progress and Done with honest counts', async () => {
+  it('separates saved work and parent holds from the execution queue', async () => {
+    const m = await open();
+    m.calls.callServerTool.mockResolvedValueOnce({ structuredContent: snapshot({
+      work: { status: 'ok', total: 2, items: [
+        { id: 'p', agent: 'Mark', title: 'Saved package', state: 'planned', url: 'https://useorgx.com/tasks/p' },
+        { id: 'h', agent: 'Eli', title: 'Inspect URLs', state: 'held', blocker: 'Initiative is paused.', url: 'https://useorgx.com/tasks/h' },
+      ] },
+    }) });
+    click(m, '[data-tab="work"]');
+    await m.flush(); await m.flush();
+    expect(doc(m).querySelector('.pn-work-summary')!.textContent).toBe('0 running · 0 queued · 1 planned · 1 held or blocked');
+    expect(doc(m).querySelector('[data-action="work-filter"][data-id="planned"]')).not.toBeNull();
+    expect(doc(m).querySelector('.pn-work')!.textContent).not.toContain('Working');
+  });
+  it('shows Needs you, Work and Done with honest counts', async () => {
     const m = await open();
     const tabs = Array.from(doc(m).querySelectorAll('.pn-tab')).map((t) => t.textContent);
     // Done counts only once something was settled here; Start opens from the header's +, not a tab.
-    expect(tabs).toEqual(['Needs you2', 'In progress', 'Outputs', 'Goals', 'Done']);
+    expect(tabs).toEqual(['Needs you2', 'Work', 'Outputs', 'Goals', 'Done']);
     expect(doc(m).querySelector('#pn-tab-start')!.getAttribute('aria-haspopup')).toBe('menu');
     expect(doc(m).querySelector('.pn-tab[aria-selected="true"]')!.getAttribute('data-tab')).toBe('needs');
   });
 
-  it('reads In progress only when it is opened, with view "work"', async () => {
+  it('reads Work only when it is opened, with view "work"', async () => {
     const m = await open();
     expect(m.calls.callServerTool).not.toHaveBeenCalled();
     m.calls.callServerTool.mockResolvedValueOnce({
@@ -178,7 +192,7 @@ describe('panel v2 start work in chat', () => {
     const m = await open(calm, {});
     expect(doc(m).querySelectorAll('[data-action="start-open"]')).toHaveLength(1);
     expect(doc(m).querySelector('.pn-tip')).toBeNull();
-    // In progress has not been read: the empty state claims nothing about it.
+    // Work has not been read: the empty state claims nothing about it.
     expect(doc(m).querySelector('.cm-sub')!.textContent!.trim()).toBe('1 finished output waits for your review in Outputs.');
   });
 });
@@ -223,7 +237,7 @@ describe('panel v2 identity and tour', () => {
 });
 
 describe('panel v2 review fixes', () => {
-  it('recovers In progress after a page-cache restore drops the work read', async () => {
+  it('recovers Work after a page-cache restore drops the work read', async () => {
     const m = await open();
     m.calls.callServerTool.mockImplementationOnce(() => new Promise(() => {}));
     click(m, '[data-tab="work"]');

@@ -687,7 +687,7 @@ describe('orgx_panel_snapshot on the worker', () => {
     vi.restoreAllMocks();
   });
 
-  it('reads In progress through the same agent-status read and projection as get_agent_status, only when asked', async () => {
+  it('reads Work through the same agent-status read and projection as get_agent_status, only when asked', async () => {
     const { worker, client, spy } = await createWorker();
     const enrich = vi.spyOn(worker as never, 'maybeEnrichWithArtifactProof' as never);
     const sessionBefore = structuredClone(worker.sessionContext);
@@ -894,7 +894,7 @@ describe('panel asker and work view', () => {
     expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(snapshot).success).toBe(true);
   });
 
-  it('builds In progress rows, blocked first, without idle or system agents', () => {
+  it('builds Work rows, blocked first, without idle or system agents', () => {
     const work = buildPanelWork({
       agents: [
         { agent_name: 'Pace', status: 'idle' },

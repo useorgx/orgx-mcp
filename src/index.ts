@@ -280,6 +280,7 @@ import {
   filterEntitySearchRecords,
   normalizeEntitySearchPage,
   normalizeMemorySearchPayload,
+  withAbsoluteRecordUrls,
   searchProjectionFields,
   type EntitySearchPage,
 } from './orgxSearch';
@@ -2880,12 +2881,12 @@ export class OrgXMcp extends McpAgent<
     if (!Array.isArray(searchData.results)) {
       throw new Error('OrgX returned an incomplete search response');
     }
-    return Array.isArray(searchData.results)
-      ? searchData.results.filter(
-          (record): record is Record<string, unknown> =>
-            Boolean(record && typeof record === 'object' && !Array.isArray(record))
-        )
-      : [];
+    return withAbsoluteRecordUrls(
+      searchData.results.filter(
+        (record): record is Record<string, unknown> =>
+          Boolean(record && typeof record === 'object' && !Array.isArray(record))
+      )
+    );
   }
 
   private async findExistingEntityByIdempotencyKey(params: {
@@ -2983,85 +2984,60 @@ export class OrgXMcp extends McpAgent<
       const { workspaceId } = scope;
       const initiativeIds = new Set(scope.initiativeIds);
 
-      const artifactMap = new Map<string, Record<string, unknown>>();
-      if (initiativeIds.size > 0) {
-        const initiativeIdList = Array.from(initiativeIds);
-        for (let offset = 0; offset < initiativeIdList.length; offset += 8) {
-          const artifactGroups = await Promise.all(
-            initiativeIdList.slice(offset, offset + 8).map((initiativeId) =>
-              this.fetchEntityCollection({
-                type: 'artifact',
-                userId: params.userId,
-                initiativeId,
-                limit: params.toolId === 'get_agent_status' ? 24 : 8,
-                ...(params.toolId === 'get_initiative_pulse' ? { orderBy: 'updated_at', orderDirection: 'desc' as const } : {}),
-              })
-            )
-          );
-          for (const records of artifactGroups) {
-            for (const record of records) {
-              const key =
-                (typeof record.id === 'string' && record.id.trim()) ||
-                `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
-              artifactMap.set(String(key), record);
+      const [initiativeRecords, workspaceRecords, tasks] = await Promise.all([
+        (async () => {
+          const records: Record<string, unknown>[] = [];
+          if (initiativeIds.size > 0) {
+            const initiativeIdList = Array.from(initiativeIds);
+            for (let offset = 0; offset < initiativeIdList.length; offset += 8) {
+              const groups = await Promise.all(
+                initiativeIdList.slice(offset, offset + 8).map((initiativeId) =>
+                  this.fetchEntityCollection({
+                    type: 'artifact', userId: params.userId, initiativeId,
+                    limit: params.toolId === 'get_agent_status' ? 24 : 8,
+                    ...(params.toolId === 'get_initiative_pulse'
+                      ? { orderBy: 'updated_at', orderDirection: 'desc' as const } : {}),
+                  })
+                )
+              );
+              records.push(...groups.flat());
             }
           }
-        }
-      }
-
-      // Agent run outputs are sometimes scoped through entity_id/entity_type
-      // instead of the artifact initiative_id column. Always union the
-      // workspace artifact stream for fleet status; initiative-only lookup can
-      // otherwise omit a real agent deliverable and silently report zero.
-      if (workspaceId && params.toolId === 'get_agent_status') {
-        // Legacy run-output artifacts may not carry workspace_id or
-        // initiative_id. Fetch the authenticated user's bounded artifact head,
-        // then scope it back to the exact visible initiative/task graph.
-        const records = filterAgentStatusArtifactsByVisibleScope(
-          params.data,
-          await this.fetchEntityCollection({
-            type: 'artifact',
-            userId: params.userId,
-            limit: 100,
-          })
-        );
-        for (const record of records) {
-          const key =
-            (typeof record.id === 'string' && record.id.trim()) ||
-            `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
-          artifactMap.set(String(key), record);
-        }
-      } else if (
-        workspaceId &&
-        params.toolId === 'get_morning_brief' &&
-        initiativeIds.size === 0
-      ) {
-        const records = await this.fetchEntityCollection({
-          type: 'artifact',
-          userId: params.userId,
-          workspaceId,
-          limit: 8,
-        });
-        for (const record of records) {
-          const key =
-            (typeof record.id === 'string' && record.id.trim()) ||
-            `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
-          artifactMap.set(String(key), record);
-        }
+          return records;
+        })(),
+        (async () => {
+          if (workspaceId && params.toolId === 'get_agent_status') {
+            // Legacy artifacts can lack workspace/initiative columns. Keep the
+            // authenticated bounded head and exact visible-scope filter.
+            return filterAgentStatusArtifactsByVisibleScope(params.data,
+              await this.fetchEntityCollection({
+                type: 'artifact', userId: params.userId, limit: 100,
+              })
+            );
+          } else if (workspaceId && params.toolId === 'get_morning_brief' && initiativeIds.size === 0) {
+            return this.fetchEntityCollection({
+              type: 'artifact', userId: params.userId, workspaceId, limit: 8,
+            });
+          }
+          return [];
+        })(),
+        workspaceId && params.toolId === 'get_agent_status'
+          ? this.fetchEntityCollection({ type: 'task', userId: params.userId, workspaceId, limit: 100 })
+          : Promise.resolve([]),
+      ]);
+      // Preserve deterministic precedence regardless of completion order:
+      // the scoped legacy head follows initiative records, as before.
+      const artifactMap = new Map<string, Record<string, unknown>>();
+      for (const record of [...initiativeRecords, ...workspaceRecords]) {
+        const key = (typeof record.id === 'string' && record.id.trim()) ||
+          `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
+        artifactMap.set(String(key), record);
       }
 
       const artifacts = Array.from(artifactMap.values());
       let evidenceData = params.data;
 
       if (params.toolId === 'get_agent_status') {
-        const tasks = workspaceId
-          ? await this.fetchEntityCollection({
-              type: 'task',
-              userId: params.userId,
-              workspaceId,
-              limit: 100,
-            })
-          : [];
         const proofData =
           artifacts.length > 0
             ? enrichAgentStatusWithArtifacts(evidenceData, artifacts)

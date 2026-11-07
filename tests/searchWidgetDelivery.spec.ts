@@ -350,3 +350,80 @@ describe('search results read consistently (C6, C8)', () => {
     expect(text()).toContain('Past week');
   });
 });
+
+describe('search filters, guidance and paging recover cleanly', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => { dom?.window.close(); vi.useRealTimers(); });
+  it('drops collection-only filters when the type is cleared, so the mixed search is accepted', async () => {
+    const callTool = vi.fn().mockResolvedValue({ structuredContent: payload });
+    boot({ results: [{ title: 'A', type: 'task' }] }, undefined, callTool);
+    (dom.window as any).openai.toolInput = { query: 'launch', type: 'task', status: 'active', initiative_id: 'init', fields: ['title'], limit: 5 };
+    await vi.advanceTimersByTimeAsync(250);
+    await (dom.window as any).clearSearchFilters();
+    expect(callTool).toHaveBeenCalledWith('orgx_search', { query: 'launch', limit: 5 });
+  });
+  it('keeps collection filters while a type is still chosen', async () => {
+    const callTool = vi.fn().mockResolvedValue({ structuredContent: payload });
+    boot({ results: [{ title: 'A', type: 'task' }] }, undefined, callTool);
+    (dom.window as any).openai.toolInput = { query: 'launch', type: 'task', status: 'active' };
+    await vi.advanceTimersByTimeAsync(250);
+    const form = dom.window.document.querySelector('.sr-filter-panel form') as HTMLFormElement;
+    await (dom.window as any).applySearchFilters({ preventDefault() {}, currentTarget: form });
+    expect(callTool).toHaveBeenCalledWith('orgx_search', { query: 'launch', type: 'task', status: 'active' });
+  });
+  it('shows the no-results hint and Browse when only the metadata copy carries guidance', async () => {
+    const empty = { type: 'task', search_mode: 'typed_collection', query: 'x', count: 0, results: [], pagination: { has_more: false }, next_call: null };
+    const args = { type: 'task', limit: 10 };
+    boot(empty, { 'orgx/searchPayload': { ...empty, search_guidance: {
+      message: 'No records matched this page and its filters.', hint: 'Browse the same filters without query.', next_call: { tool: 'orgx_search', args },
+    } } });
+    await vi.advanceTimersByTimeAsync(250);
+    expect(text()).toContain('Browse the same filters without query.');
+    expect(text()).toContain('Browse same filters');
+  });
+  it('clears a failed Load more once a new search lands', async () => {
+    const callTool = vi.fn().mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({ structuredContent: { results: [{ title: 'Filtered', type: 'decision' }] } });
+    const win = boot({ query: 'q', type: 'task', results: [{ title: 'A', type: 'task' }], pagination: { has_more: true },
+      next_call: { tool: 'orgx_search', args: { query: 'q', type: 'task', offset: 1 } } }, undefined, callTool);
+    (dom.window as any).openai.toolInput = { query: 'q', type: 'task' };
+    await vi.advanceTimersByTimeAsync(250);
+    await win.loadMoreResults();
+    expect(text()).toContain('More results could not be loaded');
+    const form = dom.window.document.querySelector('.sr-filter-panel form') as HTMLFormElement;
+    (form.elements.namedItem('type') as HTMLSelectElement).value = 'decision';
+    await (dom.window as any).applySearchFilters({ preventDefault() {}, currentTarget: form });
+    await vi.advanceTimersByTimeAsync(250);
+    expect(text()).toContain('Filtered');
+    expect(text()).not.toContain('More results could not be loaded');
+    expect(dom.window.document.querySelector('ox-footer[state="failed"]')).toBeNull();
+  });
+  it('filters a search that arrived through MCP Apps tool input, without window.openai', async () => {
+    dom = new JSDOM(html, { url: 'https://mcp.useorgx.com/widgets/search-results.html', runScripts: 'outside-only' });
+    let app: any;
+    const callServerTool = vi.fn().mockResolvedValue({ structuredContent: { results: [{ title: 'Filtered task', type: 'task' }] } });
+    Object.defineProperty(dom.window, 'parent', { value: {} });
+    Object.assign(dom.window, {
+      fetch: vi.fn().mockResolvedValue({ ok: true }),
+      McpApps: { App: class {
+        constructor() { app = this; }
+        connect() { return Promise.resolve(); }
+        getHostContext() { return {}; }
+        callServerTool(params: unknown) { return callServerTool(params); }
+      } },
+    });
+    dom.window.eval(runtime);
+    dom.window.eval(icons);
+    for (const script of dom.window.document.querySelectorAll('script:not([src])')) dom.window.eval(script.textContent!);
+    app.ontoolinput({ arguments: { query: 'launch', type: 'initiative', limit: 3 } });
+    app.ontoolresult({ structuredContent: payload });
+    await vi.advanceTimersByTimeAsync(250);
+    expect(text()).toContain('Launch plan');
+    expect((dom.window as any).OrgXWidgetRuntime.getToolInput()).toEqual({ query: 'launch', type: 'initiative', limit: 3 });
+    const form = dom.window.document.querySelector('.sr-filter-panel form') as HTMLFormElement;
+    (form.elements.namedItem('type') as HTMLSelectElement).value = 'task';
+    await (dom.window as any).applySearchFilters({ preventDefault() {}, currentTarget: form });
+    expect(callServerTool).toHaveBeenCalledWith({ name: 'orgx_search', arguments: { query: 'launch', type: 'task', limit: 3 } });
+    expect(text()).toContain('Filtered task');
+  });
+});

@@ -208,7 +208,7 @@ export function withResponseDiagnostics<T>(response: Response, fn: () => T): T {
 }
 
 /** Support references travel with widget results without exposing request content. */
-export function attachDiagnosticReferences(value: unknown): unknown {
+export function attachDiagnosticReferences(value: unknown, executionMs?: number): unknown {
   const diagnostics = invocationDiagnostics();
   if (
     !diagnostics?.calls ||
@@ -232,6 +232,16 @@ export function attachDiagnosticReferences(value: unknown): unknown {
       'orgx/diagnostics': {
         trace_id: diagnostics.trace_id,
         request_id: diagnostics.last_request_id,
+      },
+      'orgx/performance': {
+        tool_execution_ms: executionMs,
+        api_calls: diagnostics.calls,
+        api_attempts: diagnostics.attempts,
+        api_fallbacks: diagnostics.fallbacks,
+        api_failures: diagnostics.failures,
+        api_timeouts: diagnostics.timeouts,
+        api_headers_ms: diagnostics.headers_ms,
+        api_body_ms: diagnostics.body_ms,
       },
     },
   };
