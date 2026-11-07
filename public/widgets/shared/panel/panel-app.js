@@ -2249,10 +2249,12 @@
       if (list && list.items) list.items.forEach(rememberReceiptRow);
     }
 
+    // The ledger compares since: against UTC ISO start times, so the range
+    // starts at the person's local midnight written as a UTC instant.
     function receiptRangeQuery(range) {
       var now = new Date();
       var start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (range === 'today' ? 0 : range === '30d' ? 29 : 6));
-      return 'since:' + start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
+      return 'since:' + start.toISOString();
     }
 
     var receiptsInflight = null;
