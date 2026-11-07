@@ -33,6 +33,47 @@ async function worker(records: Record<string, unknown>[]) {
 afterEach(() => vi.restoreAllMocks());
 
 describe('real worker initiative proof enrichment', () => {
+  it('overlaps status evidence reads, retaining scoped legacy proof and durable task reconciliation', async () => {
+    const instance = await worker([]);
+    type Rows = Record<string, unknown>[];
+    const releases = new Map<string, (rows: Rows) => void>();
+    instance.fetchEntityCollection.mockImplementation((query: { type: string; initiativeId?: string }) =>
+      new Promise<Rows>((resolve) => releases.set(query.type === 'task' ? 'tasks' : query.initiativeId ? 'initiative' : 'legacy', resolve))
+    );
+    const data = { agents: [{ agent_id: 'engineering-agent', initiative_id: INIT, current_tasks: [{ task_id: TASK }] }] };
+    const pending = instance.maybeEnrichWithArtifactProof({ toolId: 'get_agent_status', args: {}, data, userId: 'authenticated-user' });
+    const artifact = { id: 'proof', title: 'Legacy proof', version: 9, entity_type: 'task', entity_id: TASK, status: 'in_review' };
+    try {
+      expect([...releases.keys()].sort()).toEqual(['initiative', 'legacy', 'tasks']);
+      expect(instance.fetchEntityCollection).toHaveBeenCalledWith({ type: 'task', userId: 'authenticated-user', workspaceId: WORKSTREAM, limit: 100 });
+    } finally {
+      releases.get('legacy')?.([artifact, { ...artifact, id: 'foreign', entity_id: 'foreign-task' }]);
+      releases.get('tasks')?.([{ id: TASK, title: 'Completed task', status: 'completed', assigned_agent_id: 'engineering-agent' }]);
+      releases.get('initiative')?.([{ ...artifact, title: 'Older direct proof', version: 8 }]);
+    }
+    expect(await pending).toMatchObject({ agents: [{
+      completed_tasks: [{ id: TASK }], artifact_count: 1,
+      artifacts: [{ id: 'proof', title: 'Legacy proof', version: 9 }],
+    }] });
+  });
+
+  it('retains the eight-request initiative batch bound while other evidence reads overlap', async () => {
+    const instance = await worker([]);
+    let active = 0; let peak = 0;
+    instance.fetchEntityCollection.mockImplementation(async (query: { initiativeId?: string }) => {
+      if (!query.initiativeId) return [];
+      peak = Math.max(peak, ++active);
+      await Promise.resolve();
+      active--;
+      return [];
+    });
+    await instance.maybeEnrichWithArtifactProof({ toolId: 'get_agent_status', args: {},
+      data: { agents: Array.from({ length: 18 }, (_, index) => ({ initiative_id: `initiative-${index}`, agent_id: 'engineering-agent' })) },
+      userId: 'authenticated-user',
+    });
+    expect(peak).toBe(8);
+    expect(instance.fetchEntityCollection).toHaveBeenCalledTimes(21);
+  });
   it('unions the authoritative current descendant proof with a smaller old direct subset', async () => {
     const current = source();
     const instance = await worker(Array.from({ length: 3 }, (_, i) => ({ id: `old-${i}`, name: `Old direct proof ${i}`, entity_type: 'initiative', entity_id: INIT, status: 'in_review', updated_at: '2026-10-09T00:23:00Z' })));
