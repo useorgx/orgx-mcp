@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildEntityCard,
@@ -211,5 +214,57 @@ describe('parent cards distinguish recorded progress from task completion', () =
   it('preserves the existing non-parent progress convention', () => {
     const card = buildEntityCard({ type: 'artifact', id: 'artifact-1', entity: { progress: 0.5 } });
     expect(card.facts).toEqual([{ label: 'Progress', value: '50%' }]);
+  });
+});
+
+// Boots the real widget in JSDOM with its shared scripts (the MCP Apps SDK is
+// skipped; ChatGPT globals deliver the payload).
+async function bootEntityCard(toolOutput: unknown) {
+  const { JSDOM } = await import('jsdom');
+  const root = resolve(process.cwd(), 'public/widgets');
+  const html = readFileSync(resolve(root, 'entity-card.html'), 'utf8');
+  const dom = new JSDOM(html, { url: 'https://mcp.useorgx.com/widgets/entity-card.html', runScripts: 'outside-only' });
+  Object.assign(dom.window, { openai: { toolOutput, callTool: vi.fn(), setWidgetHeight: vi.fn() }, fetch: vi.fn().mockResolvedValue({ ok: true }) });
+  for (const script of dom.window.document.querySelectorAll('script')) {
+    const src = script.getAttribute('src');
+    if (src && /mcp-apps-sdk/.test(src)) continue;
+    dom.window.eval(src ? readFileSync(resolve(root, src), 'utf8') : script.textContent!);
+  }
+  await vi.advanceTimersByTimeAsync(400);
+  return dom;
+}
+
+describe('entity card widget', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('draws a plan session inspected by orgx_inspect', async () => {
+    const dom = await bootEntityCard({
+      _v2_tool: 'orgx_inspect', type: 'plan_session', session_id: '11111111-1111-1111-1111-111111111111',
+      status: 'drafting', plan_session: { title: 'Launch plan', status: 'drafting' },
+    });
+    const text = dom.window.document.getElementById('content')!.textContent!;
+    expect(text).toContain('Launch plan');
+    expect(text).not.toContain('Nothing to show here');
+    dom.window.close();
+  });
+
+  it('formats the Updated timestamp in the viewer zone and keeps due dates as calendar days', async () => {
+    const updated = new Date(Date.now() - 60_000).toISOString();
+    const expected = await (async () => {
+      const probe = await bootEntityCard({ type: 'task', id: 't-0', card: { type: 'task', id: 't-0', title: 'Probe', facts: [] } });
+      const value = (probe.window as any).OrgXTime.when(updated) as string;
+      probe.window.close();
+      return value;
+    })();
+    const card = buildEntityCard({ type: 'task', id: 't-1', entity: { title: 'Ship it', updated_at: updated, due_date: '2030-01-15' } });
+    expect(card.facts).toEqual(expect.arrayContaining([{ label: 'Updated', value: updated }, { label: 'Due', value: '2030-01-15' }]));
+    const dom = await bootEntityCard({ type: 'task', id: 't-1', card });
+    const facts = Object.fromEntries(Array.from(dom.window.document.querySelectorAll('.ec-facts > div'))
+      .map((row) => [row.querySelector('dt')!.textContent, row.querySelector('dd')!.textContent!.trim()]));
+    expect(facts.Updated).toBe(expected);
+    expect(facts.Updated).not.toMatch(/Tomorrow|Today/);
+    expect(facts.Due).toMatch(/Jan 15, 2030/);
+    dom.window.close();
   });
 });

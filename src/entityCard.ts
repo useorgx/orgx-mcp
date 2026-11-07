@@ -151,7 +151,9 @@ export function buildEntityCard(params: {
     facts.push({ label: 'Progress', value: `${Math.round(pct)}%` });
   }
   const updated = text(entity.updated_at);
-  if (updated) facts.push({ label: 'Updated', value: updated.slice(0, 10) });
+  // The full timestamp: the card formats it in the viewer's zone. A UTC date
+  // slice read as a local day could say "Tomorrow".
+  if (updated) facts.push({ label: 'Updated', value: updated });
 
   let proof: EntityCard['proof'] = null;
   if (PROOF_TYPES.has(params.type)) {
