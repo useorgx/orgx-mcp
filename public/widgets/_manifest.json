@@ -71,8 +71,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 78652,
-      "hash": "77791e108788",
+      "bytes": 79980,
+      "hash": "16aae534a649",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -111,8 +111,8 @@
     },
     "artifact-review": {
       "file": "public/widgets/artifact-review.html",
-      "bytes": 117703,
-      "hash": "0da3f8d67fa0",
+      "bytes": 122693,
+      "hash": "a7b01579edf6",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -189,8 +189,8 @@
     },
     "entity-card": {
       "file": "public/widgets/entity-card.html",
-      "bytes": 37796,
-      "hash": "7f5589144c19",
+      "bytes": 38228,
+      "hash": "1ef9289c28c4",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -280,8 +280,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 68778,
-      "hash": "e9bb3feba96a",
+      "bytes": 69164,
+      "hash": "744bb4f5c3b2",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -407,8 +407,8 @@
     },
     "proof-receipt": {
       "file": "public/widgets/proof-receipt.html",
-      "bytes": 32501,
-      "hash": "3d51656f95a3",
+      "bytes": 33193,
+      "hash": "337be35055d0",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -458,8 +458,8 @@
     },
     "scaffolded-initiative": {
       "file": "public/widgets/scaffolded-initiative.html",
-      "bytes": 89014,
-      "hash": "124d169b2a90",
+      "bytes": 89390,
+      "hash": "6fef75ed2086",
       "primaryRgb": "99,102,241",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -496,8 +496,8 @@
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 71743,
-      "hash": "576c4e41cb78",
+      "bytes": 73010,
+      "hash": "1752043406df",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/kit/ox-elements-core.js",
@@ -592,8 +592,8 @@
     },
     "workspace-map": {
       "file": "public/widgets/workspace-map.html",
-      "bytes": 25452,
-      "hash": "e4ffef0d985f",
+      "bytes": 26220,
+      "hash": "11b191e82dd9",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",

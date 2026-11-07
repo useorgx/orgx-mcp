@@ -20,8 +20,8 @@ function fixture(delayedDetail = false, failDetail = false) {
     ui, isGallery: false, PREVIEW_META_KEY: 'previews', GOAL_REASONS_META_KEY: 'goals',
     render() {}, accept() {}, isSnapshot() { return false; },
     observeRead(_key: string, _origin: string, promise: Promise<unknown>) { return promise; },
-    R: { callToolResult(_name: string, args: { query?: string }) {
-      if (!args.query) return new Promise(resolve => { releaseList = resolve; });
+    R: { callToolResult(_name: string, args: { output_id?: string }) {
+      if (!args.output_id) return new Promise(resolve => { releaseList = resolve; });
       details++;
       if (failDetail && details > 1) return Promise.reject(new Error('Input validation error'));
       return delayedDetail ? new Promise(resolve => { releaseDetail = resolve; }) : Promise.resolve(canonical);

@@ -2466,7 +2466,7 @@
       delete old.frontDoor;
       ui.outPreviews[id] = old;
       var gen = ui.generation;
-      R.callToolResult('orgx_panel_snapshot', { view: 'outputs', query: id }).then(function received(result) {
+      R.callToolResult('orgx_panel_snapshot', { view: 'outputs', output_id: id }).then(function received(result) {
         if (gen !== ui.generation) return;
         var previews = result && result.meta && result.meta[PREVIEW_META_KEY];
         var current = previews && previews[id];

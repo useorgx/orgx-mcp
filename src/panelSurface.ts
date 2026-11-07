@@ -215,7 +215,7 @@ export const CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT = {
     // The Outputs view reads the selected output's canonical summary by its
     // id; the handler uses it only with view "outputs" and only as a UUID, so
     // ledger filters such as "pr:3236" stay outside the current contract.
-    query: z.string().uuid().optional().describe('For view "outputs": the selected output id (UUID) whose canonical summary to read.'),
+    output_id: z.string().uuid().optional().describe('For view "outputs": the selected output id (UUID) whose canonical summary to read.'),
   },
   _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
 } as const;
@@ -2027,7 +2027,9 @@ export async function handlePanelSnapshot(
       const built = buildPanelOutputs(artifacts, { viewerIds: host.viewerUserIds(), decisionByArtifact });
       snapshot.outputs = built.outputs;
       outputPreviews = built.previews;
-      const selectedId = typeof args.query === 'string' && UUID_RE.test(args.query) ? args.query : null;
+      // Current contracts name the selection output_id; legacy contracts sent it as query.
+      const selection = typeof args.output_id === 'string' ? args.output_id : args.query;
+      const selectedId = typeof selection === 'string' && UUID_RE.test(selection) ? selection : null;
       const selected = selectedId && built.outputs.items.some((item) => item.id === selectedId)
         ? artifacts?.find((artifact) => asRecord(artifact)?.id === selectedId) : null;
       if (selected && host.fetchArtifactReview) {
