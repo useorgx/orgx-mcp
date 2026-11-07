@@ -793,6 +793,7 @@
       var commit = function() {
         data = payload;
         bootError = '';
+        loadMoreError = '';
         isLoading = false;
         if (bootTimeoutId !== null) window.clearTimeout(bootTimeoutId);
         bootTimeoutId = null;
@@ -819,6 +820,18 @@
     // handshake settles. Either way the result is on the page while the card
     // still shows a skeleton, and the deadline below used to turn that into
     // "Search unavailable — results did not arrive in this card".
+    // search_guidance rides only on the widget metadata copy, while the rows come
+    // from structuredContent: merge it into an empty page so the hint and Browse show.
+    var withGuidance = function(payload, copy) {
+      if (!payload || !Array.isArray(payload.results) || payload.results.length || payload.search_guidance) return payload;
+      var guidance = copy && typeof copy === 'object' && copy.search_guidance;
+      return guidance ? Object.assign({}, payload, { search_guidance: guidance }) : payload;
+    };
+    var hostSearchCopy = function() {
+      var meta = window.openai && window.openai.toolResponseMetadata;
+      return window.OrgXWidgetRuntime.getToolResponseMetadata('orgx/searchPayload') || (meta && meta['orgx/searchPayload']);
+    };
+    var resultSearchCopy = (result) => result && result._meta && result._meta['orgx/searchPayload'];
     var readHostSearchPayload = function() {
       var runtime = window.OrgXWidgetRuntime;
       var openai = window.openai;
@@ -830,7 +843,7 @@
       for (var i = 0; i < candidates.length; i += 1) {
         if (candidates[i] === null || candidates[i] === undefined) continue;
         var payload = runtime.extractSearchWidgetData(candidates[i]);
-        if (isCompleteSearchPayload(payload)) return payload;
+        if (isCompleteSearchPayload(payload)) return withGuidance(payload, hostSearchCopy());
       }
       return null;
     };
@@ -893,6 +906,8 @@
     var filterOpen = false;
     var helpOpen = false;
     var searchRequest = null;
+    // The request this card answers: ChatGPT's toolInput, or the MCP Apps tool-input arguments.
+    var hostToolInput = () => window.OrgXWidgetRuntime.getToolInput();
     // Created-date presets: a window back from now. "Custom" shows two date fields.
     var RANGE_PRESETS = [
       { value: 'any', label: 'Any time' },
@@ -918,12 +933,14 @@
       filterError = next.from && next.to && new Date(next.from) > new Date(next.to) ? 'Choose an end date on or after the start date.' : '';
       filterOpen = true;
       if (filterError) { render(); return; }
-      var original = searchRequest || (window.openai && window.openai.toolInput);
+      var original = searchRequest || hostToolInput();
       if (!original || typeof original !== 'object') { filterError = 'Ask ChatGPT to search with a type and creation-date range.'; render(); return; }
       var args = Object.assign({}, original);
       delete args.offset; delete args.cursor; delete args.created_from; delete args.created_to; delete args.type;
       if (args.scope && args.scope !== 'entities' && args.scope !== 'work_ledger') delete args.scope;
       if (next.type) args.type = next.type;
+      // Status, initiative and fields filter a typed collection; a mixed search rejects them.
+      else { delete args.status; delete args.initiative_id; delete args.fields; }
       if (next.from) args.created_from = new Date(next.from).toISOString();
       if (next.to) args.created_to = new Date(next.to).toISOString();
       if (!args.type && !args.query) { filterError = 'Choose a type to browse records.'; render(); return; }
@@ -933,13 +950,13 @@
         var payload = window.OrgXWidgetRuntime.extractSearchWidgetData(result);
         if (!payload || payload.error || result.isError || !Array.isArray(payload.results)) throw new Error('incomplete_response');
         filterOpen = false;
-        applyBootPayload(payload);
+        applyBootPayload(withGuidance(payload, resultSearchCopy(result)));
       } catch (_) { window.OrgXWidgetRuntime.reportSearchWidgetEvent('page_error'); filterError = 'Filtered search is unavailable. Your previous results are still shown. Try again.'; }
       finally { retrying = false; render(); }
     };
     window.clearSearchFilters = function() {
       var form = document.querySelector('.sr-filter-panel form');
-      var initial = (window.openai && window.openai.toolInput) || searchRequest || {};
+      var initial = hostToolInput() || searchRequest || {};
       form.elements.namedItem('type').value = initial.query ? '' : (initial.type || '');
       form.elements.namedItem('from').value = '';
       form.elements.namedItem('to').value = '';
@@ -964,7 +981,7 @@
     };
     window.retrySearch = async function() {
       if (retrying) return;
-      var args = searchRequest || (window.openai && window.openai.toolInput);
+      var args = searchRequest || hostToolInput();
       if (!args || typeof args !== 'object') {
         try { await window.OrgXWidgetRuntime.sendFollowUpMessage('Retry the most recent OrgX search using its original query and filters.'); }
         catch (_) { bootError = 'Ask ChatGPT to retry this search. This card cannot start a request here.'; render(); }
@@ -976,7 +993,7 @@
         var result = await callTool('orgx_search', args);
         var payload = window.OrgXWidgetRuntime.extractSearchWidgetData(result);
         if (!payload || (!payload.error && !Array.isArray(payload.results))) throw new Error('incomplete_response');
-        applyBootPayload(payload);
+        applyBootPayload(withGuidance(payload, resultSearchCopy(result)));
       } catch (_) { bootError = 'The search could not be loaded. Try again in a moment.'; }
       finally { retrying = false; render(); }
     };
@@ -1004,8 +1021,8 @@
     var helpButton = () => `<button type="button" class="sr-help-btn" aria-label="How search works" title="How search works" aria-expanded="${helpOpen}" aria-controls="sr-help" onclick="toggleDisclosure(this, 'help')">${HELP_ICON}</button>`;
     var helpPanel = () => `<div class="sr-help" id="sr-help"${helpOpen ? '' : ' hidden'}><p>${HELP_TEXT}</p></div>`;
     var searchTools = function(results) {
-      if (!searchRequest && window.openai && window.openai.toolInput) {
-        searchRequest = Object.assign({}, window.openai.toolInput);
+      if (!searchRequest && hostToolInput()) {
+        searchRequest = Object.assign({}, hostToolInput());
         var localTime = function(value) { var d = new Date(value); return Number.isFinite(d.getTime()) ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''; };
         filters = { type: searchRequest.type || '', from: searchRequest.created_from ? localTime(searchRequest.created_from) : '', to: searchRequest.created_to ? localTime(searchRequest.created_to) : '', range: searchRequest.created_from || searchRequest.created_to ? 'custom' : 'any' };
       }
@@ -1336,7 +1353,7 @@
       getData: function(result) {
         var payload = window.OrgXWidgetRuntime.extractSearchWidgetData(result);
         if (payload && (payload.error || payload.ok === false || Array.isArray(payload.results) ||
-            Array.isArray(payload.decisions) || Array.isArray(payload.recommendations) || payload.next_action)) return payload;
+            Array.isArray(payload.decisions) || Array.isArray(payload.recommendations) || payload.next_action)) return withGuidance(payload, hostSearchCopy());
         // Widget-only copy survives hosts that expose only the summary as
         // toolOutput. Never use it to replace an explicit failure.
         return window.OrgXWidgetRuntime.getToolResponseMetadata('orgx/searchPayload') || payload;

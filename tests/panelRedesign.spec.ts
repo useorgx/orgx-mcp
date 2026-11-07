@@ -209,7 +209,7 @@ describe('Outputs', () => {
     await p.settle();
     p.click(`[data-action="out-select"][data-id="${OUT}"]`);
     await p.settle();
-    expect(reads(p).filter((c) => c.arguments.query === OUT)).toHaveLength(1);
+    expect(reads(p).filter((c) => c.arguments.output_id === OUT)).toHaveLength(1);
     const summary = p.doc.querySelector('.pn-md-detail [data-front-door]')!;
     expect(summary.textContent).toContain('Review the client deck');
     expect(summary.textContent).toContain('Budget was not recorded.');

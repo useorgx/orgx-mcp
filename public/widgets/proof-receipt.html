@@ -319,6 +319,13 @@
      * One reading of the receipt. Every visible signal (edge, glyph tone,
      * ladder, headline) comes from here, so they never disagree.
      */
+    var orgxRunVerdict = function (status) {
+      if (status === 'passed' || status === 'verified') return 'verified';
+      if (status === 'failed') return 'failed';
+      if (status === 'inconclusive' || status === 'blocked') return 'blocked';
+      return '';
+    };
+
     var describe = function (payload) {
       var proof = record(payload.proof);
       var anchor = record(proof.anchor);
@@ -329,7 +336,14 @@
       var reportedOutcome = str(claims.outcome_status).toLowerCase();
       var reportedVerification = str(payload.verification_status || claims.verification_status).toLowerCase();
       var assessedVerification = str(assessment.verification_status).toLowerCase();
-      var verification = assessedVerification === 'producer_reported' ? '' : assessedVerification;
+      // The work ledger's assessment names where verification came from
+      // ('producer_reported' | 'orgx_run'), not a verdict. An OrgX run's own
+      // result rides in the claims; older payloads put the verdict here.
+      var verification = assessedVerification === 'producer_reported'
+        ? ''
+        : assessedVerification === 'orgx_run'
+          ? orgxRunVerdict(str(claims.verification_status || payload.verification_status).toLowerCase())
+          : assessedVerification;
       var hasAssessment = Boolean(verification);
       var verified = ['passed', 'verified'].indexOf(verification) !== -1;
       var acceptance = str(assessment.acceptance_status).toLowerCase();
@@ -409,7 +423,7 @@
       }
       if (view.verification === 'failed') return 'The agent fixes what failed and submits a passing verification.';
       if (view.verification === 'blocked') return 'Unblock verification, then the agent submits the result.';
-      if (view.verification !== 'passed') return 'The agent runs verification and submits the result.';
+      if (['passed', 'verified'].indexOf(view.verification) === -1) return 'The agent runs verification and submits the result.';
       return view.next ? sentence(view.next) + '.' : '';
     };
 
