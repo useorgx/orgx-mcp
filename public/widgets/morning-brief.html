@@ -492,7 +492,7 @@
 
     function artifactUrl(artifact) {
       const row = asObject(artifact);
-      return window.OrgXLinks.normalize(row.primary_url) || window.OrgXLinks.normalize(row.live_url) || null;
+      return window.OrgXLinks.normalize(row.primary_url) || window.OrgXLinks.normalize(row.live_url) || window.OrgXLinks.normalize(row.url) || null;
     }
 
     function artifactLabel(artifact, fallback) {
@@ -506,12 +506,13 @@
       const row = asObject(artifact);
       const status = String(row.status || '').toLowerCase();
       if (artifactIsSuperseded(row) || status === 'archived' || row.reviewRequired === false) return false;
-      if (!['in_review', 'review', 'draft', 'changes_requested'].includes(status)) return false;
+      if (!['in_review', 'pending_review', 'review', 'draft', 'changes_requested'].includes(status)) return false;
       if (row.reviewRequired === true) return true;
       return (
         reviewIds.has(String(row.id || '')) ||
         status === 'draft' ||
         status === 'in_review' ||
+        status === 'pending_review' ||
         status === 'review'
       );
     }
@@ -675,6 +676,9 @@
           blocked_items: payload.blocked_items ?? metrics.blockedWork,
           top_priorities: payload.top_priorities ?? chronicle.topPriorities,
           artifacts_produced: payload.artifacts_produced ?? chronicle.artifactLedger,
+          // The ledger marks work awaiting the operator by status (the app's "To review").
+          review_items: payload.review_items ?? asArray(chronicle.artifactLedger).filter((row) =>
+            ['in_review', 'pending_review', 'review'].includes(String(asObject(row).status || '').toLowerCase())),
           brief_markdown: payload.brief_markdown ?? asObject(chronicle.reportingNarrative).briefMarkdown,
         });
       }
@@ -709,15 +713,20 @@
         if (hasExplicitReviewItems) return isReviewable(row, candidateIds);
         const status = String(row.status || '').toLowerCase();
         if (artifactIsSuperseded(row) || status === 'archived' || row.reviewRequired === false) return false;
-        if (!['in_review', 'review', 'draft', 'changes_requested'].includes(status)) return false;
+        if (!['in_review', 'pending_review', 'review', 'draft', 'changes_requested'].includes(status)) return false;
         if (row.reviewRequired === true) return true;
-        return Boolean(row.needs_review) || ['draft', 'in_review', 'review', 'changes_requested'].includes(status);
+        return Boolean(row.needs_review) || ['draft', 'in_review', 'pending_review', 'review', 'changes_requested'].includes(status);
       });
       const artifactsProduced = mergeArtifactRows(suppliedOutputs.map(resolveCurrent), []);
       const exceptions = asArray(payload.exceptions);
+      // orgx_recommend / orgx_get_next_actions (next_action mode) rank work in
+      // recommendations, with the top pick also as next_action.
+      const recommendations = asArray(payload.recommendations).length
+        ? asArray(payload.recommendations)
+        : payload.next_action && typeof payload.next_action === 'object' ? [payload.next_action] : [];
       const nextActions = asArray(payload.next_actions).length
         ? asArray(payload.next_actions)
-        : asArray(payload.recommended_actions);
+        : asArray(payload.recommended_actions).length ? asArray(payload.recommended_actions) : recommendations;
 
       const suppressPriorities = payload.suppress_priorities === true;
       let priorities = asArray(payload.top_priorities);
@@ -1040,7 +1049,7 @@
           const status = String(row.status || 'draft').toLowerCase();
           const url = artifactUrl(row);
           const reviewable = isReviewable(row, reviewIds);
-          const type = titleCase(String(row.artifact_type || row.type || 'artifact')).replace(/\s+/g, '.');
+          const type = titleCase(String(row.artifact_type || row.artifactType || row.type || 'artifact')).replace(/\s+/g, '.');
           const summary =
             row.summary ||
             row.description ||
@@ -1050,7 +1059,7 @@
                 ? 'Recorded artifact available for inspection.'
                 : 'Captured as proof from the latest autonomous run.');
           const actionLabel = artifactLabel(row, reviewable ? 'Review' : 'Open');
-          const author = row.created_by_name || row.created_by || 'OrgX agent';
+          const author = row.created_by_name || row.created_by || row.agentType || row.agent_type || 'OrgX agent';
           const agentKey = agentFor(author);
           const chip = artifactIsSuperseded(row)
             ? '<ox-state-chip state="superseded" label="Superseded"></ox-state-chip>'
