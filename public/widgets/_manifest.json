@@ -496,8 +496,8 @@
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 73010,
-      "hash": "1752043406df",
+      "bytes": 73675,
+      "hash": "8bc6fcfbf20c",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/kit/ox-elements-core.js",

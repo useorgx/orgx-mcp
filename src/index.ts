@@ -118,9 +118,11 @@ import { probeOrgxHealth, readUptimeSummary, recordProbe } from './uptimeProbe';
 import {
   callOrgxApiJson,
   callOrgxApiRaw,
+  createApiError,
   OrgXApiError,
   type GatewayDelegationClaims,
 } from './orgxApi';
+import { backendErrorText, legibleSearchFailure, legibleSearchRecords } from './searchLegibility';
 import { captureDecision } from './decisionCapture';
 import { resolveWriteWorkspace } from './writeWorkspace';
 import {
@@ -2777,7 +2779,15 @@ export class OrgXMcp extends McpAgent<
       undefined,
       params.userId ? { userId: params.userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(params.userId) } : undefined
     );
-    const payload = await response.json();
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      const raw = backendErrorText(payload);
+      throw createApiError(
+        legibleSearchFailure(response.status, raw),
+        `GET /api/entities failed (${response.status}): ${raw ?? 'no error text'}`,
+        response.status
+      );
+    }
     return normalizeEntitySearchPage(payload, {
       limit: params.limit,
       offset: params.offset,
@@ -2867,24 +2877,36 @@ export class OrgXMcp extends McpAgent<
           }
         : undefined
     );
-    const result = (await response.json()) as {
+    const result = (await response.json().catch(() => null)) as {
       ok?: boolean;
       data?: Record<string, unknown>;
       error?: string;
-    };
-    if (result.ok === false) {
-      throw new Error(result.error ?? 'Broad OrgX search failed');
+    } | null;
+    if (!response.ok || !result || result.ok === false) {
+      // The backend's raw text (a database message, provider JSON) stays in
+      // the logs; the caller gets a sentence chosen by status.
+      const raw = backendErrorText(result);
+      const status = response.ok ? 502 : response.status;
+      throw createApiError(
+        legibleSearchFailure(response.ok ? undefined : status, raw),
+        `query_org_memory failed (${status}): ${raw ?? 'no error text'}`,
+        status
+      );
     }
     const searchData = normalizeMemorySearchPayload(result.data ?? {});
     if (!Array.isArray(searchData.results)) {
-      throw new Error('OrgX returned an incomplete search response');
+      throw createApiError(
+        legibleSearchFailure(undefined, null),
+        'query_org_memory returned no results array',
+        502
+      );
     }
-    return withAbsoluteRecordUrls(
+    return legibleSearchRecords(withAbsoluteRecordUrls(
       searchData.results.filter(
         (record): record is Record<string, unknown> =>
           Boolean(record && typeof record === 'object' && !Array.isArray(record))
       )
-    );
+    ));
   }
 
   private async findExistingEntityByIdempotencyKey(params: {
@@ -5997,7 +6019,7 @@ export class OrgXMcp extends McpAgent<
             fields: searchProjectionFields(fields),
           });
           const statusFilter = filterEntitySearchRecords(
-            page.records,
+            legibleSearchRecords(page.records),
             typeof args.status === 'string' ? args.status : null,
             explicitType
           );
