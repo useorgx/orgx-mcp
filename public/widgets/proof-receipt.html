@@ -245,8 +245,10 @@
     };
 
     // The anchored work in OrgX: the entity the receipt proves, else its
-    // artifact, else the work ledger. Built by the shared link builder.
-    var anchorUrl = function (anchor) {
+    // artifact, else the receipt's own page in the Work Ledger (the v1 import
+    // returns the producer's receipt id, which that page takes), else the
+    // Work Ledger. Built by the shared link builder.
+    var anchorUrl = function (anchor, payload) {
       var links = window.OrgXLinks;
       var type = str(anchor.entity_type).toLowerCase();
       var id = str(anchor.entity_id);
@@ -255,6 +257,8 @@
       }
       var artifact = str(anchor.artifact_id);
       if (artifact && UUID_RE.test(artifact)) return links.artifact(artifact);
+      var receiptId = str(payload && payload.external_receipt_id);
+      if (receiptId && links.receipt) return links.receipt(receiptId, { center: str(payload.workspace_id) });
       return links.workLedger();
     };
 
@@ -442,7 +446,7 @@
       }
       var view = describe(payload);
       var proof = view.proof;
-      currentAnchorUrl = anchorUrl(view.anchor);
+      currentAnchorUrl = anchorUrl(view.anchor, payload);
       var identity = window.OrgXAgentIdentity;
       var agentName = str(proof.agent_type);
       var agentKey = identity && agentName ? identity.resolveAgentKey(agentName) : null;

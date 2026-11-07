@@ -1634,6 +1634,13 @@
     workLedger: function (options) {
       return orgxUrl('/work-ledger', { center: options && options.center, range: options && options.range });
     },
+    /**
+     * One receipt (/work-ledger/receipts/{id}): the producer's receipt id or
+     * the ledger row id. No id -> the receipts list.
+     */
+    receipt: function (id, options) {
+      return orgxUrl('/work-ledger/receipts' + (cleanId(id) ? '/' + seg(id) : ''), { center: options && options.center });
+    },
     /** Dispatch on an entity type ("task", "Workstream", "agent_run", ...). */
     entity: function (type, id, options) {
       var kind = String(type || '').toLowerCase().replace(/[\s-]+/g, '_');
@@ -1666,6 +1673,14 @@
         case 'plan':
         case 'plan_session':
           return links.planSession(id, options);
+        case 'receipt':
+          return links.receipt(id, options);
+        case 'session':
+          // No session page: its initiative when known, else the work ledger that lists it.
+          return options && cleanId(options.initiativeId) ? links.initiative(options.initiativeId) : links.workLedger(options);
+        case 'studio_brand':
+        case 'studio_content':
+          return orgxUrl(kind === 'studio_brand' ? '/studio/brand' : '/studio/library');
         default:
           return options && cleanId(options.initiativeId) ? links.live(options.initiativeId) : links.command();
       }

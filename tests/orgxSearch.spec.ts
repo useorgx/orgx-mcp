@@ -6,7 +6,26 @@ import {
   filterEntitySearchRecords,
   normalizeEntitySearchPage,
   searchProjectionFields,
+  withAbsoluteRecordUrls,
 } from '../src/orgxSearch';
+
+describe('memory search record urls', () => {
+  it('makes app paths absolute and leaves the rest alone', () => {
+    expect(withAbsoluteRecordUrls([
+      { id: 'a', url: '/runs/run-1' },
+      { id: 'b', url: '/work-ledger/receipts/r%201' },
+      { id: 'c' },
+      { id: 'd', url: '//evil.test/x' },
+      { id: 'e', url: 'https://github.com/acme/app/pull/1' },
+    ])).toEqual([
+      { id: 'a', url: 'https://useorgx.com/runs/run-1' },
+      { id: 'b', url: 'https://useorgx.com/work-ledger/receipts/r%201' },
+      { id: 'c' },
+      { id: 'd', url: '//evil.test/x' },
+      { id: 'e', url: 'https://github.com/acme/app/pull/1' },
+    ]);
+  });
+});
 
 describe('orgx search pagination', () => {
   it('preserves display and lifecycle filters in compact projections', () => {

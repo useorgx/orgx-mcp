@@ -280,6 +280,7 @@ import {
   filterEntitySearchRecords,
   normalizeEntitySearchPage,
   normalizeMemorySearchPayload,
+  withAbsoluteRecordUrls,
   searchProjectionFields,
   type EntitySearchPage,
 } from './orgxSearch';
@@ -2878,12 +2879,12 @@ export class OrgXMcp extends McpAgent<
     if (!Array.isArray(searchData.results)) {
       throw new Error('OrgX returned an incomplete search response');
     }
-    return Array.isArray(searchData.results)
-      ? searchData.results.filter(
-          (record): record is Record<string, unknown> =>
-            Boolean(record && typeof record === 'object' && !Array.isArray(record))
-        )
-      : [];
+    return withAbsoluteRecordUrls(
+      searchData.results.filter(
+        (record): record is Record<string, unknown> =>
+          Boolean(record && typeof record === 'object' && !Array.isArray(record))
+      )
+    );
   }
 
   private async findExistingEntityByIdempotencyKey(params: {
