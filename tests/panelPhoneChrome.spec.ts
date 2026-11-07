@@ -128,7 +128,7 @@ describe.each([
         expect(r.hitsSelf, `${sel} is covered by ${r.hit}`).toBe(true);
         if (host.barOverView) expect(r.top, `${sel} starts under the title bar`).toBeGreaterThanOrEqual(BAR);
       }
-      // A real tap on In progress switches the view; the host's bar does not swallow it.
+      // A real tap on Work switches the view; the host's bar does not swallow it.
       await page.locator('#pn-tab-work').tap();
       await page.locator('.pn-work').waitFor();
       expect(await page.locator('.pn-tab[aria-selected="true"]').getAttribute('data-tab')).toBe('work');

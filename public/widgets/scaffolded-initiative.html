@@ -1022,11 +1022,14 @@
         if (launch.id !== id) return;
         launch.failures = 0;
         if (!status || typeof status.state !== 'string' || status.state === 'not_found') {
+          // Nothing further to poll: say the status is unavailable, not pending.
           launch.status = null;
+          launch.unknown = true;
           refreshChrome();
           return;
         }
         launch.status = status;
+        launch.unknown = false;
         refreshChrome();
         if (typeof status.next_poll_after_ms === 'number' && isFinite(status.next_poll_after_ms)) {
           scheduleLaunchCheck(Math.max(1000, status.next_poll_after_ms));
@@ -1034,7 +1037,12 @@
       }).catch(() => {
         if (launch.id !== id) return;
         launch.failures += 1;
-        if (launch.failures < 3) scheduleLaunchCheck(4000 * launch.failures);
+        if (launch.failures < 3) {
+          scheduleLaunchCheck(4000 * launch.failures);
+        } else {
+          launch.unknown = true;
+          refreshChrome();
+        }
       });
     };
 
@@ -1132,8 +1140,9 @@
           edge = 'teal';
         } else {
           // OrgX accepted the launch; without a command id there is nothing
-          // further to poll, so the card says accepted, not live.
-          footer = { variant: 'queues-work', state: 'running', heading: 'Launch accepted', detail: launch.id ? 'checking status' : streamsLine + ' activating' };
+          // further to poll, so the card says accepted, not live. When polling
+          // stopped without a status, it says so and keeps the OrgX link.
+          footer = { variant: 'queues-work', state: 'running', heading: 'Launch accepted', detail: launch.id ? (launch.unknown ? 'status unavailable' : 'checking status') : streamsLine + ' activating' };
           kind = 'Launching';
           edge = 'teal';
         }

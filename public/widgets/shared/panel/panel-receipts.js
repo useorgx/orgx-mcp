@@ -212,7 +212,7 @@
               '<span class="rc-ct">' + esc(x.text) + (x.source ? '<span class="rc-src">' + sourceChip(x) + '</span>' : '') + '</span><span class="rc-cs">' + STATUS_WORD[x.status] + (guess && x.status !== 'unknown' ? ' · a guess' : '') + '</span></li>';
           }).join('') + '</ul>'
           : '<p class="rc-quiet">No criteria were written down for this work, so nothing can be checked against them.</p>') +
-        (detail.criteria_total > crit.length ? '<p class="rc-quiet">Showing ' + crit.length + ' of ' + esc(detail.criteria_total) + ' checks. Open the Work Ledger for the complete receipt.</p>' : '') + '</section>';
+        (detail.criteria_total > crit.length ? '<p class="rc-quiet">Showing ' + crit.length + ' of ' + esc(detail.criteria_total) + ' checks. Open the receipt for the full list.</p>' : '') + '</section>';
       if (detail.outcome_summary) body += '<section class="rc-sec"><h4 class="rc-h">' + (detail.producer_reported ? 'Agent-reported outcome' : 'What happened') + '</h4><p class="rc-p">' + esc(detail.outcome_summary) + '</p></section>';
       var arts = detail.artifacts || [];
       if (arts.length) {
@@ -222,7 +222,7 @@
             ? '<button type="button" class="rc-art" data-action="open" data-url="' + esc(x.url) + '">' + esc(label) + ' ↗</button>'
             : '<span class="rc-art is-plain">' + esc(label) + '</span>') + '<span class="rc-ak">' + esc(String(x.kind).replace(/_/g, ' ')) + '</span></li>';
         }).join('') + '</ul>' +
-          (Math.max(arts.length, Number(detail.evidence_total) || 0) > Math.min(arts.length, 8) ? '<p class="rc-quiet">Showing ' + Math.min(arts.length, 8) + ' of ' + esc(Math.max(arts.length, Number(detail.evidence_total) || 0)) + ' evidence items. Open the Work Ledger for the complete receipt.</p>' : '') + '</section>';
+          (Math.max(arts.length, Number(detail.evidence_total) || 0) > Math.min(arts.length, 8) ? '<p class="rc-quiet">Showing ' + Math.min(arts.length, 8) + ' of ' + esc(Math.max(arts.length, Number(detail.evidence_total) || 0)) + ' evidence items. Open the receipt for the full list.</p>' : '') + '</section>';
       }
       var unsure = detail.uncertain || [];
       if (unsure.length) {
@@ -232,9 +232,11 @@
     // The human in the loop: the person's call on the outcome. It overrides the
     // agent's own guess in the ledger and becomes the example OrgX learns from.
     if (detail && detail.status === 'ok') body += callHtml(r, opts.call);
+    // The receipt's own page holds every check and piece of evidence and takes
+    // the outcome call; the ledger overview does not show this receipt.
     var l = links();
-    var ledger = l && l.workLedger ? l.workLedger({ center: opts.workspaceId, range: '30d' }) : 'https://useorgx.com/work-ledger';
-    var acts = '<div class="md-acts"><button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(ledger) + '">Work Ledger ↗</button>' +
+    var receiptUrl = l && l.receipt ? l.receipt(r.id, { center: opts.workspaceId }) : 'https://useorgx.com/work-ledger/receipts/' + encodeURIComponent(r.id || '');
+    var acts = '<div class="md-acts"><button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(receiptUrl) + '">Open receipt ↗</button>' +
       '<button type="button" class="pn-btn" data-action="receipt-iterate" data-id="' + esc(r.id) + '">' + esc(fill('Iterate in {host}')) + '</button></div>';
     return '<div class="md-card rc-card" role="region" aria-label="Work receipt">' + close + head + body + acts + '</div>';
   }

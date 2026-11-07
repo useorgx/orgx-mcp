@@ -97,7 +97,7 @@
       tip: 'Beside a chat, the answer lands in that chat. From the sidebar, it opens a new one.' },
     { id: 'work', tab: 'work', vis: 'work', target: ['.pn-work'],
       title: 'Watch the work move',
-      body: 'In progress shows what your agents are running and what is blocked, live from OrgX.',
+      body: 'Work shows what your agents are running and what is blocked, live from OrgX.',
       tip: 'Approving a blocking decision is usually what moves a row from Blocked to Running.' },
     { id: 'done', tab: 'done', vis: 'done', target: ['.pn-done .pn-view-head', '.pn-done-sum', '.pn-rcs', '.pn-history'],
       title: 'Every decision leaves a receipt',

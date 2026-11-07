@@ -94,7 +94,7 @@ export function buildClientAwareContentBlocks(params: {
   widgetHtml?: string | null;
 }): TextContent[] {
   const sourceClient = params.sourceClient?.trim().toLowerCase() ?? '';
-  if (sourceClient === 'claude' || sourceClient === 'claude-code') {
+  if (['claude', 'claude-code', 'codex', 'opencode', 'open-code'].includes(sourceClient)) {
     return [{ type: 'text', text: params.summary }];
   }
   return buildJsonFirstContentBlocks(params);

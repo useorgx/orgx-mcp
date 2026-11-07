@@ -212,6 +212,10 @@ export const CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT = {
     focus: PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema.focus,
     view: z.enum(['work', 'outputs', 'goals', 'workspaces', 'history']).optional().describe('Optional panel view: running work, outputs agents made, goals and their progress, authorized workspace membership, or settled decisions.'),
     range: PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema.range.describe('For decision history: today, 7d or 30d. Defaults to 7d.'),
+    // The Outputs view reads the selected output's canonical summary by its
+    // id; the handler uses it only with view "outputs" and only as a UUID, so
+    // ledger filters such as "pr:3236" stay outside the current contract.
+    output_id: z.string().uuid().optional().describe('For view "outputs": the selected output id (UUID) whose canonical summary to read.'),
   },
   _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
 } as const;
@@ -435,7 +439,7 @@ export interface PanelWhy {
   initiative_url: string | null;
 }
 
-export type PanelWorkState = 'blocked' | 'running' | 'queued';
+export type PanelWorkState = 'blocked' | 'running' | 'queued' | 'planned' | 'held';
 
 export interface PanelWorkItem {
   id: string;
@@ -1427,10 +1431,10 @@ export function normalizeAppProof(value: unknown): PanelSnapshot['proof'] | null
 
 const WORK_STATE: Record<string, PanelWorkState> = {
   running: 'running', in_progress: 'running', active: 'running', working: 'running', executing: 'running', verifying: 'running',
-  blocked: 'blocked', stalled: 'blocked', waiting: 'blocked', paused_for_input: 'blocked', needs_input: 'blocked', needs_you: 'blocked', held: 'blocked',
-  queued: 'queued', pending: 'queued', scheduled: 'queued', todo: 'queued',
+  blocked: 'blocked', stalled: 'blocked', waiting: 'blocked', paused_for_input: 'blocked', needs_input: 'blocked', needs_you: 'blocked',
+  queued: 'queued', pending: 'planned', scheduled: 'planned', todo: 'planned', planned: 'planned', paused: 'held', held: 'held',
 };
-const WORK_RANK: Record<PanelWorkState, number> = { blocked: 0, running: 1, queued: 2 };
+const WORK_RANK: Record<PanelWorkState, number> = { blocked: 0, held: 1, running: 2, queued: 3, planned: 4 };
 
 function workState(value: unknown): PanelWorkState | null {
   const slug = typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s-]+/g, '_') : '';
@@ -1482,7 +1486,7 @@ function workPlace(task: Record<string, unknown>, agent: Record<string, unknown>
   if (initiative) out.initiative_id = initiative;
   if (workstream) out.workstream_id = workstream;
   if (milestone) out.milestone_id = milestone;
-  const blocker = state === 'blocked' ? clipText(task.blocker, PANEL_TEXT_MAX) : null;
+  const blocker = state === 'blocked' || state === 'held' ? clipText(task.blocker, PANEL_TEXT_MAX) : null;
   if (blocker) out.blocker = blocker;
   const rawSteps = Array.isArray(task.steps) ? task.steps : Array.isArray(task.checklist) ? task.checklist : null;
   if (rawSteps) {
@@ -1536,7 +1540,8 @@ export function buildPanelWork(data: Record<string, unknown> | null): PanelWork 
         ...workPlace(task, agent, state),
       });
     }
-    if (!tasks.length && agentState) {
+    if (!tasks.length && agentState && agentState !== 'planned' &&
+        !(agentState === 'queued' && !str(agent.run_id) && !str(agent.job_id))) {
       const current = clipText(str(asRecord(agent.current_task)?.title) ?? str(agent.current_activity) ?? str(agent.status_detail), PANEL_TITLE_MAX);
       items.push({
         id: `agent:${str(agent.agent_id) ?? name}`, agent: name, title: current ?? 'Working', state: agentState,
@@ -2022,7 +2027,9 @@ export async function handlePanelSnapshot(
       const built = buildPanelOutputs(artifacts, { viewerIds: host.viewerUserIds(), decisionByArtifact });
       snapshot.outputs = built.outputs;
       outputPreviews = built.previews;
-      const selectedId = typeof args.query === 'string' && UUID_RE.test(args.query) ? args.query : null;
+      // Current contracts name the selection output_id; legacy contracts sent it as query.
+      const selection = typeof args.output_id === 'string' ? args.output_id : args.query;
+      const selectedId = typeof selection === 'string' && UUID_RE.test(selection) ? selection : null;
       const selected = selectedId && built.outputs.items.some((item) => item.id === selectedId)
         ? artifacts?.find((artifact) => asRecord(artifact)?.id === selectedId) : null;
       if (selected && host.fetchArtifactReview) {

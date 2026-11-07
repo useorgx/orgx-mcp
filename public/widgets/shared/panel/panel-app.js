@@ -79,14 +79,14 @@
       caps: { modelContext: false, deepLink: false },
       generation: 0,
       chatCannotDecide: false,
-      // Panel v2: tabs, the lazily read In progress view, and what this
+      // Panel v2: tabs, the lazily read Work view, and what this
       // panel session settled (the Done tab's receipts).
       tab: 'needs',
       work: null,
       workPhase: 'idle',
       session: [],
       openReceipt: null,
-      // In progress: selected task, state filter, search, agents shown in full.
+      // Work: selected task, state filter, search, agents shown in full.
       workSel: null,
       workFilter: 'all',
       workQuery: '',
@@ -115,8 +115,8 @@
       startStatus: null,
       startWhoOpen: false,
       tourChecked: false,
-      // Live feed: connection status, and what it says In progress holds
-      // before (or without) the full In progress read.
+      // Live feed: connection status, and what it says Work holds
+      // before (or without) the full Work read.
       live: 'off',
       liveWork: null,
       renderPending: false,
@@ -148,7 +148,7 @@
       goalLinks: {},
       // The one open scope menu (a popover, or a sheet on a phone).
       pop: null,
-      // In progress: grouped by agent or by initiative, and the note to the agent being written.
+      // Work: grouped by agent or by initiative, and the note to the agent being written.
       workGroup: 'agent',
       steer: null,
       // Needs you: the ladder of levels per decision, the evidence detail, the bulk selection and its undo window.
@@ -1768,7 +1768,7 @@
       // Finished work waiting on a person is the one thing still asked of them.
       var waiting = (s.proof && s.proof.completed_unaccepted) || 0;
       var heading = waiting ? 'Nothing to decide.' : 'Nothing needs you.';
-      // Only say what is known: before In progress has been read, say nothing about it.
+      // Only say what is known: before Work has been read, say nothing about it.
       var next = waiting ? waiting.toLocaleString() + (waiting === 1 ? ' finished output waits' : ' finished outputs wait') + ' for your review in Outputs.'
         : items.length ? nAgents + (nAgents === 1 ? ' agent is' : ' agents are') + ' on ' + items.length + (items.length === 1 ? ' task' : ' tasks') + '; anything that needs you lands here.'
         : 'New decisions land here.';
@@ -2119,7 +2119,7 @@
       later(startTour, 600);
     }
 
-    var TAB_NAMES = { needs: 'Needs you', work: 'In progress', outputs: 'Outputs', goals: 'Goals', done: 'Done', start: 'Start' };
+    var TAB_NAMES = { needs: 'Needs you', work: 'Work', outputs: 'Outputs', goals: 'Goals', done: 'Done', start: 'Start' };
     // Where each tab was scrolled to, so coming back lands where you left.
     var scrollMemo = {};
     function rememberScroll() { try { scrollMemo[ui.tab] = window.scrollY || window.pageYOffset || 0; } catch (_) { /* no scroll */ } }
@@ -2170,7 +2170,7 @@
     }
 
     /**
-     * What In progress shows. The panel's own read when it has one; otherwise
+     * What Work shows. The panel's own read when it has one; otherwise
      * the live feed's rows (the same projection, without proof enrichment), so
      * the tab never says "13" over a body that says it could not read anything.
      */
@@ -2181,7 +2181,7 @@
         return {
           work: { status: 'ok', total: ui.liveWork.items.length, items: ui.liveWork.items.map(function row(i) {
             return {
-              id: i.id, agent: i.agent, title: i.title, state: i.state === 'running' || i.state === 'blocked' ? i.state : 'queued',
+              id: i.id, agent: i.agent, title: i.title, state: ['running', 'blocked', 'queued', 'held', 'planned'].indexOf(i.state) !== -1 ? i.state : 'planned',
               url: i.url || live, domain: i.domain || null, updated_at: i.updated_at || null, stale: Boolean(i.stale),
             };
           }) },
@@ -2249,10 +2249,12 @@
       if (list && list.items) list.items.forEach(rememberReceiptRow);
     }
 
+    // The ledger compares since: against UTC ISO start times, so the range
+    // starts at the person's local midnight written as a UTC instant.
     function receiptRangeQuery(range) {
       var now = new Date();
       var start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (range === 'today' ? 0 : range === '30d' ? 29 : 6));
-      return 'since:' + start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
+      return 'since:' + start.toISOString();
     }
 
     var receiptsInflight = null;
@@ -2379,7 +2381,7 @@
       attempt(0);
     }
 
-    /** In progress is read only when opened: the same snapshot with view "work". */
+    /** Work is read only when opened: the same snapshot with view "work". */
     function fetchWork() {
       if (isGallery) {
         ui.work = gallery.work();
@@ -2460,10 +2462,11 @@
       if (!id || isGallery || ui.outDoorPending[id]) return;
       ui.outDoorPending[id] = true;
       var old = Object.assign({}, ui.outPreviews[id] || {});
+      var cachedDoor = old.frontDoor;
       delete old.frontDoor;
       ui.outPreviews[id] = old;
       var gen = ui.generation;
-      R.callToolResult('orgx_panel_snapshot', { view: 'outputs', query: id }).then(function received(result) {
+      R.callToolResult('orgx_panel_snapshot', { view: 'outputs', output_id: id }).then(function received(result) {
         if (gen !== ui.generation) return;
         var previews = result && result.meta && result.meta[PREVIEW_META_KEY];
         var current = previews && previews[id];
@@ -2472,6 +2475,9 @@
         if (ui.outSel === id) render();
       }, function unavailable() {
         if (gen !== ui.generation) return;
+        // A failed re-read keeps the summary this panel already admitted.
+        var now = ui.outPreviews[id];
+        if (cachedDoor && !(now && now.frontDoor)) ui.outPreviews[id] = Object.assign({}, now || {}, { frontDoor: cachedDoor });
         ui.outDoorPending[id] = false;
         if (ui.outSel === id) render();
       });
@@ -3293,7 +3299,7 @@
           break;
         }
         case 'goal-needs': setTab('needs', true, function openNeed() { selectDecision(id); }); break;
-        // ── In progress ──
+        // ── Work ──
         case 'work-group': ui.workGroup = id === 'initiative' ? 'initiative' : 'agent'; ui.workExpanded = {}; closePop(false); if (ui.workGroup === 'initiative' && !ui.goals && ui.goalsPhase === 'idle') fetchGoals(); focusFirst('[data-action="pop"][data-id="wview"]'); break;
         case 'work-decide': setTab('needs', true, function decideThere() { selectDecision(id); }); break;
         case 'steer-send': {
@@ -3760,7 +3766,7 @@
       });
       inflight = null; pendingFocus = undefined;
       ui.readState = { phase: 'idle' };
-      // A work read dropped by the page cache must not leave In progress loading forever.
+      // A work read dropped by the page cache must not leave Work loading forever.
       if (ui.workPhase === 'loading') ui.workPhase = ui.work ? 'ready' : 'idle';
       render();
       fetchSnapshot(null, 'resume');
@@ -4064,7 +4070,7 @@
 
     render();
     /**
-     * In progress and Done › Work each read on first open and showed a
+     * Work and Done › Work each read on first open and showed a
      * skeleton while they did. Once the first snapshot is painted and the
      * browser is idle, read both in the background, so the first tap on
      * either tab lands on content. Once per widget life; a later tap that

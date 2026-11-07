@@ -115,6 +115,34 @@ describe('proof receipt widget', () => {
     expect(rail()[2]).toBe('fail');
   });
 
+  it.each([
+    ['passed', 'Verified, with 3 pieces of evidence.', 'ok', 'teal'],
+    ['verified', 'Verified, with 3 pieces of evidence.', 'ok', 'teal'],
+    ['failed', 'Proof recorded. Verification failed.', 'fail', 'red'],
+    ['inconclusive', 'Recorded. Verification is blocked.', 'warn', 'amber'],
+    ['blocked', 'Recorded. Verification is blocked.', 'warn', 'amber'],
+  ])('takes an OrgX run\'s verdict %s from the claims when the assessment names its source', async (status, headline, step, edge) => {
+    await mount(payload({
+      verification_status: undefined,
+      producer_claims: { outcome_status: 'succeeded', verification_status: status, acceptance_status: null },
+      receipt_assessment: { evidence_status: 'recorded', verification_status: 'orgx_run', acceptance_status: 'awaiting_human_review', outcome_status: null, verification_lookup: 'found' },
+    }));
+    expect(text('.pk-q')).toBe(headline);
+    expect(rail()[2]).toBe(step);
+    expect(document.querySelector('.rail li:nth-child(3)')?.textContent).toContain('Verified');
+    expect(document.querySelector('.rc')!.getAttribute('data-edge')).toBe(edge);
+    expect(document.querySelector('.rc')!.getAttribute('data-verdict')).not.toBe('orgx_run');
+  });
+
+  it('reads an OrgX run verdict from the top-level status when the claims carry none', async () => {
+    await mount(payload({
+      verification_status: 'passed',
+      receipt_assessment: { verification_status: 'orgx_run', acceptance_status: 'awaiting_human_review', outcome_status: null },
+    }));
+    expect(text('.pk-q')).toBe('Verified, with 3 pieces of evidence.');
+    expect(rail()[2]).toBe('ok');
+  });
+
   it('names the gap and the next move instead of the missing field ids', async () => {
     await mount(
       payload(
@@ -171,6 +199,14 @@ describe('proof receipt widget', () => {
     const pr = document.querySelector('ox-receipt-row[href]')!;
     pr.dispatchEvent(new CustomEvent('ox-open', { bubbles: true, composed: true, cancelable: true, detail: { href: pr.getAttribute('href') } }));
     expect(openExternal).toHaveBeenLastCalledWith({ url: 'https://github.com/acme/checkout/pull/2291' });
+  });
+
+  it('opens an unanchored receipt on its own page, not the ledger overview', async () => {
+    const { openExternal } = await mount(payload({ external_receipt_id: 'awr_01JABCDEF', workspace_id: '11111111-1111-4111-8111-111111111111' }, { anchor: {} }));
+    document.querySelector('ox-footer')!.dispatchEvent(new CustomEvent('ox-action', { bubbles: true, composed: true }));
+    expect(openExternal).toHaveBeenCalledWith({
+      url: 'https://useorgx.com/work-ledger/receipts/awr_01JABCDEF?center=11111111-1111-4111-8111-111111111111',
+    });
   });
 
   it('keeps four evidence rows inline and opens the rest in place', async () => {
