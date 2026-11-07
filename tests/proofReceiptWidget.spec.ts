@@ -115,6 +115,34 @@ describe('proof receipt widget', () => {
     expect(rail()[2]).toBe('fail');
   });
 
+  it.each([
+    ['passed', 'Verified, with 3 pieces of evidence.', 'ok', 'teal'],
+    ['verified', 'Verified, with 3 pieces of evidence.', 'ok', 'teal'],
+    ['failed', 'Proof recorded. Verification failed.', 'fail', 'red'],
+    ['inconclusive', 'Recorded. Verification is blocked.', 'warn', 'amber'],
+    ['blocked', 'Recorded. Verification is blocked.', 'warn', 'amber'],
+  ])('takes an OrgX run\'s verdict %s from the claims when the assessment names its source', async (status, headline, step, edge) => {
+    await mount(payload({
+      verification_status: undefined,
+      producer_claims: { outcome_status: 'succeeded', verification_status: status, acceptance_status: null },
+      receipt_assessment: { evidence_status: 'recorded', verification_status: 'orgx_run', acceptance_status: 'awaiting_human_review', outcome_status: null, verification_lookup: 'found' },
+    }));
+    expect(text('.pk-q')).toBe(headline);
+    expect(rail()[2]).toBe(step);
+    expect(document.querySelector('.rail li:nth-child(3)')?.textContent).toContain('Verified');
+    expect(document.querySelector('.rc')!.getAttribute('data-edge')).toBe(edge);
+    expect(document.querySelector('.rc')!.getAttribute('data-verdict')).not.toBe('orgx_run');
+  });
+
+  it('reads an OrgX run verdict from the top-level status when the claims carry none', async () => {
+    await mount(payload({
+      verification_status: 'passed',
+      receipt_assessment: { verification_status: 'orgx_run', acceptance_status: 'awaiting_human_review', outcome_status: null },
+    }));
+    expect(text('.pk-q')).toBe('Verified, with 3 pieces of evidence.');
+    expect(rail()[2]).toBe('ok');
+  });
+
   it('names the gap and the next move instead of the missing field ids', async () => {
     await mount(
       payload(
