@@ -196,7 +196,7 @@ describe('Done › Work: the work, what done meant, and your call', () => {
     });
     click(m, '[data-tab="done"]');
     await m.flush(); await m.flush();
-    expect(m.calls.callServerTool.mock.calls[0]![0]).toMatchObject({ name: 'orgx_list_work_receipts', arguments: { query: expect.stringMatching(/^since:\d{4}-\d{2}-\d{2}$/), limit: 50 } });
+    expect(m.calls.callServerTool.mock.calls[0]![0]).toMatchObject({ name: 'orgx_list_work_receipts', arguments: { query: expect.stringMatching(/^since:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/), limit: 50 } });
     // Nothing selected: quality across the range.
     expect(doc(m).querySelector('.q-card .md-title')!.textContent).toBe('1 piece of work, 4 checks');
     expect(doc(m).querySelector('.rc-row .rc-pips')!.getAttribute('aria-label')).toBe('2 of 4 checks met, 1 not met, 1 with no evidence');

@@ -2249,10 +2249,12 @@
       if (list && list.items) list.items.forEach(rememberReceiptRow);
     }
 
+    // The ledger compares since: against UTC ISO start times, so the range
+    // starts at the person's local midnight written as a UTC instant.
     function receiptRangeQuery(range) {
       var now = new Date();
       var start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (range === 'today' ? 0 : range === '30d' ? 29 : 6));
-      return 'since:' + start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
+      return 'since:' + start.toISOString();
     }
 
     var receiptsInflight = null;
@@ -2460,10 +2462,11 @@
       if (!id || isGallery || ui.outDoorPending[id]) return;
       ui.outDoorPending[id] = true;
       var old = Object.assign({}, ui.outPreviews[id] || {});
+      var cachedDoor = old.frontDoor;
       delete old.frontDoor;
       ui.outPreviews[id] = old;
       var gen = ui.generation;
-      R.callToolResult('orgx_panel_snapshot', { view: 'outputs', query: id }).then(function received(result) {
+      R.callToolResult('orgx_panel_snapshot', { view: 'outputs', output_id: id }).then(function received(result) {
         if (gen !== ui.generation) return;
         var previews = result && result.meta && result.meta[PREVIEW_META_KEY];
         var current = previews && previews[id];
@@ -2472,6 +2475,9 @@
         if (ui.outSel === id) render();
       }, function unavailable() {
         if (gen !== ui.generation) return;
+        // A failed re-read keeps the summary this panel already admitted.
+        var now = ui.outPreviews[id];
+        if (cachedDoor && !(now && now.frontDoor)) ui.outPreviews[id] = Object.assign({}, now || {}, { frontDoor: cachedDoor });
         ui.outDoorPending[id] = false;
         if (ui.outSel === id) render();
       });

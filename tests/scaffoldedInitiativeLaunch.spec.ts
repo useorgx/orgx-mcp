@@ -45,6 +45,45 @@ describe('scaffolded initiative launch', () => {
     });
   });
 
+  it('says the status is unavailable when OrgX no longer knows the launch command', async () => {
+    const callTool = vi.fn((name: string) => {
+      if (name === 'orgx_launch_initiative') return Promise.resolve({ structuredContent: { ok: true, command_id: COMMAND_ID } });
+      return Promise.resolve({ structuredContent: { kind: 'command', id: COMMAND_ID, state: 'not_found', next_poll_after_ms: null } });
+    });
+    mountWidget('scaffolded-initiative', { payload: draftScaffold, callTool });
+    await vi.waitFor(() => expect(footer()?.getAttribute('state')).toBe('needs-you'));
+    footer().dispatchEvent(new CustomEvent('ox-primary'));
+
+    await vi.waitFor(() => expect(callTool).toHaveBeenCalledWith('orgx_get_operation_status', { kind: 'command', id: COMMAND_ID }));
+    await vi.waitFor(() => expect(footer().getAttribute('detail')).toBe('status unavailable'));
+    expect(footer().getAttribute('heading')).toBe('Launch accepted');
+    expect(document.querySelector('[data-open-live-view]')?.textContent).toContain('Open mission control');
+  });
+
+  it('says the status is unavailable after three failed status reads', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const callTool = vi.fn((name: string) => {
+        if (name === 'orgx_launch_initiative') return Promise.resolve({ structuredContent: { ok: true, command_id: COMMAND_ID } });
+        return Promise.reject(new Error('status read failed'));
+      });
+      mountWidget('scaffolded-initiative', { payload: draftScaffold, callTool });
+      await vi.waitFor(() => expect(footer()?.getAttribute('state')).toBe('needs-you'));
+      footer().dispatchEvent(new CustomEvent('ox-primary'));
+
+      await vi.waitFor(async () => {
+        await vi.advanceTimersByTimeAsync(4000);
+        expect(callTool.mock.calls.filter(([name]) => name === 'orgx_get_operation_status')).toHaveLength(3);
+      });
+      await vi.waitFor(() => expect(footer().getAttribute('detail')).toBe('status unavailable'));
+      expect(footer().getAttribute('heading')).toBe('Launch accepted');
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(callTool.mock.calls.filter(([name]) => name === 'orgx_get_operation_status')).toHaveLength(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('says the launch failed and offers the same launch again', async () => {
     const callTool = vi.fn(() => Promise.reject(new Error('Launch refused')));
     mountWidget('scaffolded-initiative', { payload: draftScaffold, callTool });
