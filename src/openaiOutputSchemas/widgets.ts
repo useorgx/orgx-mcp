@@ -1033,6 +1033,29 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         image_generation: z.boolean(),
         cursor_background_agents: z.boolean(),
       }),
+      // One entry per orgx_start_agent_task runtime: can it run now, and why not.
+      execution_targets: z
+        .array(
+          z.object({
+            runtime: z.enum(['cloud_openai', 'cloud_claude', 'managed_openai', 'managed_anthropic', 'local']),
+            label: z.string(),
+            available: z.boolean(),
+            reason: nullableString,
+            default_model: nullableString,
+            may_fall_back_to: nullableString,
+            runners: z
+              .array(
+                z.object({
+                  provider: z.string(),
+                  label: nullableString,
+                  driver: nullableString,
+                  last_heartbeat_at: nullableString,
+                })
+              )
+              .optional(),
+          })
+        )
+        .optional(),
       setup_url: z.string(),
     })
     .strict(),
