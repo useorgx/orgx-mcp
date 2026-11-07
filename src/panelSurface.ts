@@ -212,6 +212,10 @@ export const CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT = {
     focus: PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema.focus,
     view: z.enum(['work', 'outputs', 'goals', 'workspaces', 'history']).optional().describe('Optional panel view: running work, outputs agents made, goals and their progress, authorized workspace membership, or settled decisions.'),
     range: PANEL_SNAPSHOT_TOOL_CONTRACT.inputSchema.range.describe('For decision history: today, 7d or 30d. Defaults to 7d.'),
+    // The Outputs view reads the selected output's canonical summary by its
+    // id; the handler uses it only with view "outputs" and only as a UUID, so
+    // ledger filters such as "pr:3236" stay outside the current contract.
+    query: z.string().uuid().optional().describe('For view "outputs": the selected output id (UUID) whose canonical summary to read.'),
   },
   _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
 } as const;

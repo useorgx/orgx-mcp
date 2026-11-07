@@ -2460,6 +2460,7 @@
       if (!id || isGallery || ui.outDoorPending[id]) return;
       ui.outDoorPending[id] = true;
       var old = Object.assign({}, ui.outPreviews[id] || {});
+      var cachedDoor = old.frontDoor;
       delete old.frontDoor;
       ui.outPreviews[id] = old;
       var gen = ui.generation;
@@ -2472,6 +2473,9 @@
         if (ui.outSel === id) render();
       }, function unavailable() {
         if (gen !== ui.generation) return;
+        // A failed re-read keeps the summary this panel already admitted.
+        var now = ui.outPreviews[id];
+        if (cachedDoor && !(now && now.frontDoor)) ui.outPreviews[id] = Object.assign({}, now || {}, { frontDoor: cachedDoor });
         ui.outDoorPending[id] = false;
         if (ui.outSel === id) render();
       });

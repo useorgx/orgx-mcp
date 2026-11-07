@@ -10,7 +10,7 @@ const functions = source.slice(start, end);
 const id = 'a1111111-1111-4111-8111-111111111111';
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
-function fixture(delayedDetail = false) {
+function fixture(delayedDetail = false, failDetail = false) {
   let releaseList!: (value: unknown) => void;
   let releaseDetail!: (value: unknown) => void;
   let details = 0;
@@ -23,6 +23,7 @@ function fixture(delayedDetail = false) {
     R: { callToolResult(_name: string, args: { query?: string }) {
       if (!args.query) return new Promise(resolve => { releaseList = resolve; });
       details++;
+      if (failDetail && details > 1) return Promise.reject(new Error('Input validation error'));
       return delayedDetail ? new Promise(resolve => { releaseDetail = resolve; }) : Promise.resolve(canonical);
     } },
   }) as { fetchOutputs(): void; fetchOutputSummary(id: string): void };
@@ -46,6 +47,17 @@ describe('selected panel output read ordering', () => {
     expect(f.details()).toBe(1);
     f.releaseDetail(); await tick();
     expect(f.ui.outPreviews[id]?.frontDoor?.answer).toBe('Canonical answer');
+  });
+  it('keeps an admitted summary when a later re-read of it is refused', async () => {
+    const f = fixture(false, true);
+    f.reads.fetchOutputSummary(id);
+    await tick();
+    expect(f.ui.outPreviews[id]?.frontDoor?.answer).toBe('Canonical answer');
+    f.reads.fetchOutputSummary(id);
+    await tick();
+    expect(f.details()).toBe(2);
+    expect(f.ui.outPreviews[id]?.frontDoor?.answer).toBe('Canonical answer');
+    expect(f.ui.outDoorPending).toEqual({ [id]: false });
   });
   it('does not let the previous workspace list start another detail read', async () => {
     const f = fixture(); f.reads.fetchOutputs(); f.ui.generation++;
