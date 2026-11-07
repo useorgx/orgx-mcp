@@ -762,7 +762,7 @@ describe('mcpTransport', () => {
               type: 'task',
               operation: 'create',
               _context: {
-                client: { name: 'codex', platform: 'macos' },
+                client: { name: 'openai-mcp (Codex)', platform: 'macos' },
                 conversation: { id: 'conv-journey' },
                 journey: {
                   step_id: 'step-2',
