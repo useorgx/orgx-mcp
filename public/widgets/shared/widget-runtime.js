@@ -354,8 +354,11 @@
   // Tool input seen, no result yet: initWidget({ onToolInput }) or getToolCallState().
   var toolCallState = { inputSeen: false, resultSeen: false, inputAt: null, resultAt: null };
   var toolInputListeners = [];
+  // Arguments from the MCP Apps tool-input notification (ChatGPT: openai.toolInput).
+  var lastToolInput = null;
 
-  function markToolInput() {
+  function markToolInput(args) {
+    if (args && typeof args === 'object' && !Array.isArray(args)) lastToolInput = args;
     if (toolCallState.inputSeen) return;
     toolCallState.inputSeen = true;
     toolCallState.inputAt = Date.now();
@@ -373,6 +376,11 @@
     if (toolCallState.resultSeen) return;
     toolCallState.resultSeen = true;
     toolCallState.resultAt = Date.now();
+  }
+
+  function getToolInput() {
+    var input = global.openai && global.openai.toolInput;
+    return input && typeof input === 'object' ? input : lastToolInput;
   }
 
   function getToolCallState() {
@@ -456,7 +464,7 @@
       return;
     }
     if (data.method === 'ui/notifications/tool-input') {
-      markToolInput();
+      markToolInput(data.params && data.params.arguments);
       return;
     }
     if (
@@ -521,8 +529,8 @@
       name: 'OrgX Widget',
       version: '2.0.0',
     });
-    this.app.ontoolinput = function onToolInput() {
-      markToolInput();
+    this.app.ontoolinput = function onToolInput(params) {
+      markToolInput(params && params.arguments);
     };
     this.app.ontoolresult = function onToolResult(result) {
       markToolResult();
@@ -1947,6 +1955,7 @@
     formatterCache = {};
     hostContextListeners = [];
     toolInputListeners = [];
+    lastToolInput = null;
     toolCallState = { inputSeen: false, resultSeen: false, inputAt: null, resultAt: null };
     reportedSearchEvents = {};
   }
@@ -1974,6 +1983,7 @@
     getToolSurface: getToolSurface,
     getWidgetToolName: getWidgetToolName,
     getToolCallState: getToolCallState,
+    getToolInput: getToolInput,
     getWidgetSessionId: getWidgetSessionId,
     initWidget: initWidget,
     openWidgetLink: openWidgetLink,
