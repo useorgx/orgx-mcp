@@ -1,5 +1,5 @@
 /**
- * OrgX panel views: tabs, In progress, Done (session receipts).
+ * OrgX panel views: tabs, Work, Done (session receipts).
  *
  * Pure string builders; the controller owns state and events. Every
  * actionable element uses data-action so the controller's one click
@@ -29,7 +29,7 @@
   }
 
   // Start is not a tab: it opens from the header's + (the Start menu), and its view stays reachable.
-  var TABS = [['needs', 'Needs you'], ['work', 'In progress'], ['outputs', 'Outputs'], ['goals', 'Goals'], ['done', 'Done']];
+  var TABS = [['needs', 'Needs you'], ['work', 'Work'], ['outputs', 'Outputs'], ['goals', 'Goals'], ['done', 'Done']];
   var TAB_MODULE = { outputs: 'OrgXPanelOutputs', goals: 'OrgXPanelGoals' };
   /** The tabs this build can open, in order: a tab that cannot open is worse than none. */
   function tabOrder() {
@@ -53,8 +53,8 @@
     }).join('') + '</div>';
   }
 
-  var WORK_GROUPS = [['blocked', 'Blocked'], ['running', 'Running'], ['queued', 'Queued']];
-  var WORK_CHIP = { blocked: 'blocked', running: 'running', queued: 'queued' };
+  var WORK_GROUPS = [['blocked', 'Blocked'], ['running', 'Running'], ['queued', 'Queued'], ['planned', 'Planned'], ['held', 'Held']];
+  var WORK_CHIP = { blocked: 'blocked', running: 'running', queued: 'queued', planned: 'pending', held: 'blocked' };
 
   function skeletonRows(n) {
     var out = '';
@@ -97,8 +97,8 @@
   function ago(iso) { var t = global.OrgXTime; return iso && t && t.relative ? t.relative(iso) : ''; }
   function count(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
 
-  var STATE_ORDER = ['blocked', 'running', 'queued'];
-  var STATE_NAME = { blocked: 'Blocked', running: 'Running', queued: 'Queued' };
+  var STATE_ORDER = ['blocked', 'held', 'running', 'queued', 'planned'];
+  var STATE_NAME = { blocked: 'Blocked', running: 'Running', queued: 'Queued', planned: 'Planned', held: 'Held' };
   var ROWS_PER_AGENT = 4;
 
   /** Close on a wide panel (×); Back on a narrow one, where the detail replaces the list. */
@@ -114,7 +114,7 @@
 
   function workChip(i) {
     if (i.stale) return '<ox-state-chip state="stale" label="' + esc(i.updated_at && ago(i.updated_at) ? 'No update in ' + ago(i.updated_at).replace(/\s*ago$/, '') : 'No recent update') + '"></ox-state-chip>';
-    return '<ox-state-chip state="' + WORK_CHIP[i.state] + '"></ox-state-chip>';
+    return '<ox-state-chip state="' + WORK_CHIP[i.state] + '" label="' + esc(STATE_NAME[i.state]) + '"></ox-state-chip>';
   }
 
   /** One agent's work: who, what domain, how much is in each state. */
@@ -123,7 +123,7 @@
     var by = {};
     items.forEach(function bucket(i) {
       var key = i.agent || 'Agent';
-      if (!by[key]) { by[key] = { agent: key, domain: i.domain || '', items: [], n: { blocked: 0, running: 0, queued: 0 } }; order.push(key); }
+      if (!by[key]) { by[key] = { agent: key, domain: i.domain || '', items: [], n: { blocked: 0, running: 0, queued: 0, planned: 0, held: 0 } }; order.push(key); }
       by[key].items.push(i);
       by[key].n[i.state] += 1;
     });
@@ -141,7 +141,7 @@
       var key = i.initiative_id || '';
       if (!by[key]) {
         var name = key && nameOf ? nameOf(key) : null;
-        by[key] = { key: key || 'none', label: key ? name || 'Initiative not named here' : 'No initiative named', named: Boolean(key), items: [], n: { blocked: 0, running: 0, queued: 0 } };
+        by[key] = { key: key || 'none', label: key ? name || 'Initiative not named here' : 'No initiative named', named: Boolean(key), items: [], n: { blocked: 0, running: 0, queued: 0, planned: 0, held: 0 } };
         order.push(key);
       }
       by[key].items.push(i);
@@ -176,7 +176,7 @@
   }
   /** A note to the running agent, through the chat: the panel never steers on its own. */
   function steerHtml(item, steer) {
-    if (item.state === 'queued') return '';
+    if (item.state === 'queued' || item.state === 'planned' || item.state === 'held') return '';
     var who = item.agent || 'the agent';
     if (steer && steer.id === item.id && steer.status) {
       var said = steer.status === 'sent' ? 'Sent to the chat for ' + who + '. It lands at the next step.'
@@ -198,11 +198,13 @@
       ? 'Marked in progress, but nothing has been reported for ' + (ago(item.updated_at) || 'a while') + '. It may be stalled.'
       : item.state === 'blocked' ? 'Waiting on something before it can continue.'
       : item.state === 'running' ? 'An agent is working on this now.'
-      : 'Assigned and waiting its turn.';
+      : item.state === 'held' ? 'This task is held by its initiative or a prerequisite.'
+      : item.state === 'planned' ? 'Saved work. Execution has not been queued.'
+      : 'Execution has been queued.';
     var ask = 'In OrgX, what is ' + (item.state === 'blocked' || item.stale ? 'holding up' : 'the status of') + ' “' + item.title.slice(0, 120) + '”?';
     var waiting = opts.waiting && opts.waiting[item.id];
     return '<div class="md-card" role="region" aria-label="Task details">' +
-      (onClose ? backHtml('work-select', 'Back to In progress') : '') +
+      (onClose ? backHtml('work-select', 'Back to Work') : '') +
       '<p class="md-kicker">' + workChip(item) + '</p>' +
       '<h3 class="md-title">' + esc(item.title) + '</h3>' + workCrumbs(item, opts) +
       '<p class="md-who"><span class="md-av">' + avatar(item.agent, 'inline') + '</span>' + esc(meta.join(' · ')) + '</p>' +
@@ -229,14 +231,14 @@
   }
 
   /**
-   * In progress, built to stay readable at hundreds of tasks: grouped by agent
+   * Work, built to stay readable at hundreds of tasks: grouped by agent
    * (blocked work first), a state filter, search once the list is long, a few
    * rows per agent with the rest one press away, and a detail pane for the
    * selected task. opts: { sel, filter, query, expanded, narrow }.
    */
   function workHtml(work, phase, launch, opts) {
     opts = opts || {};
-    var head = '<div class="pn-view-head"><h2 class="pn-view-h">In progress</h2>' +
+    var head = '<div class="pn-view-head"><h2 class="pn-view-h">Work</h2>' +
       '<button type="button" class="text-btn" data-action="open" data-url="' + esc(runsUrl()) + '">All runs in OrgX ↗</button></div>';
     if (phase === 'loading' && !work) {
       return '<section class="pn-work" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-work" aria-busy="true">' + head + skeletonRows(5) + '<p class="sr-only">Loading what your agents are running.</p></section>';
@@ -248,11 +250,12 @@
     }
     if (!work.items.length) {
       // Empty: one line, one sentence, the one way to start. No runs link to an empty list.
-      return '<section class="pn-work" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-work"><div class="pn-view-head"><h2 class="pn-view-h">In progress</h2></div>' +
+      return '<section class="pn-work" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-work"><div class="pn-view-head"><h2 class="pn-view-h">Work</h2></div>' +
         emptyHtml('Nothing is running right now.', 'Work you start or delegate shows here with its state.', launch) + '</section>';
     }
-    var totals = { blocked: 0, running: 0, queued: 0 };
+    var totals = { blocked: 0, running: 0, queued: 0, planned: 0, held: 0 };
     work.items.forEach(function t(i) { totals[i.state] += 1; });
+    head += '<p class="pn-work-summary" role="status">' + totals.running + ' running · ' + totals.queued + ' queued · ' + totals.planned + ' planned · ' + (totals.held + totals.blocked) + ' held or blocked</p>';
     var filter = STATE_ORDER.indexOf(opts.filter) !== -1 ? opts.filter : 'all';
     var q = String(opts.query || '').trim().toLowerCase();
     var visible = work.items.filter(function keep(i) {

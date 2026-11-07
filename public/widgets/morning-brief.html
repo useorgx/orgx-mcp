@@ -496,7 +496,7 @@
 
     function artifactUrl(artifact) {
       const row = asObject(artifact);
-      return window.OrgXLinks.normalize(row.primary_url) || window.OrgXLinks.normalize(row.live_url) || null;
+      return window.OrgXLinks.normalize(row.primary_url) || window.OrgXLinks.normalize(row.live_url) || window.OrgXLinks.normalize(row.url) || null;
     }
 
     function artifactLabel(artifact, fallback) {
@@ -508,7 +508,7 @@
 
     function isReviewable(artifact, reviewIds) {
       const row = asObject(artifact);
-      const status = String(row.status || '').toLowerCase();
+      const status = String(row.status || '').toLowerCase().replace('pending_', 'in_');
       if (artifactIsSuperseded(row) || status === 'archived' || row.reviewRequired === false) return false;
       if (!['in_review', 'review', 'draft', 'changes_requested'].includes(status)) return false;
       if (row.reviewRequired === true) return true;
@@ -679,6 +679,7 @@
           blocked_items: payload.blocked_items ?? metrics.blockedWork,
           top_priorities: payload.top_priorities ?? chronicle.topPriorities,
           artifacts_produced: payload.artifacts_produced ?? chronicle.artifactLedger,
+          review_items: payload.review_items ?? asArray(chronicle.artifactLedger).filter((row) => /^(in_|pending_)?review$/.test(asObject(row).status)),
           brief_markdown: payload.brief_markdown ?? asObject(chronicle.reportingNarrative).briefMarkdown,
           degraded: payload.degraded ?? chronicle.degraded,
           degraded_sources: payload.degraded_sources ?? chronicle.degraded_sources,
@@ -722,9 +723,8 @@
       });
       const artifactsProduced = mergeArtifactRows(suppliedOutputs.map(resolveCurrent), []);
       const exceptions = asArray(payload.exceptions);
-      const nextActions = asArray(payload.next_actions).length
-        ? asArray(payload.next_actions)
-        : asArray(payload.recommended_actions);
+      // orgx_recommend next_action mode: recommendations, top pick in next_action.
+      const nextActions = [payload.next_actions, payload.recommended_actions, payload.recommendations, payload.next_action && [payload.next_action]].map(asArray).find((list) => list.length) || [];
 
       const suppressPriorities = payload.suppress_priorities === true;
       let priorities = asArray(payload.top_priorities);
@@ -1048,7 +1048,7 @@
           const status = String(row.status || 'draft').toLowerCase();
           const url = artifactUrl(row);
           const reviewable = isReviewable(row, reviewIds);
-          const type = titleCase(String(row.artifact_type || row.type || 'artifact')).replace(/\s+/g, '.');
+          const type = titleCase(String(row.artifact_type || row.artifactType || row.type || 'artifact')).replace(/\s+/g, '.');
           const summary =
             row.summary ||
             row.description ||
@@ -1058,7 +1058,7 @@
                 ? 'Recorded artifact available for inspection.'
                 : 'Captured as proof from the latest autonomous run.');
           const actionLabel = artifactLabel(row, reviewable ? 'Review' : 'Open');
-          const author = row.created_by_name || row.created_by || 'OrgX agent';
+          const author = row.created_by_name || row.created_by || row.agentType || 'OrgX agent';
           const agentKey = agentFor(author);
           const chip = artifactIsSuperseded(row)
             ? '<ox-state-chip state="superseded" label="Superseded"></ox-state-chip>'

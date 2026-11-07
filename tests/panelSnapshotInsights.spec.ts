@@ -356,6 +356,13 @@ describe('the outputs and goals reads', () => {
     expect(JSON.stringify(result.structuredContent)).not.toContain(outputFrontDoor().answer);
   });
 
+  it('reads the selected output named by output_id, the current contract field', async () => {
+    const fetchArtifactReview = vi.fn(async () => ({ artifact: artifact(ART), reviewContractSource: 'canonical' as const, reviewContract: { schemaVersion: 'artifact_review_contract.v1', frontDoor: outputFrontDoor() } }));
+    const result = await handlePanelSnapshot(host({ fetchArtifactReview }), { view: 'outputs', output_id: ART });
+    expect(fetchArtifactReview).toHaveBeenCalledTimes(1);
+    expect((result._meta?.[PANEL_PREVIEW_META_KEY] as Record<string, unknown>)[ART]).toMatchObject({ frontDoor: outputFrontDoor() });
+  });
+
   it.each(['different subject', 'entity fallback', 'read failure'])('keeps existing preview when canonical summary has %s', async (problem) => {
     const fetchArtifactReview = vi.fn(async () => {
       if (problem === 'read failure') throw new Error('unavailable');

@@ -247,8 +247,10 @@
     };
 
     // The anchored work in OrgX: the entity the receipt proves, else its
-    // artifact, else the work ledger. Built by the shared link builder.
-    var anchorUrl = function (anchor) {
+    // artifact, else the receipt's own page in the Work Ledger (the v1 import
+    // returns the producer's receipt id, which that page takes), else the
+    // Work Ledger. Built by the shared link builder.
+    var anchorUrl = function (anchor, payload) {
       var links = window.OrgXLinks;
       var type = str(anchor.entity_type).toLowerCase();
       var id = str(anchor.entity_id);
@@ -257,6 +259,8 @@
       }
       var artifact = str(anchor.artifact_id);
       if (artifact && UUID_RE.test(artifact)) return links.artifact(artifact);
+      var receiptId = str(payload && payload.external_receipt_id);
+      if (receiptId && links.receipt) return links.receipt(receiptId, { center: str(payload.workspace_id) });
       return links.workLedger();
     };
 
@@ -317,6 +321,13 @@
      * One reading of the receipt. Every visible signal (edge, glyph tone,
      * ladder, headline) comes from here, so they never disagree.
      */
+    var orgxRunVerdict = function (status) {
+      if (status === 'passed' || status === 'verified') return 'verified';
+      if (status === 'failed') return 'failed';
+      if (status === 'inconclusive' || status === 'blocked') return 'blocked';
+      return '';
+    };
+
     var describe = function (payload) {
       var proof = record(payload.proof);
       var anchor = record(proof.anchor);
@@ -327,7 +338,14 @@
       var reportedOutcome = str(claims.outcome_status).toLowerCase();
       var reportedVerification = str(payload.verification_status || claims.verification_status).toLowerCase();
       var assessedVerification = str(assessment.verification_status).toLowerCase();
-      var verification = assessedVerification === 'producer_reported' ? '' : assessedVerification;
+      // The work ledger's assessment names where verification came from
+      // ('producer_reported' | 'orgx_run'), not a verdict. An OrgX run's own
+      // result rides in the claims; older payloads put the verdict here.
+      var verification = assessedVerification === 'producer_reported'
+        ? ''
+        : assessedVerification === 'orgx_run'
+          ? orgxRunVerdict(str(claims.verification_status || payload.verification_status).toLowerCase())
+          : assessedVerification;
       var hasAssessment = Boolean(verification);
       var verified = ['passed', 'verified'].indexOf(verification) !== -1;
       var acceptance = str(assessment.acceptance_status).toLowerCase();
@@ -412,7 +430,7 @@
       }
       if (view.verification === 'failed') return 'The agent fixes what failed and submits a passing verification.';
       if (view.verification === 'blocked') return 'Unblock verification, then the agent submits the result.';
-      if (view.verification !== 'passed') return 'The agent runs verification and submits the result.';
+      if (['passed', 'verified'].indexOf(view.verification) === -1) return 'The agent runs verification and submits the result.';
       return view.next ? sentence(view.next) + '.' : '';
     };
 
@@ -449,7 +467,7 @@
       }
       var view = describe(payload);
       var proof = view.proof;
-      currentAnchorUrl = anchorUrl(view.anchor);
+      currentAnchorUrl = anchorUrl(view.anchor, payload);
       var identity = window.OrgXAgentIdentity;
       var agentName = str(proof.agent_type);
       var agentKey = identity && agentName ? identity.resolveAgentKey(agentName) : null;

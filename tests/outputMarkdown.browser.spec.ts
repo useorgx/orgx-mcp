@@ -91,7 +91,7 @@ describe.each(['light', 'dark'] as const)('output Markdown on a 390px %s phone',
     const data = snapshot({ outputs: { status: 'ok', total: 1, items: [{ id: FRONT_DOOR_ARTIFACT_ID, title: 'Client deck', type: 'document', family: 'writing', status: 'in_review', has_preview: true, external_url: null, initiative_id: null, task_id: null, made_at: new Date().toISOString(), made_by: 'OrgX', accepted: { state: 'waiting', at: null, by: null }, landed: null, moved: null, checks: [], checks_source: null, eval_score: null, decision_id: null, url: `https://useorgx.com/artifacts/${FRONT_DOOR_ARTIFACT_ID}` }] } });
     await page.addInitScript(({ theme, data, door, markdown, id }) => {
       (window as unknown as Record<string, unknown>).openai = { theme, toolOutput: data, setWidgetHeight() {}, async callTool(name: string, args: Record<string, unknown>) {
-        if (name === 'orgx_panel_snapshot' && args.view === 'outputs') return { structuredContent: data, _meta: { 'orgx/panelPreviews': { [id]: { summary: null, preview: markdown, ...(args.query === id ? { frontDoor: door } : {}) } } } };
+        if (name === 'orgx_panel_snapshot' && args.view === 'outputs') return { structuredContent: data, _meta: { 'orgx/panelPreviews': { [id]: { summary: null, preview: markdown, ...(args.output_id === id ? { frontDoor: door } : {}) } } } };
         return new Promise(() => undefined);
       } };
     }, { theme, data, door: outputFrontDoor(), markdown, id: FRONT_DOOR_ARTIFACT_ID });
