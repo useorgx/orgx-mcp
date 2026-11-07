@@ -407,8 +407,8 @@
     },
     "proof-receipt": {
       "file": "public/widgets/proof-receipt.html",
-      "bytes": 32171,
-      "hash": "8bcbe414ebd4",
+      "bytes": 32501,
+      "hash": "3d51656f95a3",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",

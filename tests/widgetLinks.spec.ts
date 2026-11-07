@@ -92,6 +92,9 @@ const CASES: Array<[string, string, string]> = [
   ['goal', links.goal(ID, { center: ID }), '/goals'],
   ['work ledger', links.workLedger(), '/work-ledger'],
   ['scoped work ledger', links.workLedger({ center: ID, range: '7d' }), '/work-ledger'],
+  ['receipt', links.receipt('trail:abc'), '/work-ledger/receipts/[id]'],
+  ['receipt in a workspace', links.receipt(ID, { center: ID }), '/work-ledger/receipts/[id]'],
+  ['receipts list', links.receipt(''), '/work-ledger/receipts'],
 ];
 
 describe('widget link builder', () => {
@@ -118,12 +121,18 @@ describe('widget link builder', () => {
   });
 
   it('dispatches entity types to the same builders', () => {
-    for (const type of ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'run', 'agent_run', 'agent', 'plan_session', 'objective', 'workspace', 'unknown']) {
+    for (const type of ['initiative', 'workstream', 'milestone', 'task', 'decision', 'artifact', 'run', 'agent_run', 'agent', 'plan_session', 'objective', 'workspace', 'receipt', 'session', 'unknown']) {
       const url = links.entity(type, ID);
       expect(resolveRoute(url).problem, `${type}: ${url}`).toBeUndefined();
     }
     expect(links.entity('Task', ID, { initiativeId: INI })).toBe(links.task(ID, { initiativeId: INI }));
     expect(links.entity('project', ID)).toBe(links.project(ID));
+    // Memory search returns receipts and sessions; neither belongs on Command.
+    expect(links.entity('receipt', ID)).toBe(`https://useorgx.com/work-ledger/receipts/${ID}`);
+    expect(links.entity('session', ID)).toBe('https://useorgx.com/work-ledger');
+    expect(links.entity('session', ID, { initiativeId: INI })).toBe(links.initiative(INI));
+    expect(links.entity('studio_brand', ID)).toBe('https://useorgx.com/studio/brand');
+    expect(links.entity('studio_content', ID)).toBe('https://useorgx.com/studio/library');
   });
 
   it('encodes ids and skips empty query values', () => {

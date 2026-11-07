@@ -293,6 +293,21 @@ describe('Done › Work: the work, what done meant, and your call', () => {
     expect(card.querySelector('[data-action="receipt-call"]')).toBeNull();
   });
 
+  it('opens the receipt itself, not the ledger overview', async () => {
+    const m = await openWith(snapshot());
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => name === 'orgx_get_work_receipt'
+      ? { structuredContent: { ok: true, receipt_id: 'rcpt-abc', summary: ROW.summary, criteria: [] } }
+      : { structuredContent: { ok: true, total: 1, results: [{ receipt_id: 'rcpt-abc', summary: ROW.summary, criteria: { met: 1, unmet: 0, unknown: 0 } }] } });
+    click(m, '[data-tab="done"]');
+    await m.flush(); await m.flush();
+    click(m, '[data-action="work-receipt"][data-id="rcpt-abc"]');
+    await m.flush(); await m.flush();
+    const open = doc(m).querySelector('.rc-card .md-acts [data-action="open"]')!;
+    expect(open.textContent).toBe('Open receipt ↗');
+    // The panel's own workspace scopes the receipt page.
+    expect(open.getAttribute('data-url')).toMatch(/^https:\/\/useorgx\.com\/work-ledger\/receipts\/rcpt-abc\?center=[0-9a-f-]{36}$/);
+  });
+
   it('uses fresh detail counts and shows when its bounded projection omits checks or evidence', async () => {
     const m = await openWith(snapshot());
     const row = { receipt_id: 'row-1', external_receipt_id: 'rcpt-abc', summary: ROW.summary, criteria: { met: 10, unmet: 0, unknown: 0 } };
