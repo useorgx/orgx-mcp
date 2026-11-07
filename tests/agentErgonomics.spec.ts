@@ -22,15 +22,31 @@ describe('agent ergonomics helpers', () => {
     expect(blocks[2]?.text).toContain('<!DOCTYPE html>');
   });
 
-  it('returns a concise visible result for Claude Code widget tools', () => {
+  it.each(['claude', 'claude-code', 'codex', 'opencode', 'open-code'])('returns a concise visible result for %s', (sourceClient) => {
     const blocks = buildClientAwareContentBlocks({
       data: { ok: true, large: 'x'.repeat(10_000) },
       summary: 'Initiative ready.',
-      sourceClient: 'claude',
+      sourceClient,
       widgetHtml: '<!DOCTYPE html><html></html>',
     });
 
     expect(blocks).toEqual([{ type: 'text', text: 'Initiative ready.' }]);
+  });
+
+  it.each(['chatgpt', 'cursor', 'unknown', undefined])('retains JSON-first widget compatibility for %s', (sourceClient) => {
+    const data = { ok: true, proof_cards: [{ id: 'proof', url: 'https://example.test/proof' }] };
+    const blocks = buildClientAwareContentBlocks({ data, summary: 'Ready.', sourceClient });
+    expect(JSON.parse(blocks[0].text)).toEqual(data);
+  });
+
+  it('avoids the duplicate document body while retaining the full structured proof', () => {
+    const data = { proof_cards: [{ id: 'proof', content: 'a'.repeat(100_000), version: 3 }] };
+    const params = { data, summary: 'Proof ready; inspect proof for details.' };
+    const before = { content: buildJsonFirstContentBlocks(params), structuredContent: data };
+    const after = { content: buildClientAwareContentBlocks({ ...params, sourceClient: 'codex' }), structuredContent: data };
+    expect(after.structuredContent).toBe(data);
+    expect(after.structuredContent.proof_cards[0]).toEqual(data.proof_cards[0]);
+    expect(Buffer.byteLength(JSON.stringify(after))).toBeLessThan(Buffer.byteLength(JSON.stringify(before)) * 0.51);
   });
 
   it('normalizes common entity create aliases without accepting arbitrary enums', () => {
