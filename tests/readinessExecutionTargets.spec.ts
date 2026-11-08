@@ -50,11 +50,17 @@ describe('orgx_check_execution_readiness execution targets', () => {
     expect(schema.safeParse(readiness).success).toBe(true);
   });
 
-  it('rejects a runtime orgx_start_agent_task does not accept', () => {
+  it('passes through targets and fields OrgX adds later, without an MCP change', () => {
     const parsed = schema.safeParse({
       ...readiness,
-      execution_targets: [{ runtime: 'e2b', label: 'x', available: true, reason: null, default_model: null, may_fall_back_to: null }],
+      execution_targets: [
+        { runtime: 'sandbox_e2b', available: false, reason: 'not_selectable_yet', harnesses: ['claude_code', 'codex'] },
+      ],
     });
-    expect(parsed.success).toBe(false);
+    expect(parsed.success).toBe(true);
+  });
+
+  it('still requires each target to say whether it can run', () => {
+    expect(schema.safeParse({ ...readiness, execution_targets: [{ runtime: 'cloud_openai' }] }).success).toBe(false);
   });
 });
