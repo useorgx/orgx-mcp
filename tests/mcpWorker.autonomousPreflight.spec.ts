@@ -28,11 +28,11 @@ beforeAll(async () => {
   workerPrototype = OrgXMcp.prototype;
 }, 20000);
 
-async function preflight(extra: Record<string, unknown> = {}) {
+async function preflight(extra: Record<string, unknown> = {}, options?: { pricing?: boolean }) {
   const worker = Object.create(workerPrototype);
   Object.assign(worker, { env: {}, resolveUserEmail: () => null,
     resolveOrgxUserId: () => null, delegationClaims: () => ({}) });
-  return worker.runSpawnBudgetPreflight({ ...args, ...extra }, 'user-1');
+  return worker.runSpawnBudgetPreflight({ ...args, ...extra }, 'user-1', options);
 }
 
 beforeEach(() => {
@@ -82,6 +82,13 @@ describe('worker autonomous backend preflight before any POST', () => {
     expect(api.call.mock.calls.map((call) => call[1])).toEqual([
       '/api/client/route-task', '/api/client/spawn-gate',
     ]);
+  });
+
+  it('leaves pricing and caps to OrgX when the spawn is priced there', async () => {
+    expect(await preflight({}, { pricing: false })).toEqual({ ok: true, preflight: null });
+    expect(api.call).not.toHaveBeenCalled();
+    expect(await preflight({ autonomous: true }, { pricing: false })).toEqual({ ok: true, preflight: null });
+    expect(api.call.mock.calls.map((call) => call[1])).toEqual(['/api/tools/execute?format=full']);
   });
 
   it('preserves the support refusal through the worker error envelope and outer remedy wrapper', async () => {
