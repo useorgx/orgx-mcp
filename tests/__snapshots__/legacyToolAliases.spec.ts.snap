@@ -5,7 +5,7 @@ exports[`listed tool surfaces > profile "chatgpt" lists byte-identical tool desc
   "orgx_attach_artifact": "a51cb10b7c4db626",
   "orgx_cancel_work": "604699cd231ea4ed",
   "orgx_capture_decision": "378f71b96994129f",
-  "orgx_check_execution_readiness": "1db0477c486b61a3",
+  "orgx_check_execution_readiness": "2942627cee195efa",
   "orgx_complete_plan": "a918cd672e2e255f",
   "orgx_complete_work_with_proof": "1f57aecfa0402f46",
   "orgx_create_initiative": "d0f6b26fd0e9ed59",
@@ -83,7 +83,7 @@ exports[`listed tool surfaces > profile "claude-directory" lists byte-identical 
   "orgx_attach_artifact": "063a2f57d4ed73f2",
   "orgx_cancel_work": "ebf6ef8bf59e8f23",
   "orgx_capture_decision": "4cb0ba26f477e858",
-  "orgx_check_execution_readiness": "882afa1e4f77b683",
+  "orgx_check_execution_readiness": "dc4da1c0c53b2cc4",
   "orgx_complete_plan": "6068035635caac2d",
   "orgx_complete_work_with_proof": "d6115d4d8798e83e",
   "orgx_create_initiative": "1b45c2064710cb53",
@@ -133,7 +133,7 @@ exports[`listed tool surfaces > profile "claude-directory" lists byte-identical 
 
 exports[`listed tool surfaces > profile "claude-directory-legacy" lists byte-identical tool descriptors 1`] = `
 {
-  "check_execution_readiness": "af0656a7864b3011",
+  "check_execution_readiness": "33c46ca68554bde9",
   "get_agent_status": "aabaee8b6a8b22fb",
   "get_initiative_pulse": "f176a41c2b84dc04",
   "get_morning_brief": "f216afcf9c323e3f",
@@ -196,7 +196,7 @@ exports[`listed tool surfaces > profile "claude-plugin" lists byte-identical too
 
 exports[`listed tool surfaces > profile "commander" lists byte-identical tool descriptors 1`] = `
 {
-  "check_execution_readiness": "1406c50de8b4f620",
+  "check_execution_readiness": "ae6c67cdea6aabe3",
   "consolidate_pr": "c7b4ebe87e4fa205",
   "get_operator_chronicle": "c4098991bb7a0a1b",
   "orgx_ack_attention": "0fab798ef55a66c0",
@@ -239,7 +239,7 @@ exports[`listed tool surfaces > profile "commander" lists byte-identical tool de
 
 exports[`listed tool surfaces > profile "executor" lists byte-identical tool descriptors 1`] = `
 {
-  "check_execution_readiness": "1406c50de8b4f620",
+  "check_execution_readiness": "ae6c67cdea6aabe3",
   "consolidate_pr": "c7b4ebe87e4fa205",
   "orgx_ack_attention": "0fab798ef55a66c0",
   "orgx_act": "f0ec8f1a20254e07",
@@ -281,7 +281,7 @@ exports[`listed tool surfaces > profile "extended" lists byte-identical tool des
   "orgx_cancel_work": "604699cd231ea4ed",
   "orgx_capture_decision": "378f71b96994129f",
   "orgx_check_agent_delegation": "c0adcf4b3d51779e",
-  "orgx_check_execution_readiness": "1db0477c486b61a3",
+  "orgx_check_execution_readiness": "2942627cee195efa",
   "orgx_classify_agent_task": "7fdf179eb3280396",
   "orgx_complete_entity": "e4ae740b050e1858",
   "orgx_complete_plan": "a918cd672e2e255f",
@@ -355,7 +355,7 @@ exports[`listed tool surfaces > profile "full" lists byte-identical tool descrip
   "batch_action": "1c587cc9617bd819",
   "batch_create_entities": "2f127a87b52bfcc0",
   "batch_delete_entities": "697c1a123e7522f2",
-  "check_execution_readiness": "1406c50de8b4f620",
+  "check_execution_readiness": "ae6c67cdea6aabe3",
   "check_spawn_guard": "e5224687a58937f5",
   "classify_task_model": "ca122096a65b7b90",
   "comment_on_entity": "cc095a2101a4dc67",
@@ -400,7 +400,7 @@ exports[`listed tool surfaces > profile "full" lists byte-identical tool descrip
   "orgx_cancel_work": "604699cd231ea4ed",
   "orgx_capture_decision": "378f71b96994129f",
   "orgx_check_agent_delegation": "c0adcf4b3d51779e",
-  "orgx_check_execution_readiness": "1db0477c486b61a3",
+  "orgx_check_execution_readiness": "2942627cee195efa",
   "orgx_classify_agent_task": "7fdf179eb3280396",
   "orgx_command_status": "37ae4c6470407817",
   "orgx_complete_entity": "e4ae740b050e1858",
@@ -520,7 +520,7 @@ exports[`listed tool surfaces > profile "legacy" lists byte-identical tool descr
 {
   "approve_agent_work": "04a46e0c68826304",
   "approve_decision": "bb36f764c4083c25",
-  "check_execution_readiness": "1406c50de8b4f620",
+  "check_execution_readiness": "ae6c67cdea6aabe3",
   "consolidate_pr": "c7b4ebe87e4fa205",
   "delegate_agent_task": "6f526273871f9b97",
   "get_agent_status": "f266cd0d63726471",
@@ -671,7 +671,7 @@ exports[`listed tool surfaces > profile "v2" lists byte-identical tool descripto
   "orgx_attach_artifact": "a51cb10b7c4db626",
   "orgx_cancel_work": "604699cd231ea4ed",
   "orgx_capture_decision": "378f71b96994129f",
-  "orgx_check_execution_readiness": "1db0477c486b61a3",
+  "orgx_check_execution_readiness": "2942627cee195efa",
   "orgx_complete_plan": "a918cd672e2e255f",
   "orgx_complete_work_with_proof": "1f57aecfa0402f46",
   "orgx_create_initiative": "d0f6b26fd0e9ed59",
