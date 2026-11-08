@@ -182,6 +182,7 @@ import {
   evaluateSpawnGateResult,
   type SpawnBudgetPreflight,
   type SpawnBudgetPreflightEvaluation,
+  appSpawnBlock,
 } from './spawnBudgetPreflight';
 import {
   captureWorkerPosthogEvent,
@@ -2624,8 +2625,9 @@ export class OrgXMcp extends McpAgent<
 
   private async runSpawnBudgetPreflight(
     args: Record<string, unknown>,
-    userId: string | null
-  ): Promise<SpawnBudgetPreflightEvaluation> {
+    userId: string | null,
+    options: { pricing?: boolean } = {}
+  ): Promise<SpawnBudgetPreflightEvaluation | { ok: true; preflight: null }> {
     const routeArgs = buildSpawnBudgetPreflightArgs(args);
     try {
       const support = await checkAutonomousSpawnSupport(args, async () => {
@@ -2640,6 +2642,9 @@ export class OrgXMcp extends McpAgent<
         return response.json();
       });
       if (!support.ok) return support;
+      // spawn_agent_task is priced and gated by OrgX itself, which downgrades
+      // or holds for approval where a preflight here could only refuse.
+      if (options.pricing === false) return { ok: true, preflight: null };
       const response = await callOrgxApiJson(
         this.env,
         '/api/client/route-task',
@@ -3725,7 +3730,8 @@ export class OrgXMcp extends McpAgent<
         ) {
           const preflight = await this.runSpawnBudgetPreflight(
             expandedArgs,
-            resolvedUserId ?? null
+            resolvedUserId ?? null,
+            { pricing: resolvedToolId !== 'spawn_agent_task' }
           );
           if (!preflight.ok) {
             this.captureMcpToolEvent('mcp_tool_failed', {
@@ -3840,6 +3846,8 @@ export class OrgXMcp extends McpAgent<
               result.data ?? {}
             );
           }
+          const spawnBlock = resolvedToolId === 'spawn_agent_task' ? appSpawnBlock(result) : null;
+          if (spawnBlock) return this.toolError(spawnBlock.message, spawnBlock.options);
           return this.toolError(errorMessage);
         }
 
@@ -6690,7 +6698,8 @@ export class OrgXMcp extends McpAgent<
           if (targetTool === 'spawn_agent_task' || targetTool === 'handoff_task') {
             const preflight = await this.runSpawnBudgetPreflight(
               spawnArgs,
-              resolvedUserId ?? null
+              resolvedUserId ?? null,
+              { pricing: targetTool !== 'spawn_agent_task' }
             );
             if (!preflight.ok) {
               return this.toolError(preflight.message, {
@@ -6737,6 +6746,8 @@ export class OrgXMcp extends McpAgent<
           );
           const result = (await response.json()) as Record<string, unknown>;
           if (result.ok === false) {
+            const spawnBlock = targetTool === 'spawn_agent_task' ? appSpawnBlock(result) : null;
+            if (spawnBlock) return this.toolError(spawnBlock.message, spawnBlock.options);
             return this.toolError(
               typeof result.error === 'string'
                 ? result.error
