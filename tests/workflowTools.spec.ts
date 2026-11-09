@@ -187,6 +187,11 @@ describe('fixed workflow operation contracts', () => {
       method: 'GET', path: `/api/v1/workflows/workspace-context?workspace_id=${UUID}&bars=all`,
     });
     expect(() => parse(tool.id, { workspace_id: UUID, bars: 'some' })).toThrow();
+    expect(tool.backendRequest!(parse(tool.id, { workspace_id: UUID, responsibility_id: UUID, since: '2026-11-01T00:00:00Z' }))).toMatchObject({
+      path: `/api/v1/workflows/workspace-context?workspace_id=${UUID}&responsibility_id=${UUID}&since=2026-11-01T00%3A00%3A00Z`,
+    });
+    expect(() => parse(tool.id, { workspace_id: UUID, responsibility_id: 'sales' })).toThrow();
+    expect(() => parse(tool.id, { workspace_id: UUID, since: 'yesterday' })).toThrow();
   });
 
   it('keeps the required plan-create replay key in the header and out of saved plan content', () => {

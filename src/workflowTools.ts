@@ -303,10 +303,12 @@ const legacyScaffoldInput = {
 /** Default host-independent workflow catalog, excluding receipt tools (receiptTools.ts). */
 export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   operation('orgx_get_workspace_context', 'orgx_bootstrap', 'Read OrgX Workspace Context',
-    'Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, capture health, the responsibilities handed to OrgX (each as a readable operating agreement with the clauses still missing), a capability report (per connector and runner: supported, connected, authorized, working now, unattended, verifiable, each with a reason) and the quality bars in use. Start setup here. Does not select a workspace or create a session.',
+    'Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, capture health, the responsibilities handed to OrgX (each as a readable operating agreement with the clauses still missing, and for active ones on a cadence whether the current cycle is due), a capability report (per connector and runner: supported, connected, authorized, working now, unattended, verifiable, each with a reason) and the quality bars in use. Start setup here. Does not select a workspace or create a session.',
     {
       workspace_id: workspaceId, initiative_id: id.optional(),
       bars: z.enum(['in_use', 'all']).optional().describe('Quality bars to list: in_use (default) lists bars with recent work, waiting on the person first; all lists every bar.'),
+      responsibility_id: z.string().uuid().optional().describe('A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, limits, and the review_path where the person turns it on).'),
+      since: z.string().datetime({ offset: true }).optional().describe('With responsibility_id: only history after this time, and how many changes there were.'),
     }, {
       annotations: readOnly, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
       backendRequest: (args) => ({ method: 'GET', path: query('/api/v1/workflows/workspace-context', args) }),
