@@ -53,6 +53,27 @@ const retryKey = idempotencyKeySchema;
 const workType = z.enum(['initiative', 'workstream', 'milestone', 'task']);
 const planSessionId = z.string().trim().regex(/^(?:orgx:\/\/plan_session\/)?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
   .describe('Plan session UUID or orgx://plan_session/<uuid> URI.');
+const responsibilityInput = z.object({
+  name: z.string().trim().min(1).max(200).describe('Short name of the responsibility, e.g. "Qualified sales conversations".'),
+  kind: z.enum(['change', 'maintain', 'respond']).describe('change: an outcome to achieve once; maintain: an ongoing standard; respond: work started by an event.'),
+  outcome: z.string().trim().min(1).max(1000).describe('What the person wants accomplished, in their words.'),
+  measure: z.string().trim().min(1).max(1000).optional().describe('What result counts as success and where it is read from. Required before it can be applied.'),
+  trigger: z.object({
+    kind: z.enum(['cadence', 'event', 'manual']),
+    cadence: z.string().trim().min(1).max(200).optional(),
+    event: z.string().trim().min(1).max(200).optional(),
+    description: z.string().trim().min(1).max(500).optional(),
+  }).strict().optional().describe('What starts the next unit of work. Not needed for kind change.'),
+  stages: z.array(z.object({
+    name: z.string().trim().min(1).max(200),
+    purpose: z.string().trim().min(1).max(1000).optional(),
+    authority: z.enum(['observe', 'prepare', 'gated', 'autonomous']).describe('gated: the person approves before this stage acts outside OrgX.'),
+  }).strict()).min(1).max(20),
+  accountable_owner_id: z.string().uuid().optional().describe('Defaults to the signed-in person.'),
+  system_ids: z.array(z.string().uuid()).max(50).optional().describe('Connector ids from capability_report in orgx_get_workspace_context.'),
+  limitations: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
+  tags: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+}).strict();
 const planMarkdown = z.string().min(1).max(200_000).refine((value) => Boolean(value.trim()), 'Plan markdown must contain text.');
 const planVersion = z.number().int().positive().max(2_147_483_646)
   .describe('Authoritative plan_ref.version from the most recent read. Required to prevent overwriting another edit.');
@@ -282,8 +303,11 @@ const legacyScaffoldInput = {
 /** Default host-independent workflow catalog, excluding receipt tools (receiptTools.ts). */
 export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   operation('orgx_get_workspace_context', 'orgx_bootstrap', 'Read OrgX Workspace Context',
-    'Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, and capture health (which clients reported recently and how many sessions are unlinked). Does not select a workspace or create a session.',
-    { workspace_id: workspaceId, initiative_id: id.optional() }, {
+    'Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, capture health, the responsibilities handed to OrgX (each as a readable operating agreement with the clauses still missing), a capability report (per connector and runner: supported, connected, authorized, working now, unattended, verifiable, each with a reason) and the quality bars in use. Start setup here. Does not select a workspace or create a session.',
+    {
+      workspace_id: workspaceId, initiative_id: id.optional(),
+      bars: z.enum(['in_use', 'all']).optional().describe('Quality bars to list: in_use (default) lists bars with recent work, waiting on the person first; all lists every bar.'),
+    }, {
       annotations: readOnly, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
       backendRequest: (args) => ({ method: 'GET', path: query('/api/v1/workflows/workspace-context', args) }),
     }),
@@ -337,7 +361,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     }),
   operation('orgx_save_plan', 'orgx_plan', 'Save OrgX Plan',
     'Save the full markdown draft in OrgX only if the required expected revision is current. Optionally record an edit summary. Does not complete planning or dispatch work.',
-    { session_id: planSessionId, plan_content: planMarkdown, title: createTitle.optional(), edit_summary: z.string().trim().min(1).max(4000).optional(), expected_version: planVersion, workspace_id: workspaceId, idempotency_key: retryKey }, {
+    { session_id: planSessionId, plan_content: planMarkdown, title: createTitle.optional(), edit_summary: z.string().trim().min(1).max(4000).optional(), expected_version: planVersion, responsibility: responsibilityInput.optional().describe('Preview the responsibility this plan would set up: returns responsibility_preview with the readable agreement and the questions that would change the work. Writes nothing beyond the plan.'), workspace_id: workspaceId, idempotency_key: retryKey }, {
       annotations: { ...modifiesRecords, idempotentHint: false }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
       backendRequest: (args) => {
         const { plan_content, ...body } = bodyArgs(args);
@@ -347,7 +371,9 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   operation('orgx_complete_plan', 'orgx_plan', 'Complete OrgX Plan',
     'Save final markdown and complete the planning session only if its expected revision is current. Optionally attach the completed plan to typed work targets; attachment failures are reported separately after completion. Does not start execution. After an uncertain response, read the plan before repeating the completion.',
     { session_id: planSessionId, plan_content: planMarkdown, expected_version: planVersion,
-      attach_to: z.array(planAttachment).min(1).max(100).optional(), workspace_id: workspaceId, idempotency_key: retryKey }, {
+      attach_to: z.array(planAttachment).min(1).max(100).optional(),
+      responsibility: responsibilityInput.optional().describe('Also set up this responsibility as a confirmed operating agreement. Refused with questions until measure and owner are known. Nothing runs until it is activated.'),
+      workspace_id: workspaceId, idempotency_key: retryKey }, {
       annotations: { ...modifiesRecords, idempotentHint: false }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
       backendRequest: (args) => ({ method: 'POST', path: '/api/v1/workflows/complete-plan', body: bodyArgs(args), headers: retryHeaders(args) }),
     }),
@@ -567,7 +593,11 @@ const workflowPlanResultSchema = z.object({
     z.object({ status: z.literal('failed'), message: z.string() }).strict(),
   ]).optional(),
 }).strict();
-const planEnvelopeSchema = z.object({ data: workflowPlanResultSchema, meta: workflowApiMetaSchema }).strict();
+const responsibilityPreviewSchema = z.object({ status: z.string() }).catchall(jsonValueSchema);
+const planEnvelopeSchema = z.object({
+  data: workflowPlanResultSchema.extend({ responsibility_preview: responsibilityPreviewSchema.optional() }),
+  meta: workflowApiMetaSchema,
+}).strict();
 
 /**
  * Direct services return their own versioned envelope. Do not pretend they are
@@ -586,6 +616,7 @@ export const WORKFLOW_OUTPUT_SCHEMAS: Readonly<Record<string, z.AnyZodObject>> =
         requested: z.number().int().nonnegative(), attached_count: z.number().int().nonnegative(), skipped_count: z.number().int().nonnegative(),
         errors: z.array(z.object({ entity_type: workType, entity_id: z.string(), error: z.string() }).strict()),
       }).strict().optional(),
+      responsibility: responsibilityPreviewSchema.optional(),
     }),
     meta: workflowApiMetaSchema,
   }).strict(),
