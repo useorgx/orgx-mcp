@@ -155,6 +155,32 @@ describe('fixed workflow operation contracts', () => {
     expect(() => WORKFLOW_OUTPUT_SCHEMAS.orgx_complete_plan.parse({ ...completed, data: { ...completed.data, status: 'active' } })).toThrow();
   });
 
+  it('carries a responsibility through save (preview) and complete (apply)', () => {
+    const responsibility = {
+      name: 'Qualified sales conversations', kind: 'maintain', outcome: 'Five qualified conversations a week',
+      measure: 'Completed qualified calls per week', trigger: { kind: 'cadence', cadence: 'weekly' },
+      stages: [{ name: 'Prepare follow-ups', authority: 'prepare' }, { name: 'Send', authority: 'gated' }],
+    };
+    const save = adapter('orgx_save_plan');
+    const saveArgs = parse(save.id, { session_id: UUID, plan_content: '# Plan', expected_version: 3, responsibility });
+    expect((save.backendRequest!(saveArgs) as { body: Record<string, unknown> }).body.responsibility).toEqual(responsibility);
+    expect(() => parse(save.id, { session_id: UUID, plan_content: '# Plan', expected_version: 3, responsibility: { ...responsibility, kind: 'everything' } })).toThrow();
+    expect(() => parse(save.id, { session_id: UUID, plan_content: '# Plan', expected_version: 3, responsibility: { ...responsibility, stages: [] } })).toThrow();
+
+    const complete = adapter('orgx_complete_plan');
+    const args = parse(complete.id, { session_id: UUID, plan_content: '# Final', expected_version: 3, responsibility });
+    expect((complete.backendRequest!(args) as { body: Record<string, unknown> }).body.responsibility).toEqual(responsibility);
+
+    const plan = { id: UUID, session_id: UUID, uuid: UUID, uri: `orgx://plan_session/${UUID}`,
+      accepted_id_forms: ['uuid'], plan_version: 4, plan_ref: { type: 'plan_session', id: UUID, workspace_id: UUID, version: 4 },
+      title: 'Plan', feature_name: null, current_plan: '# Final', updated_at: '2026-11-09T00:00:00Z' };
+    const meta = { apiVersion: '1', workspaceId: UUID };
+    const applied = { data: { ...plan, status: 'completed', responsibility: { status: 'applied', process_id: UUID, state: 'confirmed', agreement: { clauses: [] }, replayed: false } }, meta };
+    expect(WORKFLOW_OUTPUT_SCHEMAS.orgx_complete_plan.parse(applied)).toEqual(applied);
+    const previewed = { data: { ...plan, status: 'active', responsibility_preview: { status: 'needs_answers', questions: [{ clause: 'measure', question: 'What counts?' }] } }, meta };
+    expect(WORKFLOW_OUTPUT_SCHEMAS.orgx_save_plan.parse(previewed)).toEqual(previewed);
+  });
+
   it('keeps the required plan-create replay key in the header and out of saved plan content', () => {
     const tool = adapter('orgx_start_plan');
     expect(tool.backendRequest!(parse(tool.id, { title: 'Plan', workspace_id: UUID, idempotency_key: 'create-plan-once' }))).toEqual({

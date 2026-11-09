@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-07T16:53:20.641Z",
-  "sourceHash": "81eb33b81f755b02",
+  "generatedAt": "2026-11-09T17:19:54.885Z",
+  "sourceHash": "431d17b53f12d45c",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -13903,6 +13903,146 @@
             "minItems": 1,
             "maxItems": 100
           },
+          "responsibility": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "description": "Short name of the responsibility, e.g. \"Qualified sales conversations\"."
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "change",
+                  "maintain",
+                  "respond"
+                ],
+                "description": "change: an outcome to achieve once; maintain: an ongoing standard; respond: work started by an event."
+              },
+              "outcome": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "What the person wants accomplished, in their words."
+              },
+              "measure": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "What result counts as success and where it is read from. Required before it can be applied."
+              },
+              "trigger": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "cadence",
+                      "event",
+                      "manual"
+                    ]
+                  },
+                  "cadence": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "event": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false,
+                "description": "What starts the next unit of work. Not needed for kind change."
+              },
+              "stages": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "purpose": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    "authority": {
+                      "type": "string",
+                      "enum": [
+                        "observe",
+                        "prepare",
+                        "gated",
+                        "autonomous"
+                      ],
+                      "description": "gated: the person approves before this stage acts outside OrgX."
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "authority"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 20
+              },
+              "accountable_owner_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Defaults to the signed-in person."
+              },
+              "system_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "maxItems": 50,
+                "description": "Connector ids from capability_report in orgx_get_workspace_context."
+              },
+              "limitations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "maxItems": 20
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "maxItems": 20
+              }
+            },
+            "required": [
+              "name",
+              "kind",
+              "outcome",
+              "stages"
+            ],
+            "additionalProperties": false,
+            "description": "Also set up this responsibility as a confirmed operating agreement. Refused with questions until measure and owner are known. Nothing runs until it is activated."
+          },
           "workspace_id": {
             "type": "string",
             "format": "uuid",
@@ -16395,7 +16535,7 @@
     {
       "id": "orgx_get_workspace_context",
       "title": "Read OrgX Workspace Context",
-      "description": "Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, and capture health (which clients reported recently and how many sessions are unlinked). Does not select a workspace or create a session.",
+      "description": "Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, capture health, the responsibilities handed to OrgX (each as a readable operating agreement with the clauses still missing), a capability report (per connector and runner: supported, connected, authorized, working now, unattended, verifiable, each with a reason) and the quality bars in use. Start setup here. Does not select a workspace or create a session.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -17847,6 +17987,146 @@
             "exclusiveMinimum": 0,
             "maximum": 2147483646,
             "description": "Authoritative plan_ref.version from the most recent read. Required to prevent overwriting another edit."
+          },
+          "responsibility": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "description": "Short name of the responsibility, e.g. \"Qualified sales conversations\"."
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "change",
+                  "maintain",
+                  "respond"
+                ],
+                "description": "change: an outcome to achieve once; maintain: an ongoing standard; respond: work started by an event."
+              },
+              "outcome": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "What the person wants accomplished, in their words."
+              },
+              "measure": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "What result counts as success and where it is read from. Required before it can be applied."
+              },
+              "trigger": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "cadence",
+                      "event",
+                      "manual"
+                    ]
+                  },
+                  "cadence": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "event": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false,
+                "description": "What starts the next unit of work. Not needed for kind change."
+              },
+              "stages": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "purpose": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    "authority": {
+                      "type": "string",
+                      "enum": [
+                        "observe",
+                        "prepare",
+                        "gated",
+                        "autonomous"
+                      ],
+                      "description": "gated: the person approves before this stage acts outside OrgX."
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "authority"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 20
+              },
+              "accountable_owner_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Defaults to the signed-in person."
+              },
+              "system_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "maxItems": 50,
+                "description": "Connector ids from capability_report in orgx_get_workspace_context."
+              },
+              "limitations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "maxItems": 20
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "maxItems": 20
+              }
+            },
+            "required": [
+              "name",
+              "kind",
+              "outcome",
+              "stages"
+            ],
+            "additionalProperties": false,
+            "description": "Preview the responsibility this plan would set up: returns responsibility_preview with the readable agreement and the questions that would change the work. Writes nothing beyond the plan."
           },
           "workspace_id": {
             "type": "string",
