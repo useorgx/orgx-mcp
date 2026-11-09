@@ -274,7 +274,7 @@ exports[`tool discovery snapshot > full tool catalog description hashes are lock
   "orgx_get_operator_brief": "ec33fcedb624",
   "orgx_get_receipt_review_queue": "712c0a760f5e",
   "orgx_get_work_receipt": "e6d70bdae3eb",
-  "orgx_get_workspace_context": "9970d544d965",
+  "orgx_get_workspace_context": "d7c1156b7349",
   "orgx_handoff_task": "7a7ccb2a0be0",
   "orgx_improve_plan": "3716e7ee0b79",
   "orgx_inspect": "1da486e0bb9c",
