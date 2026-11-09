@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-09T17:19:54.885Z",
-  "sourceHash": "431d17b53f12d45c",
+  "generatedAt": "2026-11-09T17:28:33.649Z",
+  "sourceHash": "b73286e08c7398e4",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -16548,6 +16548,14 @@
           "initiative_id": {
             "type": "string",
             "minLength": 1
+          },
+          "bars": {
+            "type": "string",
+            "enum": [
+              "in_use",
+              "all"
+            ],
+            "description": "Quality bars to list: in_use (default) lists bars with recent work, waiting on the person first; all lists every bar."
           }
         },
         "additionalProperties": false,

@@ -181,6 +181,14 @@ describe('fixed workflow operation contracts', () => {
     expect(WORKFLOW_OUTPUT_SCHEMAS.orgx_save_plan.parse(previewed)).toEqual(previewed);
   });
 
+  it('lets an agent ask for every quality bar from workspace context', () => {
+    const tool = adapter('orgx_get_workspace_context');
+    expect(tool.backendRequest!(parse(tool.id, { workspace_id: UUID, bars: 'all' }))).toMatchObject({
+      method: 'GET', path: `/api/v1/workflows/workspace-context?workspace_id=${UUID}&bars=all`,
+    });
+    expect(() => parse(tool.id, { workspace_id: UUID, bars: 'some' })).toThrow();
+  });
+
   it('keeps the required plan-create replay key in the header and out of saved plan content', () => {
     const tool = adapter('orgx_start_plan');
     expect(tool.backendRequest!(parse(tool.id, { title: 'Plan', workspace_id: UUID, idempotency_key: 'create-plan-once' }))).toEqual({

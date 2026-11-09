@@ -304,7 +304,10 @@ const legacyScaffoldInput = {
 export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   operation('orgx_get_workspace_context', 'orgx_bootstrap', 'Read OrgX Workspace Context',
     'Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, capture health, the responsibilities handed to OrgX (each as a readable operating agreement with the clauses still missing), a capability report (per connector and runner: supported, connected, authorized, working now, unattended, verifiable, each with a reason) and the quality bars in use. Start setup here. Does not select a workspace or create a session.',
-    { workspace_id: workspaceId, initiative_id: id.optional() }, {
+    {
+      workspace_id: workspaceId, initiative_id: id.optional(),
+      bars: z.enum(['in_use', 'all']).optional().describe('Quality bars to list: in_use (default) lists bars with recent work, waiting on the person first; all lists every bar.'),
+    }, {
       annotations: readOnly, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
       backendRequest: (args) => ({ method: 'GET', path: query('/api/v1/workflows/workspace-context', args) }),
     }),
