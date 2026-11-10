@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-09T17:48:42.800Z",
-  "sourceHash": "fdfe0a4fea7a8faa",
+  "generatedAt": "2026-11-10T15:09:11.921Z",
+  "sourceHash": "239eead7ecd20517",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -16560,12 +16560,12 @@
           "responsibility_id": {
             "type": "string",
             "format": "uuid",
-            "description": "A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, limits, and the review_path where the person turns it on)."
+            "description": "A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, learned rules waiting for the person to confirm (tell them, never confirm for them), limits, the review_path where the person turns it on, and a checkpoint)."
           },
           "since": {
             "type": "string",
             "format": "date-time",
-            "description": "With responsibility_id: only history after this time, and how many changes there were."
+            "description": "With responsibility_id: only history after this time, and how many changes there were. Pass the last brief's checkpoint to resume where any agent left off."
           }
         },
         "additionalProperties": false,

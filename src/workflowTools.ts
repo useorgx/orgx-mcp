@@ -307,8 +307,8 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     {
       workspace_id: workspaceId, initiative_id: id.optional(),
       bars: z.enum(['in_use', 'all']).optional().describe('Quality bars to list: in_use (default) lists bars with recent work, waiting on the person first; all lists every bar.'),
-      responsibility_id: z.string().uuid().optional().describe('A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, limits, and the review_path where the person turns it on).'),
-      since: z.string().datetime({ offset: true }).optional().describe('With responsibility_id: only history after this time, and how many changes there were.'),
+      responsibility_id: z.string().uuid().optional().describe('A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, learned rules waiting for the person to confirm (tell them, never confirm for them), limits, the review_path where the person turns it on, and a checkpoint).'),
+      since: z.string().datetime({ offset: true }).optional().describe('With responsibility_id: only history after this time, and how many changes there were. Pass the last brief\'s checkpoint to resume where any agent left off.'),
     }, {
       annotations: readOnly, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
       backendRequest: (args) => ({ method: 'GET', path: query('/api/v1/workflows/workspace-context', args) }),
