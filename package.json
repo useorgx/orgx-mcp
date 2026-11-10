@@ -80,7 +80,7 @@
     "zod": "^3.25.8"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260103.0",
+    "@cloudflare/workers-types": "^4.20260702.1",
     "@sentry/cli": "3.6.0",
     "@types/node": "22.18.6",
     "js-yaml": "4.3.2",

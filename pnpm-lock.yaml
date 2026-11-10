@@ -50,17 +50,17 @@ importers:
         version: 1.31.0(@cfworker/json-schema@4.1.1)(zod@3.25.76)
       '@sentry/cloudflare':
         specifier: 10.65.0
-        version: 10.65.0(@cloudflare/workers-types@4.20260103.0)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))
+        version: 10.65.0(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))
       agents:
         specifier: 0.7.2
-        version: 0.7.2(@cloudflare/workers-types@4.20260103.0)(ai@6.0.302(zod@3.25.76))(react@19.2.0)(zod@3.25.76)
+        version: 0.7.2(@cloudflare/workers-types@4.20260702.1)(ai@6.0.302(zod@3.25.76))(react@19.2.0)(zod@3.25.76)
       zod:
         specifier: ^3.25.8
         version: 3.25.76
     devDependencies:
       '@cloudflare/workers-types':
-        specifier: ^4.20260103.0
-        version: 4.20260103.0
+        specifier: ^4.20260702.1
+        version: 4.20260702.1
       '@sentry/cli':
         specifier: 3.6.0
         version: 3.6.0
@@ -90,7 +90,7 @@ importers:
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.18.6)(jsdom@29.1.1)(vite@6.4.3(@types/node@22.18.6)(tsx@4.23.15))
       wrangler:
         specifier: 4.59.1
-        version: 4.59.1(@cloudflare/workers-types@4.20260103.0)(@types/node@22.18.6)
+        version: 4.59.1(@cloudflare/workers-types@4.20260702.1)(@types/node@22.18.6)
       zod-to-json-schema:
         specifier: ^3.25.2
         version: 3.25.2(zod@3.25.76)
@@ -204,8 +204,8 @@ packages:
   '@cloudflare/workers-oauth-provider@0.10.3':
     resolution: {integrity: sha512-25ufMONJir9PllqVpK4GwOOoSFgpYm3+bM6NBedj7ufMCIfNf5jk4OI0LPuTJBaJgLl2lGCLqFqEPJXcSuPopQ==}
 
-  '@cloudflare/workers-types@4.20260103.0':
-    resolution: {integrity: sha512-jANmoGpJcXARnwlkvrQOeWyjYD1quTfHcs+++Z544XRHOSfLc4XSlts7snIhbiIGgA5bo66zDhraF+9lKUr2hw==}
+  '@cloudflare/workers-types@4.20260702.1':
+    resolution: {integrity: sha512-mOhf5TUEB1m2vPrxtqoIGfz0fUC9xyxRDx5gWHy5s+OCo6dcV+g7wI1R7gYCMFohhqF/2y2xeKVwMwCJjfn/WA==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -2517,7 +2517,7 @@ snapshots:
 
   '@cloudflare/workers-oauth-provider@0.10.3': {}
 
-  '@cloudflare/workers-types@4.20260103.0': {}
+  '@cloudflare/workers-types@4.20260702.1': {}
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -3182,14 +3182,14 @@ snapshots:
       '@sentry/cli-win32-i686': 3.6.0
       '@sentry/cli-win32-x64': 3.6.0
 
-  '@sentry/cloudflare@10.65.0(@cloudflare/workers-types@4.20260103.0)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))':
+  '@sentry/cloudflare@10.65.0(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@sentry/core': 10.65.0
       '@sentry/node': 10.65.0(@opentelemetry/core@2.9.0(@opentelemetry/api@1.9.1))
       '@sentry/server-utils': 10.65.0
     optionalDependencies:
-      '@cloudflare/workers-types': 4.20260103.0
+      '@cloudflare/workers-types': 4.20260702.1
     transitivePeerDependencies:
       - '@opentelemetry/core'
       - '@opentelemetry/exporter-trace-otlp-http'
@@ -3323,7 +3323,7 @@ snapshots:
 
   acorn@8.14.0: {}
 
-  agents@0.7.2(@cloudflare/workers-types@4.20260103.0)(ai@6.0.302(zod@3.25.76))(react@19.2.0)(zod@3.25.76):
+  agents@0.7.2(@cloudflare/workers-types@4.20260702.1)(ai@6.0.302(zod@3.25.76))(react@19.2.0)(zod@3.25.76):
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@modelcontextprotocol/sdk': 1.31.0(@cfworker/json-schema@4.1.1)(zod@3.25.76)
@@ -3333,7 +3333,7 @@ snapshots:
       json-schema-to-typescript: 15.0.4
       mimetext: 3.0.28
       nanoid: 5.1.16
-      partyserver: 0.3.2(@cloudflare/workers-types@4.20260103.0)
+      partyserver: 0.3.2(@cloudflare/workers-types@4.20260702.1)
       partysocket: 1.1.16(react@19.2.0)
       react: 19.2.0
       yargs: 18.0.0
@@ -3910,9 +3910,9 @@ snapshots:
 
   parseurl@1.3.3: {}
 
-  partyserver@0.3.2(@cloudflare/workers-types@4.20260103.0):
+  partyserver@0.3.2(@cloudflare/workers-types@4.20260702.1):
     dependencies:
-      '@cloudflare/workers-types': 4.20260103.0
+      '@cloudflare/workers-types': 4.20260702.1
       nanoid: 5.1.16
 
   partysocket@1.1.16(react@19.2.0):
@@ -4310,7 +4310,7 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20260111.0
       '@cloudflare/workerd-windows-64': 1.20260111.0
 
-  wrangler@4.59.1(@cloudflare/workers-types@4.20260103.0)(@types/node@22.18.6):
+  wrangler@4.59.1(@cloudflare/workers-types@4.20260702.1)(@types/node@22.18.6):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.4.1
       '@cloudflare/unenv-preset': 2.9.0(unenv@2.0.0-rc.24)(workerd@1.20260111.0)
@@ -4321,7 +4321,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       workerd: 1.20260111.0
     optionalDependencies:
-      '@cloudflare/workers-types': 4.20260103.0
+      '@cloudflare/workers-types': 4.20260702.1
       fsevents: 2.3.3
     transitivePeerDependencies:
       - '@types/node'
