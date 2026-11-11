@@ -207,6 +207,15 @@ describe('workspace-map describes surfaces without naming tools', () => {
     expect(note(cards[2]!)).toContain('Only in OrgX');
   });
 
+  it('distinguishes a context-only read from a confirmed empty capability inventory', () => {
+    const workspace = { id: 'ws-1', name: 'Atina Labs' };
+    mountWidget('workspace-map', { payload: { data: { workspace, quality_bars: [{ title: 'Private detail' }] } } });
+    expect(document.body.textContent).toContain('Chat permissions are unavailable in this view.');
+    expect(document.body.textContent).not.toContain('Private detail');
+    mountWidget('workspace-map', { payload: { workspace, surfaces: [] } });
+    expect(document.body.textContent).toContain('Nothing to map yet.');
+  });
+
   it('asks an unbound session to sign in rather than to call a tool', () => {
     mountWidget('workspace-map', { payload: { surfaces: [] } });
     const text = document.body.textContent ?? '';

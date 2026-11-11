@@ -99,6 +99,12 @@ describe('MCP API diagnostics', () => {
       trace_id: tool.completions[0].apiDiagnostics!.trace_id,
       request_id: tool.completions[0].apiDiagnostics!.last_request_id,
     });
+    expect(result._meta['orgx/performance']).toEqual({
+      tool_execution_ms: expect.any(Number),
+      api_calls: 1, api_attempts: 1, api_fallbacks: 0,
+      api_failures: 0, api_timeouts: 0,
+      api_headers_ms: expect.any(Number), api_body_ms: expect.any(Number),
+    });
     const local = wrapped(() => ({ content: [], _meta: { local: true } }));
     expect(await local.run({}, {})).toEqual({
       content: [],

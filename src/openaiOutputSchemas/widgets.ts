@@ -464,7 +464,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
                 id: z.string(),
                 agent: z.string(),
                 title: z.string(),
-                state: z.enum(['blocked', 'running', 'queued']),
+                state: z.enum(['blocked', 'running', 'queued', 'planned', 'held']),
                 url: z.string(),
                 domain: z.string().nullable().optional(),
                 updated_at: z.string().nullable().optional(),
@@ -585,6 +585,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         total: z.number().optional(),
         running: z.number().optional(),
         queued: z.number().optional(),
+        planned: z.number().optional(),
         blocked: z.number().optional(),
         stalled: z.number().optional(),
         idle: z.number().optional(),
@@ -972,6 +973,17 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       has_credentials: z.boolean(),
       ready: z.boolean().optional(),
       missing: z.array(z.string()).optional(),
+      unverified: z.array(z.string()).optional(),
+      readiness_scope: z.literal('configuration_only').optional(),
+      execution_readiness: z.object({
+        schema: z.literal('orgx.execution-readiness.v1'),
+        scope: z.object({ ownerId: z.string(), workspaceId: z.string().nullable() }),
+        status: z.enum(['ready', 'blocked', 'unverified']), checkedAt: z.string(),
+        dispatchAuthorized: z.literal(false),
+        capabilities: z.array(z.object({ capabilityId: z.string(),
+          status: z.enum(['verified', 'configured', 'blocked', 'unverified']),
+          reason: z.string(), evidenceId: z.string().nullable() })),
+      }).optional(),
       has_execution_credentials: z.boolean(),
       has_subscription_accounts: z.boolean(),
       providers: z.object({
@@ -1021,6 +1033,21 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         image_generation: z.boolean(),
         cursor_background_agents: z.boolean(),
       }),
+      // Defined and filled by OrgX, passed through as-is: one entry per
+      // execution target (runtime, harness or sandbox) with whether it can run
+      // now and why not. Open by design, so OrgX can add targets and fields
+      // without another MCP server change.
+      execution_targets: z
+        .array(
+          z
+            .object({
+              runtime: z.string(),
+              available: z.boolean(),
+              reason: nullableString.optional(),
+            })
+            .passthrough()
+        )
+        .optional(),
       setup_url: z.string(),
     })
     .strict(),

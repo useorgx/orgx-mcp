@@ -250,6 +250,20 @@ describe('agent status: kit chips and honest counts (C9)', () => {
     expect(line).toContain('1 agent needs you · 1 working · 1 queued');
   });
 
+  it.each([undefined, 0])('uses only reported progress (%s), preserving zero', async (progress) => {
+    mountWidget('agent-status', { payload: { agents: [{
+      agent_name: 'Eli', status: 'running', progress,
+      current_task: 'Current assignment',
+      tasks: [{ id: 'active', title: 'Current assignment', status: 'in_progress' }],
+      completed_tasks: [{ id: 'recent', title: 'Recently completed', status: 'done' }],
+    }] } });
+    await settle(800);
+    expect(document.body.textContent).toContain('Current assignment');
+    const bar = document.querySelector('.command-progress-bar');
+    if (progress === undefined) expect(bar).toBeNull();
+    else expect(bar?.getAttribute('aria-label')).toBe('0% through');
+  });
+
   it('shows the agent stall on its running task, as kit chips', async () => {
     mountWidget('agent-status', { payload });
     await settle(800);

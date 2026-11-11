@@ -192,4 +192,85 @@ describe('artifact review actions in the kit footer', () => {
     expect(doc.querySelector<HTMLTextAreaElement>('[data-composer-input]')!.value).toBe('Cite the source studies.');
     expect(footer.querySelector<HTMLButtonElement>('[data-composer-submit]')!.disabled).toBe(false);
   });
+  const refusal = (code: string) => Object.assign(new Error('refused'), { code });
+
+  it.each(['widget_approval_token_expired', 'widget_approval_token_invalid', 'stale_artifact_review'])(
+    'says the review is out of date and hands off to OrgX instead of retrying after %s', async (code) => {
+      const callTool = vi.fn().mockRejectedValue(refusal(code));
+      const { dom, doc } = mount('state=ready', callTool);
+      const footer = doc.getElementById('reviewFooter')!;
+      doc.querySelector<HTMLButtonElement>('[data-action="approve"]')!.click();
+      await wait(20);
+      expect(footer.getAttribute('state')).not.toBe('failed');
+      expect(footer.getAttribute('heading')).toBe('This review is out of date');
+      expect(doc.querySelector('[data-review-feedback]')!.textContent).toContain('Nothing was recorded');
+      expect(doc.querySelector('[data-review-feedback]')!.textContent).not.toContain('try again');
+      const approve = footer.querySelector<HTMLButtonElement>('[data-action="approve"]')!;
+      expect(approve.hidden).toBe(true);
+      expect(approve.disabled).toBe(true);
+      const handoff = footer.querySelector<HTMLButtonElement>('[data-review-handoff]')!;
+      expect(handoff.hidden).toBe(false);
+      expect(handoff.getAttribute('slot')).toBe('primary');
+      handoff.click();
+      expect((dom.window as unknown as { OrgXWidgetRuntime: { openWidgetLink: ReturnType<typeof vi.fn> } }).OrgXWidgetRuntime.openWidgetLink)
+        .toHaveBeenCalledWith(expect.stringContaining('ART-DEMO'));
+      expect(callTool).toHaveBeenCalledTimes(1);
+    });
+
+  it('hands a blocked review off to OrgX and keeps the change note', async () => {
+    const callTool = vi.fn().mockRejectedValue(refusal('artifact_review_blocked'));
+    const { doc } = mount('state=urgent', callTool);
+    const footer = doc.getElementById('reviewFooter')!;
+    footer.querySelector<HTMLButtonElement>('[data-action="request-changes"]')!.click();
+    doc.querySelector<HTMLTextAreaElement>('[data-composer-input]')!.value = 'Cite the source studies.';
+    footer.querySelector<HTMLButtonElement>('[data-composer-submit]')!.click();
+    await wait(20);
+    expect(footer.getAttribute('heading')).toBe('Review in OrgX');
+    expect(footer.querySelector<HTMLButtonElement>('[data-composer-submit]')!.hidden).toBe(true);
+    expect(footer.querySelector<HTMLButtonElement>('[data-review-handoff]')!.hidden).toBe(false);
+    expect(doc.querySelector<HTMLTextAreaElement>('[data-composer-input]')!.value).toBe('Cite the source studies.');
+    expect(doc.querySelector('[data-review-feedback]')!.textContent).toContain('Open it in OrgX');
+    expect(callTool).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['network', 'tool_failed', undefined])('still offers a retry after a %s failure', async (code) => {
+    const callTool = vi.fn().mockRejectedValueOnce(code ? refusal(code) : new Error('refused')).mockResolvedValue({});
+    const { doc } = mount('state=ready', callTool);
+    const footer = doc.getElementById('reviewFooter')!;
+    doc.querySelector<HTMLButtonElement>('[data-action="approve"]')!.click();
+    await wait(20);
+    expect(footer.getAttribute('state')).toBe('failed');
+    expect(footer.querySelector<HTMLButtonElement>('[data-review-handoff]')!.hidden).toBe(true);
+    expect(doc.querySelector('[data-review-feedback]')!.textContent).toContain('try again');
+  });
+
+  it('limits the change note to what OrgX accepts and says so before sending', async () => {
+    const { doc, callTool } = mount('state=urgent');
+    const footer = doc.getElementById('reviewFooter')!;
+    footer.querySelector<HTMLButtonElement>('[data-action="request-changes"]')!.click();
+    const input = doc.querySelector<HTMLTextAreaElement>('[data-composer-input]')!;
+    expect(input.getAttribute('maxlength')).toBe('2000');
+    const count = doc.querySelector<HTMLElement>('[data-composer-count]')!;
+
+    input.value = 'x'.repeat(1900);
+    input.dispatchEvent(new (input.ownerDocument.defaultView!.Event)('input', { bubbles: true }));
+    expect(count.hidden).toBe(false);
+    expect(count.textContent).toBe('1,900 / 2,000');
+
+    // A pasted or scripted value can still exceed maxlength.
+    input.value = 'x'.repeat(2050);
+    input.dispatchEvent(new (input.ownerDocument.defaultView!.Event)('input', { bubbles: true }));
+    expect(count.dataset.over).toBe('true');
+    expect(count.textContent).toContain('50 over the limit');
+    footer.querySelector<HTMLButtonElement>('[data-composer-submit]')!.click();
+    await wait(20);
+    expect(callTool).not.toHaveBeenCalled();
+    expect(doc.querySelector('[data-review-feedback]')!.textContent).toContain('2,000 characters');
+    expect(input.value).toHaveLength(2050);
+
+    input.value = 'x'.repeat(2000);
+    footer.querySelector<HTMLButtonElement>('[data-composer-submit]')!.click();
+    await wait(20);
+    expect(callTool).toHaveBeenCalledTimes(1);
+  });
 });

@@ -82,6 +82,10 @@ const CASES: Array<[string, string, string]> = [
   // was /agents/sessions/:id
   // was /live?view=mission-control&session= (empty without an initiative)
   ['session', link('session', ID), '/runs'],
+  ['receipt', link('receipt', 'trail:abc'), '/work-ledger/receipts/[id]'],
+  ['receipt list', link('receipt', ''), '/work-ledger/receipts'],
+  ['studio brand', link('studio_brand', ID), '/studio/brand'],
+  ['studio content', link('studio_content', ID), '/studio/library'],
   // was /planning/sessions/:id
   ['plan session', link('plan_session', ID), '/runs'],
   ['plan session with initiative', link('plan_session', ID, { initiativeId: INI }), '/initiatives/[id]'],

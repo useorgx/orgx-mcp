@@ -24,7 +24,7 @@ afterEach(() => mounted.splice(0).forEach(({ dom }) => dom.window.close()));
 
 const doc = (m: Mounted) => m.dom.window.document;
 /**
- * The reads the live feed causes. The panel also warms In progress and Done
+ * The reads the live feed causes. The panel also warms Work and Done
  * in the background after its first snapshot (a work-view snapshot and a
  * receipts read); those are not re-reads and are left out here.
  */
@@ -161,7 +161,7 @@ describe('panel live updates', () => {
     expect(liveReads(m)).toHaveLength(1);
   });
 
-  it('counts In progress from the feed before it is opened', async () => {
+  it('counts Work from the feed before it is opened', async () => {
     const m = await open();
     m.sources[0]!.open();
     m.sources[0]!.send(graph({ [D1]: 'v1', [D2]: 'v1' }, { t1: 'running', t2: 'blocked' }));
@@ -373,7 +373,7 @@ describe('polish: what the production panel got wrong', () => {
   });
 });
 
-describe('polish: In progress agrees with its count', () => {
+describe('polish: Work agrees with its count', () => {
   it('shows the live feed rows when the panel read fails, never "could not be read" under a count', async () => {
     const m = await open();
     m.sources[0]!.open();

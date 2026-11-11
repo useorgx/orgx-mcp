@@ -21,6 +21,22 @@ export function normalizeMemorySearchPayload(payload: Record<string, unknown>): 
   return { ...payload, results };
 }
 
+/**
+ * Memory search names each record's OrgX page as an app path (`/runs/…`).
+ * Agents and widgets need the absolute address; a missing url stays missing
+ * so the widget link builder picks the fallback for that kind.
+ */
+export function withAbsoluteRecordUrls(
+  records: Array<Record<string, unknown>>,
+  origin = 'https://useorgx.com'
+): Array<Record<string, unknown>> {
+  return records.map((record) => {
+    const url = record.url;
+    if (typeof url !== 'string' || !/^\/(?![/\\])/.test(url)) return record;
+    return { ...record, url: new URL(url, origin).toString() };
+  });
+}
+
 export type EntitySearchPagination = {
   total: number | null;
   limit: number;

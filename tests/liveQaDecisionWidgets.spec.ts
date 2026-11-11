@@ -180,6 +180,8 @@ describe('B1 · decisions: "Not sent" never shows a raw payload', () => {
     );
     await vi.waitFor(() => expect(document.querySelector('[data-action="approve-ready"]')).not.toBeNull());
     (document.querySelector('[data-action="approve-ready"]') as HTMLButtonElement).click();
+    expect(decideCalls(callTool)).toHaveLength(0);
+    (document.querySelector('[data-action="batch-confirm"]') as HTMLButtonElement).click();
     await vi.waitFor(() => expect(document.querySelector('.dq-batch.is-result')?.getAttribute('aria-busy')).toBe('false'));
     expect(decideCalls(callTool)).toHaveLength(1);
     expect(document.querySelector('.dq-batch-copy')!.textContent).toBe('3 to decide in OrgX');
@@ -600,6 +602,20 @@ describe('B8 · morning brief: one degraded notice, inside the card', () => {
     expect(visibleText()).not.toContain('Nothing waits on you');
     expect(visibleText()).not.toContain('Nothing needs your decision');
     expect(visibleText()).not.toContain('NaN');
+  });
+
+  it('shows chronicle coverage notes without treating absent evidence as a failed source', async () => {
+    mountBrief({ chronicle: {
+      generatedAt: new Date().toISOString(),
+      metrics: { pendingDecisions: 2 },
+      dataGaps: ['No PR receipts were attached in this window.', '<img src=x onerror=alert(1)>'],
+    } });
+    await vi.waitFor(() => expect(document.querySelector('.brief-coverage')).not.toBeNull());
+    const coverage = document.querySelector('.brief-coverage')!;
+    expect(coverage.querySelector('summary')?.textContent).toContain('2 notes');
+    expect(coverage.textContent).toContain('No PR receipts were attached');
+    expect(coverage.querySelector('img')).toBeNull();
+    expect(document.querySelector('.brief-partial')).toBeNull();
   });
 
   it('names the missing source inside the card and adds no banner above it', async () => {

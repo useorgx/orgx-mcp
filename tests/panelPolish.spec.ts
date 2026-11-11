@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mountPanel, snapshot } from './fixtures/panel';
 
@@ -195,10 +198,32 @@ describe('fast by default', () => {
     const read = m.calls.callServerTool.mock.calls.map((c) => c[0]).find((c) => c.name === 'orgx_list_work_receipts');
     expect(read).toBeDefined();
     expect(read!.arguments).toMatchObject({ workspace_id: snapshot().workspace.id, limit: 50 });
-    expect(read!.arguments.query).toMatch(/^since:\d{4}-\d{2}-\d{2}$/);
+    expect(read!.arguments.query).toMatch(/^since:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 
-  it('warms In progress and Done › Work in the background once the first snapshot is on screen', async () => {
+  it('starts a Done › Work range at local midnight, written as the UTC instant the ledger compares against', () => {
+    const source = readFileSync(resolve(process.cwd(), 'public/widgets/shared/panel/panel-app.js'), 'utf8');
+    const start = source.indexOf('    function receiptRangeQuery(range)');
+    const end = source.indexOf('\n    }\n', start);
+    expect(start).toBeGreaterThan(0);
+    const previousTz = process.env.TZ;
+    process.env.TZ = 'America/Chicago';
+    try {
+      // 21:30 on Nov 6 in Chicago is already Nov 7 in UTC.
+      const now = new Date('2026-11-07T03:30:00.000Z').getTime();
+      class FixedDate extends Date {
+        constructor(...args: unknown[]) { if (args.length) super(...(args as [number])); else super(now); }
+      }
+      const query = runInNewContext(source.slice(start, end + 6) + '\nreceiptRangeQuery', { Date: FixedDate }) as (range: string) => string;
+      expect(query('today')).toBe('since:2026-11-06T06:00:00.000Z');
+      expect(query('7d')).toBe('since:2026-10-31T05:00:00.000Z');
+      expect(query('30d')).toBe('since:2026-10-08T05:00:00.000Z');
+    } finally {
+      if (previousTz === undefined) delete process.env.TZ; else process.env.TZ = previousTz;
+    }
+  });
+
+  it('warms Work and Done › Work in the background once the first snapshot is on screen', async () => {
     const m = await mountPanel({}, {}, (win) => {
       (win as unknown as { requestIdleCallback: (fn: () => void) => number }).requestIdleCallback = (fn) => { fn(); return 1; };
     });

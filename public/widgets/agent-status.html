@@ -326,12 +326,20 @@
         return Promise.resolve();
       }
       var deadline = Date.now() + STATUS_POLL_LIMIT_MS;
+      // The last state OrgX confirmed. When polling stops (deadline, unreadable
+      // status, a failed read) the footer keeps it; 'unconfirmed' is only for a
+      // run whose status was never read.
+      var confirmed = null;
+      function stopPolling() {
+        if (confirmed) setResumeState(runId, Object.assign({}, confirmed, { pollStopped: true }));
+        else setResumeState(runId, { phase: 'unconfirmed' });
+      }
       function poll(wait) {
         return new Promise(function (resolve) { window.setTimeout(resolve, wait); })
           .then(function () { return readRunStatus(runId); })
           .then(function (status) {
             if (!status || typeof status !== 'object' || typeof status.state !== 'string') {
-              setResumeState(runId, { phase: 'unconfirmed' });
+              stopPolling();
               return;
             }
             var outcome = typeof status.outcome === 'string' ? status.outcome.trim() : '';
@@ -340,19 +348,20 @@
             if (status.state === 'failed') return setResumeState(runId, { phase: 'run-failed', detail: outcome });
             if (status.state === 'cancelled') return setResumeState(runId, { phase: 'run-failed', heading: 'Run cancelled', detail: outcome || 'cancelled in OrgX' });
             if (status.state === 'not_found') return setResumeState(runId, { phase: 'unconfirmed', detail: 'OrgX has no status for it yet' });
-            setResumeState(runId, {
+            confirmed = {
               phase: status.state === 'queued' || status.state === 'held' ? 'queued' : 'running',
               detail: status.waiting_on === 'person' ? 'waiting on a person in OrgX' : outcome,
-            });
-            if (final || Date.now() >= deadline) {
-              if (final) return;
-              setResumeState(runId, { phase: 'unconfirmed' });
+            };
+            setResumeState(runId, confirmed);
+            if (final) return;
+            if (Date.now() >= deadline) {
+              stopPolling();
               return;
             }
             return poll(Math.min(15000, Math.max(750, Number(status.next_poll_after_ms) || 2000)));
           })
           .catch(function () {
-            setResumeState(runId, { phase: 'unconfirmed' });
+            stopPolling();
           });
       }
       return poll(0);
@@ -365,7 +374,15 @@
       setResumeState(runId, { phase: 'sending' });
       var args = { run_id: runId, note: 'Resumed from agent-status widget' };
       Promise.resolve(window.OrgXWidgetRuntime.callTool('resume_agent_run', args))
-        .then(function () {
+        .then(function (raw) {
+          var runtime = window.OrgXWidgetRuntime;
+          var result = runtime.extractStructuredWidgetData ? runtime.extractStructuredWidgetData(raw, true) : raw;
+          // OrgX answers {noop:true, status:'running'} when the run was never
+          // paused: nothing restarted, it is running with no recent heartbeat.
+          if (result && typeof result === 'object' && result.noop === true) {
+            setResumeState(runId, { phase: 'already-running' });
+            return;
+          }
           setResumeState(runId, { phase: 'queued' });
           return watchResumedRun(runId);
         })
@@ -557,12 +574,20 @@
       return rows;
     }
 
+    function reportedProgress() {
+      for (var index = 0; index < arguments.length; index += 1) {
+        var value = asNumber(arguments[index]);
+        if (value != null && value >= 0 && value <= 100) return value;
+      }
+      return null;
+    }
+
     function normalizeStream(stream, index) {
       if (!stream || typeof stream !== 'object') return null;
       return {
         id: firstString([stream.id, stream.ref]) || 'stream-' + index,
         name: firstString([stream.name, stream.title]) || 'Stream ' + (index + 1),
-        progress: Math.max(0, Math.min(100, asNumber(stream.progress || stream.progress_pct || stream.percent) || 0))
+        progress: reportedProgress(stream.progress, stream.progress_pct, stream.percent)
       };
     }
 
@@ -612,10 +637,7 @@
       if (status === 'done' && !tasks.length) currentTask = 'No active task right now';
       if (status === 'stalled' && !tasks.length) currentTask = 'Last execution needs a refresh';
 
-      var progress = asNumber(raw.progress || raw.progress_pct || raw.percent_complete);
-      if (progress == null && (tasks.length > 0 || completedTasks.length > 0)) {
-        progress = Math.round((completedTasks.length / (tasks.length + completedTasks.length)) * 100);
-      }
+      var progress = reportedProgress(raw.progress, raw.progress_pct, raw.percent_complete);
 
       return {
         id: firstString([raw.agent_id, raw.id, raw.agent_name]) || 'agent-' + index,
@@ -686,7 +708,7 @@
           currentTask: keepIncoming ? (agent.currentTask || existing.currentTask) : (existing.currentTask || agent.currentTask),
           currentMeta: existing.currentMeta || agent.currentMeta,
           accentRgb: existing.accentRgb || agent.accentRgb,
-          progress: Math.max(existing.progress || 0, agent.progress || 0),
+          progress: selected.progress,
           blockers: blockers,
           tasks: mergeUniqueItems(existing.tasks, agent.tasks),
           completedTasks: mergeUniqueItems(existing.completedTasks, agent.completedTasks),
@@ -926,8 +948,8 @@
       });
       var streamRows = agent.streams.map(function (stream) {
         return {
-          title: stream.name, state: stream.progress + '%', tone: stream.progress >= 100 ? 'done' : 'running',
-          bar: '<span class="command-progress-bar" aria-hidden="true"><span style="width:' + stream.progress + '%"></span></span>'
+          title: stream.name, state: stream.progress == null ? 'Progress unavailable' : stream.progress + '%', tone: stream.progress >= 100 ? 'done' : 'running',
+          bar: stream.progress == null ? '' : '<span class="command-progress-bar" aria-hidden="true"><span style="width:' + stream.progress + '%"></span></span>'
         };
       });
 
@@ -955,11 +977,13 @@
         spec.role = 'resume';
         if (!resume) return Object.assign(spec, { state: 'needs-you', heading: 'Resume ' + agent.name + '’s run', detail: 'from its last step', primary: 'Resume' });
         if (resume.phase === 'sending') return Object.assign(spec, { state: 'queued', heading: 'Resuming', detail: 'asking OrgX to restart the run' });
-        if (resume.phase === 'queued') return Object.assign(spec, { state: 'queued', heading: 'Waiting to start', detail: resume.detail || 'the run is queued in OrgX' });
+        if (resume.phase === 'queued') return Object.assign(spec, { state: 'queued', heading: 'Waiting to start', detail: resume.detail || 'the run is queued in OrgX', action: resume.pollStopped ? 'Check now' : '' });
         if (resume.phase === 'running') return Object.assign(spec, { state: 'running', heading: agent.name + ' is running again', detail: resume.detail || 'picked up the run', action: 'Watch ↗' });
         if (resume.phase === 'done') return Object.assign(spec, { state: 'done', heading: 'Run finished', detail: resume.detail || 'resumed from here', action: 'Receipt ↗' });
         if (resume.phase === 'unconfirmed') return Object.assign(spec, { variant: 'confirms-in-orgx', state: 'waiting', heading: 'Resume sent', detail: resume.detail || 'not confirmed yet', action: 'Check now' });
-        if (resume.phase === 'run-failed') return Object.assign(spec, { variant: 'finishes-here', state: 'failed', heading: resume.heading || 'Run failed', detail: resume.detail || 'OrgX reported a failure', primary: 'Retry' });
+        if (resume.phase === 'already-running') return Object.assign(spec, { variant: 'confirms-in-orgx', state: 'needs-you', heading: 'Already running', detail: 'no recent heartbeat · check it in OrgX', primary: 'Open in OrgX ↗', role: 'handoff' });
+        // A failed or cancelled run is terminal: resuming it again is refused, so hand off.
+        if (resume.phase === 'run-failed') return Object.assign(spec, { variant: 'finishes-here', state: 'failed', heading: resume.heading || 'Run failed', detail: resume.detail || 'OrgX reported a failure', primary: 'Open in OrgX ↗', role: 'handoff' });
         return Object.assign(spec, { variant: 'finishes-here', state: 'failed', heading: 'Not resumed', detail: resume.detail || 'nothing changed · try again', primary: 'Retry' });
       }
       if (agent.status === 'blocked') {
@@ -1049,7 +1073,7 @@
       if (!footer) return;
       var runId = footer.getAttribute('data-run-id');
       var resume = runId ? resumeStates[runId] : null;
-      if (resume && resume.phase === 'unconfirmed') {
+      if (resume && (resume.phase === 'unconfirmed' || (resume.phase === 'queued' && resume.pollStopped))) {
         setResumeState(runId, { phase: 'queued' });
         watchResumedRun(runId);
         return;

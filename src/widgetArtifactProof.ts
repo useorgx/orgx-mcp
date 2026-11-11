@@ -1,4 +1,5 @@
 import { buildEntityLink, buildLiveUrl } from './deepLinks';
+import { documentExcerpt } from './documentExcerpt';
 import { compareArtifactTimestamps, mergeInitiativeArtifactRecords, normalizeArtifactContext, type ArtifactHierarchyContext } from './widgetArtifactHierarchy';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -693,6 +694,52 @@ export function buildWidgetProofHandoff(options: {
     })),
     quiet_cta: PROOF_SURFACE_QUIET_CTA,
   };
+}
+
+const READOUT_ARTIFACT_KEYS = [
+  'id', 'title', 'name', 'status', 'purpose', 'reviewRequired', 'superseded_by',
+  'artifact_type', 'eval_score', 'created_at', 'updated_at', 'created_by_type',
+  'created_by_id', 'created_by_name', 'primary_url', 'primary_label', 'task_url',
+  'live_url', 'needs_review', 'entity_id', 'entity_type', 'initiative_id',
+  'workstream_id', 'milestone_id', 'task_id', 'context', 'version',
+] as const;
+
+/** The readout carries identity, status and provenance. Full output lives on the artifact. */
+function compactReadoutArtifact(input: unknown): unknown {
+  const record = asRecord(input);
+  if (!record) return input;
+  const id = firstString(record, ['id']);
+  if (!id) return input;
+  const head = Object.fromEntries(READOUT_ARTIFACT_KEYS.flatMap((key) =>
+    Object.hasOwn(record, key) ? [[key, record[key]]] : []
+  ));
+  const summary = firstString(record, ['summary', 'description']);
+  // Legacy proof cards sometimes used the full preview as their summary.
+  // A whole-block excerpt keeps Markdown syntax intact and the source link
+  // is always present when the preview is shorter than the original.
+  const excerpt = documentExcerpt(summary, 240);
+  return { ...head, primary_url: buildEntityLink('artifact', id).url, ...(excerpt.text ? { summary: excerpt.text } : {}) };
+}
+
+function compactArtifactLists(data: Record<string, unknown>, fields: string[]) {
+  const next = { ...data };
+  for (const field of fields) {
+    const rows = data[field];
+    if (Array.isArray(rows)) next[field] = rows.map(compactReadoutArtifact);
+  }
+  return next;
+}
+
+export function compactInitiativeReadout(data: Record<string, unknown>) {
+  return compactArtifactLists(data, ['recent_artifacts', 'proof_cards', 'review_items']);
+}
+
+export function compactAgentReadout(data: Record<string, unknown>) {
+  if (!Array.isArray(data.agents)) return data;
+  return { ...data, agents: data.agents.map((input) => {
+    const agent = asRecord(input);
+    return agent ? compactArtifactLists(agent, ['artifacts', 'proof_cards', 'outputs', 'session_output']) : input;
+  }) };
 }
 
 export function enrichAgentStatusWithArtifacts(

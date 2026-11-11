@@ -237,6 +237,39 @@ describe('listed tool surfaces', () => {
   }
 });
 
+describe('initiative readout profile', () => {
+  it('keeps full data explicit and consumes the overview selector at the MCP boundary', async () => {
+    const harness = await createHarness({ profile: 'v2' });
+    const initiativeId = 'a0000000-0000-4000-8000-000000000001';
+    const body = 'Fixture output body. '.repeat(800);
+    const artifact = { id: 'artifact-a', name: 'Example result', status: 'draft', preview_markdown: body };
+    try {
+      apiMocks.callOrgxApiJson.mockImplementation(async (_env, path) =>
+        path === '/api/tools/execute'
+          ? Response.json({ ok: true, data: { initiative_id: initiativeId, recent_artifacts: [artifact] } })
+          : Response.json({ ok: true, data: {} })
+      );
+      const overview = await harness.client.callTool({
+        name: 'orgx_get_initiative_progress', arguments: { initiative_id: initiativeId },
+      });
+      expect(overview.isError).not.toBe(true);
+      expect(JSON.stringify(overview)).not.toContain(body);
+      expect(overview.structuredContent).toMatchObject({ recent_artifacts: [{ id: 'artifact-a', primary_url: 'https://useorgx.com/artifacts/artifact-a' }] });
+
+      const full = await harness.client.callTool({
+        name: 'orgx_get_initiative_progress', arguments: { initiative_id: initiativeId, view: 'full' },
+      });
+      expect(full.isError).not.toBe(true);
+      expect(JSON.stringify(full)).toContain(body.trim());
+      for (const [, path, init] of apiMocks.callOrgxApiJson.mock.calls) {
+        if (path === '/api/tools/execute') expect(JSON.parse(String(init.body)).args).not.toHaveProperty('view');
+      }
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+});
+
 const ALIAS_IDS = Object.keys(LEGACY_TOOL_ALIASES).sort();
 
 function canonicalDefinition(toolId: string) {
