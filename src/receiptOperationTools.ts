@@ -1,3 +1,4 @@
+import { projectLedgerOverview } from './reportOverview';
 import { z } from 'zod';
 
 import type { ToolSecuritySchemes } from './contractTools';
@@ -138,6 +139,7 @@ export const RECEIPT_OPERATION_TOOLS: readonly ReceiptOperationTool[] = [
     id: 'orgx_list_work_receipts', title: 'List OrgX Work Receipts',
     description: 'Read one bounded workspace ledger view: receipts (default), workstreams, or review. Receipt search accepts free text and exact filters: outcome, verification, accepted, type, area, repo, actor, ws, entity, initiative, pr, file, since, until, conf, unmet and status, within the 120-day window. Workstreams retain receipt rollups and confirmed mappings; review returns pending human calls and criterion proposals. Results distinguish producer claims from human judgments. Follow validated next_calls; no view resolves judgments, runs model inference, or changes work.',
     inputSchema: { workspace_id: workspace, view: z.enum(['receipts', 'workstreams', 'review']).default('receipts').describe('Read-only ledger projection. Existing calls default to receipt search.'),
+      detail: z.enum(['overview', 'full']).default('overview').describe('Overview returns compact list summaries. Full preserves the detailed ledger view.'),
       query: z.string().max(2000).default(''), kind: reviewKind.optional().describe('Optional review kind, valid only with view=review.'), limit }, annotations: reads, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
   },
   {
@@ -250,11 +252,18 @@ export async function executeReceiptOperation(id: ReceiptOperationId, raw: Recor
     if (result.ok === false || result.error) return result;
     const data = record(result.data ?? result);
     const first = record(array(data.results)[0]);
-    const next_calls = view === 'receipts' ? [
+    const next_calls: { tool: string; args: Record<string, unknown> }[] = view === 'receipts' ? [
       ...(str(first.receipt_id) ? [{ tool: 'orgx_get_work_receipt', args: { workspace_id: workspaceId, receipt_id: first.receipt_id } }] : []),
       { tool: 'orgx_list_work_receipts', args: { workspace_id: workspaceId, view: 'workstreams', limit: args.limit } },
     ] : [{ tool: 'orgx_list_work_receipts', args: { workspace_id: workspaceId, view: view === 'workstreams' ? 'review' : 'receipts', limit: args.limit } }];
-    return { ...data, ok: true, view, next_calls };
+    if (args.detail === 'overview') {
+      next_calls.push({ tool: 'orgx_list_work_receipts', args: {
+        workspace_id: workspaceId, view, detail: 'full', limit: args.limit,
+        ...(view !== 'review' ? { query: args.query } : {}),
+        ...(args.kind ? { kind: args.kind } : {}),
+      } });
+    }
+    return { ...(args.detail === 'full' ? data : projectLedgerOverview(data)), ok: true, view, next_calls };
   }
   let path: string;
   if (id === 'orgx_get_work_receipt') path = `/api/v1/work-ledger/receipts/${encodeURIComponent(String(args.receipt_id))}`;

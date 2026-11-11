@@ -56,6 +56,21 @@ beforeEach(() => {
   document.documentElement.innerHTML = '<head></head><body></body>';
 });
 
+describe('widget metadata delivery', () => {
+  it('attaches when widget-only metadata arrives after the initial result', () => {
+    mountAgentStatus({ agents: [] });
+    expect(FakeEventSource.instances).toHaveLength(0);
+    const toolResponseMetadata = { 'orgx/liveGrant': GRANT };
+    Object.assign((window as Window & { openai?: object }).openai!, { toolResponseMetadata });
+    window.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { toolResponseMetadata } } }));
+    window.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { toolResponseMetadata } } }));
+    expect(FakeEventSource.instances).toHaveLength(1);
+    expect(FakeEventSource.latest.url).toBe(GRANT.streamUrl);
+    expect(document.body.textContent).not.toContain(GRANT.streamUrl);
+  });
+
+});
+
 describe('grant construction', () => {
   it('builds a signed, feed-scoped stream URL', async () => {
     const grant = await buildStreamGrant({
@@ -196,7 +211,7 @@ describe('agent-status widget goes live from its grant', () => {
     // The recovery that no widget had: the server warns before a token's exp,
     // and the tool call is the only way a sandboxed widget can get a new one.
     callTool.mockResolvedValue({
-      live: { ...GRANT, streamUrl: GRANT.streamUrl.replace('tok', 'fresh-token') },
+      _meta: { 'orgx/liveGrant': { ...GRANT, streamUrl: GRANT.streamUrl.replace('tok', 'fresh-token') } },
     });
 
     mountAgentStatus({ agents: [], live: GRANT });

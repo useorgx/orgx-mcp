@@ -307,8 +307,8 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     {
       workspace_id: workspaceId, initiative_id: id.optional(),
       bars: z.enum(['in_use', 'all']).optional().describe('Quality bars to list: in_use (default) lists bars with recent work, waiting on the person first; all lists every bar.'),
-      responsibility_id: z.string().uuid().optional().describe('A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, limits, and the review_path where the person turns it on).'),
-      since: z.string().datetime({ offset: true }).optional().describe('With responsibility_id: only history after this time, and how many changes there were.'),
+      responsibility_id: z.string().uuid().optional().describe('A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, learned rules waiting for the person to confirm (tell them, never confirm for them), limits, the review_path where the person turns it on, and a checkpoint).'),
+      since: z.string().datetime({ offset: true }).optional().describe('With responsibility_id: only history after this time, and how many changes there were. Pass the last brief\'s checkpoint to resume where any agent left off.'),
     }, {
       annotations: readOnly, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
       backendRequest: (args) => ({ method: 'GET', path: query('/api/v1/workflows/workspace-context', args) }),
@@ -321,8 +321,10 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     'Read the current state and linked context of one OrgX work record, decision, artifact, or plan session before acting. Returns its owners, decisions, acceptance checks, and proof where available. Related records are available through orgx_search and priorities through orgx_get_next_actions. Does not mutate the record.',
     canonical('orgx_inspect').inputSchema!),
   operation('orgx_get_operator_brief', 'get_operator_chronicle', 'Read OrgX Operator Brief',
-    'Read workspace reporting, decision chronology, progress, proof, priorities, and gaps for a day, week, or 30-day window.',
-    project('get_operator_chronicle', ['workspace_id', 'period']), {
+    'Read a compact workspace overview of decisions, progress, proof, priorities, and gaps. Set detail=full for the full chronicle.',
+    project('get_operator_chronicle', ['workspace_id', 'period', 'detail'], {
+      detail: z.enum(['overview', 'full']).default('overview').describe('Use full for detailed evidence and reporting history.'),
+    }), {
       executionKind: 'client', annotations: readOnly,
     }),
   operation('orgx_get_next_actions', 'orgx_recommend', 'Get OrgX Next Actions',
@@ -330,10 +332,15 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     project('orgx_recommend', ['entity_type', 'entity_id', 'initiative_id', 'workspace_id', 'limit', 'session_id']), { fixedArgs: { mode: 'next_action' } }),
   operation('orgx_get_agent_status', 'get_agent_status', 'Read OrgX Agent Status',
     'Read active and optionally idle agents in the workspace or initiative. Successful calls record metered MCP allowance usage without changing work records.',
-    project('get_agent_status', ['agent_id', 'workspace_id', 'initiative_id', 'include_idle']), { executionKind: 'chatgpt' }),
+    project('get_agent_status', ['agent_id', 'workspace_id', 'initiative_id', 'include_idle', 'view'], {
+      view: z.enum(['overview', 'full']).default('overview').describe('Overview uses compact artifact heads. Full includes artifact details.'),
+    }), { executionKind: 'chatgpt' }),
   operation('orgx_get_initiative_progress', 'get_initiative_pulse', 'Read OrgX Initiative Progress',
     'Read hierarchy progress, health, blockers, and review gates for one initiative. Successful calls record metered MCP allowance usage without changing work records.',
-    project('get_initiative_pulse', ['initiative_id'], { initiative_id: id.describe('Initiative UUID.') }), { executionKind: 'chatgpt' }),
+    project('get_initiative_pulse', ['initiative_id', 'view'], {
+      initiative_id: id.describe('Initiative UUID.'),
+      view: z.enum(['overview', 'full']).default('overview').describe('Overview uses compact artifact heads. Full includes artifact details.'),
+    }), { executionKind: 'chatgpt' }),
   operation('orgx_get_operation_status', 'orgx_command_status', 'Read OrgX Operation Status',
     'Read a durable work command, run, or decision. Prefer operation_id returned by a prior operation; compatibility callers can supply kind and id together. Never starts or settles work.',
     { operation_id: id.optional(), kind: z.enum(['decision', 'run', 'command']).optional(), id: z.string().uuid().optional() }, {

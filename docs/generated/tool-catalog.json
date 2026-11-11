@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-09T17:48:42.800Z",
-  "sourceHash": "fdfe0a4fea7a8faa",
+  "generatedAt": "2026-11-11T18:28:30.925Z",
+  "sourceHash": "54fa6f8935e2c3c0",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -6036,8 +6036,34 @@
           },
           "artifact": {
             "type": "object",
-            "additionalProperties": {},
-            "description": "Proof artifact with artifact_type and artifact_url or external_url; optional name, description, and preview_markdown."
+            "properties": {
+              "artifact_type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "artifact_url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "external_url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "preview_markdown": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "artifact_type"
+            ],
+            "additionalProperties": false,
+            "description": "Proof artifact with artifact_type and artifact_url or external_url; optional name, description, and preview_markdown. Attached proof remains in review; this operation cannot approve it."
           },
           "verification": {
             "type": "array",
@@ -6055,10 +6081,6 @@
           "note": {
             "type": "string",
             "description": "Strongly recommended for destructive or blocking actions (block, flag_risk, decline, supersede, cancel, delete). Free-text rationale shown in audit history and downstream agent context."
-          },
-          "idempotency_key": {
-            "type": "string",
-            "description": "Optional client-supplied retry key. Update requests transport it outside validated entity fields; lifecycle endpoints deduplicate where supported."
           },
           "session_id": {
             "type": "string",
@@ -6098,7 +6120,7 @@
     {
       "id": "orgx_create_entity",
       "title": "Create OrgX Entity",
-      "description": "Create one OrgX workspace, initiative, workstream, milestone, task, objective, skill, or blocker record in its default initial workflow state. Accepts per-type parent IDs, titles, and metadata. Initiative creation can publish a public live link when explicitly requested. Reusing an idempotency key returns the existing record instead of creating a duplicate.",
+      "description": "Create one OrgX initiative, workstream, milestone, task, objective, skill, or blocker record within an existing workspace, in its default initial workflow state. Accepts per-type parent IDs, titles, and metadata. Initiative creation can publish a public live link when explicitly requested. Reusing an idempotency key returns the existing record instead of creating a duplicate.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
@@ -6106,7 +6128,6 @@
           "type": {
             "type": "string",
             "enum": [
-              "workspace",
               "initiative",
               "workstream",
               "milestone",
@@ -7129,7 +7150,7 @@
     {
       "id": "orgx_improve_plan",
       "title": "Improve OrgX Plan",
-      "description": "Submit the current draft of a durable OrgX plan for critique and improvement. Updates planning session state using the supplied session ID and markdown plan content. Supports an idempotency key for retries.",
+      "description": "Request AI critique and improvement of a durable OrgX plan using its session ID and current markdown draft. Updates planning session state and can incur model costs. Each call can invoke the model again; read back the session before retrying an uncertain response.",
       "category": "Other",
       "inputSchema": {
         "type": "object",
@@ -7143,10 +7164,6 @@
             "type": "string",
             "minLength": 1,
             "description": "Current markdown plan draft to improve."
-          },
-          "idempotency_key": {
-            "type": "string",
-            "description": "Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state."
           }
         },
         "required": [
@@ -7170,7 +7187,7 @@
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,
-        "openWorldHint": false
+        "openWorldHint": true
       },
       "readOnly": false,
       "source": "claude_directory",
@@ -9208,6 +9225,15 @@
             ],
             "default": "receipts",
             "description": "Read-only ledger projection. Existing calls default to receipt search."
+          },
+          "detail": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "default": "overview",
+            "description": "Overview returns compact list summaries. Full preserves the detailed ledger view."
           },
           "query": {
             "type": "string",
@@ -14150,10 +14176,6 @@
                   }
                 ],
                 "description": "Optional target or targets to link the completed plan to when action=complete. A single { entity_type, entity_id } object is accepted and normalized to the API array contract."
-              },
-              "idempotency_key": {
-                "type": "string",
-                "description": "Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state."
               }
             },
             "required": [
@@ -16228,6 +16250,15 @@
           "include_idle": {
             "type": "boolean",
             "description": "Include idle agents in the response"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "default": "overview",
+            "description": "Overview uses compact artifact heads. Full includes artifact details."
           }
         },
         "additionalProperties": false,
@@ -16279,6 +16310,15 @@
             "type": "string",
             "minLength": 1,
             "description": "Initiative UUID."
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "default": "overview",
+            "description": "Overview uses compact artifact heads. Full includes artifact details."
           }
         },
         "required": [
@@ -16479,7 +16519,7 @@
     {
       "id": "orgx_get_operator_brief",
       "title": "Read OrgX Operator Brief",
-      "description": "Read workspace reporting, decision chronology, progress, proof, priorities, and gaps for a day, week, or 30-day window.",
+      "description": "Read a compact workspace overview of decisions, progress, proof, priorities, and gaps. Set detail=full for the full chronicle.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -16496,6 +16536,15 @@
               "30d"
             ],
             "description": "Reporting window. day=24h, week=7d, 30d=30 days."
+          },
+          "detail": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "default": "overview",
+            "description": "Use full for detailed evidence and reporting history."
           }
         },
         "additionalProperties": false,
@@ -16560,12 +16609,12 @@
           "responsibility_id": {
             "type": "string",
             "format": "uuid",
-            "description": "A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, limits, and the review_path where the person turns it on)."
+            "description": "A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, learned rules waiting for the person to confirm (tell them, never confirm for them), limits, the review_path where the person turns it on, and a checkpoint)."
           },
           "since": {
             "type": "string",
             "format": "date-time",
-            "description": "With responsibility_id: only history after this time, and how many changes there were."
+            "description": "With responsibility_id: only history after this time, and how many changes there were. Pass the last brief's checkpoint to resume where any agent left off."
           }
         },
         "additionalProperties": false,
@@ -17470,15 +17519,19 @@
       "profileContracts": {
         "claude-directory-legacy": {
           "title": "Read OrgX Plan",
-          "description": "Read a durable OrgX plan session by UUID or plan URI. When no session ID is supplied, returns the most recent active session in the authenticated workspace. Does not edit or complete the plan.",
+          "description": "Read one durable OrgX plan session by its explicit UUID or plan URI. Does not edit or complete the plan, or select another session automatically.",
           "inputSchema": {
             "type": "object",
             "properties": {
               "session_id": {
                 "type": "string",
-                "description": "Plan session UUID or orgx://plan_session/<uuid> URI. Defaults to the most recent active session."
+                "minLength": 1,
+                "description": "Required plan session UUID or orgx://plan_session/<uuid> URI."
               }
             },
+            "required": [
+              "session_id"
+            ],
             "additionalProperties": false,
             "$schema": "http://json-schema.org/draft-07/schema#"
           },
@@ -17640,10 +17693,6 @@
                 "type": "string",
                 "minLength": 1,
                 "description": "Summary of the planning change."
-              },
-              "idempotency_key": {
-                "type": "string",
-                "description": "Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state."
               }
             },
             "required": [
@@ -18726,7 +18775,7 @@
       "profileContracts": {
         "claude-directory-legacy": {
           "title": "Start OrgX Plan",
-          "description": "Create a durable OrgX planning session for a named feature or initiative, optionally seeded with markdown plan content. The plan remains available across sessions and agents. Supports an idempotency key to avoid duplicate sessions.",
+          "description": "Create a durable OrgX planning session for a named feature or initiative, optionally seeded with markdown plan content. The plan remains available across sessions and agents. Each successful call creates a new session; read back its returned session ID before retrying an uncertain response.",
           "inputSchema": {
             "type": "object",
             "properties": {
@@ -18742,10 +18791,6 @@
               "workspace_id": {
                 "type": "string",
                 "description": "Workspace UUID to scope action=start plan sessions. Defaults to current session workspace when omitted."
-              },
-              "idempotency_key": {
-                "type": "string",
-                "description": "Optional idempotency key for safe retries. Same key returns the same result without creating duplicate session state."
               }
             },
             "required": [

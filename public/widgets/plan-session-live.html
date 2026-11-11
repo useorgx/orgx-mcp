@@ -123,23 +123,14 @@
     /* Q4: the thing being read sits in one well; nothing nests inside it. */
     .plan-well { background: var(--ox-well-bg); border-radius: 12px; padding: 14px 16px 10px; min-width: 0; }
     .plan-section__title { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--ox-text); letter-spacing: -.01em; }
-    .plan-section__body-wrap { position: relative; max-height: 282px; overflow: hidden; }
-    .plan-section__body-wrap.is-expanded { max-height: none; }
-    .plan-section__body-wrap[data-clamped="true"]:not(.is-expanded)::after {
-      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 56px; pointer-events: none;
-      background: linear-gradient(transparent, var(--ox-well-bg));
-    }
+    .plan-section__reading summary { min-height: 44px; padding-block: 10px; cursor: pointer; color: var(--ox-text); }
+    .plan-section__excerpt { display: block; color: var(--ox-text-2); overflow-wrap: anywhere; }
+    .plan-section__reading[open] .plan-section__excerpt { display: none; }
     .plan-section__body { font-size: 14px; line-height: 1.6; color: var(--ox-text-2); overflow-wrap: anywhere; }
     .plan-section__body p { margin: 0 0 8px; }
     .plan-section__body ul, .plan-section__body ol { margin: 0 0 8px; padding-left: 20px; }
     .plan-section__body li { margin: 2px 0; }
     .plan-section__body code { font-family: var(--ox-font-code); font-size: .9em; }
-    .plan-expand {
-      display: none; min-height: 44px; padding: 0; border: 0; background: none;
-      color: var(--ox-text-2); font-family: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
-    }
-    .plan-expand.is-visible { display: inline-flex; align-items: center; }
-
     .plan-activity { display: flex; flex-direction: column; }
     .plan-activity__item { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--ox-border); }
     .plan-activity__item:first-child { border-top: 0; }
@@ -541,13 +532,16 @@
             '</section>'
           );
         }
+        var body = '<div class="plan-section__body ox-markdown" data-section-body>' + renderMarkdownBody(section.body) + '</div>';
+        var reading = section.body.length > 700
+          ? '<details class="plan-section__reading" data-section-key="' + escapeHtml(section.id + ':' + section.heading) + '"><summary>Read full section' +
+              '<span class="plan-section__excerpt">' + escapeHtml(window.OrgXMarkdown.excerpt(section.body, 220)) + '</span>' +
+            '</summary>' + body + '</details>'
+          : body;
         return (
           '<section class="plan-well" aria-labelledby="selected-section-title">' +
             '<h2 class="plan-section__title" id="selected-section-title">' + escapeHtml(section.heading) + '</h2>' +
-            '<div class="plan-section__body-wrap" data-section-body-wrap>' +
-              '<div class="plan-section__body ox-markdown" data-section-body>' + renderMarkdownBody(section.body) + '</div>' +
-            '</div>' +
-            '<button type="button" class="plan-expand" data-expand-section aria-expanded="false">Show full section</button>' +
+            reading +
           '</section>'
         );
       }
@@ -643,6 +637,10 @@
       }
 
       function renderPlan(plan) {
+        var previousReading = plan.id && state.plan && state.plan.id === plan.id
+          ? document.querySelector('.plan-section__reading')
+          : null;
+        var keepFocus = previousReading && document.activeElement === previousReading.querySelector('summary');
         state.plan = plan;
         if (state.selectedSection >= plan.sections.length) state.selectedSection = 0;
         var content = showContent();
@@ -698,19 +696,14 @@
             renderFooter(plan) +
           '</article>';
 
+        var reading = content.querySelector('.plan-section__reading');
+        if (reading && previousReading && reading.dataset.sectionKey === previousReading.dataset.sectionKey) {
+          reading.open = previousReading.open;
+          if (keepFocus) reading.querySelector('summary').focus({ preventScroll: true });
+        }
         state.entered = true;
         bindInteractions();
         window.OrgXWidgetRuntime.reportSize();
-      }
-
-      function updateSectionClamp() {
-        var wrap = document.querySelector('[data-section-body-wrap]');
-        var body = document.querySelector('[data-section-body]');
-        var button = document.querySelector('[data-expand-section]');
-        if (!wrap || !body || !button) return;
-        var clamped = body.scrollHeight > 282;
-        wrap.dataset.clamped = String(clamped);
-        button.classList.toggle('is-visible', clamped);
       }
 
       function readDraft() {
@@ -891,17 +884,6 @@
           });
         }
 
-        var expand = document.querySelector('[data-expand-section]');
-        if (expand) {
-          expand.addEventListener('click', function toggleSection() {
-            var wrap = document.querySelector('[data-section-body-wrap]');
-            var expanded = expand.getAttribute('aria-expanded') === 'true';
-            expand.textContent = expanded ? 'Show full section' : 'Collapse section';
-            // Height animates between the preview and the whole section (instant under reduced motion).
-            window.OrgXWidgetRuntime.motion.setClamped(wrap, expanded, expand, { expandedClass: 'is-expanded' });
-          });
-        }
-
         var footer = document.getElementById('planFooter');
         if (footer) footer.addEventListener('ox-primary', onFooterPrimary);
 
@@ -947,7 +929,6 @@
           });
         }
 
-        window.requestAnimationFrame(updateSectionClamp);
       }
 
       function renderPayload(payload) {
@@ -976,15 +957,17 @@
             edits: plan.edits.length ? plan.edits : state.plan.edits,
           };
         }
-        state.selectedSection = Math.max(
-          0,
-          plan.sections.findIndex(function findOutcome(section) {
-            return /^outcome$/i.test(section.heading);
-          })
-        );
-        state.lens = 'plan';
-        state.composerOpen = false;
-        state.completeExpanded = false;
+        if (!state.plan || !plan.id || state.plan.id !== plan.id) {
+          state.selectedSection = Math.max(
+            0,
+            plan.sections.findIndex(function findOutcome(section) {
+              return /^outcome$/i.test(section.heading);
+            })
+          );
+          state.lens = 'plan';
+          state.composerOpen = false;
+          state.completeExpanded = false;
+        }
         renderPlan(plan);
       }
 
@@ -1086,7 +1069,6 @@
       });
 
       window.addEventListener('resize', function resize() {
-        updateSectionClamp();
         window.OrgXWidgetRuntime.reportSize();
       });
     })();

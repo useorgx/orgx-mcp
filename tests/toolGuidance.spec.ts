@@ -34,6 +34,7 @@ describe('tool result guidance', () => {
     const visible = new Set(['orgx_read_plan', 'orgx_update_entity', 'orgx_check_delegation']);
     const result = sanitizeToolResultGuidance({ structuredContent: {
       suggested_next_calls: [
+        { tool: 'orgx_read_plan', args: { session_id: '11111111-1111-4111-8111-111111111111' } },
         { tool: 'orgx_read_plan', args: {} },
         { tool: 'orgx_update_entity', args: { type: 'task', id: 'task-1', fields: { title: 'Revised' } } },
         { tool: 'orgx_update_entity', args: { type: 'task', id: 'task-1', fields: { status: 'done' } } },
@@ -43,7 +44,7 @@ describe('tool result guidance', () => {
       ],
     } }, visible, 'claude-directory-legacy');
     expect(result.structuredContent.suggested_next_calls).toEqual([
-      { tool: 'orgx_read_plan', args: {} },
+      { tool: 'orgx_read_plan', args: { session_id: '11111111-1111-4111-8111-111111111111' } },
       { tool: 'orgx_update_entity', args: { type: 'task', id: 'task-1', fields: { title: 'Revised' } } },
     ]);
   });
@@ -61,7 +62,7 @@ describe('tool result guidance', () => {
   it('shares current operation guidance across hosts and excludes app-only and profile-invisible calls', () => {
     const result = { structuredContent: {
       recommended_workflows: { continue: ['orgx_search', 'orgx_start_plan', 'resume_agent_run'] },
-      next_call: { tool: 'orgx_read_plan', args: {} },
+      next_call: { tool: 'orgx_read_plan', args: { session_id: '11111111-1111-4111-8111-111111111111' } },
     } };
     const visible = new Set(['orgx_search', 'orgx_start_plan', 'orgx_read_plan', 'resume_agent_run']);
     expect(sanitizeToolResultGuidance(result, visible, 'claude-plugin').structuredContent).toEqual({
@@ -69,7 +70,7 @@ describe('tool result guidance', () => {
     });
     expect(sanitizeToolResultGuidance(result, visible, true).structuredContent).toEqual({
       recommended_workflows: { continue: ['orgx_search', 'orgx_start_plan'] },
-      next_call: { tool: 'orgx_read_plan', args: {} },
+      next_call: { tool: 'orgx_read_plan', args: { session_id: '11111111-1111-4111-8111-111111111111' } },
     });
     expect(sanitizeToolResultGuidance(result, visible).structuredContent).toEqual(
       sanitizeToolResultGuidance(result, visible, true).structuredContent

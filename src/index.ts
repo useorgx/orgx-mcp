@@ -1,3 +1,4 @@
+import { projectChronicleOverview } from './reportOverview';
 import { LegacyBatchCapabilityCache, runCompatibleLegacyBatch } from './legacyBatchCutover';
 import { artifactProofScope } from './artifactProofScope';
 import { parseSearchDateRange, type SearchDateRange } from './searchDateRange';
@@ -258,13 +259,10 @@ import {
   normalizeDispatchContract,
 } from './dispatchContract';
 import { validateWriteCreateContract } from './writeContract';
-import { buildLiveFeedWidget } from './liveFeedWidget';
-import { signStreamToken } from './streamToken';
 import {
   buildStreamGrant,
   feedBindingForTool,
   resolveFeedIdForTool,
-  GENERATED_WIDGET_TTL_MS,
 } from './live/streamGrant';
 import { LIVE_REFRESH_USAGE_CLASS, PANEL_FEED_TYPE } from './live/panelFeed';
 import { hydrateTaskContext } from './taskContextHydrator';
@@ -362,6 +360,8 @@ import {
 import {
   enrichAgentStatusWithArtifacts,
   enrichInitiativePulseWithArtifacts,
+  compactAgentReadout,
+  compactInitiativeReadout,
   enrichMorningBriefWithArtifacts,
 } from './widgetArtifactProof';
 import {
@@ -2738,6 +2738,38 @@ export class OrgXMcp extends McpAgent<
     return payload.data?.[0] ?? null;
   }
 
+  private async fetchPrimaryEntityRecord(
+    type: string,
+    id: string,
+    userId: string | null
+  ): Promise<Record<string, unknown> | null> {
+    const params = new URLSearchParams({ type, id, limit: '1' });
+    const response = await callOrgxApiJson(
+      this.env,
+      `/api/entities?${params.toString()}`,
+      undefined,
+      {
+        userId,
+        userEmail: this.resolveUserEmail(),
+        ...this.delegationClaims(),
+        orgxUserId: this.resolveOrgxUserId(userId),
+        allowFallback: false,
+      }
+    );
+    const payload = (await response.json()) as { data?: unknown } | null;
+    if (
+      !payload ||
+      !Array.isArray(payload.data) ||
+      payload.data.length > 1
+    ) {
+      throw new Error('Invalid actor-scoped entity response');
+    }
+    const row = payload.data[0];
+    return row && typeof row === 'object' && !Array.isArray(row) && row.id === id
+      ? row as Record<string, unknown>
+      : null;
+  }
+
   private async fetchEntityCollection(params: {
     type: string;
     userId: string | null;
@@ -3757,7 +3789,10 @@ export class OrgXMcp extends McpAgent<
         // Use direct endpoints for high-traffic tools (lower latency)
         // Fall back to generic /api/tools/execute for others
         // Use resolvedToolId/expandedArgs from expandConsolidatedTool
-        const { endpoint, body } = this.getToolEndpoint(resolvedToolId, expandedArgs);
+        // View is an MCP projection, not a change to the upstream read.
+        const upstreamArgs = { ...expandedArgs };
+        if (toolId === 'get_agent_status' || toolId === 'get_initiative_pulse') delete upstreamArgs.view;
+        const { endpoint, body } = this.getToolEndpoint(resolvedToolId, upstreamArgs);
         if (WIDGET_APPROVAL_SOURCE_TOOLS.has(resolvedToolId) && isWidgetTool) {
           // Ask the app for widget approval tokens; they are lifted into the
           // widget-only result _meta below and never reach the model.
@@ -3921,6 +3956,10 @@ export class OrgXMcp extends McpAgent<
         if (toolId === 'get_agent_status') {
           data = normalizeAgentStatusPayload(data);
           message = String(data.message);
+          if (effectiveArgs.view === 'overview') data = compactAgentReadout(data);
+        }
+        if (toolId === 'get_initiative_pulse' && effectiveArgs.view === 'overview') {
+          data = compactInitiativeReadout(data);
         }
 
         this.maybeUpdateSessionInitiativeContext({
@@ -3981,14 +4020,9 @@ export class OrgXMcp extends McpAgent<
           })(),
         });
 
-        // Dual-protocol return:
-        // - Widget tools: JSON in content[0] for MCP Apps widget parsing
-        // - Non-widget tools: concise summary only (saves 80-95% tokens)
-        // structuredContent always carries the full payload for widgets.
-        // Live subscription grant: attached to structuredContent so the static
-        // widgets in public/widgets/ can subscribe. Any tool listed in
-        // TOOL_FEED_BINDINGS becomes live without its own token plumbing.
-        if (this.env.LIVE_FEED && this.env.MCP_JWT_SECRET) {
+        // A stream URL is a credential. Deliver it only in widget metadata.
+        let liveGrant: Awaited<ReturnType<typeof buildStreamGrant>> = null;
+        if (isWidgetTool && this.env.LIVE_FEED && this.env.MCP_JWT_SECRET) {
           const _binding = feedBindingForTool(toolId);
           // Not `effectiveInitiativeId`: that falls back to `data.id`, which for
           // a tool like orgx_inspect is whichever entity was inspected. Feeding
@@ -3999,7 +4033,7 @@ export class OrgXMcp extends McpAgent<
             : null;
           if (_binding && _feedId) {
             try {
-              const _grant = await buildStreamGrant({
+              liveGrant = await buildStreamGrant({
                 feedType: _binding.feedType,
                 feedId: _feedId,
                 serverUrl: this.env.MCP_SERVER_URL,
@@ -4008,7 +4042,6 @@ export class OrgXMcp extends McpAgent<
                 refreshArgs: { initiative_id: _feedId },
                 userId: resolvedUserId ?? undefined,
               });
-              if (_grant) (data as Record<string, unknown>).live = _grant;
             } catch (_err) {
               // A missing grant degrades the widget to a static snapshot, which
               // is the pre-existing behaviour — never a failed tool call.
@@ -4017,53 +4050,11 @@ export class OrgXMcp extends McpAgent<
           }
         }
 
-        // Live-feed SSE widget: inject for agent-status + initiative-pulse tools
-        let _liveFeedWidgetHtml: string | null = null;
-        if (
-          (toolId === 'get_agent_status' || toolId === 'get_initiative_pulse') &&
-          effectiveInitiativeId &&
-          this.env.LIVE_FEED &&
-          this.env.MCP_JWT_SECRET
-        ) {
-          try {
-            const _feedType = toolId === 'get_agent_status' ? 'agent-status' : 'initiative-pulse';
-            const _streamToken = await signStreamToken({
-              feedType: _feedType,
-              feedId: effectiveInitiativeId,
-              userId: resolvedUserId ?? undefined,
-              secret: this.env.MCP_JWT_SECRET,
-              // Deliberately NOT the short grant lifetime. A structuredContent
-              // grant can refresh itself by re-invoking its bound tool; this
-              // token is baked into standalone HTML with no tool access, so a
-              // short life would just end its updates sooner with no way to
-              // recover. Shortening it here traded a smaller exposure window
-              // for a widget that died after fifteen minutes instead of sixty.
-              ttlMs: GENERATED_WIDGET_TTL_MS,
-            });
-            const _liveUrl = hasInitiativeContext && effectiveInitiativeId
-              ? buildLiveUrl(effectiveInitiativeId)
-              : undefined;
-            _liveFeedWidgetHtml = buildLiveFeedWidget({
-              feedType: _feedType,
-              feedId: effectiveInitiativeId,
-              streamBaseUrl: this.env.MCP_SERVER_URL,
-              streamToken: _streamToken,
-              liveUrl: _liveUrl,
-              title: typeof (data.initiative as Record<string, unknown> | undefined)?.title === 'string'
-                ? (data.initiative as Record<string, unknown>).title as string
-                : undefined,
-            });
-          } catch (_err) {
-            console.warn('[live-feed-widget] token/widget build failed', { error: _err });
-          }
-        }
-
         if (isWidgetTool) {
           const content = buildClientAwareContentBlocks({
             data,
             summary: finalMessage,
             sourceClient,
-            widgetHtml: _liveFeedWidgetHtml,
           });
           this.appendWidgetDebugEvent({
             phase: 'tool_result',
@@ -4079,9 +4070,10 @@ export class OrgXMcp extends McpAgent<
           return {
             content,
             structuredContent: data,
-            ...(widgetApproval.meta
-              ? { _meta: { [WIDGET_APPROVAL_META_KEY]: widgetApproval.meta } }
-              : {}),
+            ...(widgetApproval.meta || liveGrant ? { _meta: {
+              ...(widgetApproval.meta ? { [WIDGET_APPROVAL_META_KEY]: widgetApproval.meta } : {}),
+              ...(liveGrant ? { 'orgx/liveGrant': liveGrant } : {}),
+            } } : {}),
           } as CallToolResult;
         }
 
@@ -5507,6 +5499,7 @@ export class OrgXMcp extends McpAgent<
           userId: resolvedUserId ?? null,
           userEmail: this.resolveUserEmail(), ...this.delegationClaims(),
           orgxUserId: this.resolveOrgxUserId(resolvedUserId ?? null),
+          ...(this.isDirectoryReviewProfile() ? { allowFallback: false } : {}),
         });
         return (await response.json()) as Record<string, unknown>;
       },
@@ -5664,7 +5657,7 @@ export class OrgXMcp extends McpAgent<
               };
             }
           }
-          if (requestedWorkspaceId) {
+          if (requestedWorkspaceId && !this.isDirectoryReviewProfile()) {
             const workspace = await this.fetchEntityRecord(
               'workspace',
               requestedWorkspaceId,
@@ -5709,6 +5702,48 @@ export class OrgXMcp extends McpAgent<
                     error instanceof Error ? error.message : String(error),
                 });
               }
+            }
+          }
+          if (this.isDirectoryReviewProfile()) {
+            const workspaceId =
+              typeof bootstrapArgs.workspace_id === 'string' &&
+              bootstrapArgs.workspace_id.trim()
+                ? bootstrapArgs.workspace_id.trim()
+                : typeof bootstrapArgs.command_center_id === 'string' &&
+                  bootstrapArgs.command_center_id.trim()
+                ? bootstrapArgs.command_center_id.trim()
+                : this.sessionContext.workspaceId?.trim() ?? null;
+            if (workspaceId) {
+              let workspace: Record<string, unknown> | null;
+              try {
+                workspace = await this.fetchPrimaryEntityRecord(
+                  'workspace',
+                  workspaceId,
+                  resolvedUserId
+                );
+              } catch {
+                return this.toolError(
+                  'Unable to verify workspace access. Session context was not changed.',
+                  {
+                    code: 'workspace_access_verification_unavailable',
+                    status: 503,
+                    details: { retryable: true },
+                  }
+                );
+              }
+              if (!workspace || workspace.id !== workspaceId) {
+                return this.toolError('Workspace not found for the authenticated account.', {
+                  code: 'entity_not_found',
+                  status: 404,
+                });
+              }
+              fetchedWorkspaceName =
+                typeof workspace.name === 'string'
+                  ? workspace.name
+                  : typeof workspace.title === 'string'
+                  ? workspace.title
+                  : null;
+              bootstrapArgs = { ...bootstrapArgs, workspace_id: workspaceId };
             }
           }
           const resolvedContext = resolveBootstrapSessionContext(
@@ -8022,6 +8057,13 @@ export class OrgXMcp extends McpAgent<
         }
         const implementation = privateOperations.get(tool.canonicalToolId);
         if (!implementation) return this.toolError(`Operation implementation unavailable: ${tool.id}`, { code: 'operation_unavailable', status: 503 });
+        if (tool.id === 'orgx_get_operator_brief') {
+          const { detail, ...reportArgs } = canonicalArgs;
+          const report = await implementation.handler(reportArgs, extra) as CallToolResult;
+          return detail === 'full' || report.isError || !report.structuredContent
+            ? report
+            : { ...report, structuredContent: projectChronicleOverview(report.structuredContent) };
+        }
         const result = await implementation.handler(canonicalArgs, extra) as CallToolResult;
         if (tool.id === 'orgx_open_artifact_review' && result.structuredContent) {
           const artifact = result.structuredContent.artifact as Record<string, unknown> | undefined;
@@ -8069,7 +8111,11 @@ export class OrgXMcp extends McpAgent<
             request: (path, init) => this.requestPublicOperation(
               tool.id === 'orgx_get_work_receipt' || tool.id === 'orgx_list_work_receipts' ? `${path}${path.includes('?') ? '&' : '?'}widget_meta=1` : path, init),
           });
-          return directResult(raw);
+          const result = directResult(raw);
+          if (tool.id !== 'orgx_list_work_receipts' || input.detail === 'full' || raw.ok !== true) return result;
+          const rows = Array.isArray(raw.results) ? raw.results : Array.isArray(raw.items) ? raw.items : null;
+          const label = rows ? 'Showing ' + rows.length + ' ledger entries.' : 'Work ledger overview ready.';
+          return { ...result, content: [{ type: 'text', text: label }] };
         }, tool.id, args);
       });
     }
@@ -13895,21 +13941,11 @@ export class OrgXMcp extends McpAgent<
           };
           let ownedRun: Record<string, unknown> | null;
           try {
-            const params = new URLSearchParams({ type: 'run', id: runId, limit: '1' });
-            const ownershipResponse = await callOrgxApiJson(
-              this.env,
-              `/api/entities?${params.toString()}`,
-              undefined,
-              actor
+            ownedRun = await this.fetchPrimaryEntityRecord(
+              'run',
+              runId,
+              resolvedUserId ?? null
             );
-            const ownership = (await ownershipResponse.json()) as { data?: unknown } | null;
-            if (!ownership || !Array.isArray(ownership.data) || ownership.data.length > 1) {
-              throw new Error('Invalid owner-scoped run response');
-            }
-            const row = ownership.data[0];
-            ownedRun = row && typeof row === 'object' && !Array.isArray(row)
-              ? row as Record<string, unknown>
-              : null;
           } catch {
             return this.toolError('Unable to verify agent run ownership. No resume was sent.', {
               code: 'run_ownership_verification_unavailable',
