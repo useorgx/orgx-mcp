@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-11T06:21:27.599Z",
-  "sourceHash": "196f4d91a4a51a70",
+  "generatedAt": "2026-11-11T06:27:21.565Z",
+  "sourceHash": "c747f155f089f06a",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -9209,6 +9209,15 @@
             "default": "receipts",
             "description": "Read-only ledger projection. Existing calls default to receipt search."
           },
+          "detail": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "default": "overview",
+            "description": "Overview returns compact list summaries. Full preserves the detailed ledger view."
+          },
           "query": {
             "type": "string",
             "maxLength": 2000,
@@ -16497,7 +16506,7 @@
     {
       "id": "orgx_get_operator_brief",
       "title": "Read OrgX Operator Brief",
-      "description": "Read workspace reporting, decision chronology, progress, proof, priorities, and gaps for a day, week, or 30-day window.",
+      "description": "Read a compact workspace overview of decisions, progress, proof, priorities, and gaps. Set detail=full for the full chronicle.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -16514,6 +16523,15 @@
               "30d"
             ],
             "description": "Reporting window. day=24h, week=7d, 30d=30 days."
+          },
+          "detail": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "default": "overview",
+            "description": "Use full for detailed evidence and reporting history."
           }
         },
         "additionalProperties": false,

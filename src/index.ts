@@ -1,3 +1,4 @@
+import { projectChronicleOverview } from './reportOverview';
 import { LegacyBatchCapabilityCache, runCompatibleLegacyBatch } from './legacyBatchCutover';
 import { artifactProofScope } from './artifactProofScope';
 import { parseSearchDateRange, type SearchDateRange } from './searchDateRange';
@@ -7981,6 +7982,13 @@ export class OrgXMcp extends McpAgent<
         }
         const implementation = privateOperations.get(tool.canonicalToolId);
         if (!implementation) return this.toolError(`Operation implementation unavailable: ${tool.id}`, { code: 'operation_unavailable', status: 503 });
+        if (tool.id === 'orgx_get_operator_brief') {
+          const { detail, ...reportArgs } = canonicalArgs;
+          const report = await implementation.handler(reportArgs, extra) as CallToolResult;
+          return detail === 'full' || report.isError || !report.structuredContent
+            ? report
+            : { ...report, structuredContent: projectChronicleOverview(report.structuredContent) };
+        }
         const result = await implementation.handler(canonicalArgs, extra) as CallToolResult;
         if (tool.id === 'orgx_open_artifact_review' && result.structuredContent) {
           const artifact = result.structuredContent.artifact as Record<string, unknown> | undefined;
@@ -8028,7 +8036,11 @@ export class OrgXMcp extends McpAgent<
             request: (path, init) => this.requestPublicOperation(
               tool.id === 'orgx_get_work_receipt' || tool.id === 'orgx_list_work_receipts' ? `${path}${path.includes('?') ? '&' : '?'}widget_meta=1` : path, init),
           });
-          return directResult(raw);
+          const result = directResult(raw);
+          if (tool.id !== 'orgx_list_work_receipts' || input.detail === 'full' || raw.ok !== true) return result;
+          const rows = Array.isArray(raw.results) ? raw.results : Array.isArray(raw.items) ? raw.items : null;
+          const label = rows ? 'Showing ' + rows.length + ' ledger entries.' : 'Work ledger overview ready.';
+          return { ...result, content: [{ type: 'text', text: label }] };
         }, tool.id, args);
       });
     }

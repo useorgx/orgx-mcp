@@ -321,8 +321,10 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     'Read the current state and linked context of one OrgX work record, decision, artifact, or plan session before acting. Returns its owners, decisions, acceptance checks, and proof where available. Related records are available through orgx_search and priorities through orgx_get_next_actions. Does not mutate the record.',
     canonical('orgx_inspect').inputSchema!),
   operation('orgx_get_operator_brief', 'get_operator_chronicle', 'Read OrgX Operator Brief',
-    'Read workspace reporting, decision chronology, progress, proof, priorities, and gaps for a day, week, or 30-day window.',
-    project('get_operator_chronicle', ['workspace_id', 'period']), {
+    'Read a compact workspace overview of decisions, progress, proof, priorities, and gaps. Set detail=full for the full chronicle.',
+    project('get_operator_chronicle', ['workspace_id', 'period', 'detail'], {
+      detail: z.enum(['overview', 'full']).default('overview').describe('Use full for detailed evidence and reporting history.'),
+    }), {
       executionKind: 'client', annotations: readOnly,
     }),
   operation('orgx_get_next_actions', 'orgx_recommend', 'Get OrgX Next Actions',
