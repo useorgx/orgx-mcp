@@ -1033,6 +1033,21 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         image_generation: z.boolean(),
         cursor_background_agents: z.boolean(),
       }),
+      // Defined and filled by OrgX, passed through as-is: one entry per
+      // execution target (runtime, harness or sandbox) with whether it can run
+      // now and why not. Open by design, so OrgX can add targets and fields
+      // without another MCP server change.
+      execution_targets: z
+        .array(
+          z
+            .object({
+              runtime: z.string(),
+              available: z.boolean(),
+              reason: nullableString.optional(),
+            })
+            .passthrough()
+        )
+        .optional(),
       setup_url: z.string(),
     })
     .strict(),

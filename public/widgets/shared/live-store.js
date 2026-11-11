@@ -797,6 +797,8 @@
 
   function readGrantFromToolResult(result) {
     if (!result || typeof result !== 'object') return null;
+    var grant = result._meta && result._meta['orgx/liveGrant'];
+    if (grant && isStreamUrl(grant.streamUrl)) return grant;
     if (result.live && isStreamUrl(result.live.streamUrl)) return result.live;
 
     var structured = result.structuredContent;

@@ -151,8 +151,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 173068,
-      "hash": "9c8104ef10ae",
+      "bytes": 177225,
+      "hash": "37e295f2bae1",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -280,8 +280,8 @@
     },
     "morning-brief": {
       "file": "public/widgets/morning-brief.html",
-      "bytes": 69164,
-      "hash": "744bb4f5c3b2",
+      "bytes": 70281,
+      "hash": "08c96b99f203",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -407,13 +407,15 @@
     },
     "proof-receipt": {
       "file": "public/widgets/proof-receipt.html",
-      "bytes": 33193,
-      "hash": "337be35055d0",
+      "bytes": 33598,
+      "hash": "b50db8253916",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
         "shared/kit/ox-elements.js",
         "shared/kit/ox-tokens.css",
+        "shared/markdown.css",
+        "shared/markdown.js",
         "shared/mcp-apps-sdk.umd.js",
         "shared/widget-foundation.css",
         "shared/widget-runtime.js",
@@ -496,8 +498,8 @@
     },
     "search-results": {
       "file": "public/widgets/search-results.html",
-      "bytes": 73010,
-      "hash": "1752043406df",
+      "bytes": 73675,
+      "hash": "8bc6fcfbf20c",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/kit/ox-elements-core.js",
@@ -592,8 +594,8 @@
     },
     "workspace-map": {
       "file": "public/widgets/workspace-map.html",
-      "bytes": 26220,
-      "hash": "11b191e82dd9",
+      "bytes": 26106,
+      "hash": "0fe468f02752",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/interaction-kit.css",

@@ -5,6 +5,7 @@ import {
   buildSpawnGateArgs,
   evaluateSpawnBudgetPreflightResult,
   evaluateSpawnGateResult,
+  appSpawnBlock,
 } from '../src/spawnBudgetPreflight';
 
 describe('spawn budget preflight', () => {
@@ -168,5 +169,22 @@ describe('spawn budget preflight', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected allowed preflight');
     expect(result.preflight.estimate.budget_check.within_cap).toBe(true);
+  });
+});
+
+describe('appSpawnBlock', () => {
+  it('carries the typed OrgX block to the client', () => {
+    expect(appSpawnBlock({ ok: false, error: 'Over cap', data: { code: 'budget_cap_exceeded', estimated_cost_cents: 90 } }))
+      .toEqual({ message: 'Over cap', options: { code: 'budget_cap_exceeded', status: 402,
+        details: { code: 'budget_cap_exceeded', estimated_cost_cents: 90 } } });
+    expect(appSpawnBlock({ ok: false, error: 'Held', data: { code: 'budget_gate_blocked' } })?.options.status).toBe(424);
+    expect(appSpawnBlock({ ok: false, error: 'Unknown', data: { code: 'cost_estimate_unavailable' } })?.options.code)
+      .toBe('cost_estimate_unavailable');
+  });
+
+  it('leaves other failures to the generic error', () => {
+    expect(appSpawnBlock({ ok: false, error: 'x', data: { code: 'dispatch_admission_denied' } })).toBeNull();
+    expect(appSpawnBlock({ ok: false, error: 'x' })).toBeNull();
+    expect(appSpawnBlock({ ok: true, data: { code: 'budget_cap_exceeded' } })).toBeNull();
   });
 });
