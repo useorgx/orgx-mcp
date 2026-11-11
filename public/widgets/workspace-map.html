@@ -429,8 +429,8 @@
       return shell('teal', '<div class="wm-state"><span class="wm-kicker">OrgX workspace</span><h1>' +
         escapeHtml(workspace.name || workspace.title || workspace.id) + '</h1><p>This is the connected workspace.' +
         (initiative ? ' Current initiative: ' + escapeHtml(initiative.title || initiative.name || initiative.id) + '.' : '') +
-        '</p><button type="button" class="ox-open" style="align-self:flex-start" data-action="open" data-url="' + ORGX_URL + '">Open OrgX</button></div>',
-        '<ox-footer variant="reads" state="fresh" heading="Context read" detail="work and approvals stay in OrgX" action-label="Open OrgX ↗"></ox-footer>');
+        '</p><p>Chat permissions are unavailable in this view.</p></div>',
+        '<ox-footer variant="reads" state="fresh" heading="Workspace connected" action-label="Open OrgX ↗"></ox-footer>');
     };
 
     var render = function (payload) {
@@ -531,6 +531,19 @@
 
     var SCOPE_ERRORS = /context_scope_mismatch|workspace_forbidden|workspace_access_denied|forbidden|not_member/;
 
+    // orgx_get_workspace_context carries no surfaces: keep the map's surfaces
+    // when the check reads the same workspace, rather than dropping to the context card.
+    var keepSurfaces = function (next) {
+      var prev = view.payload;
+      var body = next && next.data && typeof next.data === 'object' && next.data.workspace
+        ? Object.assign({}, next.data, { live: next.live || next.data.live }) : next;
+      var prevWs = prev && prev.workspace;
+      var nextWs = body && body.workspace;
+      if (!body || body.surfaces !== undefined || !Array.isArray(prev && prev.surfaces) ||
+          !prevWs || !nextWs || !prevWs.id || prevWs.id !== nextWs.id) return next;
+      return Object.assign({}, body, { surfaces: prev.surfaces });
+    };
+
     var recheck = function (args) {
       if (view.checking) return;
       view.checking = true;
@@ -541,7 +554,7 @@
           var next = window.OrgXWidgetRuntime.extractStructuredWidgetData(result, true);
           view.checking = false;
           if (view.phase === 'other-workspace') view.phase = null;
-          render(next || {});
+          render(keepSurfaces(next) || {});
         })
         .catch(function (error) {
           view.checking = false;

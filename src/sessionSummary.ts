@@ -403,7 +403,7 @@ export function installSessionToolObservationWrapper(
           const searchTelemetry = value && typeof value === 'object'
             ? readSearchDelivery(name, value)?.observation.telemetry : undefined;
           // Snapshot references before the completion reporter can send its own API request.
-          const delivered = attachDiagnosticReferences(value);
+          const delivered = attachDiagnosticReferences(value, Math.max(0, Date.now() - startedAt));
           report(
             name,
             args,

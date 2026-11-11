@@ -102,12 +102,31 @@ describe('orgx_panel_snapshot registration', () => {
     expect(registration!.config.annotations).toEqual(CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT.annotations);
     expect(registration!.config._meta['mcp/securitySchemes']).toEqual(CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT.securitySchemes);
     const input = registration!.config.inputSchema as unknown as z.ZodObject<z.ZodRawShape>;
-    expect(Object.keys(input.shape)).toEqual(['focus', 'view', 'range']);
+    expect(Object.keys(input.shape)).toEqual(['focus', 'view', 'range', 'output_id']);
     expect(input.safeParse({ view: 'work' }).success).toBe(true);
     expect(input.safeParse({ view: 'history', range: '30d' }).success).toBe(true);
-    for (const args of [{ view: 'receipts' }, { query: 'pr:3236' }, { receipt_id: 'rcpt-1' }, { workspace_id: 'workspace' }]) {
+    for (const args of [
+      { view: 'receipts' },
+      { query: 'pr:3236' },
+      { view: 'outputs', query: '3f1c2a9e-6b7d-4c1e-9a2b-1d2e3f4a5b6c' },
+      { view: 'outputs', output_id: 'pr:3236' },
+      { view: 'outputs', output_id: 'x'.repeat(300) },
+      { receipt_id: 'rcpt-1' },
+      { workspace_id: 'workspace' },
+    ]) {
       expect(input.safeParse(args).success).toBe(false);
     }
+  });
+
+  it('accepts the Outputs summary read the panel makes for the selected output', () => {
+    const [registration] = captureRegistration(new Set([PANEL_TOOL_ID]), true);
+    const input = registration!.config.inputSchema as unknown as z.ZodObject<z.ZodRawShape>;
+    const panelApp = readFileSync(resolve(process.cwd(), 'public/widgets/shared/panel/panel-app.js'), 'utf8');
+    // The panel's own call shape: the selected output id as `output_id` on view "outputs"
+    // (`query` stays retired from current contracts).
+    expect(panelApp).toContain("R.callToolResult('orgx_panel_snapshot', { view: 'outputs', output_id: id })");
+    expect(input.safeParse({ view: 'outputs', output_id: '3f1c2a9e-6b7d-4c1e-9a2b-1d2e3f4a5b6c' }).success).toBe(true);
+    expect(input.safeParse({ view: 'outputs' }).success).toBe(true);
   });
 
   it('is app-only on the shared ChatGPT, v2 and directory surfaces, with an exact output schema and manifest entry', () => {

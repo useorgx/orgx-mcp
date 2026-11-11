@@ -19,7 +19,7 @@ const actions = (el: Element) => el.querySelectorAll('button, a[href]').length;
 describe('panel empty states', () => {
   const { Views, Outputs, Goals, frag } = load();
 
-  it('In progress with nothing running: one line, one sentence, the launch, no runs link', () => {
+  it('Work with nothing running: one line, one sentence, the launch, no runs link', () => {
     const el = frag(Views.workHtml({ status: 'ok', items: [], total: 0 }, 'ready', '<div class="st-link"><button type="button">Start work</button></div>', {}));
     expect(el.querySelector('.pn-empty-h')!.textContent).toBe('Nothing is running right now.');
     expect(el.querySelectorAll('.pn-empty-p')).toHaveLength(1);

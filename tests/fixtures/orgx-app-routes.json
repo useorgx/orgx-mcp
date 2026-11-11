@@ -5,8 +5,10 @@
     "/about",
     "/about/brand-facts",
     "/admin",
+    "/admin/afrotech",
     "/admin/artifact-generation",
     "/admin/capabilities",
+    "/admin/data-health",
     "/admin/entities/[type]/[id]",
     "/admin/frontier",
     "/admin/observability",
@@ -17,7 +19,18 @@
     "/admin/receipts",
     "/admin/reports",
     "/admin/war-room",
+    "/afrotech",
+    "/afrotech/b/[id]",
+    "/afrotech/m/[id]",
+    "/afrotech/meet",
+    "/afrotech/memory",
+    "/afrotech/printer",
+    "/afrotech/r/[id]",
+    "/afrotech/rule/[id]",
+    "/afrotech/w/[id]",
+    "/afrotech/wall",
     "/agent-work-receipts",
+    "/agent-work-receipts/proof",
     "/agents",
     "/agents/runs/[runId]",
     "/amplify",
@@ -116,10 +129,12 @@
     "/dev/resource-table-preview",
     "/dev/return-state-chip",
     "/dev/reviews-preview",
+    "/dev/run-proof-preview",
     "/dev/work-ledger-preview",
     "/docs",
     "/docs/[...slug]",
     "/ecosystem",
+    "/faq",
     "/fde",
     "/fde/debrief",
     "/features",
@@ -132,8 +147,10 @@
     "/founding/welcome",
     "/glossary",
     "/goals",
+    "/goals/[id]",
     "/gtm/funnel",
     "/guides",
+    "/guides/[slug]",
     "/guides/connect-orgx-mcp-agent-orchestration",
     "/guides/prove-delegated-work-got-done",
     "/guides/scale-product-marketing-sales-ai-agents",
@@ -178,6 +195,7 @@
     "/onboarding/v3",
     "/onboarding/workload-plan",
     "/onboarding/x-ray",
+    "/outputs",
     "/people",
     "/people/[id]",
     "/performance",
@@ -220,6 +238,8 @@
     "/settings/billing",
     "/settings/evaluation-preferences",
     "/settings/execution",
+    "/settings/execution/autopilot",
+    "/settings/execution/staging-authorization",
     "/settings/github-connected",
     "/settings/integrations",
     "/settings/integrations/openclaw",
@@ -290,6 +310,10 @@
     {
       "source": "/skip-the-hire",
       "destination": "/pricing"
+    },
+    {
+      "source": "/for/yc-founders",
+      "destination": "/for/technical-founders"
     },
     {
       "source": "/skip-the-hire/:slug",
@@ -377,7 +401,7 @@
     },
     {
       "source": "/artifacts",
-      "destination": "/workspace-hub"
+      "destination": "/outputs"
     },
     {
       "source": "/run/:runId",
@@ -470,6 +494,12 @@
     "/work-ledger": [
       "center",
       "range"
+    ],
+    "/work-ledger/receipts": [
+      "center"
+    ],
+    "/work-ledger/receipts/[id]": [
+      "center"
     ]
   }
 }

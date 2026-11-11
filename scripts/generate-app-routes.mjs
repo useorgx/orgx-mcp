@@ -59,6 +59,12 @@ const QUERY_PARAMS = {
     'work-ledger/page.tsx': ['center'],
     '../lib/workLedger/view.ts': ['range'],
   },
+  '/work-ledger/receipts': {
+    'work-ledger/receipts/page.tsx': ['center'],
+  },
+  '/work-ledger/receipts/[id]': {
+    'work-ledger/receipts/[id]/page.tsx': ['center'],
+  },
 };
 
 function walk(dir, files = []) {
@@ -104,7 +110,7 @@ for (const [route, files] of Object.entries(QUERY_PARAMS)) {
     }
     const text = readFileSync(path, 'utf8');
     for (const param of params) {
-      const reads = new RegExp(`get\\(\\s*['"]${param}['"]\\s*\\)|[Pp]arams\\??\\.${param}\\b|readFirst\\([^)]*\\.${param}\\)|readParam\\(\\s*params\\s*,\\s*['"]${param}['"]\\s*\\)`).test(text);
+      const reads = new RegExp(`get\\(\\s*['"]${param}['"]\\s*\\)|[Pp]arams\\??\\.${param}\\b|\\bquery\\.${param}\\b|readFirst\\([^)]*\\.${param}\\)|readParam\\(\\s*params\\s*,\\s*['"]${param}['"]\\s*\\)`).test(text);
       if (!reads) problems.push(`${route}: ${file} no longer reads ?${param}`);
       else query[route].push(param);
     }

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('morning brief widget', () => {
   const widgetSource = readFileSync(
@@ -57,5 +57,69 @@ describe('morning brief widget', () => {
     expect(tokenSource).toContain('.app-list-row');
     expect(iconSource).toContain('global.OrgXIcons = {');
     expect(iconSource).toContain("expand: '");
+  });
+});
+
+// Boots the real widget in JSDOM with its shared scripts (the MCP Apps SDK is
+// skipped; ChatGPT globals deliver the payload).
+async function bootBrief(toolOutput: unknown) {
+  const { JSDOM } = await import('jsdom');
+  const root = resolve(process.cwd(), 'public/widgets');
+  const html = readFileSync(resolve(root, 'morning-brief.html'), 'utf8');
+  const dom = new JSDOM(html, { url: 'https://mcp.useorgx.com/widgets/morning-brief.html', runScripts: 'outside-only' });
+  Object.assign(dom.window, { openai: { toolOutput, callTool: vi.fn(), setWidgetHeight: vi.fn() }, fetch: vi.fn().mockResolvedValue({ ok: true }) });
+  for (const script of dom.window.document.querySelectorAll('script')) {
+    const src = script.getAttribute('src');
+    if (src && /mcp-apps-sdk/.test(src)) continue;
+    dom.window.eval(src ? readFileSync(resolve(root, src), 'utf8') : script.textContent!);
+  }
+  await vi.advanceTimersByTimeAsync(400);
+  return dom;
+}
+const briefText = (dom: { window: Window }) => dom.window.document.getElementById('content')!.textContent!.replace(/\s+/g, ' ');
+
+describe('morning brief renders every payload bound to it', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('shows ranked recommendations from orgx_recommend next_action mode', async () => {
+    const dom = await bootBrief({
+      entity_type: 'workspace', entity_id: 'default', canonical_only: false,
+      recommendations: [
+        { label: 'Decide the launch discount', entity_type: 'decision', summary: 'Blocks pricing', score: 0.9 },
+        { label: 'Finish checkout', entity_type: 'workstream' },
+      ],
+      next_action: { label: 'Decide the launch discount' },
+      message: 'Next action: Decide the launch discount.',
+    });
+    const priorities = Array.from(dom.window.document.querySelectorAll('.priority-title')).map((el) => el.textContent);
+    expect(priorities).toEqual(['Decide the launch discount', 'Finish checkout']);
+    expect(briefText(dom)).toContain('Blocks pricing');
+    dom.window.close();
+  });
+
+  it('falls back to next_action alone when no ranked list is returned', async () => {
+    const dom = await bootBrief({ recommendations: [], next_action: { title: 'Approve the pricing memo', reason: 'Waiting two days' } });
+    const priorities = Array.from(dom.window.document.querySelectorAll('.priority-title')).map((el) => el.textContent);
+    expect(priorities).toEqual(['Approve the pricing memo']);
+    dom.window.close();
+  });
+
+  it('counts chronicle in_review artifacts as review items and reads their url, type and agent', async () => {
+    const now = new Date().toISOString();
+    const dom = await bootBrief({ ok: true, _v2_tool: 'orgx_recommend', mode: 'morning_brief', chronicle: {
+      generatedAt: now, summary: 'Quiet day.', metrics: { pendingDecisions: 0, blockedWork: 0 }, topPriorities: [], reportingNarrative: {},
+      artifactLedger: [
+        { id: 'a1', title: 'Pricing memo', status: 'in_review', artifactType: 'mktg.copy', agentType: 'marketing', url: 'https://useorgx.com/artifacts/a1', updatedAt: now },
+        { id: 'a2', title: 'Release notes', status: 'approved', artifactType: 'eng.report', url: 'https://useorgx.com/artifacts/a2', updatedAt: now },
+      ],
+    } });
+    const text = briefText(dom);
+    expect(text).toContain('1 artifact needs your review');
+    expect(text).toContain('Mktg.Copy');
+    expect(text).toMatch(/Ready for an operator review before execution continues. marketing/);
+    const review = dom.window.document.querySelector('.output-link') as HTMLElement;
+    expect(review?.dataset.url).toBe('https://useorgx.com/artifacts/a1');
+    dom.window.close();
   });
 });

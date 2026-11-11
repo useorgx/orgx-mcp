@@ -517,9 +517,10 @@
 
     // ISO dates in facts ("2026-10-03") read in the viewer's words: Today,
     // Tomorrow, Yesterday, else "Oct 3". Parsed as a local calendar day.
+    // Full timestamps (Updated) read in the viewer's zone: "5:05 PM", "Yesterday, 5:05 PM".
     var factValue = function (value) {
       var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').trim());
-      if (!m) return value;
+      if (!m) return /^\d{4}-\d{2}-\d{2}T/.test(String(value || '').trim()) && window.OrgXTime.when(value) || value;
       var date = new Date(+m[1], +m[2] - 1, +m[3]);
       var today = new Date();
       var days = Math.round((date - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 864e5);
@@ -534,14 +535,16 @@
     };
 
     // Older servers send no card; draw what the raw entity gives us.
+    // orgx_inspect type=plan_session returns the session as plan_session.
     var cardFrom = function (payload) {
       if (payload && payload.card && typeof payload.card === 'object') return payload.card;
-      var entity = payload && payload.entity && typeof payload.entity === 'object' ? payload.entity : null;
+      var entity = payload && payload.entity && typeof payload.entity === 'object' ? payload.entity
+        : payload && payload.plan_session && typeof payload.plan_session === 'object' ? payload.plan_session : null;
       if (!entity) return null;
       return {
         type: payload.type || 'entity',
-        id: payload.id || entity.id || '',
-        title: entity.title || entity.name || payload.id || 'Untitled',
+        id: payload.id || entity.id || payload.session_id || entity.session_id || '',
+        title: entity.title || entity.name || entity.feature_name || payload.id || 'Untitled',
         status: typeof entity.status === 'string' ? entity.status : null,
         summary: entity.description || entity.summary || null,
         url: null,

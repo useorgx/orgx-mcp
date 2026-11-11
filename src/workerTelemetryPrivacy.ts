@@ -108,6 +108,8 @@ const enumProperties: Record<string, readonly string[]> = {
 };
 const numericProperties = new Set([
   'elapsed_ms',
+  'tool_execution_ms', 'api_calls', 'api_attempts', 'api_fallbacks',
+  'api_failures', 'api_timeouts', 'api_headers_ms', 'api_body_ms',
   'latency_ms', 'http_status', 'argument_count', 'estimated_argument_bytes',
   'step_index', 'auth_ms', 'session_ms', 'request_normalization_ms', 'handler_ms',
   'response_headers_ms', 'response_shaping_ms', 'first_response_byte_ms',

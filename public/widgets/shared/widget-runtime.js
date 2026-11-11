@@ -354,8 +354,11 @@
   // Tool input seen, no result yet: initWidget({ onToolInput }) or getToolCallState().
   var toolCallState = { inputSeen: false, resultSeen: false, inputAt: null, resultAt: null };
   var toolInputListeners = [];
+  // Arguments from the MCP Apps tool-input notification (ChatGPT: openai.toolInput).
+  var lastToolInput = null;
 
-  function markToolInput() {
+  function markToolInput(args) {
+    if (args && typeof args === 'object' && !Array.isArray(args)) lastToolInput = args;
     if (toolCallState.inputSeen) return;
     toolCallState.inputSeen = true;
     toolCallState.inputAt = Date.now();
@@ -373,6 +376,11 @@
     if (toolCallState.resultSeen) return;
     toolCallState.resultSeen = true;
     toolCallState.resultAt = Date.now();
+  }
+
+  function getToolInput() {
+    var input = global.openai && global.openai.toolInput;
+    return input && typeof input === 'object' ? input : lastToolInput;
   }
 
   function getToolCallState() {
@@ -456,7 +464,7 @@
       return;
     }
     if (data.method === 'ui/notifications/tool-input') {
-      markToolInput();
+      markToolInput(data.params && data.params.arguments);
       return;
     }
     if (
@@ -521,8 +529,8 @@
       name: 'OrgX Widget',
       version: '2.0.0',
     });
-    this.app.ontoolinput = function onToolInput() {
-      markToolInput();
+    this.app.ontoolinput = function onToolInput(params) {
+      markToolInput(params && params.arguments);
     };
     this.app.ontoolresult = function onToolResult(result) {
       markToolResult();
@@ -612,7 +620,7 @@
 
   /**
    * Attach the live control-flow panel when a payload carries a subscription
-   * grant and the widget opted in via `options.live`.
+   * grant in widget metadata and the widget opted in via `options.live`.
    *
    * This lives in initWidget because initWidget is the one place every widget
    * already routes its payload through. Doing it per widget meant each one
@@ -621,8 +629,8 @@
    * this file, and a widget without it simply stays static.
    */
   function maybeAttachLive(options, data, state) {
-    if (!options.live || state.attached) return;
-    var grant = data && data.live;
+    if (!options.live || state.attached || !data) return;
+    var grant = getToolResponseMetadata('orgx/liveGrant') || data.live;
     if (!grant || !grant.streamUrl) return;
     var store = global.OrgXLiveStore;
     if (!store || !store.attachLiveFeed) return;
@@ -768,8 +776,9 @@
           if (globals.theme !== undefined) applyTheme(globals.theme, 'host');
           if (globals.toolInput !== undefined && globals.toolInput !== null) markToolInput();
           if (globals.toolOutput === undefined) {
-            if (options.getData && globals.toolResponseMetadata !== undefined) {
-              receiveResult(global.openai && global.openai.toolOutput);
+            if (globals.toolResponseMetadata !== undefined) {
+              if (options.getData) receiveResult(global.openai && global.openai.toolOutput);
+              else maybeAttachLive(options, currentData, liveState);
             }
             return;
           }
@@ -1634,6 +1643,13 @@
     workLedger: function (options) {
       return orgxUrl('/work-ledger', { center: options && options.center, range: options && options.range });
     },
+    /**
+     * One receipt (/work-ledger/receipts/{id}): the producer's receipt id or
+     * the ledger row id. No id -> the receipts list.
+     */
+    receipt: function (id, options) {
+      return orgxUrl('/work-ledger/receipts' + (cleanId(id) ? '/' + seg(id) : ''), { center: options && options.center });
+    },
     /** Dispatch on an entity type ("task", "Workstream", "agent_run", ...). */
     entity: function (type, id, options) {
       var kind = String(type || '').toLowerCase().replace(/[\s-]+/g, '_');
@@ -1666,6 +1682,14 @@
         case 'plan':
         case 'plan_session':
           return links.planSession(id, options);
+        case 'receipt':
+          return links.receipt(id, options);
+        case 'session':
+          // No session page: its initiative when known, else the work ledger that lists it.
+          return options && cleanId(options.initiativeId) ? links.initiative(options.initiativeId) : links.workLedger(options);
+        case 'studio_brand':
+        case 'studio_content':
+          return orgxUrl(kind === 'studio_brand' ? '/studio/brand' : '/studio/library');
         default:
           return options && cleanId(options.initiativeId) ? links.live(options.initiativeId) : links.command();
       }
@@ -1932,6 +1956,7 @@
     formatterCache = {};
     hostContextListeners = [];
     toolInputListeners = [];
+    lastToolInput = null;
     toolCallState = { inputSeen: false, resultSeen: false, inputAt: null, resultAt: null };
     reportedSearchEvents = {};
   }
@@ -1959,6 +1984,7 @@
     getToolSurface: getToolSurface,
     getWidgetToolName: getWidgetToolName,
     getToolCallState: getToolCallState,
+    getToolInput: getToolInput,
     getWidgetSessionId: getWidgetSessionId,
     initWidget: initWidget,
     openWidgetLink: openWidgetLink,

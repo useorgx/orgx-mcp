@@ -196,7 +196,7 @@ describe('Done › Work: the work, what done meant, and your call', () => {
     });
     click(m, '[data-tab="done"]');
     await m.flush(); await m.flush();
-    expect(m.calls.callServerTool.mock.calls[0]![0]).toMatchObject({ name: 'orgx_list_work_receipts', arguments: { query: expect.stringMatching(/^since:\d{4}-\d{2}-\d{2}$/), limit: 50 } });
+    expect(m.calls.callServerTool.mock.calls[0]![0]).toMatchObject({ name: 'orgx_list_work_receipts', arguments: { query: expect.stringMatching(/^since:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/), limit: 50 } });
     // Nothing selected: quality across the range.
     expect(doc(m).querySelector('.q-card .md-title')!.textContent).toBe('1 piece of work, 4 checks');
     expect(doc(m).querySelector('.rc-row .rc-pips')!.getAttribute('aria-label')).toBe('2 of 4 checks met, 1 not met, 1 with no evidence');
@@ -291,6 +291,21 @@ describe('Done › Work: the work, what done meant, and your call', () => {
     expect(card.querySelector('.rc-verdict')?.textContent).toContain('Agent reports partly done');
     expect(card.querySelector('.rc-verdict')?.textContent).not.toContain('Accepted');
     expect(card.querySelector('[data-action="receipt-call"]')).toBeNull();
+  });
+
+  it('opens the receipt itself, not the ledger overview', async () => {
+    const m = await openWith(snapshot());
+    m.calls.callServerTool.mockImplementation(async ({ name }: { name: string }) => name === 'orgx_get_work_receipt'
+      ? { structuredContent: { ok: true, receipt_id: 'rcpt-abc', summary: ROW.summary, criteria: [] } }
+      : { structuredContent: { ok: true, total: 1, results: [{ receipt_id: 'rcpt-abc', summary: ROW.summary, criteria: { met: 1, unmet: 0, unknown: 0 } }] } });
+    click(m, '[data-tab="done"]');
+    await m.flush(); await m.flush();
+    click(m, '[data-action="work-receipt"][data-id="rcpt-abc"]');
+    await m.flush(); await m.flush();
+    const open = doc(m).querySelector('.rc-card .md-acts [data-action="open"]')!;
+    expect(open.textContent).toBe('Open receipt ↗');
+    // The panel's own workspace scopes the receipt page.
+    expect(open.getAttribute('data-url')).toMatch(/^https:\/\/useorgx\.com\/work-ledger\/receipts\/rcpt-abc\?center=[0-9a-f-]{36}$/);
   });
 
   it('uses fresh detail counts and shows when its bounded projection omits checks or evidence', async () => {

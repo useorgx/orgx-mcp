@@ -118,9 +118,11 @@ import { probeOrgxHealth, readUptimeSummary, recordProbe } from './uptimeProbe';
 import {
   callOrgxApiJson,
   callOrgxApiRaw,
+  createApiError,
   OrgXApiError,
   type GatewayDelegationClaims,
 } from './orgxApi';
+import { backendErrorText, legibleSearchFailure, legibleSearchRecords } from './searchLegibility';
 import { captureDecision } from './decisionCapture';
 import { resolveWriteWorkspace } from './writeWorkspace';
 import {
@@ -180,6 +182,7 @@ import {
   evaluateSpawnGateResult,
   type SpawnBudgetPreflight,
   type SpawnBudgetPreflightEvaluation,
+  appSpawnBlock,
 } from './spawnBudgetPreflight';
 import {
   captureWorkerPosthogEvent,
@@ -255,13 +258,10 @@ import {
   normalizeDispatchContract,
 } from './dispatchContract';
 import { validateWriteCreateContract } from './writeContract';
-import { buildLiveFeedWidget } from './liveFeedWidget';
-import { signStreamToken } from './streamToken';
 import {
   buildStreamGrant,
   feedBindingForTool,
   resolveFeedIdForTool,
-  GENERATED_WIDGET_TTL_MS,
 } from './live/streamGrant';
 import { LIVE_REFRESH_USAGE_CLASS, PANEL_FEED_TYPE } from './live/panelFeed';
 import { hydrateTaskContext } from './taskContextHydrator';
@@ -280,6 +280,7 @@ import {
   filterEntitySearchRecords,
   normalizeEntitySearchPage,
   normalizeMemorySearchPayload,
+  withAbsoluteRecordUrls,
   searchProjectionFields,
   type EntitySearchPage,
 } from './orgxSearch';
@@ -358,6 +359,8 @@ import {
 import {
   enrichAgentStatusWithArtifacts,
   enrichInitiativePulseWithArtifacts,
+  compactAgentReadout,
+  compactInitiativeReadout,
   enrichMorningBriefWithArtifacts,
 } from './widgetArtifactProof';
 import {
@@ -2621,8 +2624,9 @@ export class OrgXMcp extends McpAgent<
 
   private async runSpawnBudgetPreflight(
     args: Record<string, unknown>,
-    userId: string | null
-  ): Promise<SpawnBudgetPreflightEvaluation> {
+    userId: string | null,
+    options: { pricing?: boolean } = {}
+  ): Promise<SpawnBudgetPreflightEvaluation | { ok: true; preflight: null }> {
     const routeArgs = buildSpawnBudgetPreflightArgs(args);
     try {
       const support = await checkAutonomousSpawnSupport(args, async () => {
@@ -2637,6 +2641,9 @@ export class OrgXMcp extends McpAgent<
         return response.json();
       });
       if (!support.ok) return support;
+      // spawn_agent_task is priced and gated by OrgX itself, which downgrades
+      // or holds for approval where a preflight here could only refuse.
+      if (options.pricing === false) return { ok: true, preflight: null };
       const response = await callOrgxApiJson(
         this.env,
         '/api/client/route-task',
@@ -2776,7 +2783,15 @@ export class OrgXMcp extends McpAgent<
       undefined,
       params.userId ? { userId: params.userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(params.userId) } : undefined
     );
-    const payload = await response.json();
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      const raw = backendErrorText(payload);
+      throw createApiError(
+        legibleSearchFailure(response.status, raw),
+        `GET /api/entities failed (${response.status}): ${raw ?? 'no error text'}`,
+        response.status
+      );
+    }
     return normalizeEntitySearchPage(payload, {
       limit: params.limit,
       offset: params.offset,
@@ -2866,24 +2881,36 @@ export class OrgXMcp extends McpAgent<
           }
         : undefined
     );
-    const result = (await response.json()) as {
+    const result = (await response.json().catch(() => null)) as {
       ok?: boolean;
       data?: Record<string, unknown>;
       error?: string;
-    };
-    if (result.ok === false) {
-      throw new Error(result.error ?? 'Broad OrgX search failed');
+    } | null;
+    if (!response.ok || !result || result.ok === false) {
+      // The backend's raw text (a database message, provider JSON) stays in
+      // the logs; the caller gets a sentence chosen by status.
+      const raw = backendErrorText(result);
+      const status = response.ok ? 502 : response.status;
+      throw createApiError(
+        legibleSearchFailure(response.ok ? undefined : status, raw),
+        `query_org_memory failed (${status}): ${raw ?? 'no error text'}`,
+        status
+      );
     }
     const searchData = normalizeMemorySearchPayload(result.data ?? {});
     if (!Array.isArray(searchData.results)) {
-      throw new Error('OrgX returned an incomplete search response');
+      throw createApiError(
+        legibleSearchFailure(undefined, null),
+        'query_org_memory returned no results array',
+        502
+      );
     }
-    return Array.isArray(searchData.results)
-      ? searchData.results.filter(
-          (record): record is Record<string, unknown> =>
-            Boolean(record && typeof record === 'object' && !Array.isArray(record))
-        )
-      : [];
+    return legibleSearchRecords(withAbsoluteRecordUrls(
+      searchData.results.filter(
+        (record): record is Record<string, unknown> =>
+          Boolean(record && typeof record === 'object' && !Array.isArray(record))
+      )
+    ));
   }
 
   private async findExistingEntityByIdempotencyKey(params: {
@@ -2981,85 +3008,60 @@ export class OrgXMcp extends McpAgent<
       const { workspaceId } = scope;
       const initiativeIds = new Set(scope.initiativeIds);
 
-      const artifactMap = new Map<string, Record<string, unknown>>();
-      if (initiativeIds.size > 0) {
-        const initiativeIdList = Array.from(initiativeIds);
-        for (let offset = 0; offset < initiativeIdList.length; offset += 8) {
-          const artifactGroups = await Promise.all(
-            initiativeIdList.slice(offset, offset + 8).map((initiativeId) =>
-              this.fetchEntityCollection({
-                type: 'artifact',
-                userId: params.userId,
-                initiativeId,
-                limit: params.toolId === 'get_agent_status' ? 24 : 8,
-                ...(params.toolId === 'get_initiative_pulse' ? { orderBy: 'updated_at', orderDirection: 'desc' as const } : {}),
-              })
-            )
-          );
-          for (const records of artifactGroups) {
-            for (const record of records) {
-              const key =
-                (typeof record.id === 'string' && record.id.trim()) ||
-                `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
-              artifactMap.set(String(key), record);
+      const [initiativeRecords, workspaceRecords, tasks] = await Promise.all([
+        (async () => {
+          const records: Record<string, unknown>[] = [];
+          if (initiativeIds.size > 0) {
+            const initiativeIdList = Array.from(initiativeIds);
+            for (let offset = 0; offset < initiativeIdList.length; offset += 8) {
+              const groups = await Promise.all(
+                initiativeIdList.slice(offset, offset + 8).map((initiativeId) =>
+                  this.fetchEntityCollection({
+                    type: 'artifact', userId: params.userId, initiativeId,
+                    limit: params.toolId === 'get_agent_status' ? 24 : 8,
+                    ...(params.toolId === 'get_initiative_pulse'
+                      ? { orderBy: 'updated_at', orderDirection: 'desc' as const } : {}),
+                  })
+                )
+              );
+              records.push(...groups.flat());
             }
           }
-        }
-      }
-
-      // Agent run outputs are sometimes scoped through entity_id/entity_type
-      // instead of the artifact initiative_id column. Always union the
-      // workspace artifact stream for fleet status; initiative-only lookup can
-      // otherwise omit a real agent deliverable and silently report zero.
-      if (workspaceId && params.toolId === 'get_agent_status') {
-        // Legacy run-output artifacts may not carry workspace_id or
-        // initiative_id. Fetch the authenticated user's bounded artifact head,
-        // then scope it back to the exact visible initiative/task graph.
-        const records = filterAgentStatusArtifactsByVisibleScope(
-          params.data,
-          await this.fetchEntityCollection({
-            type: 'artifact',
-            userId: params.userId,
-            limit: 100,
-          })
-        );
-        for (const record of records) {
-          const key =
-            (typeof record.id === 'string' && record.id.trim()) ||
-            `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
-          artifactMap.set(String(key), record);
-        }
-      } else if (
-        workspaceId &&
-        params.toolId === 'get_morning_brief' &&
-        initiativeIds.size === 0
-      ) {
-        const records = await this.fetchEntityCollection({
-          type: 'artifact',
-          userId: params.userId,
-          workspaceId,
-          limit: 8,
-        });
-        for (const record of records) {
-          const key =
-            (typeof record.id === 'string' && record.id.trim()) ||
-            `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
-          artifactMap.set(String(key), record);
-        }
+          return records;
+        })(),
+        (async () => {
+          if (workspaceId && params.toolId === 'get_agent_status') {
+            // Legacy artifacts can lack workspace/initiative columns. Keep the
+            // authenticated bounded head and exact visible-scope filter.
+            return filterAgentStatusArtifactsByVisibleScope(params.data,
+              await this.fetchEntityCollection({
+                type: 'artifact', userId: params.userId, limit: 100,
+              })
+            );
+          } else if (workspaceId && params.toolId === 'get_morning_brief' && initiativeIds.size === 0) {
+            return this.fetchEntityCollection({
+              type: 'artifact', userId: params.userId, workspaceId, limit: 8,
+            });
+          }
+          return [];
+        })(),
+        workspaceId && params.toolId === 'get_agent_status'
+          ? this.fetchEntityCollection({ type: 'task', userId: params.userId, workspaceId, limit: 100 })
+          : Promise.resolve([]),
+      ]);
+      // Preserve deterministic precedence regardless of completion order:
+      // the scoped legacy head follows initiative records, as before.
+      const artifactMap = new Map<string, Record<string, unknown>>();
+      for (const record of [...initiativeRecords, ...workspaceRecords]) {
+        const key = (typeof record.id === 'string' && record.id.trim()) ||
+          `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
+        artifactMap.set(String(key), record);
       }
 
       const artifacts = Array.from(artifactMap.values());
       let evidenceData = params.data;
 
       if (params.toolId === 'get_agent_status') {
-        const tasks = workspaceId
-          ? await this.fetchEntityCollection({
-              type: 'task',
-              userId: params.userId,
-              workspaceId,
-              limit: 100,
-            })
-          : [];
         const proofData =
           artifacts.length > 0
             ? enrichAgentStatusWithArtifacts(evidenceData, artifacts)
@@ -3727,7 +3729,8 @@ export class OrgXMcp extends McpAgent<
         ) {
           const preflight = await this.runSpawnBudgetPreflight(
             expandedArgs,
-            resolvedUserId ?? null
+            resolvedUserId ?? null,
+            { pricing: resolvedToolId !== 'spawn_agent_task' }
           );
           if (!preflight.ok) {
             this.captureMcpToolEvent('mcp_tool_failed', {
@@ -3753,7 +3756,10 @@ export class OrgXMcp extends McpAgent<
         // Use direct endpoints for high-traffic tools (lower latency)
         // Fall back to generic /api/tools/execute for others
         // Use resolvedToolId/expandedArgs from expandConsolidatedTool
-        const { endpoint, body } = this.getToolEndpoint(resolvedToolId, expandedArgs);
+        // View is an MCP projection, not a change to the upstream read.
+        const upstreamArgs = { ...expandedArgs };
+        if (toolId === 'get_agent_status' || toolId === 'get_initiative_pulse') delete upstreamArgs.view;
+        const { endpoint, body } = this.getToolEndpoint(resolvedToolId, upstreamArgs);
         if (WIDGET_APPROVAL_SOURCE_TOOLS.has(resolvedToolId) && isWidgetTool) {
           // Ask the app for widget approval tokens; they are lifted into the
           // widget-only result _meta below and never reach the model.
@@ -3842,6 +3848,8 @@ export class OrgXMcp extends McpAgent<
               result.data ?? {}
             );
           }
+          const spawnBlock = resolvedToolId === 'spawn_agent_task' ? appSpawnBlock(result) : null;
+          if (spawnBlock) return this.toolError(spawnBlock.message, spawnBlock.options);
           return this.toolError(errorMessage);
         }
 
@@ -3915,6 +3923,10 @@ export class OrgXMcp extends McpAgent<
         if (toolId === 'get_agent_status') {
           data = normalizeAgentStatusPayload(data);
           message = String(data.message);
+          if (effectiveArgs.view === 'overview') data = compactAgentReadout(data);
+        }
+        if (toolId === 'get_initiative_pulse' && effectiveArgs.view === 'overview') {
+          data = compactInitiativeReadout(data);
         }
 
         this.maybeUpdateSessionInitiativeContext({
@@ -3975,14 +3987,9 @@ export class OrgXMcp extends McpAgent<
           })(),
         });
 
-        // Dual-protocol return:
-        // - Widget tools: JSON in content[0] for MCP Apps widget parsing
-        // - Non-widget tools: concise summary only (saves 80-95% tokens)
-        // structuredContent always carries the full payload for widgets.
-        // Live subscription grant: attached to structuredContent so the static
-        // widgets in public/widgets/ can subscribe. Any tool listed in
-        // TOOL_FEED_BINDINGS becomes live without its own token plumbing.
-        if (this.env.LIVE_FEED && this.env.MCP_JWT_SECRET) {
+        // A stream URL is a credential. Deliver it only in widget metadata.
+        let liveGrant: Awaited<ReturnType<typeof buildStreamGrant>> = null;
+        if (isWidgetTool && this.env.LIVE_FEED && this.env.MCP_JWT_SECRET) {
           const _binding = feedBindingForTool(toolId);
           // Not `effectiveInitiativeId`: that falls back to `data.id`, which for
           // a tool like orgx_inspect is whichever entity was inspected. Feeding
@@ -3993,7 +4000,7 @@ export class OrgXMcp extends McpAgent<
             : null;
           if (_binding && _feedId) {
             try {
-              const _grant = await buildStreamGrant({
+              liveGrant = await buildStreamGrant({
                 feedType: _binding.feedType,
                 feedId: _feedId,
                 serverUrl: this.env.MCP_SERVER_URL,
@@ -4002,7 +4009,6 @@ export class OrgXMcp extends McpAgent<
                 refreshArgs: { initiative_id: _feedId },
                 userId: resolvedUserId ?? undefined,
               });
-              if (_grant) (data as Record<string, unknown>).live = _grant;
             } catch (_err) {
               // A missing grant degrades the widget to a static snapshot, which
               // is the pre-existing behaviour — never a failed tool call.
@@ -4011,53 +4017,11 @@ export class OrgXMcp extends McpAgent<
           }
         }
 
-        // Live-feed SSE widget: inject for agent-status + initiative-pulse tools
-        let _liveFeedWidgetHtml: string | null = null;
-        if (
-          (toolId === 'get_agent_status' || toolId === 'get_initiative_pulse') &&
-          effectiveInitiativeId &&
-          this.env.LIVE_FEED &&
-          this.env.MCP_JWT_SECRET
-        ) {
-          try {
-            const _feedType = toolId === 'get_agent_status' ? 'agent-status' : 'initiative-pulse';
-            const _streamToken = await signStreamToken({
-              feedType: _feedType,
-              feedId: effectiveInitiativeId,
-              userId: resolvedUserId ?? undefined,
-              secret: this.env.MCP_JWT_SECRET,
-              // Deliberately NOT the short grant lifetime. A structuredContent
-              // grant can refresh itself by re-invoking its bound tool; this
-              // token is baked into standalone HTML with no tool access, so a
-              // short life would just end its updates sooner with no way to
-              // recover. Shortening it here traded a smaller exposure window
-              // for a widget that died after fifteen minutes instead of sixty.
-              ttlMs: GENERATED_WIDGET_TTL_MS,
-            });
-            const _liveUrl = hasInitiativeContext && effectiveInitiativeId
-              ? buildLiveUrl(effectiveInitiativeId)
-              : undefined;
-            _liveFeedWidgetHtml = buildLiveFeedWidget({
-              feedType: _feedType,
-              feedId: effectiveInitiativeId,
-              streamBaseUrl: this.env.MCP_SERVER_URL,
-              streamToken: _streamToken,
-              liveUrl: _liveUrl,
-              title: typeof (data.initiative as Record<string, unknown> | undefined)?.title === 'string'
-                ? (data.initiative as Record<string, unknown>).title as string
-                : undefined,
-            });
-          } catch (_err) {
-            console.warn('[live-feed-widget] token/widget build failed', { error: _err });
-          }
-        }
-
         if (isWidgetTool) {
           const content = buildClientAwareContentBlocks({
             data,
             summary: finalMessage,
             sourceClient,
-            widgetHtml: _liveFeedWidgetHtml,
           });
           this.appendWidgetDebugEvent({
             phase: 'tool_result',
@@ -4073,9 +4037,10 @@ export class OrgXMcp extends McpAgent<
           return {
             content,
             structuredContent: data,
-            ...(widgetApproval.meta
-              ? { _meta: { [WIDGET_APPROVAL_META_KEY]: widgetApproval.meta } }
-              : {}),
+            ...(widgetApproval.meta || liveGrant ? { _meta: {
+              ...(widgetApproval.meta ? { [WIDGET_APPROVAL_META_KEY]: widgetApproval.meta } : {}),
+              ...(liveGrant ? { 'orgx/liveGrant': liveGrant } : {}),
+            } } : {}),
           } as CallToolResult;
         }
 
@@ -6021,7 +5986,7 @@ export class OrgXMcp extends McpAgent<
             fields: searchProjectionFields(fields),
           });
           const statusFilter = filterEntitySearchRecords(
-            page.records,
+            legibleSearchRecords(page.records),
             typeof args.status === 'string' ? args.status : null,
             explicitType
           );
@@ -6692,7 +6657,8 @@ export class OrgXMcp extends McpAgent<
           if (targetTool === 'spawn_agent_task' || targetTool === 'handoff_task') {
             const preflight = await this.runSpawnBudgetPreflight(
               spawnArgs,
-              resolvedUserId ?? null
+              resolvedUserId ?? null,
+              { pricing: targetTool !== 'spawn_agent_task' }
             );
             if (!preflight.ok) {
               return this.toolError(preflight.message, {
@@ -6739,6 +6705,8 @@ export class OrgXMcp extends McpAgent<
           );
           const result = (await response.json()) as Record<string, unknown>;
           if (result.ok === false) {
+            const spawnBlock = targetTool === 'spawn_agent_task' ? appSpawnBlock(result) : null;
+            if (spawnBlock) return this.toolError(spawnBlock.message, spawnBlock.options);
             return this.toolError(
               typeof result.error === 'string'
                 ? result.error
