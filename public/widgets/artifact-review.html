@@ -166,6 +166,9 @@
     .structured-preview { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 13px; }
     .structured-preview dt { color: var(--ox-text-muted); text-transform: capitalize; }
     .structured-preview dd { margin: 0; color: var(--ox-text); }
+    .structured-preview .structured-preview { grid-template-columns: minmax(70px, .7fr) minmax(0, 1fr); padding-left: 10px; }
+    .structured-preview ul { margin: 0; padding-left: 18px; }
+    .structured-preview summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
     .artifact-preview__placeholder { display: flex; align-items: center; gap: 12px; color: var(--ox-text-muted); }
     .preview-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 4px; }
     .preview-toggle {
@@ -197,6 +200,9 @@
       color: var(--ox-text); font-family: inherit; font-size: 14px; line-height: 1.5;
     }
     .composer textarea:focus { outline: 2px solid var(--ox-focus); outline-offset: 1px; }
+    .composer__count { align-self: flex-end; font-size: 12px; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+    .composer__count[hidden] { display: none; }
+    .composer__count[data-over="true"] { color: var(--ox-danger); }
     .review-feedback { min-height: 0; font-size: 12.5px; line-height: 1.45; color: var(--ox-text-muted); }
     .review-feedback:empty { display: none; }
     .review-feedback[data-tone="error"] { color: var(--ox-danger); }
@@ -657,7 +663,7 @@
           artifact_type: firstString([artifact.artifact_type, artifact.artifactType, artifact.type, artifact.kind]) || 'document',
           artifact_url: firstString([artifact.artifact_url, artifact.artifactUrl, artifact.preview_url, artifact.previewUrl, artifact.url]),
           summary: firstString([artifact.summary, artifact.description, metadata.summary]),
-          content: firstString([artifact.content, artifact.body, artifact.markdown, metadata.content, metadata.body]),
+          content: firstString([artifact.content, artifact.body, artifact.markdown, metadata.content, metadata.source_content_preview, metadata.body, metadata.markdown, metadata.preview_markdown]),
           code: firstString([artifact.code, artifact.diff, metadata.code, metadata.diff]),
           status: firstString([artifact.status, artifact.review_status, artifact.reviewStatus]) || 'in_review',
           version: firstNumber([artifact.version, artifact.version_number, artifact.versionNumber]) || 1,
@@ -990,14 +996,25 @@
       }
 
       function renderStructured(value) {
-        const entries = Object.entries(asRecord(value)).slice(0, 12);
-        if (!entries.length) return '';
-        return '<dl class="structured-preview">' + entries.map(function (entry) {
-          const raw = entry[1];
-          const serialized = raw && typeof raw === 'object' ? JSON.stringify(raw) : String(raw ?? '—');
-          const display = serialized.length > 260 ? serialized.slice(0, 257) + '…' : serialized;
-          return '<dt>' + escapeHtml(entry[0].replace(/[_-]+/g, ' ')) + '</dt><dd>' + escapeHtml(display) + '</dd>';
-        }).join('') + '</dl>';
+        let nodes = 0;
+        function read(raw, depth) {
+          if (++nodes > 300 || depth > 8) return '<p>Open the full artifact to inspect the remaining data.</p>';
+          if (raw === null || raw === undefined) return 'Not recorded';
+          if (typeof raw === 'boolean') return raw ? 'Yes' : 'No';
+          if (typeof raw === 'string') return window.OrgXMarkdown.render(raw, { htmlAsText: true });
+          if (typeof raw !== 'object') return escapeHtml(String(raw));
+          if (Array.isArray(raw)) {
+            function rows(items) { return '<ul>' + items.map(item => '<li>' + read(item, depth + 1) + '</li>').join('') + '</ul>'; }
+            return rows(raw.slice(0, 3)) + (raw.length > 3 ? '<details><summary>Show all ' + raw.length + ' items</summary>' + rows(raw.slice(3)) + '</details>' : '');
+          }
+          const entries = Object.entries(raw);
+          function rows(items) {
+            return '<dl class="structured-preview">' + items.map(([key, item]) => '<dt>' + escapeHtml(key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ')) + '</dt><dd>' + read(item, depth + 1) + '</dd>').join('') + '</dl>';
+          }
+          const technical = entries.filter(([key]) => /(?:^|_)(id|uuid|hash|sha|key)$|Id$/.test(key));
+          return rows(entries.filter(entry => !technical.includes(entry))) + (technical.length ? '<details><summary>Technical details</summary>' + rows(technical) + '</details>' : '');
+        }
+        return read(value, 0);
       }
 
       function renderDiff(text) {
@@ -1017,6 +1034,10 @@
         const content = artifact.content || artifact.summary || '';
         const code = artifact.code || '';
         const payload = readablePayload(artifact);
+        const metadata = asRecord(artifact.metadata);
+        const mode = firstString([artifact.render_mode, metadata.render_mode, metadata.renderMode]).toLowerCase();
+        const mime = firstString([artifact.mime_type, metadata.mime_type, metadata.content_type]).toLowerCase();
+        const documentFormat = ['markdown', 'text', 'html', 'json'].includes(mode) || /^(text\/(markdown|x-markdown|plain|html))$/.test(mime);
 
         if (isSafeMediaUrl(url, true) && (type.startsWith('image') || type.includes('mockup') || type.includes('screenshot') || type.includes('design'))) {
           return '<img src="' + escapeAttribute(url) + '" alt="' + escapeAttribute(artifact.name || 'artifact') + '" />';
@@ -1030,8 +1051,16 @@
           return renderDiff(code || content);
         }
 
-        if (type.includes('code') || type.includes('pull_request') || type.includes('tech_spec') || code) {
+        if (code || (!documentFormat && (type.includes('code') || type.includes('pull_request')))) {
           return '<pre>' + escapeHtml(code || content) + '</pre>';
+        }
+
+        if (mode === 'text' || mime === 'text/plain') return '<div class="artifact-preview__text">' + escapeHtml(content).replace(/\n/g, '<br>') + '</div>';
+
+        if (mode === 'json' || mime === 'application/json') {
+          if (payload) return renderStructured(payload);
+          try { return renderStructured(JSON.parse(content)); }
+          catch (_) { return '<p>Data preview unavailable. Open the full artifact to inspect the source.</p>'; }
         }
 
         if (type.includes('markdown') || type.includes('doc') || type.includes('report') || type.includes('brief') || content) {
@@ -1498,11 +1527,16 @@
             : '') +
           '<div class="composer" id="artifact-change-composer" data-composer hidden>' +
           '<label for="composer-input">What needs to change?</label>' +
-          '<textarea id="composer-input" data-composer-input placeholder="Be specific — this creates a decision entity linked to the artifact."></textarea>' +
+          '<textarea id="composer-input" data-composer-input maxlength="' + CHANGE_NOTE_MAX + '" aria-describedby="composer-count" placeholder="Be specific — this creates a decision entity linked to the artifact."></textarea>' +
+          '<span class="composer__count" id="composer-count" data-composer-count hidden></span>' +
           '</div>' +
           '<div class="review-feedback" role="status" aria-live="polite" data-review-feedback></div>'
         );
       }
+
+      // OrgX accepts a change note of up to 2,000 characters (orgx_widget_request_artifact_changes).
+      const CHANGE_NOTE_MAX = 2000;
+      function formatCount(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 
       // The footer's slotted controls: approve, request changes, and the
       // change-request composer's cancel and file. Rendered once per card.
@@ -1518,7 +1552,8 @@
           '<span class="ft-btn__label">Request changes</span>' +
           '</button>' +
           '<button class="ft-btn ft-btn--text" type="button" data-composer-cancel hidden>Cancel</button>' +
-          '<button class="ft-btn ft-btn--primary" type="button" data-composer-submit hidden><span class="ft-btn__label">Request changes</span></button>'
+          '<button class="ft-btn ft-btn--primary" type="button" data-composer-submit hidden><span class="ft-btn__label">Request changes</span></button>' +
+          '<button class="ft-btn ft-btn--primary" type="button" data-review-handoff hidden><span class="ft-btn__label">Open in OrgX ↗</span></button>'
         );
       }
 
@@ -1563,7 +1598,10 @@
         const changes = footer.querySelector('[data-action="request-changes"]');
         const cancel = footer.querySelector('[data-composer-cancel]');
         const submit = footer.querySelector('[data-composer-submit]');
-        const composing = mode === 'compose' || ((mode === 'sending' || mode === 'failed') && footerAction === 'changes');
+        const handoff = footer.querySelector('[data-review-handoff]');
+        // A refusal a retry cannot fix (out of date, blocked) leaves only OrgX.
+        const handingOff = mode === 'out-of-date' || mode === 'in-orgx';
+        const composing = !handingOff && (mode === 'compose' || ((mode === 'sending' || mode === 'failed') && footerAction === 'changes'));
         function place(button, slot, primary) {
           if (!button) return;
           button.hidden = !slot;
@@ -1572,7 +1610,13 @@
           button.classList.toggle('ft-btn--primary', !!primary);
           button.classList.toggle('ft-btn--text', !primary);
         }
-        if (composing) {
+        place(handoff, handingOff ? 'primary' : null, true);
+        if (handingOff) {
+          place(approve, null);
+          place(changes, null);
+          place(cancel, null);
+          place(submit, null);
+        } else if (composing) {
           place(approve, null);
           place(changes, null);
           place(cancel, 'action', false);
@@ -1599,6 +1643,8 @@
           failed: footerAction === 'changes'
             ? { variant: 'finishes-here', state: 'failed', heading: 'Not sent', detail: 'your note is preserved' }
             : { variant: 'finishes-here', state: 'failed', heading: 'Not sent', detail: 'your review is still open' },
+          'out-of-date': { variant: 'confirms-in-orgx', state: 'needs-you', heading: 'This review is out of date', detail: 'nothing was recorded · review it in OrgX' },
+          'in-orgx': { variant: 'confirms-in-orgx', state: 'needs-you', heading: 'Review in OrgX', detail: 'nothing was recorded here' },
         };
         const frame = frames[mode] || frames.decide;
         footer.setAttribute('variant', frame.variant);
@@ -1700,6 +1746,23 @@
         return Object.assign({}, artifact, updated, { status: status });
       }
 
+      // Refusals the same click can never get past: the capability expired or
+      // no longer matches the artifact's version, or OrgX holds the review.
+      const OUT_OF_DATE_CODES = ['widget_approval_token_expired', 'widget_approval_token_invalid', 'stale_artifact_review'];
+      const IN_ORGX_CODES = ['artifact_review_blocked'];
+      function refusalMode(err) {
+        const code = err && typeof err.code === 'string' ? err.code : '';
+        if (OUT_OF_DATE_CODES.indexOf(code) !== -1) return 'out-of-date';
+        if (IN_ORGX_CODES.indexOf(code) !== -1) return 'in-orgx';
+        return null;
+      }
+      function refusalFeedback(mode, changes) {
+        const kept = changes ? ' Your note is still here.' : '';
+        return mode === 'out-of-date'
+          ? 'This review is out of date: the artifact changed or this review expired since it opened. Nothing was recorded. Open it in OrgX to review the current version.' + kept
+          : 'OrgX can’t record this ruling from here for the artifact’s current state. Nothing was recorded. Open it in OrgX to review it there.' + kept;
+      }
+
       function setButtonLabel(button, text) {
         if (!button) return;
         const label = button.querySelector('.ft-btn__label');
@@ -1742,10 +1805,19 @@
         } catch (err) {
           if (generation !== renderGeneration) return;
           console.warn('[artifact-review] approve failed', err);
+          const refused = refusalMode(err);
           if (button) {
-            button.disabled = false;
+            button.disabled = Boolean(refused);
             button.removeAttribute('aria-busy');
             setButtonLabel(button, 'Approve');
+          }
+          if (refused) {
+            setFooterMode(refused, 'approve', evidence);
+            if (feedback) {
+              feedback.dataset.tone = 'error';
+              feedback.textContent = refusalFeedback(refused, false);
+            }
+            return;
           }
           setFooterMode('failed', 'approve', evidence);
           if (feedback) {
@@ -1786,12 +1858,22 @@
         } catch (err) {
           if (generation !== renderGeneration) return;
           console.warn('[artifact-review] change request failed', err);
+          const refused = refusalMode(err);
           if (button) {
-            button.disabled = false;
+            button.disabled = Boolean(refused);
             button.removeAttribute('aria-busy');
             setButtonLabel(button, 'Request changes');
           }
+          // The note stays editable so it can be copied into OrgX.
           if (input) input.disabled = false;
+          if (refused) {
+            setFooterMode(refused, 'changes', evidence);
+            if (feedback) {
+              feedback.dataset.tone = 'error';
+              feedback.textContent = refusalFeedback(refused, true);
+            }
+            return;
+          }
           setFooterMode('failed', 'changes', evidence);
           if (feedback) {
             feedback.dataset.tone = 'error';
@@ -1943,12 +2025,7 @@
         const summaryText = humanizeCodes(summary);
         const restatesVerdict = held && showQuality && !chip && /\b(bar|quality|scor(e|ed|ing))\b/i.test(summaryText);
 
-        stage.innerHTML = (
-          '<article class="wcard ox-surface" data-edge="' + (tone || 'mute') + '">' +
-          renderHeader(artifact, tone, mode === 'resolve' ? 'asking' : 'verifying', mode) +
-          '<div class="bd">' +
-          '<div class="review-desk animate-in">' +
-          frontDoorHtml +
+        const reviewControlHtml = (
           '<div class="review-control">' +
           (chip ? '<div class="review-status">' + chip + '</div>' : '') +
           '<h2 class="review-question">' + escapeHtml(question) + '</h2>' +
@@ -1956,7 +2033,15 @@
           (evidence.rulingNote ? '<p class="ruling-note"><b>Reviewer note</b> · ' + escapeHtml(evidence.rulingNote) + '</p>' : '') +
           (showQuality ? renderQualityGauge(evidence, artifact, activeReviewContract) : '') +
           '<p class="review-consequence">' + escapeHtml(consequence) + '</p>' +
-          '</div>' +
+          '</div>'
+        );
+
+        stage.innerHTML = (
+          '<article class="wcard ox-surface" data-edge="' + (tone || 'mute') + '">' +
+          renderHeader(artifact, tone, mode === 'resolve' ? 'asking' : 'verifying', mode) +
+          '<div class="bd">' +
+          '<div class="review-desk animate-in">' +
+          frontDoorHtml +
           '<div class="review-evidence">' +
           '<div class="artifact-preview" data-preview>' +
           '<div class="viewer-tabs" role="tablist" aria-label="Artifact viewer">' +
@@ -1974,6 +2059,7 @@
           '<div class="viewer-panel viewer-panel--readout" id="artifact-history-panel" role="tabpanel" data-view-panel="history" hidden>' + renderHistory(artifact) + '</div>' +
           '</div>' +
           '</div>' +
+          reviewControlHtml +
           (canReview ? renderDecisionRow(evidence) : '') +
           '</div>' +
           '</div>' +
@@ -2013,6 +2099,20 @@
 
         if (changesCard && composer) changesCard.addEventListener('click', openComposer);
         if (composerCancel) composerCancel.addEventListener('click', closeComposer);
+        const composerCount = stage.querySelector('[data-composer-count]');
+        function syncNoteCount() {
+          if (!composerInput || !composerCount) return 0;
+          const length = (composerInput.value || '').trim().length;
+          const over = length > CHANGE_NOTE_MAX;
+          // Quiet until the note nears the limit.
+          composerCount.hidden = length < CHANGE_NOTE_MAX - 200;
+          composerCount.dataset.over = String(over);
+          composerCount.textContent = over
+            ? formatCount(length) + ' / ' + formatCount(CHANGE_NOTE_MAX) + ' · ' + formatCount(length - CHANGE_NOTE_MAX) + ' over the limit'
+            : formatCount(length) + ' / ' + formatCount(CHANGE_NOTE_MAX);
+          return length;
+        }
+        if (composerInput) composerInput.addEventListener('input', syncNoteCount);
         if (composerSubmit) {
           composerSubmit.addEventListener('click', function () {
             const notes = (composerInput.value || '').trim();
@@ -2020,7 +2120,23 @@
               composerInput.focus();
               return;
             }
+            if (notes.length > CHANGE_NOTE_MAX) {
+              syncNoteCount();
+              const feedback = stage.querySelector('[data-review-feedback]');
+              if (feedback) {
+                feedback.dataset.tone = 'error';
+                feedback.textContent = 'Keep the note to ' + formatCount(CHANGE_NOTE_MAX) + ' characters; it is ' + formatCount(notes.length) + ' now. Nothing was sent.';
+              }
+              composerInput.focus();
+              return;
+            }
             submitChangeRequest(artifact, notes);
+          });
+        }
+        const reviewHandoff = stage.querySelector('[data-review-handoff]');
+        if (reviewHandoff && artifact.id) {
+          reviewHandoff.addEventListener('click', function () {
+            openWidgetLink(buildArtifactLink(artifact));
           });
         }
 

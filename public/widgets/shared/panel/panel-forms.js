@@ -40,6 +40,8 @@
         min: multi ? Math.min(max, Math.max(0, Number(f.min_select) || 0)) : 0, max: max,
         maxLength: Math.min(2000, Number(f.max_length) || 2000),
         range: f.type === 'number' ? numberRange(f.number) : null,
+        suggestions: (f.type === 'text' || f.type === 'textarea') && Array.isArray(f.suggestions)
+          ? f.suggestions.filter(function s(x) { return typeof x === 'string' && x.trim(); }).map(function t(x) { return x.trim(); }).slice(0, 6) : [],
       };
     }).filter(function askable(f) { return f.type !== 'number' || f.range; });
   }
@@ -186,7 +188,11 @@
     } else {
       control = '<textarea class="fq-text" data-qfield="' + esc(f.id) + '" data-id="' + esc(id) + '" aria-labelledby="' + labelId + '" maxlength="' + f.maxLength + '"' +
         (f.type === 'text' ? ' rows="1"' : ' rows="3"') + (f.placeholder ? ' placeholder="' + esc(f.placeholder) + '"' : '') + '>' + esc(typeof value === 'string' ? value : '') + '</textarea>' +
-        (f.type === 'text' ? '<p class="fq-hint">Enter to continue</p>' : '');
+        (f.type === 'text' ? '<p class="fq-hint">Enter to continue</p>' : '') +
+        // The asker's ready answers: a tap fills the box to edit; nothing is sent until the person confirms.
+        (f.suggestions.length ? '<div class="sugg" role="group" aria-label="Suggested answers"><span class="sugg-l">Suggested</span>' + f.suggestions.map(function chip(x) {
+          return '<button type="button" class="pn-chip sugg-c" data-action="q-suggest" data-id="' + esc(id) + '" data-field="' + esc(f.id) + '" data-value="' + esc(x) + '" aria-pressed="' + (typeof value === 'string' && value.trim() === x) + '">' + esc(x) + '</button>';
+        }).join('') + '</div>' : '');
     }
     return head + control;
   }

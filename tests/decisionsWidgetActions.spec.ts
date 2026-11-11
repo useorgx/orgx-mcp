@@ -110,6 +110,11 @@ afterEach(() => {
 });
 
 describe('decisions widget actions', () => {
+  it('preserves canonical uncertainty arrays alongside the recommendation', async () => {
+    mount([decision(D1, { review_packet: { question: 'Confirm the rollout?', current: { state: 'pending' }, recommendation: { status: 'ready', action: 'Wait for the client.' }, uncertainty: ['Client acceptance has not been recorded.', 'The rollout window is unconfirmed.'] } })], {});
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Client acceptance has not been recorded.'));
+    expect(document.body.textContent).toContain('The rollout window is unconfirmed.');
+  });
   it('renders a singular core review packet without calling an empty queue caught up', async () => {
     mountWidget('decisions', { payload: { data: { decision_id: D1, decision: decision(D1), requires_human_review: true, review_url: 'https://useorgx.com/decisions/' + D1 }, meta: { apiVersion: '1' } }, callTool: vi.fn() });
     await vi.waitFor(() => expect(document.querySelector('.dq-q')?.textContent).toContain('Decision'));
@@ -706,6 +711,8 @@ describe('decisions widget: decide in OrgX reasons', () => {
 describe('decisions widget: approve the ready ones together', () => {
   const D3 = '3e0f4051-6273-4d8e-9fa0-1b2c3d4e5f60';
   const batchButton = () => document.querySelector('[data-action="approve-ready"]') as HTMLButtonElement | null;
+  const confirmBatch = () => (document.querySelector('[data-action="batch-confirm"]') as HTMLButtonElement | null);
+  const cancelBatch = () => (document.querySelector('[data-action="batch-cancel"]') as HTMLButtonElement);
   const rows = () =>
     Array.from(document.querySelectorAll('.dq-batch ox-receipt-row'), (row) => ({
       label: row.getAttribute('label'),
@@ -714,7 +721,7 @@ describe('decisions widget: approve the ready ones together', () => {
       detail: row.getAttribute('detail'),
     }));
 
-  it('offers Approve N ready only for plain approvals, and only when there are two or more', async () => {
+  it('offers a batch review only for plain approvals, and only when there are two or more', async () => {
     mount(
       [
         decision(D1),
@@ -727,7 +734,39 @@ describe('decisions widget: approve the ready ones together', () => {
     expect(batchButton()).toBeNull();
 
     mount([decision(D1), decision(D2), decision(D3, { decide_in_orgx_reason: 'credential_required' })], { [D1]: 'tok-1', [D2]: 'tok-2' });
-    await vi.waitFor(() => expect(batchButton()?.textContent).toBe('Approve 2 ready'));
+    await vi.waitFor(() => expect(batchButton()?.textContent).toBe('Review 2 approvals'));
+  });
+
+  it('shows the exact names and effects before sending and keeps approval tokens private', async () => {
+    const callTool = mount([
+      decision(D1, { title: 'Approve the customer handoff', consequences: { if_approved: 'The handoff receipt will be recorded.' } }),
+      decision(D2, { title: 'Resume the import run', type: 'approval' }),
+    ], { [D1]: 'private-token-one', [D2]: 'private-token-two' });
+    await vi.waitFor(() => expect(batchButton()).not.toBeNull());
+    batchButton()!.click();
+    expect(document.activeElement?.id).toBe('dq-batch-review-title');
+    const review = document.querySelector('.dq-batch.is-review')!;
+    expect(Array.from(review.querySelectorAll('li strong'), node => node.textContent))
+      .toEqual(['Approve the customer handoff', 'Resume the import run']);
+    expect(review.textContent).toContain('The handoff receipt will be recorded.');
+    expect(review.textContent).toContain('Lets the agent run continue.');
+    expect(review.outerHTML).not.toContain('private-token');
+    expect(decideCalls(callTool)).toHaveLength(0);
+    cancelBatch().click();
+    expect(document.activeElement).toBe(batchButton());
+    expect(decideCalls(callTool)).toHaveLength(0);
+  });
+
+  it('requires a fresh review if an item receives a different token', async () => {
+    const tokens = { [D1]: 'tok-1', [D2]: 'tok-2' };
+    const callTool = mount([decision(D1), decision(D2)], tokens);
+    await vi.waitFor(() => expect(batchButton()).not.toBeNull());
+    batchButton()!.click();
+    tokens[D2] = 'changed-token';
+    confirmBatch()!.click();
+    expect(document.querySelector('.dq-batch.is-review')!.textContent).toContain('This selection changed');
+    expect(confirmBatch()).toBeNull();
+    expect(decideCalls(callTool)).toHaveLength(0);
   });
 
   it('approves each ready item in turn with its own token and kind, and reports each result', async () => {
@@ -747,8 +786,9 @@ describe('decisions widget: approve the ready ones together', () => {
       { [D1]: 'tok-1', [A1]: 'tok-a', [D2]: 'tok-2', [D3]: 'tok-3' },
       { decide }
     );
-    await vi.waitFor(() => expect(batchButton()?.textContent).toBe('Approve 3 ready'));
+    await vi.waitFor(() => expect(batchButton()?.textContent).toBe('Review 3 approvals'));
     batchButton()!.click();
+    confirmBatch()!.click();
     await vi.waitFor(() => expect(decide).toHaveBeenCalledTimes(1));
     // One at a time: the second call waits for the first.
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -782,6 +822,7 @@ describe('decisions widget: approve the ready ones together', () => {
     });
     await vi.waitFor(() => expect(batchButton()).not.toBeNull());
     batchButton()!.click();
+    confirmBatch()!.click();
     await vi.waitFor(() => expect(document.querySelector('.dq-batch-copy')!.textContent).toBe('1 approved · 1 to decide in OrgX'));
     expect(rows()[1]).toMatchObject({ status: 'yours', value: 'In OrgX', detail: 'This type runs its own review in OrgX.' });
   });

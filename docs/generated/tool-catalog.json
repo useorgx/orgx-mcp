@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-23T11:55:54.655Z",
-  "sourceHash": "38b8ee272286dd3e",
+  "generatedAt": "2026-11-10T15:09:11.921Z",
+  "sourceHash": "239eead7ecd20517",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -529,6 +529,11 @@
           "idempotency_key": {
             "type": "string",
             "description": "Optional client-supplied idempotency key for safe retries. The same key returns the same dispatch result without re-running the work."
+          },
+          "autonomous": {
+            "type": "boolean",
+            "const": true,
+            "description": "Set true for unattended or scheduled work. Narrows execution to the existing autonomous credential policy; never grants org-key fallback or additional effects. False is not supported and cannot clear inherited restrictions."
           },
           "execution_target": {
             "type": "string",
@@ -1925,6 +1930,11 @@
               "30d"
             ],
             "description": "For decision history: today, 7d or 30d. Defaults to 7d."
+          },
+          "output_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "For view \"outputs\": the selected output id (UUID) whose canonical summary to read."
           }
         },
         "additionalProperties": false,
@@ -4553,6 +4563,11 @@
             ],
             "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
           },
+          "autonomous": {
+            "type": "boolean",
+            "const": true,
+            "description": "Set true for unattended or scheduled work. Narrows execution to the existing autonomous credential policy; never grants org-key fallback or additional effects. False is not supported and cannot clear inherited restrictions."
+          },
           "deadline": {
             "type": "string",
             "description": "Optional ISO-8601 instant by which the work must finish (e.g. \"2026-09-28T17:00:00Z\"). Validated and recorded; free text is rejected because a constraint that cannot be evaluated is not a constraint."
@@ -6350,6 +6365,11 @@
             ],
             "description": "Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine."
           },
+          "autonomous": {
+            "type": "boolean",
+            "const": true,
+            "description": "Set true for unattended or scheduled work. Narrows execution to the existing autonomous credential policy; never grants org-key fallback or additional effects. False is not supported and cannot clear inherited restrictions."
+          },
           "deadline": {
             "type": "string",
             "description": "Optional ISO-8601 instant by which the work must finish (e.g. \"2026-09-28T17:00:00Z\"). Validated and recorded; free text is rejected because a constraint that cannot be evaluated is not a constraint."
@@ -7453,7 +7473,8 @@
                     "textarea",
                     "boolean",
                     "single_select",
-                    "multi_select"
+                    "multi_select",
+                    "number"
                   ]
                 },
                 "label": {
@@ -7512,6 +7533,45 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 10
+                },
+                "number": {
+                  "type": "object",
+                  "properties": {
+                    "min": {
+                      "type": "number"
+                    },
+                    "max": {
+                      "type": "number"
+                    },
+                    "step": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "unit": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 16
+                    },
+                    "recommended": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "min",
+                    "max"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Required when type is number: the range the owner chooses in, its step and unit, and your recommended value"
+                },
+                "suggestions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "maxItems": 6,
+                  "description": "Ready answers to a text question; the owner can pick one and edit it"
                 }
               },
               "required": [
@@ -8298,6 +8358,9 @@
                   "maxLength": 2000
                 },
                 {
+                  "type": "number"
+                },
+                {
                   "type": "boolean"
                 },
                 {
@@ -8311,7 +8374,7 @@
                 }
               ]
             },
-            "description": "Answers by field id, when widget_actions.questions lists fields"
+            "description": "Answers by field id, when widget_actions.questions lists fields; a number field takes a number"
           },
           "item_reviews": {
             "type": "array",
@@ -8348,6 +8411,11 @@
           "remember": {
             "type": "boolean",
             "description": "Propose the typed answer as a rule for next time, when widget_actions.answer.save_as_precedent"
+          },
+          "quality_bar_criterion": {
+            "type": "string",
+            "maxLength": 240,
+            "description": "On a send-back, one criterion to propose in the output's quality bar draft, when widget_actions.quality_bar names one"
           },
           "approval_token": {
             "type": "string",
@@ -13835,6 +13903,146 @@
             "minItems": 1,
             "maxItems": 100
           },
+          "responsibility": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "description": "Short name of the responsibility, e.g. \"Qualified sales conversations\"."
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "change",
+                  "maintain",
+                  "respond"
+                ],
+                "description": "change: an outcome to achieve once; maintain: an ongoing standard; respond: work started by an event."
+              },
+              "outcome": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "What the person wants accomplished, in their words."
+              },
+              "measure": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "What result counts as success and where it is read from. Required before it can be applied."
+              },
+              "trigger": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "cadence",
+                      "event",
+                      "manual"
+                    ]
+                  },
+                  "cadence": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "event": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false,
+                "description": "What starts the next unit of work. Not needed for kind change."
+              },
+              "stages": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "purpose": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    "authority": {
+                      "type": "string",
+                      "enum": [
+                        "observe",
+                        "prepare",
+                        "gated",
+                        "autonomous"
+                      ],
+                      "description": "gated: the person approves before this stage acts outside OrgX."
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "authority"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 20
+              },
+              "accountable_owner_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Defaults to the signed-in person."
+              },
+              "system_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "maxItems": 50,
+                "description": "Connector ids from capability_report in orgx_get_workspace_context."
+              },
+              "limitations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "maxItems": 20
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "maxItems": 20
+              }
+            },
+            "required": [
+              "name",
+              "kind",
+              "outcome",
+              "stages"
+            ],
+            "additionalProperties": false,
+            "description": "Also set up this responsibility as a confirmed operating agreement. Refused with questions until measure and owner are known. Nothing runs until it is activated."
+          },
           "workspace_id": {
             "type": "string",
             "format": "uuid",
@@ -16327,7 +16535,7 @@
     {
       "id": "orgx_get_workspace_context",
       "title": "Read OrgX Workspace Context",
-      "description": "Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, and capture health (which clients reported recently and how many sessions are unlinked). Does not select a workspace or create a session.",
+      "description": "Read the authorized workspace, optional initiative context, typed references, open goals with the initiatives serving them, capture health, the responsibilities handed to OrgX (each as a readable operating agreement with the clauses still missing, and for active ones on a cadence whether the current cycle is due), a capability report (per connector and runner: supported, connected, authorized, working now, unattended, verifiable, each with a reason) and the quality bars in use. Start setup here. Does not select a workspace or create a session.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -16340,6 +16548,24 @@
           "initiative_id": {
             "type": "string",
             "minLength": 1
+          },
+          "bars": {
+            "type": "string",
+            "enum": [
+              "in_use",
+              "all"
+            ],
+            "description": "Quality bars to list: in_use (default) lists bars with recent work, waiting on the person first; all lists every bar."
+          },
+          "responsibility_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, learned rules waiting for the person to confirm (tell them, never confirm for them), limits, the review_path where the person turns it on, and a checkpoint)."
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "With responsibility_id: only history after this time, and how many changes there were. Pass the last brief's checkpoint to resume where any agent left off."
           }
         },
         "additionalProperties": false,
@@ -17780,6 +18006,146 @@
             "maximum": 2147483646,
             "description": "Authoritative plan_ref.version from the most recent read. Required to prevent overwriting another edit."
           },
+          "responsibility": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "description": "Short name of the responsibility, e.g. \"Qualified sales conversations\"."
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "change",
+                  "maintain",
+                  "respond"
+                ],
+                "description": "change: an outcome to achieve once; maintain: an ongoing standard; respond: work started by an event."
+              },
+              "outcome": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "What the person wants accomplished, in their words."
+              },
+              "measure": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "What result counts as success and where it is read from. Required before it can be applied."
+              },
+              "trigger": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "cadence",
+                      "event",
+                      "manual"
+                    ]
+                  },
+                  "cadence": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "event": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false,
+                "description": "What starts the next unit of work. Not needed for kind change."
+              },
+              "stages": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "purpose": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    "authority": {
+                      "type": "string",
+                      "enum": [
+                        "observe",
+                        "prepare",
+                        "gated",
+                        "autonomous"
+                      ],
+                      "description": "gated: the person approves before this stage acts outside OrgX."
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "authority"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 20
+              },
+              "accountable_owner_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Defaults to the signed-in person."
+              },
+              "system_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "maxItems": 50,
+                "description": "Connector ids from capability_report in orgx_get_workspace_context."
+              },
+              "limitations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "maxItems": 20
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "maxItems": 20
+              }
+            },
+            "required": [
+              "name",
+              "kind",
+              "outcome",
+              "stages"
+            ],
+            "additionalProperties": false,
+            "description": "Preview the responsibility this plan would set up: returns responsibility_preview with the readable agreement and the questions that would change the work. Writes nothing beyond the plan."
+          },
           "workspace_id": {
             "type": "string",
             "format": "uuid",
@@ -18255,6 +18621,11 @@
           "session_id": {
             "type": "string",
             "description": "Optional OrgX conversation-session context."
+          },
+          "autonomous": {
+            "type": "boolean",
+            "const": true,
+            "description": "Set true for unattended or scheduled work. Narrows execution to the existing autonomous credential policy; never grants org-key fallback or additional effects. False is not supported and cannot clear inherited restrictions."
           }
         },
         "required": [
@@ -18532,7 +18903,7 @@
     {
       "id": "orgx_update_work",
       "title": "Update OrgX Work Content",
-      "description": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records.",
+      "description": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. type workspace edits only name and description (owner only). type quality_bar takes the kind of work as id and fields.patches; edits save an open draft, and a person publishes from the returned review_path. Read current bars in orgx_get_workspace_context.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -18543,7 +18914,9 @@
               "initiative",
               "workstream",
               "milestone",
-              "task"
+              "task",
+              "workspace",
+              "quality_bar"
             ]
           },
           "id": {
@@ -18551,67 +18924,350 @@
             "minLength": 1
           },
           "fields": {
-            "type": "object",
-            "properties": {
-              "title": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 240
-              },
-              "name": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 240
-              },
-              "summary": {
-                "type": "string",
-                "maxLength": 4000
-              },
-              "description": {
-                "type": "string",
-                "maxLength": 20000
-              },
-              "priority": {
-                "type": "string",
-                "enum": [
-                  "low",
-                  "medium",
-                  "high",
-                  "urgent"
-                ]
-              },
-              "due_date": {
-                "type": "string",
-                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              "goal_ids": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              },
-              "metadata": {
+            "anyOf": [
+              {
                 "type": "object",
                 "properties": {
-                  "notes": {
+                  "title": {
                     "type": "string",
-                    "maxLength": 8000
+                    "minLength": 1,
+                    "maxLength": 240
                   },
-                  "tags": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  },
+                  "summary": {
+                    "type": "string",
+                    "maxLength": 4000
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high",
+                      "urgent"
+                    ]
+                  },
+                  "due_date": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "goal_ids": {
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "minLength": 1,
-                      "maxLength": 100
+                      "format": "uuid"
+                    }
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "properties": {
+                      "notes": {
+                        "type": "string",
+                        "maxLength": 8000
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "maxItems": 50
+                      }
                     },
-                    "maxItems": 50
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "patches": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "criteria"
+                            },
+                            "decide": {
+                              "type": "boolean"
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "maxLength": 120
+                                  },
+                                  "weight": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  },
+                                  "question": {
+                                    "type": "string",
+                                    "maxLength": 600
+                                  },
+                                  "source": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "maxLength": 40
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "maxLength": 400
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "label"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "name",
+                                  "weight",
+                                  "question",
+                                  "source"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 12
+                            },
+                            "checks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 160
+                                  },
+                                  "description": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 600
+                                  },
+                                  "blocking": {
+                                    "type": "boolean"
+                                  },
+                                  "checkerId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 160
+                                  },
+                                  "checkerVersion": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "added": {
+                                    "type": "boolean"
+                                  },
+                                  "source": {
+                                    "$ref": "#/properties/fields/anyOf/1/properties/patches/items/anyOf/0/properties/items/items/properties/source"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "label",
+                                  "description",
+                                  "blocking",
+                                  "checkerId",
+                                  "checkerVersion",
+                                  "added",
+                                  "source"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 20
+                            }
+                          },
+                          "required": [
+                            "part"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "line"
+                            },
+                            "value": {
+                              "type": "number",
+                              "minimum": 30,
+                              "maximum": 100
+                            },
+                            "decide": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "part"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "references"
+                            },
+                            "pinned": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "boolean"
+                              },
+                              "propertyNames": {
+                                "format": "uuid"
+                              }
+                            },
+                            "decide": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "part"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "calibration"
+                            },
+                            "choice": {
+                              "type": "string",
+                              "enum": [
+                                "after_publish",
+                                "not_now"
+                              ]
+                            },
+                            "decide": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "part"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "shipRule"
+                            },
+                            "choice": {
+                              "type": "string",
+                              "enum": [
+                                "approve_every",
+                                "clear_when_trusted"
+                              ]
+                            },
+                            "decide": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "part"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "part": {
+                              "type": "string",
+                              "const": "reopen"
+                            },
+                            "target": {
+                              "type": "string",
+                              "enum": [
+                                "criteria",
+                                "line",
+                                "references",
+                                "calibration",
+                                "shipRule"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "part",
+                            "target"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 8
+                  }
+                },
+                "required": [
+                  "patches"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
               }
-            },
-            "additionalProperties": false
+            ]
           },
           "artifact": {
             "type": "object",

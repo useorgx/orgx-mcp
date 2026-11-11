@@ -3,7 +3,7 @@
 The task outlives the chat. This benchmark measures whether the work does
 too: it scores how much of a finished session's *why, state, and proof* a
 fresh agent in a **different client** can actually recover. OrgX —
-organizational continuity for AI agents — makes one claim: Make AI work
+proof for AI-delivered work — makes one claim: Make AI work
 resumable, reviewable, and provable across agents. This test is how that
 claim gets verified or falsified, so the test is open: anyone can run it,
 with or without OrgX, and the without-OrgX baseline requires no OrgX account

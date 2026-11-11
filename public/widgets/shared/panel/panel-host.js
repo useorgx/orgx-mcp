@@ -27,10 +27,12 @@
  * openai:set_globals event. Both sources feed the same state.
  *
  *   OrgXPanelHost.name()        -> 'ChatGPT' | 'Claude' | 'Cursor' | … | null
- *   OrgXPanelHost.kind()        -> 'chatgpt' | 'claude' | 'cursor' | 'vscode' | 'unknown'
+ *   OrgXPanelHost.kind()        -> 'chatgpt' | 'claude' | 'cursor' | 'vscode' | 'orgx-desktop' | 'unknown'
+ *   OrgXPanelHost.chatless()    -> the host has no chat to post into (OrgX for Mac)
+ *   OrgXPanelHost.ownsOnboarding() -> the host runs its own first-run tour
  *   OrgXPanelHost.chat()        -> the host's name, or 'the chat'
  *   OrgXPanelHost.assistant()   -> the host's name, or 'the assistant'
- *   OrgXPanelHost.ask()         -> 'Ask ChatGPT' | 'Ask Claude' | 'Ask in chat'
+ *   OrgXPanelHost.ask()         -> 'Ask ChatGPT' | 'Ask Claude' | 'Ask in chat' | 'Copy a prompt'
  *   OrgXPanelHost.settings()    -> 'ChatGPT settings' | 'Claude settings' | 'the app’s settings'
  *   OrgXPanelHost.fill(text)    -> replaces {host}, {chat}, {assistant}, {settings}
  *   OrgXPanelHost.platform()    -> 'web' | 'desktop' | 'mobile'
@@ -47,7 +49,8 @@
   'use strict';
   if (global.OrgXPanelHost) return;
 
-  var NAMES = { chatgpt: 'ChatGPT', claude: 'Claude', cursor: 'Cursor', vscode: 'VS Code', codex: 'Codex', gemini: 'Gemini', goose: 'Goose', unknown: null };
+  // OrgX's own desktop app names no chat: copy stays generic there.
+  var NAMES = { chatgpt: 'ChatGPT', claude: 'Claude', cursor: 'Cursor', vscode: 'VS Code', codex: 'Codex', gemini: 'Gemini', goose: 'Goose', 'orgx-desktop': null, unknown: null };
   /**
    * ChatGPT's phone app starts a full-screen app's content below its own
    * title bar (the content then scrolls under the translucent bar), but it
@@ -83,6 +86,8 @@
   function kindOf(text) {
     var s = String(text || '').toLowerCase();
     if (!s) return 'unknown';
+    // First: its user agent names the assistants it works beside.
+    if (/orgx desktop|orgx for mac/.test(s)) return 'orgx-desktop';
     if (/chatgpt|openai/.test(s)) return 'chatgpt';
     if (/claude|anthropic/.test(s)) return 'claude';
     if (/cursor/.test(s)) return 'cursor';
@@ -241,7 +246,10 @@
   function name() { return NAMES[state.kind] || null; }
   function chat() { return name() || 'the chat'; }
   function assistant() { return name() || 'the assistant'; }
-  function ask() { return name() ? 'Ask ' + name() : 'Ask in chat'; }
+  /** OrgX for Mac sits beside the person's assistants, not inside one: a prompt is copied, never posted. */
+  function chatless() { return state.kind === 'orgx-desktop'; }
+  function ownsOnboarding() { return state.kind === 'orgx-desktop'; }
+  function ask() { return chatless() ? 'Copy a prompt' : name() ? 'Ask ' + name() : 'Ask in chat'; }
   function settings() { return name() ? name() + ' settings' : 'the app’s settings'; }
   function fill(text) {
     return String(text == null ? '' : text)
@@ -294,6 +302,7 @@
 
   global.OrgXPanelHost = {
     name: name, kind: function kind() { return state.kind; }, chat: chat, assistant: assistant, ask: ask, settings: settings, fill: fill,
+    chatless: chatless, ownsOnboarding: ownsOnboarding,
     platform: function platform() { return state.platform || 'web'; },
     isMobile: function isMobile() { return state.platform === 'mobile'; },
     touch: inferTouch,

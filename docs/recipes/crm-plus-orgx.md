@@ -4,7 +4,7 @@ Your MCP gives the agent a capability. OrgX remembers why it acted, who
 approved it, what it produced, and what happens next.
 
 CRM servers let an agent read and update accounts, contacts, and
-opportunities. OrgX — organizational continuity for AI agents — adds why the
+opportunities. OrgX — proof for AI-delivered work — adds why the
 account decision was made, who approved it, and the receipts that prove what
 changed. The outcome: Make AI work resumable, reviewable, and provable
 across agents.

@@ -131,9 +131,9 @@ describe('Anthropic directory readiness', () => {
       'node scripts/directory-preflight.mjs'
     );
     expect(serverJson.websiteUrl).toBe('https://useorgx.com');
-    expect(serverJson.title).toBe('OrgX MCP — Organizational Continuity for AI Agents');
+    expect(serverJson.title).toBe('OrgX MCP — Proof for AI-Delivered Work');
     expect(serverJson.description).toContain(
-      'Make AI work resumable, reviewable, and provable across agents.'
+      'Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts.'
     );
     // The MCP Registry rejects a description over 100 characters (422 on
     // body.description), which failed the v1.1.5 registry publish.

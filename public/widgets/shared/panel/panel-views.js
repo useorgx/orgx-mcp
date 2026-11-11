@@ -1,5 +1,5 @@
 /**
- * OrgX panel views: tabs, In progress, Done (session receipts).
+ * OrgX panel views: tabs, Work, Done (session receipts).
  *
  * Pure string builders; the controller owns state and events. Every
  * actionable element uses data-action so the controller's one click
@@ -29,7 +29,7 @@
   }
 
   // Start is not a tab: it opens from the header's + (the Start menu), and its view stays reachable.
-  var TABS = [['needs', 'Needs you'], ['work', 'In progress'], ['outputs', 'Outputs'], ['goals', 'Goals'], ['done', 'Done']];
+  var TABS = [['needs', 'Needs you'], ['work', 'Work'], ['outputs', 'Outputs'], ['goals', 'Goals'], ['done', 'Done']];
   var TAB_MODULE = { outputs: 'OrgXPanelOutputs', goals: 'OrgXPanelGoals' };
   /** The tabs this build can open, in order: a tab that cannot open is worse than none. */
   function tabOrder() {
@@ -53,8 +53,8 @@
     }).join('') + '</div>';
   }
 
-  var WORK_GROUPS = [['blocked', 'Blocked'], ['running', 'Running'], ['queued', 'Queued']];
-  var WORK_CHIP = { blocked: 'blocked', running: 'running', queued: 'queued' };
+  var WORK_GROUPS = [['blocked', 'Blocked'], ['running', 'Running'], ['queued', 'Queued'], ['planned', 'Planned'], ['held', 'Held']];
+  var WORK_CHIP = { blocked: 'blocked', running: 'running', queued: 'queued', planned: 'pending', held: 'blocked' };
 
   function skeletonRows(n) {
     var out = '';
@@ -97,11 +97,16 @@
   function ago(iso) { var t = global.OrgXTime; return iso && t && t.relative ? t.relative(iso) : ''; }
   function count(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
 
-  var STATE_ORDER = ['blocked', 'running', 'queued'];
-  var STATE_NAME = { blocked: 'Blocked', running: 'Running', queued: 'Queued' };
+  var STATE_ORDER = ['blocked', 'held', 'running', 'queued', 'planned'];
+  var STATE_NAME = { blocked: 'Blocked', running: 'Running', queued: 'Queued', planned: 'Planned', held: 'Held' };
   var ROWS_PER_AGENT = 4;
 
   /** Close on a wide panel (×); Back on a narrow one, where the detail replaces the list. */
+  /** An empty view: one calm line, at most one sentence, at most one action. */
+  function emptyHtml(h, p, act) {
+    return '<div class="pn-empty"><h3 class="pn-empty-h">' + esc(h) + '</h3>' + (p ? '<p class="pn-empty-p">' + esc(p) + '</p>' : '') + (act || '') + '</div>';
+  }
+
   function backHtml(action, label) {
     return '<button type="button" class="md-close" data-action="' + action + '" data-id="" aria-label="' + esc(label) + '"><span class="md-x" aria-hidden="true">×</span>' +
       '<span class="md-back" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</span></button>';
@@ -109,7 +114,7 @@
 
   function workChip(i) {
     if (i.stale) return '<ox-state-chip state="stale" label="' + esc(i.updated_at && ago(i.updated_at) ? 'No update in ' + ago(i.updated_at).replace(/\s*ago$/, '') : 'No recent update') + '"></ox-state-chip>';
-    return '<ox-state-chip state="' + WORK_CHIP[i.state] + '"></ox-state-chip>';
+    return '<ox-state-chip state="' + WORK_CHIP[i.state] + '" label="' + esc(STATE_NAME[i.state]) + '"></ox-state-chip>';
   }
 
   /** One agent's work: who, what domain, how much is in each state. */
@@ -118,7 +123,7 @@
     var by = {};
     items.forEach(function bucket(i) {
       var key = i.agent || 'Agent';
-      if (!by[key]) { by[key] = { agent: key, domain: i.domain || '', items: [], n: { blocked: 0, running: 0, queued: 0 } }; order.push(key); }
+      if (!by[key]) { by[key] = { agent: key, domain: i.domain || '', items: [], n: { blocked: 0, running: 0, queued: 0, planned: 0, held: 0 } }; order.push(key); }
       by[key].items.push(i);
       by[key].n[i.state] += 1;
     });
@@ -136,7 +141,7 @@
       var key = i.initiative_id || '';
       if (!by[key]) {
         var name = key && nameOf ? nameOf(key) : null;
-        by[key] = { key: key || 'none', label: key ? name || 'Initiative not named here' : 'No initiative named', named: Boolean(key), items: [], n: { blocked: 0, running: 0, queued: 0 } };
+        by[key] = { key: key || 'none', label: key ? name || 'Initiative not named here' : 'No initiative named', named: Boolean(key), items: [], n: { blocked: 0, running: 0, queued: 0, planned: 0, held: 0 } };
         order.push(key);
       }
       by[key].items.push(i);
@@ -171,7 +176,7 @@
   }
   /** A note to the running agent, through the chat: the panel never steers on its own. */
   function steerHtml(item, steer) {
-    if (item.state === 'queued') return '';
+    if (item.state === 'queued' || item.state === 'planned' || item.state === 'held') return '';
     var who = item.agent || 'the agent';
     if (steer && steer.id === item.id && steer.status) {
       var said = steer.status === 'sent' ? 'Sent to the chat for ' + who + '. It lands at the next step.'
@@ -193,11 +198,13 @@
       ? 'Marked in progress, but nothing has been reported for ' + (ago(item.updated_at) || 'a while') + '. It may be stalled.'
       : item.state === 'blocked' ? 'Waiting on something before it can continue.'
       : item.state === 'running' ? 'An agent is working on this now.'
-      : 'Assigned and waiting its turn.';
+      : item.state === 'held' ? 'This task is held by its initiative or a prerequisite.'
+      : item.state === 'planned' ? 'Saved work. Execution has not been queued.'
+      : 'Execution has been queued.';
     var ask = 'In OrgX, what is ' + (item.state === 'blocked' || item.stale ? 'holding up' : 'the status of') + ' “' + item.title.slice(0, 120) + '”?';
     var waiting = opts.waiting && opts.waiting[item.id];
     return '<div class="md-card" role="region" aria-label="Task details">' +
-      (onClose ? backHtml('work-select', 'Back to In progress') : '') +
+      (onClose ? backHtml('work-select', 'Back to Work') : '') +
       '<p class="md-kicker">' + workChip(item) + '</p>' +
       '<h3 class="md-title">' + esc(item.title) + '</h3>' + workCrumbs(item, opts) +
       '<p class="md-who"><span class="md-av">' + avatar(item.agent, 'inline') + '</span>' + esc(meta.join(' · ')) + '</p>' +
@@ -224,14 +231,14 @@
   }
 
   /**
-   * In progress, built to stay readable at hundreds of tasks: grouped by agent
+   * Work, built to stay readable at hundreds of tasks: grouped by agent
    * (blocked work first), a state filter, search once the list is long, a few
    * rows per agent with the rest one press away, and a detail pane for the
    * selected task. opts: { sel, filter, query, expanded, narrow }.
    */
   function workHtml(work, phase, launch, opts) {
     opts = opts || {};
-    var head = '<div class="pn-view-head"><h2 class="pn-view-h">In progress</h2>' +
+    var head = '<div class="pn-view-head"><h2 class="pn-view-h">Work</h2>' +
       '<button type="button" class="text-btn" data-action="open" data-url="' + esc(runsUrl()) + '">All runs in OrgX ↗</button></div>';
     if (phase === 'loading' && !work) {
       return '<section class="pn-work" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-work" aria-busy="true">' + head + skeletonRows(5) + '<p class="sr-only">Loading what your agents are running.</p></section>';
@@ -242,11 +249,13 @@
         '<button type="button" class="text-btn" data-action="work-retry">Try again</button></div></section>';
     }
     if (!work.items.length) {
-      return '<section class="pn-work" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-work">' + head +
-        '<p class="pn-empty-t">Nothing is running right now.</p><p class="sub">Agents pick up work you start or delegate; it shows here with its state.</p>' + (launch || '') + '</section>';
+      // Empty: one line, one sentence, the one way to start. No runs link to an empty list.
+      return '<section class="pn-work" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-work"><div class="pn-view-head"><h2 class="pn-view-h">Work</h2></div>' +
+        emptyHtml('Nothing is running right now.', 'Work you start or delegate shows here with its state.', launch) + '</section>';
     }
-    var totals = { blocked: 0, running: 0, queued: 0 };
+    var totals = { blocked: 0, running: 0, queued: 0, planned: 0, held: 0 };
     work.items.forEach(function t(i) { totals[i.state] += 1; });
+    head += '<p class="pn-work-summary" role="status">' + totals.running + ' running · ' + totals.queued + ' queued · ' + totals.planned + ' planned · ' + (totals.held + totals.blocked) + ' held or blocked</p>';
     var filter = STATE_ORDER.indexOf(opts.filter) !== -1 ? opts.filter : 'all';
     var q = String(opts.query || '').trim().toLowerCase();
     var visible = work.items.filter(function keep(i) {
@@ -439,7 +448,8 @@
         '<button type="button" class="text-btn" data-action="open" data-url="' + esc(ledger0) + '">Open the work ledger ↗</button></span></div>', detail: '' };
     }
     if (!data.items.length) {
-      return { body: '<p class="pn-done-sum">No receipts in this range. Work agents finish lands here with what done meant and whether it was met.</p>', detail: '' };
+      var when = opts.range === 'today' ? 'today' : opts.range === '30d' ? 'in the last 30 days' : 'in the last 7 days';
+      return { body: emptyHtml('Nothing finished ' + when + '.', 'Finished work lands here with its receipt.'), detail: '', empty: true };
     }
     var sel = opts.rsel ? data.items.filter(function f(r) { return r.id === opts.rsel; })[0] || null : null;
     var detail = opts.rsel ? R.detailHtml(opts.receiptDetail, sel, { workspaceId: opts.workspaceId, phase: opts.receiptPhase, call: opts.receiptCall }) : qualityHtml(data.items);
@@ -468,6 +478,10 @@
         return '<button type="button" class="seg-b" data-action="done-range" data-id="' + r[0] + '" aria-pressed="' + (wrange === r[0]) + '">' + r[1] + '</button>';
       }).join('') + '</div>';
       var w = workReceiptsBody(Object.assign({}, opts, { range: wrange }));
+      if (w.empty) {
+        return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
+          '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + wseg + '</div></div>' + w.body + '</section>';
+      }
       return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
         '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + wseg + '</div></div>' + (w.summary || '') +
         '<div class="pn-md' + (w.selected ? ' has-sel' : '') + '"><div class="pn-md-list">' + w.body + '</div>' +
@@ -504,7 +518,14 @@
       summary = entries.length
         ? '<p class="pn-done-sum"><b>' + count(entries.length, 'decision settled', 'decisions settled') + '</b> ' + (range === 'session' ? 'since you opened the panel' : label === 'today' ? 'today' : 'in the last ' + label) +
           (approved ? ' <span aria-hidden="true">·</span> ' + approved + ' approved' : '') + (other ? ' <span aria-hidden="true">·</span> ' + other + (range === 'session' ? ' sent back' : ' declined or closed') : '') + '</p>'
-        : '<p class="pn-done-sum">' + (range === 'session' ? 'Nothing settled here yet. What you decide in Needs you lands here with its receipt; pick a range for what was settled in OrgX.' : 'Nothing was settled ' + (label === 'today' ? 'today' : 'in the last ' + label) + '.') + '</p>';
+        : '';
+      if (!entries.length) {
+        // Empty: one line and one sentence. No acceptance card, links or launch under nothing.
+        return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
+          '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + seg + '</div></div>' +
+          (range === 'session' ? emptyHtml('Nothing decided here yet.', 'What you decide in Needs you lands here with its receipt.')
+            : emptyHtml('Nothing was settled ' + (label === 'today' ? 'today' : 'in the last ' + label) + '.', '')) + '</section>';
+      }
       var page = Math.max(1, opts.page || 1);
       var shown = entries.slice(0, page * DONE_PAGE);
       body = shown.length ? '<ul class="dn-rows" role="list">' + shown.map(function r(e) {
@@ -516,8 +537,8 @@
       if (!selected && opts.sel) selected = entries.filter(function f(e) { return e.id === opts.sel; })[0] || null;
     }
     var overview = (opts.overviewHtml || '') +
-      '<div class="md-links"><button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(historyUrl) + '">Decision history ↗</button>' +
-      '<button type="button" class="pn-btn ghost" data-action="open" data-url="' + esc(ledgerUrl) + '">Work ledger ↗</button></div>';
+      '<div class="md-links"><button type="button" class="text-btn" data-action="open" data-url="' + esc(historyUrl) + '">Decision history ↗</button>' +
+      '<button type="button" class="text-btn" data-action="open" data-url="' + esc(ledgerUrl) + '">Work ledger ↗</button></div>';
     return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
       '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + seg + '</div></div>' + summary +
       '<div class="pn-md' + (selected ? ' has-sel' : '') + '"><div class="pn-md-list">' + (body || '') + '</div>' +

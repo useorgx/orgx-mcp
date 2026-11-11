@@ -24,6 +24,11 @@ describe('clientSkillOnboarding', () => {
     expect(resolveSourceClientFromUserAgent('unknown-client/1.0')).toBeNull();
   });
 
+  it('recognizes the explicit Codex proxy label before the generic OpenAI vendor', () => {
+    expect(resolveSourceClientFromContext({ client: { name: 'openai-mcp (Codex)' } })).toBe('codex');
+    expect(resolveSourceClientFromContext({ client: { name: 'OpenAI ChatGPT' } })).toBe('chatgpt');
+  });
+
   it('recommends first-use skills for Cursor workflows', () => {
     const onboarding = buildClientSkillOnboarding({
       context: { client: { name: 'Cursor' } },

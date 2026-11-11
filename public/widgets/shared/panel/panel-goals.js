@@ -59,6 +59,16 @@
     if (t >= 1) return { key: 'behind', text: 'Past due' };
     return gap >= 0.1 ? { key: 'ahead', text: 'Ahead of pace' } : gap >= -0.05 ? { key: 'on', text: 'On pace' } : { key: 'behind', text: 'Behind pace' };
   }
+  /**
+   * "Needs 2.6 a week": OrgX's own figure from the recorded baseline, target
+   * and due date (the goal's `pace`); nothing when it did not compute one.
+   */
+  function needsText(g) {
+    var p = g.pace;
+    if (!p || !isNum(p.per_week) || p.per_week <= 0) return '';
+    var amount = fmt(p.per_week, g.unit);
+    return 'Needs ' + (p.direction === 'down' ? amount + ' less' : amount) + ' a week to land on time';
+  }
   function shareOf(g) {
     if (!isNum(g.current) || !isNum(g.target) || g.target <= 0) return null;
     return Math.max(0, Math.min(1, g.current / g.target));
@@ -150,9 +160,8 @@
       : '';
     var text = form.text || '';
     return '<div class="gl-form' + (first ? ' is-first' : '') + '">' +
-      (first ? '<span class="pn-empty-art" aria-hidden="true">' + levelIcon('goal', 28) + '</span>' : '') +
-      '<h3 class="pn-empty-h" id="gl-form-h">What should all this work move?</h3>' +
-      '<p class="pn-empty-p">One number and a date. Initiatives sit under it, and outputs that move it show up here.</p>' +
+      '<h3 class="pn-empty-h" id="gl-form-h">' + (first ? 'No goals yet.' : 'What should all this work move?') + '</h3>' +
+      '<p class="pn-empty-p">' + (first ? 'Set one number and a date; work that moves it shows up here.' : 'One number and a date. Initiatives sit under it, and outputs that move it show up here.') + '</p>' +
       '<div class="gl-form-row"><label class="sr-only" for="gl-goal">Goal</label><input id="gl-goal" type="text" data-action="goal-text" maxlength="200" autocomplete="off" placeholder="40 paid workspaces by Dec 31" value="' + esc(text) + '">' +
       '<button type="button" class="pn-btn is-primary" data-action="goal-send"' + (text.trim() ? '' : ' disabled') + '>Set goal</button></div>' +
       '<p class="steer-hint">Goes to the chat as “' + esc(sentence(text || '…')) + '”</p>' + status + '</div>';
@@ -182,7 +191,8 @@
       return open('<div class="notice" data-tone="amber" role="status"><p>' + esc((data && data.reason) || 'Goals could not be read right now.') + '</p>' +
         '<button type="button" class="text-btn" data-action="goals-retry">Try again</button></div>');
     }
-    if (!data.items.length && !data.unlinked_total) return open(formHtml(opts.form, true) + barsHtml(data.quality_bars, opts.qualityUrl));
+    // No goals: the form is the whole view. Quality bars wait until there is work to judge.
+    if (!data.items.length && !data.unlinked_total) return open(formHtml(opts.form, true));
     var entries = data.items.map(function g(x) { return { id: x.id, goal: x }; });
     if (data.unlinked_total) entries.push({ id: 'none', goal: null });
     var sel = entries.filter(function f(e) { return e.id === opts.sel; })[0] || entries[0];
@@ -210,7 +220,8 @@
         '<h3 class="md-title">' + esc(g.title) + '</h3>' +
         (isNum(g.current)
           ? '<p class="gl-now"><span class="gl-big">' + esc(fmt(g.current, g.unit, true)) + '</span><span class="gl-of">' + (isNum(g.target) ? 'of ' + esc(fmt(g.target, g.unit)) : 'No target recorded') +
-            (pace ? ' · <span class="gl-pace" data-pace="' + pace.key + '">' + esc(pace.text) + '</span>' : '') + '</span></p>'
+            (pace ? ' · <span class="gl-pace" data-pace="' + pace.key + '">' + esc(pace.text) + '</span>' : '') + '</span></p>' +
+            (needsText(g) ? '<p class="gl-needs">' + esc(needsText(g)) + '</p>' : '')
           : '<p class="oc-quiet">No number has been recorded for this goal yet.</p>') +
         sparkHtml(g) +
         '<h4 class="oc-cap">Initiatives · ' + g.initiative_total + '</h4>' + initiativeRows(g.initiatives, opts, false) +
@@ -240,6 +251,6 @@
   }
 
   global.OrgXPanelGoals = {
-    html: html, paceOf: paceOf, sentence: sentence, linkSentence: linkSentence, goalOfInitiative: goalOfInitiative, fmt: fmt, goalMeta: goalMeta,
+    html: html, paceOf: paceOf, needsText: needsText, sentence: sentence, linkSentence: linkSentence, goalOfInitiative: goalOfInitiative, fmt: fmt, goalMeta: goalMeta,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

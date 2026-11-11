@@ -479,7 +479,7 @@ describe('panel live client', () => {
     expect(stale).toHaveBeenCalledTimes(2);
   });
 
-  it('reports In progress moving without re-reading decisions', () => {
+  it('reports Work moving without re-reading decisions', () => {
     const { Live, stores } = loadPanelLive();
     const work = vi.fn();
     const stale = vi.fn();
@@ -491,7 +491,7 @@ describe('panel live client', () => {
       [{ total: 1, blocked: 0 }, false],
       [{ total: 1, blocked: 1 }, true],
     ]);
-    // The rows themselves come along, so In progress can render from the feed.
+    // The rows themselves come along, so Work can render from the feed.
     expect(work.mock.calls[1]![0].items).toEqual([expect.objectContaining({ id: 't1', agent: 'Agent', title: 'Task', state: 'blocked', stale: false })]);
     expect(stale).not.toHaveBeenCalled();
   });

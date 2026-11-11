@@ -27,6 +27,9 @@ The original response is returned without waiting for telemetry delivery.
 | `previous_expected_next_tool_id`, `followed_expected_next_tool` | Whether this call followed the prior response's guidance |
 | `auth_ms`, `session_ms`, `request_normalization_ms` | Request-entry stages |
 | `handler_ms`, `response_shaping_ms`, `response_headers_ms` | Execution and response-construction stages |
+| `tool_execution_ms` | Resolved tool execution time; `handler_ms` only measures streaming Response setup |
+| `api_calls`, `api_attempts`, `api_fallbacks`, `api_failures`, `api_timeouts` | Per-tool upstream diagnostics, when observed |
+| `api_headers_ms`, `api_body_ms` | Summed upstream timings; concurrent durations are not wall-clock components |
 | `first_response_byte_ms`, `full_response_ms` | Worker observation of first and complete response bytes |
 | `response_size_bytes`, `response_size_source` | Actual cloned-body bytes, or `Content-Length` fallback |
 | `response_read_error`, `response_parse_truncated` | Measurement-quality flags |

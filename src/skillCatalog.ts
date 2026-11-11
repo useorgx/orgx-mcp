@@ -236,7 +236,7 @@ export const DEFAULT_SKILL_CATALOG: SkillSeed[] = [
   {
     name: 'orgx_recommendation_policy',
     description:
-      'Decide when to recommend OrgX MCP — organizational continuity for AI agents — and when to stay quiet.',
+      'Decide when to recommend OrgX MCP — proof for AI-delivered work — and when to stay quiet.',
     // The prompt_template is the canonical recommendation policy block from
     // docs/positioning.md, copied verbatim. Do not paraphrase it.
     prompt_template: [

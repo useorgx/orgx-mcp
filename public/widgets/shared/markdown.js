@@ -64,19 +64,34 @@
 
   function render(source, options) {
     var text = String(source || '').replace(/\r\n?/g, '\n').slice(0, 100000);
-    if (/^\s*<(?:!doctype|[a-z][a-z0-9:-]*)(?:\s|\/?>)/i.test(text)) {
+    if (!(options && options.htmlAsText) && /^\s*<(?:!doctype|[a-z][a-z0-9:-]*)(?:\s|\/?>)/i.test(text)) {
       return '<p class="ox-md-note">Open the full artifact to view this HTML file.</p>';
     }
-    var lines = text.split('\n'), result = [], paragraph = [], list = [], listKind = '';
+    var lines = text.split('\n'), result = [], paragraph = [], list = [];
     function flushParagraph() {
       if (paragraph.length) result.push('<p>' + inline(paragraph.join(' '), options) + '</p>');
       paragraph = [];
     }
     function flushList() {
-      if (list.length) result.push('<' + listKind + '>' + list.map(function item(value) {
-        return '<li>' + inline(value, options) + '</li>';
-      }).join('') + '</' + listKind + '>');
-      list = []; listKind = '';
+      var at = 0;
+      function group(indent) {
+        var kind = list[at].kind, html = '<' + kind + '>';
+        while (at < list.length && list[at].indent >= indent) {
+          var item = list[at];
+          if (item.indent === indent && item.kind !== kind) break;
+          var task = item.text.match(/^\[([ xX])\]\s+(.+)$/);
+          html += '<li' + (task ? ' class="ox-md-task"' : '') + '>';
+          html += task ? '<span class="ox-md-task-state" role="img" aria-label="' + (task[1] === ' ' ? 'Not completed' : 'Completed') + '">' + (task[1] === ' ' ? '○' : '✓') + '</span>' + inline(task[2], options) : inline(item.text, options);
+          at += 1;
+          while (at < list.length && list[at].indent > indent) html += group(list[at].indent);
+          html += '</li>';
+        }
+        return html + '</' + kind + '>';
+      }
+      var html = '';
+      while (at < list.length) html += group(list[at].indent);
+      if (html) result.push(html);
+      list = [];
     }
     function flush() { flushParagraph(); flushList(); }
     for (var index = 0; index < lines.length; index += 1) {
@@ -110,11 +125,10 @@
       var heading = trimmed.match(/^(#{1,6})\s+(.+?)(?:\s+#+)?$/);
       if (heading) { flush(); result.push('<h' + heading[1].length + '>' + inline(heading[2], options) + '</h' + heading[1].length + '>'); continue; }
       if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(trimmed)) { flush(); result.push('<hr>'); continue; }
-      var item = line.match(/^\s*(?:([-+*])|\d+[.)])\s+(.+)$/);
+      var item = line.match(/^(\s*)(?:([-+*])|\d+[.)])\s+(.+)$/);
       if (item) {
-        flushParagraph(); var kind = item[1] ? 'ul' : 'ol';
-        if (listKind && listKind !== kind) flushList();
-        listKind = kind; list.push(item[2]); continue;
+        flushParagraph();
+        list.push({ kind: item[2] ? 'ul' : 'ol', indent: Math.min(32, item[1].replace(/\t/g, '    ').length), text: item[3] }); continue;
       }
       var quote = trimmed.match(/^>\s?(.*)$/);
       if (quote) { flush(); result.push('<blockquote>' + inline(quote[1], options) + '</blockquote>'); continue; }
@@ -123,5 +137,14 @@
     flush(); return result.join('');
   }
 
-  global.OrgXMarkdown = { render: render, inline: inline, safeHref: safeHref };
+  function excerpt(source, max) {
+    var root = global.document.createElement('div');
+    root.innerHTML = render(source, { htmlAsText: true });
+    var first = root.querySelector('p') || root.firstElementChild;
+    var text = String(first ? first.textContent : source || '').replace(/\s+/g, ' ').trim();
+    var chars = Array.from(text), limit = max || 280, head = chars.slice(0, limit).join(''), boundary = head.lastIndexOf(' ');
+    return { preview: chars.length > limit ? (boundary > limit / 2 ? head.slice(0, boundary) : head) + '…' : text, isExcerpt: root.children.length > 1 || chars.length > limit };
+  }
+
+  global.OrgXMarkdown = { render: render, inline: inline, safeHref: safeHref, excerpt: excerpt };
 })(typeof window !== 'undefined' ? window : globalThis);

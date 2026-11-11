@@ -918,6 +918,34 @@ describe('explicit operations through the live MCP registry', () => {
     } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
   }, 30000);
 
+  it('edits a quality bar draft over the existing authorized operation and leaves publication to the person', async () => {
+    const { client, worker } = await connectProfile('chatgpt');
+    const original = apiMocks.callOrgxApiJson.getMockImplementation();
+    apiMocks.callOrgxApiJson.mockReset();
+    apiMocks.callOrgxApiJson.mockResolvedValue(Response.json({ data: { draft: { id: INITIATIVE_ID, kindKey: 'marketing.content_pack', status: 'open' }, created: false, publish: 'person_only', review_path: '/settings/quality/marketing.content_pack?tighten=criteria', retry_contract: 'profile_work_update_v1', idempotency_key: 'quality:edit:v1', idempotent_replay: false } }));
+    try {
+      const result = await client.callTool({ name: 'orgx_update_work', arguments: { type: 'quality_bar', id: 'marketing.content_pack', fields: { patches: [{ part: 'line', value: 85 }] }, workspace_id: WORKSPACE_ID, idempotency_key: 'quality:edit:v1' } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({ type: 'quality_bar', data: { status: 'open', publish: 'person_only' } });
+      expect(apiMocks.callOrgxApiJson).toHaveBeenCalledOnce();
+      const [, path, init, actor] = apiMocks.callOrgxApiJson.mock.calls[0]!;
+      expect(path).toBe('/api/v1/quality-bars/drafts');
+      expect(JSON.parse(String(init?.body))).toEqual({ kind_key: 'marketing.content_pack', patches: [{ part: 'line', value: 85 }], workspace_id: WORKSPACE_ID, retry_contract: 'profile_work_update_v1', idempotency_key: 'quality:edit:v1' });
+      expect(init?.headers).toEqual({ 'Idempotency-Key': 'quality:edit:v1' });
+      expect(actor).toMatchObject({ userId: 'surface-contract-user', allowFallback: false });
+    } finally { apiMocks.callOrgxApiJson.mockReset(); apiMocks.callOrgxApiJson.mockImplementation(original!); await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
+  it('refuses profile writes through a read-only OAuth grant before any backend call', async () => {
+    const { client, worker } = await connectProfile('claude-code', 'read-only-client', AUTHORIZATION_PRESETS.read.scopes);
+    apiMocks.callOrgxApiJson.mockClear();
+    try {
+      const result = await client.callTool({ name: 'orgx_update_work', arguments: { type: 'workspace', id: WORKSPACE_ID, fields: { name: 'Unapproved' }, idempotency_key: 'workspace:denied:v1' } });
+      expect(result.isError).toBe(true);
+      expect(apiMocks.callOrgxApiJson).not.toHaveBeenCalled();
+    } finally { await Promise.allSettled([client.close(), worker.server.close()]); }
+  }, 30000);
+
   it('keeps output attachment unavailable to a read-only OAuth grant on the Claude Code profile', async () => {
     const { client, worker } = await connectProfile('claude-code', 'read-only-client', AUTHORIZATION_PRESETS.read.scopes);
     apiMocks.callOrgxApiJson.mockClear();

@@ -69,7 +69,7 @@ describe('the production decision shapes', () => {
   });
 });
 
-describe('In progress rows', () => {
+describe('Work rows', () => {
   const now = Date.now();
   const work = buildPanelWork({
     agents: [
@@ -190,7 +190,7 @@ describe('Needs you with production data', () => {
   });
 });
 
-describe('In progress at scale', () => {
+describe('Work at scale', () => {
   const items = [
     { id: 't1', agent: 'Orion', domain: 'Operations', title: 'Agent routing fixture', state: 'blocked', url: 'https://useorgx.com/tasks/t1' },
     { id: 't2', agent: 'Eli', domain: 'Engineering', title: 'Upgrade the Mac', state: 'running', stale: true, updated_at: '2026-10-02T00:00:00.000Z', url: 'https://useorgx.com/tasks/t2' },
@@ -398,12 +398,16 @@ describe('Needs you: the queue and its empty state', () => {
     expect(current[0]!.getAttribute('data-row')).toBe(data.focus!.id);
   });
 
-  it('says you are clear, what is still moving, and offers the next prompt', async () => {
+  it('says there is nothing to decide, names the one thing still waiting, and offers the next prompt', async () => {
     const calm = snapshot({ queue: [], focus: null, attention: { pending: 0, oldest_at: null, blocking: false }, proof: { last_accepted: null, completed_unaccepted: 1 } });
     const m = await openWith(calm);
-    expect(doc(m).querySelector('.cm-h')!.textContent).toBe('You’re clear.');
-    expect(doc(m).querySelector('.cm-sub')!.textContent).toContain('Nothing needs your decision.');
+    expect(doc(m).querySelector('.cm-h')!.textContent).toBe('Nothing to decide.');
+    expect(doc(m).querySelector('.cm-sub')!.textContent).toBe('1 finished output waits for your review in Outputs.');
     expect(doc(m).querySelector('.queue')).toBeNull();
+    // One calm line, one sentence, one action: nothing stacked under it.
+    expect(doc(m).querySelector('.proof')).toBeNull();
+    expect(doc(m).querySelector('.cm-rail')).toBeNull();
+    expect(doc(m).querySelectorAll('.pn-calm button')).toHaveLength(1);
     click(m, '[data-action="start-open"]');
     await m.flush();
     expect(doc(m).querySelector('.pn-start')).not.toBeNull();

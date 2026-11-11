@@ -129,6 +129,10 @@ const panelGoalsSchema = z
           ),
           initiatives: z.array(panelGoalInitiativeSchema),
           initiative_total: z.number(),
+          pace: z
+            .object({ per_week: z.number(), direction: z.enum(['up', 'down']), remaining: z.number(), weeks_left: z.number() })
+            .strict()
+            .nullable(),
           url: z.string(),
         })
         .strict()
@@ -196,6 +200,7 @@ const panelWidgetActionsSchema = z
                 .object({ min: z.number(), max: z.number(), step: z.number(), unit: z.string().nullable(), recommended: z.number().nullable() })
                 .strict()
                 .optional(),
+              suggestions: z.array(z.string()).optional(),
             })
             .strict()
         ),
@@ -221,6 +226,7 @@ const panelWidgetActionsSchema = z
       })
       .strict()
       .nullable(),
+    quality_bar: z.object({ id: z.string(), name: z.string() }).strict().nullable().optional(),
   })
   .strict();
 
@@ -263,6 +269,8 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       option_id: z.string().nullable().optional(),
       option_ids: z.array(z.string()).nullable().optional(),
       remembered: z.boolean().optional(),
+      /** "Add to the quality bar" on a send-back: proposed in the bar's draft, already there, or not saved. */
+      quality_bar_criterion: z.enum(['proposed', 'unchanged', 'failed']).optional(),
       message: z.string().optional(),
     })
     .strict(),
@@ -319,6 +327,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
             agreement: z.boolean().optional(),
             task_id: z.string().nullable().optional(),
             artifact_id: z.string().nullable().optional(),
+            artifact_type: z.string().nullable().optional(),
             url: z.string(),
           })
           .strict()
@@ -455,7 +464,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
                 id: z.string(),
                 agent: z.string(),
                 title: z.string(),
-                state: z.enum(['blocked', 'running', 'queued']),
+                state: z.enum(['blocked', 'running', 'queued', 'planned', 'held']),
                 url: z.string(),
                 domain: z.string().nullable().optional(),
                 updated_at: z.string().nullable().optional(),
@@ -576,6 +585,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         total: z.number().optional(),
         running: z.number().optional(),
         queued: z.number().optional(),
+        planned: z.number().optional(),
         blocked: z.number().optional(),
         stalled: z.number().optional(),
         idle: z.number().optional(),
@@ -963,6 +973,17 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       has_credentials: z.boolean(),
       ready: z.boolean().optional(),
       missing: z.array(z.string()).optional(),
+      unverified: z.array(z.string()).optional(),
+      readiness_scope: z.literal('configuration_only').optional(),
+      execution_readiness: z.object({
+        schema: z.literal('orgx.execution-readiness.v1'),
+        scope: z.object({ ownerId: z.string(), workspaceId: z.string().nullable() }),
+        status: z.enum(['ready', 'blocked', 'unverified']), checkedAt: z.string(),
+        dispatchAuthorized: z.literal(false),
+        capabilities: z.array(z.object({ capabilityId: z.string(),
+          status: z.enum(['verified', 'configured', 'blocked', 'unverified']),
+          reason: z.string(), evidenceId: z.string().nullable() })),
+      }).optional(),
       has_execution_credentials: z.boolean(),
       has_subscription_accounts: z.boolean(),
       providers: z.object({
@@ -1012,6 +1033,21 @@ export const WIDGET_OUTPUT_SCHEMAS = {
         image_generation: z.boolean(),
         cursor_background_agents: z.boolean(),
       }),
+      // Defined and filled by OrgX, passed through as-is: one entry per
+      // execution target (runtime, harness or sandbox) with whether it can run
+      // now and why not. Open by design, so OrgX can add targets and fields
+      // without another MCP server change.
+      execution_targets: z
+        .array(
+          z
+            .object({
+              runtime: z.string(),
+              available: z.boolean(),
+              reason: nullableString.optional(),
+            })
+            .passthrough()
+        )
+        .optional(),
       setup_url: z.string(),
     })
     .strict(),

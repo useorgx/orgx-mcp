@@ -4,7 +4,7 @@ Your MCP gives the agent a capability. OrgX remembers why it acted, who
 approved it, what it produced, and what happens next.
 
 GitHub tooling lets an agent open PRs, review diffs, and file issues. OrgX —
-organizational continuity for AI agents — adds decision provenance,
+proof for AI-delivered work — adds decision provenance,
 `consolidate_pr` review receipts, and approval state. The outcome: Make AI
 work resumable, reviewable, and provable across agents.
 

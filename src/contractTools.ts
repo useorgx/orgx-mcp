@@ -7,6 +7,7 @@ import {
   FOUNDER_TEAM_COMPANY_STAGES,
 } from './artifactContracts';
 import { DISPATCH_CONTRACT_SHAPE } from './dispatchContract';
+import { autonomousSpawnSchema } from './autonomousDispatch';
 import { LOOP_VALIDATION_RUNGS } from './loopReliabilityValidation';
 import {
   CHATGPT_TOOL_DEFINITIONS,
@@ -413,6 +414,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       model: z.string().optional().describe('Optional exact model identifier when the user explicitly selects one. Otherwise OrgX resolves the model from task, tier, provider, policy, and budget.'),
       provider: z.enum(['auto', 'openai', 'anthropic', 'openrouter', 'groq', 'local']).optional().describe('Optional provider preference. Use auto unless the user asks for a specific provider or a cost comparison selects one.'),
       runtime: z.enum(['auto', 'cloud_claude', 'cloud_openai', 'managed_openai', 'managed_anthropic', 'local']).optional().describe('Optional runtime OrgX runs the work on. Omit or auto to let OrgX choose. cloud_claude / cloud_openai: OrgX cloud on the Claude Agent SDK or OpenAI Responses. managed_openai / managed_anthropic: the OpenAI Agents API or Claude Managed Agents under OrgX governance. local: a paired local peer (Claude Code, Codex, OpenClaw) on the user machine.'),
+      autonomous: autonomousSpawnSchema,
       // The shared dispatch contract: deadline, budget, parallelism, effects,
       // acceptance and idempotency. Identical across every dispatch verb so
       // the four surfaces cannot drift apart again. Supersedes this tool's own

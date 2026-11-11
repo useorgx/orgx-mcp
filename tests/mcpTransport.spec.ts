@@ -734,6 +734,7 @@ describe('mcpTransport', () => {
       jsonrpc: '2.0',
       id: 'req-logical-error',
       result: {
+        _meta: { 'orgx/performance': { tool_execution_ms: 1200, api_calls: 2, api_headers_ms: 900 } },
         content: [
           { type: 'text', text: 'The requested scope is unavailable.' },
         ],
@@ -761,7 +762,7 @@ describe('mcpTransport', () => {
               type: 'task',
               operation: 'create',
               _context: {
-                client: { name: 'codex', platform: 'macos' },
+                client: { name: 'openai-mcp (Codex)', platform: 'macos' },
                 conversation: { id: 'conv-journey' },
                 journey: {
                   step_id: 'step-2',
@@ -831,6 +832,9 @@ describe('mcpTransport', () => {
         response_parse_truncated: false,
         response_measurement_point: 'worker_response_clone',
         journey_phase: 'complete',
+        tool_execution_ms: 1200,
+        api_calls: 2,
+        api_headers_ms: 900,
       });
       expect(posthogPayload.batch[0]?.properties).not.toHaveProperty('conversation_id');
       expect(posthogPayload.batch[0]?.properties).not.toHaveProperty('step_id');

@@ -40,6 +40,8 @@ If there are no matches, say so. Do not start or change work.
 
 Replace `release` with a topic your workspace has recorded. **Success:** the client returns workspace context and either a source-backed decision with its rationale or an explicit empty result. Compare the cited record in OrgX with the summary. A widget, receipt import, or producer completion claim alone does not establish verified delivery or human acceptance.
 
+For an account-free example of the proof boundary, [reproduce an agent receipt and inspect a cross-client handoff](https://useorgx.com/agent-work-receipts/proof). The downloadable package separates actual local conformance, historical first-party observations, and a synthetic review example. It does not prove universal client parity, customer acceptance, or independent adoption.
+
 ## Docs and troubleshooting
 
 - [Server/transport and operation contract](server.json), [generated tool catalog](docs/generated/tool-catalog.json), and [profile definitions](src/toolProfiles.ts) are the shipped capability sources.
@@ -786,8 +788,8 @@ The `server.json` file describes OrgX MCP for the registry:
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.useorgx/orgx-mcp",
-  "title": "OrgX MCP — Organizational Continuity for AI Agents",
-  "description": "Make AI work resumable, reviewable, and provable across agents. OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind.",
+  "title": "OrgX MCP — Proof for AI-Delivered Work",
+  "description": "Agents in ChatGPT, Claude, Cursor, and Codex share one record of decisions and work receipts. OrgX lets the next agent continue from the decisions, artifacts, approvals, owners, and proof the last agent left behind.",
   "version": "<see server.json for the current version>",
   "remotes": [
     { "type": "streamable-http", "url": "https://mcp.useorgx.com/mcp" },

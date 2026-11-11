@@ -1,7 +1,7 @@
 # Smithery
 
 Title:
-OrgX MCP — Organizational Continuity for AI Agents
+OrgX MCP — Proof for AI-Delivered Work
 
 Short description:
 OrgX keeps decisions, work state, and proof available across agent sessions. Resume work with scoped context, track blockers, and inspect receipts instead of relying on a chat's completion claim.

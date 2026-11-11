@@ -10,6 +10,7 @@
  */
 import { buildEntityLink } from './deepLinks';
 import { normalizeArtifactRecord } from './widgetArtifactProof';
+import { documentExcerpt } from './documentExcerpt';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
@@ -114,6 +115,7 @@ export const PANEL_PREVIEW_META_KEY = 'orgx/panelPreviews';
 export interface PanelOutputPreview {
   summary: string | null;
   preview: string | null;
+  preview_truncated?: boolean;
   /** Authenticated detail read only, never artifact metadata. */
   frontDoor?: import('./outputFrontDoor').ArtifactOutputFrontDoor;
 }
@@ -187,15 +189,17 @@ export function buildPanelOutputs(
     const moved = asRecord(metadata.goal_impact);
     const movedLabel = clip(moved?.label ?? moved?.summary, 120);
     const initiativeId = str(n.initiative_id) ?? (n.entity_type === 'initiative' ? str(n.entity_id) : null);
-    const said = { summary: clip(n.summary, 280), preview: clip(n.preview_markdown, PANEL_OUTPUT_PREVIEW_MAX) };
-    if (said.summary || said.preview) previews[n.id] = said;
+    const excerpt = documentExcerpt(str(n.preview_markdown) ?? str(n.content), PANEL_OUTPUT_PREVIEW_MAX);
+    const said = { summary: clip(n.summary, 280), preview: excerpt.text,
+      ...((excerpt.truncated || metadata.source_content_truncated === true || metadata.preview_truncated === true) ? { preview_truncated: true } : {}) };
+    if (said.summary || said.preview || said.preview_truncated) previews[n.id] = said;
     items.push({
       id: n.id,
       title: clip(n.title, 160) ?? 'Untitled output',
       type,
       family: outputFamily(type),
       status: n.status,
-      has_preview: Boolean(said.summary || said.preview),
+      has_preview: Boolean(said.summary || said.preview || said.preview_truncated),
       external_url: https(n.primary_url) ?? https(n.artifact_url),
       initiative_id: initiativeId && UUID_RE.test(initiativeId) ? initiativeId : null,
       task_id: str(n.task_id),
@@ -267,7 +271,19 @@ export interface PanelGoal {
   moves: PanelGoalMove[];
   initiatives: PanelGoalInitiative[];
   initiative_total: number;
+  /**
+   * What the goal needs a week to land on its due date, as OrgX computed it
+   * from the recorded baseline, target and due date; null when one is missing.
+   */
+  pace: PanelGoalPace | null;
   url: string;
+}
+
+export interface PanelGoalPace {
+  per_week: number;
+  direction: 'up' | 'down';
+  remaining: number;
+  weeks_left: number;
 }
 
 export interface PanelQualityBarSummary {
@@ -292,6 +308,16 @@ export interface PanelGoals {
 function count(value: unknown): number {
   const n = finite(value);
   return n !== null && n >= 0 ? Math.floor(n) : 0;
+}
+
+function goalPace(value: unknown): PanelGoalPace | null {
+  const pace = asRecord(value);
+  const perWeek = finite(pace?.per_week);
+  const remaining = finite(pace?.remaining);
+  const weeksLeft = finite(pace?.weeks_left);
+  const direction = pace?.direction === 'up' || pace?.direction === 'down' ? pace.direction : null;
+  if (perWeek === null || perWeek <= 0 || remaining === null || remaining <= 0 || weeksLeft === null || weeksLeft <= 0 || !direction) return null;
+  return { per_week: perWeek, direction, remaining, weeks_left: weeksLeft };
 }
 
 function goalInitiative(raw: unknown): PanelGoalInitiative | null {
@@ -364,6 +390,7 @@ export function buildPanelGoalsWithReasons(payload: unknown, reason: string | nu
       moves,
       initiatives,
       initiative_total: Math.max(initiatives.length, count(o.initiative_total)),
+      pace: goalPace(o.pace),
       url: buildEntityLink('objective', id).url,
     });
     if (items.length >= PANEL_GOAL_LIMIT) break;

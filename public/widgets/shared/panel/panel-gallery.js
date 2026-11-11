@@ -514,6 +514,28 @@
             ] },
           });
           break;
+        case 'question-suggestions':
+          s.queue[0].title = s.focus.question = 'What should the launch post lead with?';
+          s.focus.recommendation = null;
+          s.focus.evidence = [];
+          s.focus.evidence_total = 0;
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Send answers', reject: 'Send back' },
+            questions: { fields: [
+              { id: 'lead', step_title: 'Launch post', type: 'text', label: 'Opening line', description: 'Mark writes the post around it.', placeholder: null, required: true, min_select: null, max_select: null, max_length: 200, options: [],
+                suggestions: ['Exports now run on a schedule', 'Your data, where you want it, every night'] },
+            ] },
+          });
+          break;
+        case 'quality-bar':
+          s.queue[0].title = s.focus.question = 'Approve the launch post draft?';
+          s.focus.widget_actions = s.queue[0].widget_actions = galleryActions({
+            labels: { approve: 'Approve', reject: 'Send back' }, reject_requires_reason: true,
+            quality_bar: { id: 'qb-post', name: 'Launch post' },
+          });
+          ui.composer = { id: IDS.d1, draft: 'It never says which customers asked for this.', focus: false, opener: IDS.d1 };
+          if (params.get('bar') !== '0') ui.barCriteria[IDS.d1] = { on: true, text: 'Every launch post names the customers who asked for it.' };
+          break;
         case 'own-answer':
           s.queue[0].title = s.focus.question = 'When does release 4.2 go to production?';
           s.queue[0].option_count = 3;
@@ -594,6 +616,89 @@
           break;
         case 'start-menu':
           ui.pop = 'start';
+          break;
+        // Empty and all-clear states, one per tab (the empty-state review).
+        case 'clear':
+          // Nothing pending; the warm read of In progress has landed.
+          s = calmSnapshot();
+          s.proof.completed_unaccepted = 0;
+          tokens = {};
+          ui.work = galleryWork(); ui.workPhase = 'ready';
+          break;
+        case 'cleared':
+          // The moment after the last decision: the queue is empty, the
+          // receipt line is up, and Done holds what was just settled.
+          s = calmSnapshot();
+          tokens = {};
+          ui.work = galleryWork(); ui.workPhase = 'ready';
+          ui.session = [
+            { id: IDS.d1, title: 'Ship release 4.2 to production?', action: 'approve', verb: 'Approved', phase: 'confirmed', detail: 'the agent can continue', at: clock(new Date(NOW - 1 * 60 * 1000)), url: decisionUrl(IDS.d1) },
+            { id: IDS.d2, title: 'Rotate billing API keys?', action: 'approve', verb: 'Approved', phase: 'confirmed', detail: 'the agent can continue', at: clock(new Date(NOW - 3 * 60 * 1000)), url: decisionUrl(IDS.d2) },
+            { id: IDS.d3, title: 'Publish the onboarding checklist v2?', action: 'reject', verb: 'Sent back', phase: 'rejected', detail: '', at: clock(new Date(NOW - 5 * 60 * 1000)), url: decisionUrl(IDS.d3) },
+          ];
+          ui.lastRuling = { id: IDS.d1, action: 'approve', title: 'Ship release 4.2 to production?', elsewhere: false, verb: 'Approved' };
+          break;
+        case 'work-empty':
+          s = calmSnapshot();
+          s.proof.completed_unaccepted = 0;
+          tokens = {};
+          ui.tab = 'work';
+          ui.work = { status: 'ok', items: [], total: 0 };
+          ui.workPhase = 'ready';
+          break;
+        case 'outputs-reviewed': {
+          // Outputs exist and every one has been looked at: nothing to review.
+          place(s);
+          ui.tab = 'outputs';
+          var reviewed = galleryOutputs();
+          reviewed.items = reviewed.items.filter(function seen(o) { return o.accepted.state !== 'waiting' && o.accepted.state !== 'not_reviewed'; });
+          reviewed.total = reviewed.items.length;
+          ui.outputs = reviewed;
+          ui.outputsPhase = 'ready';
+          ui.outPreviews = galleryPreviews();
+          ui.goals = galleryGoals(); ui.goalReasons = galleryGoalReasons();
+          ui.goalsPhase = 'ready';
+          break;
+        }
+        case 'done-empty':
+          s = calmSnapshot();
+          s.proof = { last_accepted: null, completed_unaccepted: 0 };
+          tokens = {};
+          ui.tab = 'done';
+          ui.receipts['7d'] = { status: 'ok', query: 'since:', total: 0, reason: null, items: [] };
+          ui.receiptsPhase = 'ready';
+          if (params.get('lens') === 'decisions') ui.doneLens = 'decisions';
+          break;
+        case 'done-all':
+          // Everything is done: nothing pending, the session's decisions
+          // settled, and the week's receipts in.
+          s = calmSnapshot();
+          s.proof.completed_unaccepted = 0;
+          tokens = {};
+          ui.tab = 'done';
+          ui.receipts['7d'] = galleryReceipts('7d');
+          ui.receiptsPhase = 'ready';
+          ui.session = [
+            { id: IDS.d2, title: 'Rotate billing API keys?', action: 'approve', verb: 'Approved', phase: 'confirmed', detail: 'the agent can continue', at: clock(new Date(NOW - 6 * 60 * 1000)), url: decisionUrl(IDS.d2) },
+            { id: IDS.d3, title: 'Publish the onboarding checklist v2?', action: 'reject', verb: 'Sent back', phase: 'recorded', detail: '', at: clock(new Date(NOW - 15 * 60 * 1000)), url: decisionUrl(IDS.d3) },
+          ];
+          if (params.get('lens') === 'decisions') ui.doneLens = 'decisions';
+          break;
+        case 'brand-new':
+          // A new workspace with nothing anywhere: every tab's read is empty.
+          s = calmSnapshot();
+          s.proof = { last_accepted: null, completed_unaccepted: 0 };
+          tokens = {};
+          ui.work = { status: 'ok', items: [], total: 0 }; ui.workPhase = 'ready';
+          ui.outputs = { status: 'ok', items: [], total: 0 }; ui.outputsPhase = 'ready';
+          ui.goals = { status: 'ok', items: [], total: 0, unlinked: [], unlinked_total: 0, quality_bars: [] }; ui.goalsPhase = 'ready';
+          ui.receipts['7d'] = { status: 'ok', query: 'since:', total: 0, reason: null, items: [] }; ui.receiptsPhase = 'ready';
+          break;
+        case 'disconnected':
+          // The queue itself could not be read: nothing to show but the error.
+          s = calmSnapshot();
+          s.state = 'degraded';
+          tokens = {};
           break;
         default:
           break;
@@ -769,10 +874,11 @@
         items: [
           { id: IDS.g1, title: '40 paid workspaces by Dec 31', status: 'active', unit: 'workspaces', due: new Date(NOW + 74 * D).toISOString().slice(0, 10), target: 40, current: 23, baseline: 12,
             history: hist([12, 14, 15, 18, 19, 21, 23], 60), moves: [{ at: isoAgo(4 * D), from: 21, to: 23, delta: 2, has_reason: true, decision_id: null }],
-            initiatives: [init(IDS.init, 'Release initiative', 3, 5), init(IDS.billing, 'Billing hardening', 1, 4, 'at_risk')], initiative_total: 2, url: L.goal(IDS.g1) },
+            initiatives: [init(IDS.init, 'Release initiative', 3, 5), init(IDS.billing, 'Billing hardening', 1, 4, 'at_risk')], initiative_total: 2,
+            pace: { per_week: 1.6, direction: 'up', remaining: 17, weeks_left: 10.6 }, url: L.goal(IDS.g1) },
           { id: IDS.g2, title: 'Trial activation to 45%', status: 'active', unit: '%', due: 'Q4 2026', target: 45, current: 32, baseline: null,
             history: hist([24, 26, 26, 32], 30), moves: [{ at: isoAgo(9 * D), from: 26, to: 32, delta: 6, has_reason: true, decision_id: IDS.d3 }],
-            initiatives: [init(IDS.activation, 'Activation', 2, 6)], initiative_total: 1, url: L.goal(IDS.g2) },
+            initiatives: [init(IDS.activation, 'Activation', 2, 6)], initiative_total: 1, pace: null, url: L.goal(IDS.g2) },
         ],
         unlinked: [init(IDS.docs, 'Docs refresh', 0, 0)], unlinked_total: 1,
         quality_bars: [

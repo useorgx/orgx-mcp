@@ -151,6 +151,9 @@ export function validateSpawnContract(
   args: Record<string, unknown>
 ): SpawnContractResult {
   const a = action || 'spawn';
+  if (args.autonomous !== undefined && (args.autonomous !== true || a !== 'spawn')) {
+    return { ok: false, message: 'autonomous supports only the literal true on spawn/start operations; omit it elsewhere.' };
+  }
   switch (a) {
     case 'spawn':
       // spawn from an existing task needs task_id; ad-hoc spawn needs title + instructions.

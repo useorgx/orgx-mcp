@@ -18,7 +18,7 @@ import {
 } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 
-import OAuthProvider from '@cloudflare/workers-oauth-provider';
+import { createSmokeRegistrationProvider } from './smokeClientRegistration';
 import { createSentryOptions, type SentryWorkerEnv } from './sentryConfig';
 import { recoverDurableObjectTransportRequest } from './durableObjectTransportRecovery';
 
@@ -118,9 +118,11 @@ import { probeOrgxHealth, readUptimeSummary, recordProbe } from './uptimeProbe';
 import {
   callOrgxApiJson,
   callOrgxApiRaw,
+  createApiError,
   OrgXApiError,
   type GatewayDelegationClaims,
 } from './orgxApi';
+import { backendErrorText, legibleSearchFailure, legibleSearchRecords } from './searchLegibility';
 import { captureDecision } from './decisionCapture';
 import { resolveWriteWorkspace } from './writeWorkspace';
 import {
@@ -166,6 +168,7 @@ import {
 } from './workCommandContract';
 import { buildMetricExpectationRequest } from './metricExpectationContract';
 import { buildTaskPredictionRequest } from './taskPredictionContract';
+import { checkAutonomousSpawnSupport } from './autonomousDispatch';
 import { buildExecutionGraphEmission } from './agenticScaleProof';
 import { buildBillingSettingsUrl, buildPricingUrl } from './shared/billingLinks';
 import {
@@ -179,6 +182,7 @@ import {
   evaluateSpawnGateResult,
   type SpawnBudgetPreflight,
   type SpawnBudgetPreflightEvaluation,
+  appSpawnBlock,
 } from './spawnBudgetPreflight';
 import {
   captureWorkerPosthogEvent,
@@ -271,6 +275,7 @@ import {
 import { buildWorkspaceCreateBody } from './workspaceTool';
 import { buildEntityUpdateRequest } from './entityUpdateRequest';
 import { buildWorkOutputAttachmentRequest, readWorkOutputAttachmentAcknowledgement } from './workOutputAttachment';
+import { executeProfileWorkUpdate } from './profileWorkUpdate';
 import { buildEntityCollectionSearchParams } from './entityCollectionSearch';
 import {
   buildBroadSearchPagination,
@@ -278,6 +283,7 @@ import {
   filterEntitySearchRecords,
   normalizeEntitySearchPage,
   normalizeMemorySearchPayload,
+  withAbsoluteRecordUrls,
   searchProjectionFields,
   type EntitySearchPage,
 } from './orgxSearch';
@@ -2619,10 +2625,26 @@ export class OrgXMcp extends McpAgent<
 
   private async runSpawnBudgetPreflight(
     args: Record<string, unknown>,
-    userId: string | null
-  ): Promise<SpawnBudgetPreflightEvaluation> {
+    userId: string | null,
+    options: { pricing?: boolean } = {}
+  ): Promise<SpawnBudgetPreflightEvaluation | { ok: true; preflight: null }> {
     const routeArgs = buildSpawnBudgetPreflightArgs(args);
     try {
+      const support = await checkAutonomousSpawnSupport(args, async () => {
+        const response = await callOrgxApiJson(
+          this.env,
+          '/api/tools/execute?format=full',
+          { method: 'GET' },
+          { userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(),
+            orgxUserId: this.resolveOrgxUserId(userId), allowFallback: false }
+        );
+        if (!response.ok) throw new Error('Backend tool catalog unavailable');
+        return response.json();
+      });
+      if (!support.ok) return support;
+      // spawn_agent_task is priced and gated by OrgX itself, which downgrades
+      // or holds for approval where a preflight here could only refuse.
+      if (options.pricing === false) return { ok: true, preflight: null };
       const response = await callOrgxApiJson(
         this.env,
         '/api/client/route-task',
@@ -2642,7 +2664,7 @@ export class OrgXMcp extends McpAgent<
       // Per-task ceiling passed. Now enforce WORKSPACE daily/monthly spend caps
       // via /api/client/spawn-gate (policy lives in orgx: enforceBudget). Skip
       // when no workspace is resolvable — caps can't be enforced without one.
-      const gateArgs = buildSpawnGateArgs(routeArgs, userId);
+      const gateArgs = buildSpawnGateArgs(routeArgs, userId, routeEval.preflight);
       if (gateArgs) {
         const gateResponse = await callOrgxApiJson(
           this.env,
@@ -2729,6 +2751,8 @@ export class OrgXMcp extends McpAgent<
     fields?: string[] | null;
     orderBy?: string;
     orderDirection?: 'asc' | 'desc';
+    /** Extra projections the entities read adds (artifact: quality_bar). */
+    include?: string[];
   }): Promise<Array<Record<string, unknown>>> {
     const page = await this.fetchEntityCollectionPage(params);
     return page.records;
@@ -2749,6 +2773,8 @@ export class OrgXMcp extends McpAgent<
     createdTo?: string;
     orderBy?: string;
     orderDirection?: 'asc' | 'desc';
+    /** Extra projections the entities read adds (artifact: quality_bar). */
+    include?: string[];
   }): Promise<EntitySearchPage> {
     const search = buildEntityCollectionSearchParams(params);
 
@@ -2758,7 +2784,15 @@ export class OrgXMcp extends McpAgent<
       undefined,
       params.userId ? { userId: params.userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(params.userId) } : undefined
     );
-    const payload = await response.json();
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      const raw = backendErrorText(payload);
+      throw createApiError(
+        legibleSearchFailure(response.status, raw),
+        `GET /api/entities failed (${response.status}): ${raw ?? 'no error text'}`,
+        response.status
+      );
+    }
     return normalizeEntitySearchPage(payload, {
       limit: params.limit,
       offset: params.offset,
@@ -2848,24 +2882,36 @@ export class OrgXMcp extends McpAgent<
           }
         : undefined
     );
-    const result = (await response.json()) as {
+    const result = (await response.json().catch(() => null)) as {
       ok?: boolean;
       data?: Record<string, unknown>;
       error?: string;
-    };
-    if (result.ok === false) {
-      throw new Error(result.error ?? 'Broad OrgX search failed');
+    } | null;
+    if (!response.ok || !result || result.ok === false) {
+      // The backend's raw text (a database message, provider JSON) stays in
+      // the logs; the caller gets a sentence chosen by status.
+      const raw = backendErrorText(result);
+      const status = response.ok ? 502 : response.status;
+      throw createApiError(
+        legibleSearchFailure(response.ok ? undefined : status, raw),
+        `query_org_memory failed (${status}): ${raw ?? 'no error text'}`,
+        status
+      );
     }
     const searchData = normalizeMemorySearchPayload(result.data ?? {});
     if (!Array.isArray(searchData.results)) {
-      throw new Error('OrgX returned an incomplete search response');
+      throw createApiError(
+        legibleSearchFailure(undefined, null),
+        'query_org_memory returned no results array',
+        502
+      );
     }
-    return Array.isArray(searchData.results)
-      ? searchData.results.filter(
-          (record): record is Record<string, unknown> =>
-            Boolean(record && typeof record === 'object' && !Array.isArray(record))
-        )
-      : [];
+    return legibleSearchRecords(withAbsoluteRecordUrls(
+      searchData.results.filter(
+        (record): record is Record<string, unknown> =>
+          Boolean(record && typeof record === 'object' && !Array.isArray(record))
+      )
+    ));
   }
 
   private async findExistingEntityByIdempotencyKey(params: {
@@ -2963,85 +3009,60 @@ export class OrgXMcp extends McpAgent<
       const { workspaceId } = scope;
       const initiativeIds = new Set(scope.initiativeIds);
 
-      const artifactMap = new Map<string, Record<string, unknown>>();
-      if (initiativeIds.size > 0) {
-        const initiativeIdList = Array.from(initiativeIds);
-        for (let offset = 0; offset < initiativeIdList.length; offset += 8) {
-          const artifactGroups = await Promise.all(
-            initiativeIdList.slice(offset, offset + 8).map((initiativeId) =>
-              this.fetchEntityCollection({
-                type: 'artifact',
-                userId: params.userId,
-                initiativeId,
-                limit: params.toolId === 'get_agent_status' ? 24 : 8,
-                ...(params.toolId === 'get_initiative_pulse' ? { orderBy: 'updated_at', orderDirection: 'desc' as const } : {}),
-              })
-            )
-          );
-          for (const records of artifactGroups) {
-            for (const record of records) {
-              const key =
-                (typeof record.id === 'string' && record.id.trim()) ||
-                `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
-              artifactMap.set(String(key), record);
+      const [initiativeRecords, workspaceRecords, tasks] = await Promise.all([
+        (async () => {
+          const records: Record<string, unknown>[] = [];
+          if (initiativeIds.size > 0) {
+            const initiativeIdList = Array.from(initiativeIds);
+            for (let offset = 0; offset < initiativeIdList.length; offset += 8) {
+              const groups = await Promise.all(
+                initiativeIdList.slice(offset, offset + 8).map((initiativeId) =>
+                  this.fetchEntityCollection({
+                    type: 'artifact', userId: params.userId, initiativeId,
+                    limit: params.toolId === 'get_agent_status' ? 24 : 8,
+                    ...(params.toolId === 'get_initiative_pulse'
+                      ? { orderBy: 'updated_at', orderDirection: 'desc' as const } : {}),
+                  })
+                )
+              );
+              records.push(...groups.flat());
             }
           }
-        }
-      }
-
-      // Agent run outputs are sometimes scoped through entity_id/entity_type
-      // instead of the artifact initiative_id column. Always union the
-      // workspace artifact stream for fleet status; initiative-only lookup can
-      // otherwise omit a real agent deliverable and silently report zero.
-      if (workspaceId && params.toolId === 'get_agent_status') {
-        // Legacy run-output artifacts may not carry workspace_id or
-        // initiative_id. Fetch the authenticated user's bounded artifact head,
-        // then scope it back to the exact visible initiative/task graph.
-        const records = filterAgentStatusArtifactsByVisibleScope(
-          params.data,
-          await this.fetchEntityCollection({
-            type: 'artifact',
-            userId: params.userId,
-            limit: 100,
-          })
-        );
-        for (const record of records) {
-          const key =
-            (typeof record.id === 'string' && record.id.trim()) ||
-            `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
-          artifactMap.set(String(key), record);
-        }
-      } else if (
-        workspaceId &&
-        params.toolId === 'get_morning_brief' &&
-        initiativeIds.size === 0
-      ) {
-        const records = await this.fetchEntityCollection({
-          type: 'artifact',
-          userId: params.userId,
-          workspaceId,
-          limit: 8,
-        });
-        for (const record of records) {
-          const key =
-            (typeof record.id === 'string' && record.id.trim()) ||
-            `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
-          artifactMap.set(String(key), record);
-        }
+          return records;
+        })(),
+        (async () => {
+          if (workspaceId && params.toolId === 'get_agent_status') {
+            // Legacy artifacts can lack workspace/initiative columns. Keep the
+            // authenticated bounded head and exact visible-scope filter.
+            return filterAgentStatusArtifactsByVisibleScope(params.data,
+              await this.fetchEntityCollection({
+                type: 'artifact', userId: params.userId, limit: 100,
+              })
+            );
+          } else if (workspaceId && params.toolId === 'get_morning_brief' && initiativeIds.size === 0) {
+            return this.fetchEntityCollection({
+              type: 'artifact', userId: params.userId, workspaceId, limit: 8,
+            });
+          }
+          return [];
+        })(),
+        workspaceId && params.toolId === 'get_agent_status'
+          ? this.fetchEntityCollection({ type: 'task', userId: params.userId, workspaceId, limit: 100 })
+          : Promise.resolve([]),
+      ]);
+      // Preserve deterministic precedence regardless of completion order:
+      // the scoped legacy head follows initiative records, as before.
+      const artifactMap = new Map<string, Record<string, unknown>>();
+      for (const record of [...initiativeRecords, ...workspaceRecords]) {
+        const key = (typeof record.id === 'string' && record.id.trim()) ||
+          `${record.title ?? record.name ?? 'artifact'}:${record.status ?? 'draft'}`;
+        artifactMap.set(String(key), record);
       }
 
       const artifacts = Array.from(artifactMap.values());
       let evidenceData = params.data;
 
       if (params.toolId === 'get_agent_status') {
-        const tasks = workspaceId
-          ? await this.fetchEntityCollection({
-              type: 'task',
-              userId: params.userId,
-              workspaceId,
-              limit: 100,
-            })
-          : [];
         const proofData =
           artifacts.length > 0
             ? enrichAgentStatusWithArtifacts(evidenceData, artifacts)
@@ -3234,6 +3255,8 @@ export class OrgXMcp extends McpAgent<
           userId: userId(),
           workspaceId,
           limit,
+          // Names the quality bar each output's checks belong to (Outputs).
+          include: ['quality_bar'],
         }),
       fetchArtifactReview: (artifact) => loadArtifactReviewEnvelope({
         env: this.env,
@@ -3545,6 +3568,14 @@ export class OrgXMcp extends McpAgent<
   > {
     if (!DISPATCH_TOOL_IDS.has(toolId)) return { ok: true, args };
 
+    if (args.autonomous !== undefined &&
+        (args.autonomous !== true || !['orgx_spawn', 'spawn_agent_task'].includes(toolId))) {
+      return { ok: false, result: this.toolError(
+        'autonomous supports only the literal true on spawn/start operations.',
+        { code: 'invalid_autonomous_declaration', status: 422 }
+      ) };
+    }
+
     const normalized = normalizeDispatchContract(args);
     if (!normalized.ok || !normalized.contract) {
       return {
@@ -3699,7 +3730,8 @@ export class OrgXMcp extends McpAgent<
         ) {
           const preflight = await this.runSpawnBudgetPreflight(
             expandedArgs,
-            resolvedUserId ?? null
+            resolvedUserId ?? null,
+            { pricing: resolvedToolId !== 'spawn_agent_task' }
           );
           if (!preflight.ok) {
             this.captureMcpToolEvent('mcp_tool_failed', {
@@ -3814,6 +3846,8 @@ export class OrgXMcp extends McpAgent<
               result.data ?? {}
             );
           }
+          const spawnBlock = resolvedToolId === 'spawn_agent_task' ? appSpawnBlock(result) : null;
+          if (spawnBlock) return this.toolError(spawnBlock.message, spawnBlock.options);
           return this.toolError(errorMessage);
         }
 
@@ -5993,7 +6027,7 @@ export class OrgXMcp extends McpAgent<
             fields: searchProjectionFields(fields),
           });
           const statusFilter = filterEntitySearchRecords(
-            page.records,
+            legibleSearchRecords(page.records),
             typeof args.status === 'string' ? args.status : null,
             explicitType
           );
@@ -6664,7 +6698,8 @@ export class OrgXMcp extends McpAgent<
           if (targetTool === 'spawn_agent_task' || targetTool === 'handoff_task') {
             const preflight = await this.runSpawnBudgetPreflight(
               spawnArgs,
-              resolvedUserId ?? null
+              resolvedUserId ?? null,
+              { pricing: targetTool !== 'spawn_agent_task' }
             );
             if (!preflight.ok) {
               return this.toolError(preflight.message, {
@@ -6711,6 +6746,8 @@ export class OrgXMcp extends McpAgent<
           );
           const result = (await response.json()) as Record<string, unknown>;
           if (result.ok === false) {
+            const spawnBlock = targetTool === 'spawn_agent_task' ? appSpawnBlock(result) : null;
+            if (spawnBlock) return this.toolError(spawnBlock.message, spawnBlock.options);
             return this.toolError(
               typeof result.error === 'string'
                 ? result.error
@@ -7948,6 +7985,10 @@ export class OrgXMcp extends McpAgent<
           }));
         }, tool.id, effective);
         const canonicalArgs = tool.toCanonicalArgs(effective);
+        if (tool.id === 'orgx_update_work' && (canonicalArgs.type === 'quality_bar' || canonicalArgs.type === 'workspace')) return this.withOrgx(async () => {
+          const payload = await executeProfileWorkUpdate(canonicalArgs, (path, init) => this.requestPublicOperation(path, init, { allowFallback: false }));
+          return { content: [{ type: 'text', text: JSON.stringify(payload) }], structuredContent: payload };
+        }, tool.id, effective);
         if (tool.id === 'orgx_open_artifact_review' && typeof canonicalArgs.artifact_id === 'string') return this.withOrgx(async () => {
           const params = new URLSearchParams({ widget_meta: '1', ...(effective.workspace_id ? { workspace_id: String(effective.workspace_id) } : {}) });
           const raw = await this.requestPublicOperation(`/api/v1/workflows/artifact-review/${encodeURIComponent(canonicalArgs.artifact_id as string)}?${params}`);
@@ -15620,7 +15661,7 @@ const observedSseHandler = observeVerifiedMcpTransport(profileAwareSseHandler);
 // - Everything else → authHandler (Clerk flow, health, landing, codex, etc.)
 // =============================================================================
 
-const oauthProvider = new OAuthProvider({
+const oauthProvider = createSmokeRegistrationProvider<Env>({
   apiHandlers: {
     '/mcp': observedHttpHandler,
     '/sse': observedSseHandler,

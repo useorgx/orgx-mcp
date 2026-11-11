@@ -60,6 +60,7 @@ export function buildSpawnBudgetPreflightArgs(
     'model_tier',
     'model',
     'provider',
+    'runtime',
     'budget_mode',
     'max_cost_usd',
   ]) {
@@ -97,6 +98,41 @@ export function evaluateSpawnBudgetPreflightResult(
     estimate,
     route_task: routeData,
   };
+
+  const requestedModel = pickString(routeArgs, ['model']);
+  const requestedProvider = pickString(routeArgs, ['provider']);
+  const routeMismatch =
+    (requestedModel && estimate.recommended_model !== requestedModel) ||
+    (requestedProvider &&
+      requestedProvider !== 'auto' &&
+      estimate.provider !== requestedProvider);
+  if (routeMismatch) {
+    return {
+      ok: false,
+      message: 'Budget preflight could not price the requested route: the returned model or provider differs from the request.',
+      details: {
+        code: 'route_estimate_mismatch',
+        requested_model: requestedModel,
+        requested_provider: requestedProvider,
+        budget_preflight: preflight,
+      },
+    };
+  }
+  if (
+    (requestedModel || estimate.budget_check.max_cost_usd !== null) &&
+    (estimate.estimated_cost_usd === null || estimate.estimated_cost_usd <= 0)
+  ) {
+    return {
+      ok: false,
+      message: `Budget preflight has no positive cost estimate for ${requestedModel ?? 'the selected route'}; dispatch cannot verify its spend cap.`,
+      details: {
+        code: 'route_estimate_unavailable',
+        requested_model: requestedModel,
+        requested_provider: requestedProvider,
+        budget_preflight: preflight,
+      },
+    };
+  }
 
   if (estimate.budget_check.within_cap === false) {
     return {
@@ -143,7 +179,8 @@ export function evaluateSpawnBudgetPreflightResult(
  */
 export function buildSpawnGateArgs(
   routeArgs: Record<string, unknown>,
-  userId: string | null
+  userId: string | null,
+  preflight: SpawnBudgetPreflight
 ): Record<string, unknown> | null {
   const workspaceId =
     (typeof routeArgs.workspace_id === 'string' && routeArgs.workspace_id) ||
@@ -164,6 +201,19 @@ export function buildSpawnGateArgs(
   ] as const) {
     if (routeArgs[src] !== undefined) body[dest] = routeArgs[src];
   }
+  // Carry the server's accepted quote across both gates. Never copy a caller's
+  // computed_cost_cents: dropping this quote used to reprice an exact cheap
+  // model as the unknown-tier precision fallback ($8).
+  const quote = preflight.estimate;
+  const costCents =
+    quote.estimated_cost_usd === null
+      ? null
+      : Math.ceil(quote.estimated_cost_usd * 100);
+  if (costCents !== null && Number.isSafeInteger(costCents) && costCents > 0) {
+    body.computed_cost_cents = costCents;
+  }
+  if (quote.recommended_tier) body.tier = quote.recommended_tier;
+  if (quote.provider) body.provider = quote.provider;
   return body;
 }
 
@@ -211,5 +261,27 @@ function spawnGateRemedyFacts(decision: Record<string, unknown>): Record<string,
   return {
     ...(limit !== undefined && limit !== null ? { limit } : {}),
     ...(typeof retryAfter === 'number' && Number.isFinite(retryAfter) ? { retry_after_seconds: retryAfter } : {}),
+  };
+}
+
+const APP_SPAWN_BLOCK_CODES = new Set(['budget_cap_exceeded', 'cost_estimate_unavailable', 'budget_gate_blocked']);
+
+/**
+ * OrgX prices and gates spawn_agent_task itself (fail-closed cap, cheaper-tier
+ * downgrade, approval hold) and returns a typed block in `data.code`. Carry
+ * that type to the client instead of re-deciding it here.
+ */
+export function appSpawnBlock(
+  result: Record<string, unknown>
+): { message: string; options: { code: string; status: number; details: Record<string, unknown> } } | null {
+  if (result.ok !== false) return null;
+  const data = result.data && typeof result.data === 'object' && !Array.isArray(result.data)
+    ? (result.data as Record<string, unknown>)
+    : null;
+  const code = typeof data?.code === 'string' ? data.code : null;
+  if (!code || !APP_SPAWN_BLOCK_CODES.has(code)) return null;
+  return {
+    message: typeof result.error === 'string' ? result.error : 'OrgX blocked this dispatch on budget.',
+    options: { code, status: code === 'budget_cap_exceeded' ? 402 : 424, details: data! },
   };
 }

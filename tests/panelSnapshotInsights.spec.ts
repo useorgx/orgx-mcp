@@ -185,6 +185,12 @@ describe('where a task sits', () => {
 });
 
 describe('Outputs', () => {
+  it('keeps promoted source previews private and labels an incomplete document excerpt', () => {
+    const built = buildPanelOutputs([artifact(ART, { description: null, metadata: { source_content_preview: 'Ready for review.\n\n```text\n' + 'x'.repeat(1000) + '\n```' } })], { viewerIds: [] });
+    expect(built.previews[ART]).toMatchObject({ preview: 'Ready for review.', preview_truncated: true });
+    expect(built.outputs.items[0]!.has_preview).toBe(true);
+    expect(JSON.stringify(built.outputs)).not.toContain('Ready for review.');
+  });
   it('places each output on its chain from what the record says, newest first', () => {
     const { outputs } = buildPanelOutputs([
       artifact(ART, { artifact_type: 'pull_request', status: 'in_review', created_at: '2026-10-03T00:00:00.000Z', primary_url: 'https://github.com/acme/repo/pull/7' }),
@@ -350,6 +356,13 @@ describe('the outputs and goals reads', () => {
     expect(JSON.stringify(result.structuredContent)).not.toContain(outputFrontDoor().answer);
   });
 
+  it('reads the selected output named by output_id, the current contract field', async () => {
+    const fetchArtifactReview = vi.fn(async () => ({ artifact: artifact(ART), reviewContractSource: 'canonical' as const, reviewContract: { schemaVersion: 'artifact_review_contract.v1', frontDoor: outputFrontDoor() } }));
+    const result = await handlePanelSnapshot(host({ fetchArtifactReview }), { view: 'outputs', output_id: ART });
+    expect(fetchArtifactReview).toHaveBeenCalledTimes(1);
+    expect((result._meta?.[PANEL_PREVIEW_META_KEY] as Record<string, unknown>)[ART]).toMatchObject({ frontDoor: outputFrontDoor() });
+  });
+
   it.each(['different subject', 'entity fallback', 'read failure'])('keeps existing preview when canonical summary has %s', async (problem) => {
     const fetchArtifactReview = vi.fn(async () => {
       if (problem === 'read failure') throw new Error('unavailable');
@@ -376,5 +389,73 @@ describe('the outputs and goals reads', () => {
     const snap = result.structuredContent as unknown as PanelSnapshot;
     expect(snap.queue).toHaveLength(1);
     expect(snap.goals).toMatchObject({ status: 'unavailable', reason: 'This OrgX workspace cannot report goal progress yet.' });
+  });
+});
+
+describe('the decision contract the app sends', () => {
+  const contract = (extra: Record<string, unknown>) => ({
+    kind: 'decision', actions: ['approve', 'reject'], labels: { approve: 'Send', reject: 'Send back' },
+    reject_requires_reason: true, selection: null, items: null, answer: null, questions: null, ...extra,
+  });
+  const build = (extra: Record<string, unknown>) =>
+    buildPanelSnapshot({ workspace: { id: WS, name: 'Acme' }, decisions: [decision(extra)], artifacts: [] });
+
+  it('reads a number range nested under `number`, as the app sends it', () => {
+    const s = build({ widget_actions: contract({ questions: { fields: [
+      { id: 'seats', type: 'number', label: 'Seats', required: true, number: { min: 1, max: 50, step: 1, unit: 'seats', recommended: 12 } },
+    ] } }) });
+    expect(s.focus!.widget_actions!.questions!.fields[0]!.number).toEqual({ min: 1, max: 50, step: 1, unit: 'seats', recommended: 12 });
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(s).success).toBe(true);
+  });
+
+  it('carries a text question’s suggestions, and none on other types', () => {
+    const s = build({ widget_actions: contract({ questions: { fields: [
+      { id: 'lead', type: 'text', label: 'Opening line', suggestions: ['Exports run nightly', 'Exports run nightly', 7, 'Your data, every night'] },
+      { id: 'ok', type: 'boolean', label: 'Ship it?', suggestions: ['Yes'] },
+    ] } }) });
+    const [lead, ok] = s.focus!.widget_actions!.questions!.fields;
+    expect(lead!.suggestions).toEqual(['Exports run nightly', 'Your data, every night']);
+    expect(ok!.suggestions).toBeUndefined();
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(s).success).toBe(true);
+  });
+
+  it('names the quality bar only when a send back is possible and the bar is whole', () => {
+    const bar = { id: 'qb-post', name: 'Launch post' };
+    expect(build({ widget_actions: contract({ quality_bar: bar }) }).focus!.widget_actions!.quality_bar).toEqual(bar);
+    expect(build({ widget_actions: contract({ actions: ['approve'], quality_bar: bar }) }).focus!.widget_actions!.quality_bar).toBeUndefined();
+    expect(build({ widget_actions: contract({ quality_bar: { id: 'qb-post' } }) }).focus!.widget_actions!.quality_bar).toBeUndefined();
+    const s = build({ widget_actions: contract({ quality_bar: bar }) });
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(s).success).toBe(true);
+  });
+
+  it('shows the asker’s own title, and the summary only when it set none', () => {
+    expect(build({ title: 'Approve the 4.2 release' }).queue[0]!.title).toBe('Approve the 4.2 release');
+    expect(build({}).queue[0]!.title).toBe('Ship release 4.2?');
+  });
+
+  it('carries the output’s type with its id, and links the initiative to its own page', () => {
+    const s = build({ context: { initiative_id: INIT, artifact_type: 'pull_request' } });
+    expect(s.queue[0]).toMatchObject({ artifact_id: ART, artifact_type: 'pull_request' });
+    expect(s.focus!.why!.initiative_url).toMatch(new RegExp(`/initiatives/${INIT}$`));
+    // No output named, no type: it would label nothing.
+    const bare = build({ context: { artifact_type: 'pull_request' }, review_packet: packet({ references: [] }) });
+    expect(bare.queue[0]!.artifact_type).toBeUndefined();
+  });
+});
+
+describe('a goal’s pace', () => {
+  const goal = (pace: unknown) => ({
+    data: { objectives: [{ id: GOAL, title: '40 paid workspaces', status: 'active', target_value: 40, current_value: 23, baseline_value: 12, pace }] },
+  });
+
+  it('carries the pace OrgX computed, and nothing it cannot stand behind', () => {
+    expect(buildPanelGoals(goal({ per_week: 1.6, direction: 'up', remaining: 17, weeks_left: 10.6, due_at: '2026-12-31T23:59:59.999Z' })).items[0]!.pace)
+      .toEqual({ per_week: 1.6, direction: 'up', remaining: 17, weeks_left: 10.6 });
+    for (const bad of [null, { per_week: 0, direction: 'up', remaining: 17, weeks_left: 2 }, { per_week: 1, direction: 'sideways', remaining: 1, weeks_left: 1 }]) {
+      expect(buildPanelGoals(goal(bad)).items[0]!.pace).toBeNull();
+    }
+    const s = buildPanelSnapshot({ workspace: { id: WS, name: 'Acme' }, decisions: [], artifacts: [] });
+    s.goals = buildPanelGoals(goal({ per_week: 1.6, direction: 'up', remaining: 17, weeks_left: 10.6 }));
+    expect(WIDGET_OUTPUT_SCHEMAS.orgx_panel_snapshot.safeParse(s).success).toBe(true);
   });
 });
