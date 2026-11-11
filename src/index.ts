@@ -258,13 +258,10 @@ import {
   normalizeDispatchContract,
 } from './dispatchContract';
 import { validateWriteCreateContract } from './writeContract';
-import { buildLiveFeedWidget } from './liveFeedWidget';
-import { signStreamToken } from './streamToken';
 import {
   buildStreamGrant,
   feedBindingForTool,
   resolveFeedIdForTool,
-  GENERATED_WIDGET_TTL_MS,
 } from './live/streamGrant';
 import { LIVE_REFRESH_USAGE_CLASS, PANEL_FEED_TYPE } from './live/panelFeed';
 import { hydrateTaskContext } from './taskContextHydrator';
@@ -3981,14 +3978,9 @@ export class OrgXMcp extends McpAgent<
           })(),
         });
 
-        // Dual-protocol return:
-        // - Widget tools: JSON in content[0] for MCP Apps widget parsing
-        // - Non-widget tools: concise summary only (saves 80-95% tokens)
-        // structuredContent always carries the full payload for widgets.
-        // Live subscription grant: attached to structuredContent so the static
-        // widgets in public/widgets/ can subscribe. Any tool listed in
-        // TOOL_FEED_BINDINGS becomes live without its own token plumbing.
-        if (this.env.LIVE_FEED && this.env.MCP_JWT_SECRET) {
+        // A stream URL is a credential. Deliver it only in widget metadata.
+        let liveGrant: Awaited<ReturnType<typeof buildStreamGrant>> = null;
+        if (isWidgetTool && this.env.LIVE_FEED && this.env.MCP_JWT_SECRET) {
           const _binding = feedBindingForTool(toolId);
           // Not `effectiveInitiativeId`: that falls back to `data.id`, which for
           // a tool like orgx_inspect is whichever entity was inspected. Feeding
@@ -3999,7 +3991,7 @@ export class OrgXMcp extends McpAgent<
             : null;
           if (_binding && _feedId) {
             try {
-              const _grant = await buildStreamGrant({
+              liveGrant = await buildStreamGrant({
                 feedType: _binding.feedType,
                 feedId: _feedId,
                 serverUrl: this.env.MCP_SERVER_URL,
@@ -4008,7 +4000,6 @@ export class OrgXMcp extends McpAgent<
                 refreshArgs: { initiative_id: _feedId },
                 userId: resolvedUserId ?? undefined,
               });
-              if (_grant) (data as Record<string, unknown>).live = _grant;
             } catch (_err) {
               // A missing grant degrades the widget to a static snapshot, which
               // is the pre-existing behaviour — never a failed tool call.
@@ -4017,53 +4008,11 @@ export class OrgXMcp extends McpAgent<
           }
         }
 
-        // Live-feed SSE widget: inject for agent-status + initiative-pulse tools
-        let _liveFeedWidgetHtml: string | null = null;
-        if (
-          (toolId === 'get_agent_status' || toolId === 'get_initiative_pulse') &&
-          effectiveInitiativeId &&
-          this.env.LIVE_FEED &&
-          this.env.MCP_JWT_SECRET
-        ) {
-          try {
-            const _feedType = toolId === 'get_agent_status' ? 'agent-status' : 'initiative-pulse';
-            const _streamToken = await signStreamToken({
-              feedType: _feedType,
-              feedId: effectiveInitiativeId,
-              userId: resolvedUserId ?? undefined,
-              secret: this.env.MCP_JWT_SECRET,
-              // Deliberately NOT the short grant lifetime. A structuredContent
-              // grant can refresh itself by re-invoking its bound tool; this
-              // token is baked into standalone HTML with no tool access, so a
-              // short life would just end its updates sooner with no way to
-              // recover. Shortening it here traded a smaller exposure window
-              // for a widget that died after fifteen minutes instead of sixty.
-              ttlMs: GENERATED_WIDGET_TTL_MS,
-            });
-            const _liveUrl = hasInitiativeContext && effectiveInitiativeId
-              ? buildLiveUrl(effectiveInitiativeId)
-              : undefined;
-            _liveFeedWidgetHtml = buildLiveFeedWidget({
-              feedType: _feedType,
-              feedId: effectiveInitiativeId,
-              streamBaseUrl: this.env.MCP_SERVER_URL,
-              streamToken: _streamToken,
-              liveUrl: _liveUrl,
-              title: typeof (data.initiative as Record<string, unknown> | undefined)?.title === 'string'
-                ? (data.initiative as Record<string, unknown>).title as string
-                : undefined,
-            });
-          } catch (_err) {
-            console.warn('[live-feed-widget] token/widget build failed', { error: _err });
-          }
-        }
-
         if (isWidgetTool) {
           const content = buildClientAwareContentBlocks({
             data,
             summary: finalMessage,
             sourceClient,
-            widgetHtml: _liveFeedWidgetHtml,
           });
           this.appendWidgetDebugEvent({
             phase: 'tool_result',
@@ -4079,9 +4028,10 @@ export class OrgXMcp extends McpAgent<
           return {
             content,
             structuredContent: data,
-            ...(widgetApproval.meta
-              ? { _meta: { [WIDGET_APPROVAL_META_KEY]: widgetApproval.meta } }
-              : {}),
+            ...(widgetApproval.meta || liveGrant ? { _meta: {
+              ...(widgetApproval.meta ? { [WIDGET_APPROVAL_META_KEY]: widgetApproval.meta } : {}),
+              ...(liveGrant ? { 'orgx/liveGrant': liveGrant } : {}),
+            } } : {}),
           } as CallToolResult;
         }
 
