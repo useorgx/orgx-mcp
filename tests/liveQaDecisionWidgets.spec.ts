@@ -180,6 +180,8 @@ describe('B1 · decisions: "Not sent" never shows a raw payload', () => {
     );
     await vi.waitFor(() => expect(document.querySelector('[data-action="approve-ready"]')).not.toBeNull());
     (document.querySelector('[data-action="approve-ready"]') as HTMLButtonElement).click();
+    expect(decideCalls(callTool)).toHaveLength(0);
+    (document.querySelector('[data-action="batch-confirm"]') as HTMLButtonElement).click();
     await vi.waitFor(() => expect(document.querySelector('.dq-batch.is-result')?.getAttribute('aria-busy')).toBe('false'));
     expect(decideCalls(callTool)).toHaveLength(1);
     expect(document.querySelector('.dq-batch-copy')!.textContent).toBe('3 to decide in OrgX');
