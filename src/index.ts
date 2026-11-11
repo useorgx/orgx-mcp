@@ -118,9 +118,11 @@ import { probeOrgxHealth, readUptimeSummary, recordProbe } from './uptimeProbe';
 import {
   callOrgxApiJson,
   callOrgxApiRaw,
+  createApiError,
   OrgXApiError,
   type GatewayDelegationClaims,
 } from './orgxApi';
+import { backendErrorText, legibleSearchFailure, legibleSearchRecords } from './searchLegibility';
 import { captureDecision } from './decisionCapture';
 import { resolveWriteWorkspace } from './writeWorkspace';
 import {
@@ -180,6 +182,7 @@ import {
   evaluateSpawnGateResult,
   type SpawnBudgetPreflight,
   type SpawnBudgetPreflightEvaluation,
+  appSpawnBlock,
 } from './spawnBudgetPreflight';
 import {
   captureWorkerPosthogEvent,
@@ -2622,8 +2625,9 @@ export class OrgXMcp extends McpAgent<
 
   private async runSpawnBudgetPreflight(
     args: Record<string, unknown>,
-    userId: string | null
-  ): Promise<SpawnBudgetPreflightEvaluation> {
+    userId: string | null,
+    options: { pricing?: boolean } = {}
+  ): Promise<SpawnBudgetPreflightEvaluation | { ok: true; preflight: null }> {
     const routeArgs = buildSpawnBudgetPreflightArgs(args);
     try {
       const support = await checkAutonomousSpawnSupport(args, async () => {
@@ -2638,6 +2642,9 @@ export class OrgXMcp extends McpAgent<
         return response.json();
       });
       if (!support.ok) return support;
+      // spawn_agent_task is priced and gated by OrgX itself, which downgrades
+      // or holds for approval where a preflight here could only refuse.
+      if (options.pricing === false) return { ok: true, preflight: null };
       const response = await callOrgxApiJson(
         this.env,
         '/api/client/route-task',
@@ -2777,7 +2784,15 @@ export class OrgXMcp extends McpAgent<
       undefined,
       params.userId ? { userId: params.userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(params.userId) } : undefined
     );
-    const payload = await response.json();
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      const raw = backendErrorText(payload);
+      throw createApiError(
+        legibleSearchFailure(response.status, raw),
+        `GET /api/entities failed (${response.status}): ${raw ?? 'no error text'}`,
+        response.status
+      );
+    }
     return normalizeEntitySearchPage(payload, {
       limit: params.limit,
       offset: params.offset,
@@ -2867,24 +2882,36 @@ export class OrgXMcp extends McpAgent<
           }
         : undefined
     );
-    const result = (await response.json()) as {
+    const result = (await response.json().catch(() => null)) as {
       ok?: boolean;
       data?: Record<string, unknown>;
       error?: string;
-    };
-    if (result.ok === false) {
-      throw new Error(result.error ?? 'Broad OrgX search failed');
+    } | null;
+    if (!response.ok || !result || result.ok === false) {
+      // The backend's raw text (a database message, provider JSON) stays in
+      // the logs; the caller gets a sentence chosen by status.
+      const raw = backendErrorText(result);
+      const status = response.ok ? 502 : response.status;
+      throw createApiError(
+        legibleSearchFailure(response.ok ? undefined : status, raw),
+        `query_org_memory failed (${status}): ${raw ?? 'no error text'}`,
+        status
+      );
     }
     const searchData = normalizeMemorySearchPayload(result.data ?? {});
     if (!Array.isArray(searchData.results)) {
-      throw new Error('OrgX returned an incomplete search response');
+      throw createApiError(
+        legibleSearchFailure(undefined, null),
+        'query_org_memory returned no results array',
+        502
+      );
     }
-    return withAbsoluteRecordUrls(
+    return legibleSearchRecords(withAbsoluteRecordUrls(
       searchData.results.filter(
         (record): record is Record<string, unknown> =>
           Boolean(record && typeof record === 'object' && !Array.isArray(record))
       )
-    );
+    ));
   }
 
   private async findExistingEntityByIdempotencyKey(params: {
@@ -3703,7 +3730,8 @@ export class OrgXMcp extends McpAgent<
         ) {
           const preflight = await this.runSpawnBudgetPreflight(
             expandedArgs,
-            resolvedUserId ?? null
+            resolvedUserId ?? null,
+            { pricing: resolvedToolId !== 'spawn_agent_task' }
           );
           if (!preflight.ok) {
             this.captureMcpToolEvent('mcp_tool_failed', {
@@ -3818,6 +3846,8 @@ export class OrgXMcp extends McpAgent<
               result.data ?? {}
             );
           }
+          const spawnBlock = resolvedToolId === 'spawn_agent_task' ? appSpawnBlock(result) : null;
+          if (spawnBlock) return this.toolError(spawnBlock.message, spawnBlock.options);
           return this.toolError(errorMessage);
         }
 
@@ -5997,7 +6027,7 @@ export class OrgXMcp extends McpAgent<
             fields: searchProjectionFields(fields),
           });
           const statusFilter = filterEntitySearchRecords(
-            page.records,
+            legibleSearchRecords(page.records),
             typeof args.status === 'string' ? args.status : null,
             explicitType
           );
@@ -6668,7 +6698,8 @@ export class OrgXMcp extends McpAgent<
           if (targetTool === 'spawn_agent_task' || targetTool === 'handoff_task') {
             const preflight = await this.runSpawnBudgetPreflight(
               spawnArgs,
-              resolvedUserId ?? null
+              resolvedUserId ?? null,
+              { pricing: targetTool !== 'spawn_agent_task' }
             );
             if (!preflight.ok) {
               return this.toolError(preflight.message, {
@@ -6715,6 +6746,8 @@ export class OrgXMcp extends McpAgent<
           );
           const result = (await response.json()) as Record<string, unknown>;
           if (result.ok === false) {
+            const spawnBlock = targetTool === 'spawn_agent_task' ? appSpawnBlock(result) : null;
+            if (spawnBlock) return this.toolError(spawnBlock.message, spawnBlock.options);
             return this.toolError(
               typeof result.error === 'string'
                 ? result.error

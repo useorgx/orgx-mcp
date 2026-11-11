@@ -316,7 +316,7 @@
     /* Long counts ("About 24 more across the workspace in OrgX") wrap instead of widening the page. */
     .dq-queue .dq-more { align-self: flex-start; max-width: calc(100% - 14px); white-space: normal; }
 
-    /* Approve N ready: one quiet line, then one result row per item. */
+    /* Keep the review in flow so long names and consequences can wrap. */
     .dq-batch {
       display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; min-height: 56px;
       padding: 6px 6px 6px 16px; border-radius: 14px; border: 1px solid var(--ox-border);
@@ -325,9 +325,16 @@
     .dq-batch-copy { flex: 1 1 0; min-width: 0; font-size: 13px; color: var(--ox-text-2); }
     .dq-batch-btn { color: var(--ox-text); border-color: var(--ox-border-strong); background: var(--ox-panel); }
     .dq-batch-btn:hover { border-color: var(--ox-text-muted); }
-    .dq-batch.is-result { display: block; padding: 6px 14px 4px; border-style: solid; }
+    .dq-batch.is-review, .dq-batch.is-result { display: block; padding: 6px 14px 4px; border-style: solid; }
     .dq-batch-head { display: flex; align-items: center; gap: 8px; min-height: 44px; }
     .dq-batch-head .dq-batch-copy { font-weight: 600; color: var(--ox-text); }
+
+    .decision-card[inert] ox-footer { opacity: .45; }
+    .dq-batch.is-review > h3 { scroll-margin-block-start: 12px; margin: 8px 0; color: var(--ox-text); }
+    .dq-batch-list { margin: 4px 0 12px; padding-inline-start: 22px; overflow-wrap: anywhere; }
+    .dq-batch-list li + li { margin-block-start: 8px; }
+    .dq-batch-detail { display: block; color: var(--ox-text-2); }
+    .dq-batch-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block: 6px; }
 
     .dq-history { display: flex; flex-direction: column; padding: 0 2px; }
     .dq-history-label { font-size: 12.5px; color: var(--ox-text-muted); padding: 4px 12px 2px; }
@@ -596,7 +603,7 @@
       },
       'gateway-action': {
         id: 'c4', urgency: 'high', agent_name: 'Mark', type: 'action', short_id: 'c4c4c4c4',
-        summary: 'send_email (gmail.send)',
+        summary: 'Send email',
         created_at: new Date(demoNow - 6 * 60 * 1000).toISOString(),
         context: { mission_id: 'm-42' },
         options: [],
@@ -2343,6 +2350,7 @@
     // no typed answer) can be approved together: one call per item, in order, each with its
     // own token and kind. Every item reports its own result; the batch never claims more.
     // There is no server-side undo for decisions, so none is offered.
+    var batchReview = null;
     var batchState = null; // { ids, results: { id: { status, text } }, running }
     if (fixtureState === 'batch-result') {
       actionStates.d2 = { phase: 'done', action: 'approve' };
@@ -2393,30 +2401,75 @@
       if (Object.prototype.hasOwnProperty.call(IN_ORGX_CODES, code)) return { status: 'orgx', text: decideInOrgxDetail(d) };
       return { status: 'failed', text: 'Not sent · ' + shortError(error, 'try again') };
     };
-    window.approveReady = async () => {
-      if (pendingDecisionId || (batchState && batchState.running)) return;
-      const items = pendingDecisions().filter(batchEligible);
+    var batchDraft = (d) => {
+      if (!batchEligible(d)) return null;
+      const draft = draftFor(d, 'approve');
+      if (draft.missing.length) return null;
+      const kind = draft.args.kind;
+      const effect = d.if_approved || (kind === 'action' ? 'Allows this action to run.'
+        : kind === 'approval' ? 'Lets the agent run continue.'
+        : kind === 'link' ? 'Links this work to the initiative.'
+        : 'Records your approval in OrgX.');
+      return {
+        id: d.id, title: d.headline || d.summary, summary: d.summary, effect,
+        actionLabel: choicesFor(d).approve.label, args: draft.args, token: getApprovalToken(d.id),
+      };
+    };
+    var readyBatch = () => pendingDecisions().map(batchDraft).filter(Boolean);
+    var unchangedBatchItem = (reviewed) => {
+      const current = batchDraft(getDecisionById(reviewed.id));
+      return current && current.token === reviewed.token && current.title === reviewed.title &&
+        current.summary === reviewed.summary && current.effect === reviewed.effect &&
+        current.actionLabel === reviewed.actionLabel && JSON.stringify(current.args) === JSON.stringify(reviewed.args);
+    };
+    var focusBatch = (selector) => document.querySelector(selector)?.focus();
+    var reviewReady = () => {
+      if (pendingDecisionId || batchState || batchReview) return;
+      const items = readyBatch();
       if (items.length < 2) return;
-      batchState = { ids: items.map((d) => d.id), results: {}, running: true };
+      batchReview = { items, stale: false };
+      render();
+      const heading = document.getElementById('dq-batch-review-title');
+      heading?.focus({ preventScroll: true });
+      heading?.scrollIntoView?.({ block: 'start', inline: 'nearest' });
+    };
+    var cancelBatchReview = () => {
+      batchReview = null;
+      render();
+      focusBatch('[data-action="approve-ready"]');
+    };
+    var approveReviewed = async () => {
+      if (pendingDecisionId || !batchReview || batchReview.stale) return;
+      const { items } = batchReview;
+      if (!items.every(unchangedBatchItem)) {
+        batchReview.stale = true;
+        render();
+        focusBatch('[data-action="batch-cancel"]');
+        return;
+      }
+      batchReview = null;
+      batchState = { ids: items.map((item) => item.id), labels: Object.fromEntries(items.map(item => [item.id, item.title])), results: {}, running: true };
       pendingDecisionId = '__batch__';
       setPageButtonsDisabled(true);
       render();
-      for (const d of items) {
+      for (const item of items) {
+        const d = getDecisionById(item.id) || { id: item.id };
         if (chatCannotDecide) {
           // An earlier item already showed the decide tool isn't there; don't call it again.
           batchState.results[d.id] = batchResultFor(d, { code: 'tool_unavailable' });
           continue;
         }
+        if (!unchangedBatchItem(item)) {
+          batchState.results[d.id] = { status: 'changed', text: 'Changed since you opened it' };
+          continue;
+        }
         batchState.results[d.id] = { status: 'sending', text: 'Approving' };
-        const draft = draftFor(d, 'approve');
         setPhase(d.id, { phase: 'sending', action: 'approve' });
         render();
         try {
-          const token = getApprovalToken(d.id);
-          if (!token) throw Object.assign(new Error('This decision has to be made in OrgX.'), { code: 'decide_in_orgx' });
-          await callTool('orgx_widget_decide', { decision_id: d.id, action: 'approve', ...draft.args, approval_token: token });
+          await callTool('orgx_widget_decide', { decision_id: d.id, action: 'approve', ...item.args, approval_token: item.token });
           batchState.results[d.id] = { status: 'settled', text: pastTense(d, 'approve') + ' by you' };
-          if (draft.args.kind === 'decision') void watchDecision(d.id, 'approve');
+          if (item.args.kind === 'decision') void watchDecision(d.id, 'approve');
           else setPhase(d.id, { phase: 'done', action: 'approve' });
         } catch (error) {
           delete actionStates[d.id];
@@ -2459,7 +2512,7 @@
           const d = getDecisionById(id);
           const result = batchState.results[id] || { status: 'sending', text: 'Waiting its turn' };
           const row = BATCH_ROW[result.status] || BATCH_ROW.sending;
-          const summary = d ? d.headline || d.summary : 'Decision';
+          const summary = batchState.labels?.[id] || (d ? d.headline || d.summary : 'Decision');
           return `<ox-receipt-row status="${row.status}" label="${escapeHtml(summary)}" detail="${escapeHtml(result.text || '')}" value="${row.value}"${d ? ` href="${escapeHtml(buildDecisionSurfaceUrl(d))}"` : ''}></ox-receipt-row>`;
         }).join('');
         return `<section class="dq-batch is-result" aria-label="Approved together" aria-busy="${batchState.running ? 'true' : 'false'}">
@@ -2467,11 +2520,28 @@
           <div role="list">${rows}</div>
         </section>`;
       }
-      const ready = pendingDecisions().filter(batchEligible);
+      if (batchReview) {
+        const count = batchReview.items.length;
+        const list = batchReview.items.map(item =>
+          `<li><strong>${escapeHtml(item.title)}</strong>
+            <span class="dq-batch-detail">${escapeHtml(item.actionLabel)} · ${escapeHtml(item.effect)}</span>
+            ${item.args.reason ? `<span class="dq-batch-detail">Your reason · ${escapeHtml(item.args.reason)}</span>` : ''}</li>`
+        ).join('');
+        return `<section class="dq-batch is-review" aria-labelledby="dq-batch-review-title">
+          <h3 id="dq-batch-review-title" class="dq-batch-copy" tabindex="-1">Review ${count} approvals</h3>
+          ${batchReview.stale ? '<p class="dq-batch-copy" role="status">This selection changed. Review the current decisions to continue.</p>' : ''}
+          <ol class="dq-batch-list">${list}</ol>
+          <div class="dq-batch-controls">
+            ${batchReview.stale ? '' : `<button type="button" class="dq-text-btn dq-batch-btn page-btn" data-action="batch-confirm">Approve ${count}</button>`}
+            <button type="button" class="dq-text-btn" data-action="batch-cancel">${batchReview.stale ? 'Back to the queue' : 'Cancel'}</button>
+          </div>
+        </section>`;
+      }
+      const ready = readyBatch();
       if (ready.length < 2) return '';
       return `<div class="dq-batch">
         <span class="dq-batch-copy">${ready.length} need only your approval</span>
-        <button type="button" class="dq-text-btn dq-batch-btn page-btn" data-action="approve-ready">Approve ${ready.length} ready</button>
+        <button type="button" class="dq-text-btn dq-batch-btn page-btn" data-action="approve-ready">Review ${ready.length} approvals</button>
       </div>`;
     };
     document.getElementById('content').addEventListener('click', (event) => {
@@ -2492,10 +2562,16 @@
       toggle.setAttribute('aria-expanded', String(openDetails[id]));
     });
     document.getElementById('content').addEventListener('click', (event) => {
-      const button = event.target && event.target.closest ? event.target.closest('[data-action="approve-ready"], [data-action="batch-dismiss"]') : null;
+      const button = event.target && event.target.closest ? event.target.closest('[data-action="approve-ready"], [data-action="batch-confirm"], [data-action="batch-cancel"], [data-action="batch-dismiss"]') : null;
       if (!button || button.disabled) return;
-      if (button.getAttribute('data-action') === 'approve-ready') { void window.approveReady(); return; }
-      if (batchState && !batchState.running) { batchState = null; render(); }
+      switch (button.getAttribute('data-action')) {
+        case 'approve-ready': reviewReady(); break;
+        case 'batch-confirm': void approveReviewed(); break;
+        case 'batch-cancel': cancelBatchReview(); break;
+        case 'batch-dismiss':
+          if (batchState && !batchState.running) { batchState = null; render(); }
+          break;
+      }
     });
 
     /* ---------------------------------------------------------------- render -- */
@@ -2914,7 +2990,7 @@
       pageDirection = 'forward';
 
       const cardsHtml = paginated.map((d) => `
-        <div class="decision-card urgency-${escapeHtml(d.urgency)}">
+        <div class="decision-card urgency-${escapeHtml(d.urgency)}"${batchReview ? ' inert' : ''}>
           <article class="ox-card ox-surface" data-card-for="${escapeHtml(d.id)}" data-edge="${edgeFor(d)}" aria-label="Decision: ${escapeHtml(d.headline || d.summary)}">
             ${attentionHtml(pending.length, oldestAge(pending), '')}
             ${decisionBodyHtml(d)}
@@ -2925,7 +3001,12 @@
     };
 
     document.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape' || !rejectComposerId || pendingDecisionId) return;
+      if (event.key !== 'Escape' || pendingDecisionId) return;
+      if (batchReview) {
+        cancelBatchReview();
+        return;
+      }
+      if (!rejectComposerId) return;
       const decisionId = rejectComposerId;
       rejectComposerId = null;
       scheduleDecisionStatePersistence();

@@ -1189,12 +1189,20 @@
     };
 
     var quoted = (text) => text ? '<b>“' + escapeHtml(text) + '”</b>' : '';
+    // A code, raw provider JSON, request id or database message is never shown
+    // as the reason; the server should already have replaced it, so this is the
+    // last guard. With no reason, the card says the failure in its own words.
+    var RAW_ERROR = /^[a-z]+(?:_[a-z0-9]+)+$|\{\s*"|\brequest_id\b|\breq_[A-Za-z0-9]{8,}|\(status=\d{3}\)|PGRST\d+|\brelation "|\bcolumn "|syntax error at|permission denied for|duplicate key value|Database (?:client )?not (?:configured|available)|fetch failed|^\w*Error:/i;
+    var legibleErrorMessage = (text) => {
+      var message = typeof text === 'string' ? text.trim() : '';
+      return message && !RAW_ERROR.test(message) ? message : '';
+    };
 
     var render = () => {
       if(isLoading) return;
       if(data && (data.error || data.ok === false)) {
         window.OrgXWidgetRuntime.reportSearchWidgetEvent('tool_error');
-        var errorMessage = window.OrgXWidgetRuntime.getErrorMessage(data.error || data, 'Organizational memory is temporarily unavailable.');
+        var errorMessage = legibleErrorMessage(window.OrgXWidgetRuntime.getErrorMessage(data.error || data, ''));
         injectHtml(unavailable(errorMessage));
         return;
       }

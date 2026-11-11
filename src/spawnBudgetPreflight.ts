@@ -263,3 +263,25 @@ function spawnGateRemedyFacts(decision: Record<string, unknown>): Record<string,
     ...(typeof retryAfter === 'number' && Number.isFinite(retryAfter) ? { retry_after_seconds: retryAfter } : {}),
   };
 }
+
+const APP_SPAWN_BLOCK_CODES = new Set(['budget_cap_exceeded', 'cost_estimate_unavailable', 'budget_gate_blocked']);
+
+/**
+ * OrgX prices and gates spawn_agent_task itself (fail-closed cap, cheaper-tier
+ * downgrade, approval hold) and returns a typed block in `data.code`. Carry
+ * that type to the client instead of re-deciding it here.
+ */
+export function appSpawnBlock(
+  result: Record<string, unknown>
+): { message: string; options: { code: string; status: number; details: Record<string, unknown> } } | null {
+  if (result.ok !== false) return null;
+  const data = result.data && typeof result.data === 'object' && !Array.isArray(result.data)
+    ? (result.data as Record<string, unknown>)
+    : null;
+  const code = typeof data?.code === 'string' ? data.code : null;
+  if (!code || !APP_SPAWN_BLOCK_CODES.has(code)) return null;
+  return {
+    message: typeof result.error === 'string' ? result.error : 'OrgX blocked this dispatch on budget.',
+    options: { code, status: code === 'budget_cap_exceeded' ? 402 : 424, details: data! },
+  };
+}
