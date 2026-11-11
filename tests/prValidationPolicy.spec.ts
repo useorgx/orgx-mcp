@@ -9,7 +9,7 @@ type Scope = { github: { event_name: string; ref_type: string }; inputs: Record<
 const workflow = load(readFileSync(new URL('../.github/workflows/deploy.yml', import.meta.url), 'utf8')) as Yaml;
 const composite = load(readFileSync(new URL('../.github/actions/validate/action.yml', import.meta.url), 'utf8')) as Yaml;
 const COMPOSITE = './.github/actions/validate';
-const CHECKOUT = 'actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803';
+const CHECKOUT = 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1';
 const PNPM = 'pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320';
 const NODE = 'actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38';
 
