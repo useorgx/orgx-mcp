@@ -40,7 +40,8 @@ const payload = (overrides: Record<string, unknown> = {}, proof: Record<string, 
 });
 
 async function mount(data: unknown) {
-  const { mountWidget } = await import('./fixtures/live');
+  const { mountWidget, readSharedScript } = await import('./fixtures/live');
+  window.eval(readSharedScript('markdown.js'));
   mountWidget('proof-receipt', { payload: data });
   const openExternal = vi.fn();
   (window as unknown as { openai: Record<string, unknown> }).openai.openExternal = openExternal;
@@ -73,6 +74,20 @@ describe('proof receipt widget', () => {
     expect(rows[2]!.getAttribute('value')).toBe('812 ms');
     expect(text('.next')).toContain('Checkout completes in under a second.');
     expect(document.body.textContent).not.toContain('Next:');
+  });
+
+  it('renders Markdown in the summary and keeps untrusted HTML inert', async () => {
+    await mount(payload({ summary: '**Checkout verified.**\n\n- Evidence linked\n- [Unsafe](javascript:alert)\n- <img src=x onerror=alert(1)>' }));
+    expect(text('.claim strong')).toBe('Checkout verified.');
+    expect(document.querySelectorAll('.claim li')).toHaveLength(3);
+    expect(document.querySelector('.claim img, .claim a')).toBeNull();
+    expect(text('.claim')).toContain('<img src=x onerror=alert(1)>');
+  });
+
+  it('keeps absent promotion coverage distinct from a verified zero-gap result', async () => {
+    await mount(payload({ loop_validation: undefined }));
+    expect(text('.pk-q')).toBe('Verified. Proof eligibility has not been confirmed.');
+    expect(rail()).toEqual(['ok', 'ok', 'ok', '', '']);
   });
 
   it('keeps a producer verification claim separate from verification and human acceptance', async () => {
