@@ -213,6 +213,16 @@ describe('search delivery through the real ChatGPT widget', () => {
     expect(text()).toContain('Search backend timed out');
     expect(text()).not.toContain('Launch plan');
   });
+  it('never shows a raw code, provider JSON or database message as the failure', async () => {
+    for (const raw of ['vector_search_failed', 'relation "public.memory_chunks" does not exist', '{"type":"error","request_id":"req_011Cf7pMT843cbh1sJJG2PXq"}']) {
+      boot({ structuredContent: { ok: false, error: { code: 'upstream_unavailable', message: raw } } }, { 'orgx/searchPayload': payload });
+      await vi.advanceTimersByTimeAsync(250);
+      expect(text()).not.toContain(raw);
+      expect(text()).not.toContain('upstream_unavailable');
+      expect(text()).toContain('Search unavailable');
+      expect(text()).not.toContain('Reason:');
+    }
+  });
   it('accepts empty search results and recommendation/history responses containing query', async () => {
     boot({ query: 'launch', results: [] });
     await vi.advanceTimersByTimeAsync(250);
