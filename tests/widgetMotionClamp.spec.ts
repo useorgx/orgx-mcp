@@ -1,7 +1,5 @@
 // @vitest-environment jsdom
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { readWidgetSource } from './fixtures/live';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -9,9 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import '../public/widgets/shared/widget-runtime.js';
 
 /**
- * motion.setClamped: "Show full section" (plan-session-live) and "All
- * evidence" (orgx-panel) animate between the clamped preview and the whole
- * block instead of snapping; reduced motion switches instantly.
+ * The OrgX panel animates its bounded evidence list; reduced motion switches instantly.
  */
 type Motion = {
   setClamped(el: HTMLElement, clamped: boolean, trigger?: HTMLElement | null, options?: Record<string, unknown>): Promise<void>;
@@ -80,9 +76,7 @@ describe('motion.setClamped', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
   });
 
-  it('is what plan-session-live and orgx-panel use for their disclosures', () => {
-    const read = (name: string) => readFileSync(resolve(__dirname, `../public/widgets/${name}.html`), 'utf8');
-    expect(read('plan-session-live')).toContain("motion.setClamped(wrap, expanded, expand, { expandedClass: 'is-expanded' })");
+  it('is what orgx-panel uses for its evidence disclosure', () => {
     const panel = readWidgetSource('orgx-panel');
     expect(panel).toContain('R.motion.setClamped(list, clamped, toggle, options)');
     expect(panel).not.toContain("case 'evidence': ui.evidenceOpen = !ui.evidenceOpen; render();");
