@@ -71,8 +71,8 @@
   "widgets": {
     "agent-status": {
       "file": "public/widgets/agent-status.html",
-      "bytes": 79980,
-      "hash": "16aae534a649",
+      "bytes": 80062,
+      "hash": "6b3e1be2b51a",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",

@@ -330,10 +330,15 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     project('orgx_recommend', ['entity_type', 'entity_id', 'initiative_id', 'workspace_id', 'limit', 'session_id']), { fixedArgs: { mode: 'next_action' } }),
   operation('orgx_get_agent_status', 'get_agent_status', 'Read OrgX Agent Status',
     'Read active and optionally idle agents in the workspace or initiative. Successful calls record metered MCP allowance usage without changing work records.',
-    project('get_agent_status', ['agent_id', 'workspace_id', 'initiative_id', 'include_idle']), { executionKind: 'chatgpt' }),
+    project('get_agent_status', ['agent_id', 'workspace_id', 'initiative_id', 'include_idle', 'view'], {
+      view: z.enum(['overview', 'full']).default('overview').describe('Overview uses compact artifact heads. Full includes artifact details.'),
+    }), { executionKind: 'chatgpt' }),
   operation('orgx_get_initiative_progress', 'get_initiative_pulse', 'Read OrgX Initiative Progress',
     'Read hierarchy progress, health, blockers, and review gates for one initiative. Successful calls record metered MCP allowance usage without changing work records.',
-    project('get_initiative_pulse', ['initiative_id'], { initiative_id: id.describe('Initiative UUID.') }), { executionKind: 'chatgpt' }),
+    project('get_initiative_pulse', ['initiative_id', 'view'], {
+      initiative_id: id.describe('Initiative UUID.'),
+      view: z.enum(['overview', 'full']).default('overview').describe('Overview uses compact artifact heads. Full includes artifact details.'),
+    }), { executionKind: 'chatgpt' }),
   operation('orgx_get_operation_status', 'orgx_command_status', 'Read OrgX Operation Status',
     'Read a durable work command, run, or decision. Prefer operation_id returned by a prior operation; compatibility callers can supply kind and id together. Never starts or settles work.',
     { operation_id: id.optional(), kind: z.enum(['decision', 'run', 'command']).optional(), id: z.string().uuid().optional() }, {

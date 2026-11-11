@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-10T15:09:11.921Z",
-  "sourceHash": "239eead7ecd20517",
+  "generatedAt": "2026-11-11T06:15:28.968Z",
+  "sourceHash": "196f4d91a4a51a70",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -16228,6 +16228,15 @@
           "include_idle": {
             "type": "boolean",
             "description": "Include idle agents in the response"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "default": "overview",
+            "description": "Overview uses compact artifact heads. Full includes artifact details."
           }
         },
         "additionalProperties": false,
@@ -16279,6 +16288,15 @@
             "type": "string",
             "minLength": 1,
             "description": "Initiative UUID."
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "overview",
+              "full"
+            ],
+            "default": "overview",
+            "description": "Overview uses compact artifact heads. Full includes artifact details."
           }
         },
         "required": [

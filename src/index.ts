@@ -359,6 +359,8 @@ import {
 import {
   enrichAgentStatusWithArtifacts,
   enrichInitiativePulseWithArtifacts,
+  compactAgentReadout,
+  compactInitiativeReadout,
   enrichMorningBriefWithArtifacts,
 } from './widgetArtifactProof';
 import {
@@ -3754,7 +3756,10 @@ export class OrgXMcp extends McpAgent<
         // Use direct endpoints for high-traffic tools (lower latency)
         // Fall back to generic /api/tools/execute for others
         // Use resolvedToolId/expandedArgs from expandConsolidatedTool
-        const { endpoint, body } = this.getToolEndpoint(resolvedToolId, expandedArgs);
+        // View is an MCP projection, not a change to the upstream read.
+        const upstreamArgs = { ...expandedArgs };
+        if (toolId === 'get_agent_status' || toolId === 'get_initiative_pulse') delete upstreamArgs.view;
+        const { endpoint, body } = this.getToolEndpoint(resolvedToolId, upstreamArgs);
         if (WIDGET_APPROVAL_SOURCE_TOOLS.has(resolvedToolId) && isWidgetTool) {
           // Ask the app for widget approval tokens; they are lifted into the
           // widget-only result _meta below and never reach the model.
@@ -3918,6 +3923,10 @@ export class OrgXMcp extends McpAgent<
         if (toolId === 'get_agent_status') {
           data = normalizeAgentStatusPayload(data);
           message = String(data.message);
+          if (effectiveArgs.view === 'overview') data = compactAgentReadout(data);
+        }
+        if (toolId === 'get_initiative_pulse' && effectiveArgs.view === 'overview') {
+          data = compactInitiativeReadout(data);
         }
 
         this.maybeUpdateSessionInitiativeContext({
