@@ -363,6 +363,7 @@ export const WIDGET_OUTPUT_SCHEMAS = {
               .strict()
           ),
           evidence_total: z.number(),
+          detail: z.string().nullable().optional(),
           consequence_if_approved: z.string().nullable(),
           consequence_if_rejected: z.string().nullable(),
           consequence_if_deferred: z.string().nullable().optional(),

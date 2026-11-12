@@ -1286,13 +1286,15 @@
       var facts = [];
       var evidenceSlot = '';
       var head = splitHeadline(f.question);
-      var body = structureBody(head.body);
+      // The asker's own summary (why, the command) follows what the title left over.
+      var body = structureBody([head.body, f.detail].filter(Boolean).join('\n'));
       body.facts.forEach(function fact(x) {
         facts.push('<div class="fact"><dt>' + esc(x.k) + '</dt><dd>' + inline(x.v) + '</dd></div>');
       });
       if (f.recommendation && f.recommendation.action) {
         facts.push('<div class="fact"><dt>Recommendation</dt><dd>' + esc(f.recommendation.action) +
-          (f.recommendation.status === 'unverified' ? ' <span class="sub">(unverified)</span>' : '') + '</dd></div>');
+          // OrgX's own checks recommend by rule; "unverified" is about a model's receipt.
+          (f.recommendation.status === 'unverified' && f.asker_kind !== 'system' ? ' <span class="sub">(unverified)</span>' : '') + '</dd></div>');
       } else if (f.recommendation && kindOf(f) === 'decision') {
         // Said, quietly: no recommendation is information for a decision.
         facts.push('<div class="fact"><dt>Recommendation</dt><dd class="quiet">No recommendation yet</dd></div>');
@@ -1641,9 +1643,14 @@
      * here, not critical, not already settling. Anything that asks for a
      * choice, an answer or a read stays one at a time.
      */
+    /** Asks that cannot be taken back (a force push, a delete, a reset) are decided one at a time, never in a batch. */
+    var ONE_WAY_ASK_RE = /\b(force[- ]?push|--force\b|push -f\b|reset --hard|rm -rf|drop (table|database)|delete|destroy|wipe|purge|truncate|overwrite|irreversibl[ey]|destructive)\b/i;
+    function oneWayAsk(item) {
+      return ONE_WAY_ASK_RE.test([item.title, item.detail, item.consequence_if_approved].filter(Boolean).join(' '));
+    }
     function bulkEligible(s) {
       return s.queue.filter(function plain(item) {
-        return quickDecide(item) && Boolean(tokenFor(item.id)) && item.urgency !== 'critical' && !ui.rulings[item.id] &&
+        return quickDecide(item) && !oneWayAsk(item) && Boolean(tokenFor(item.id)) && item.urgency !== 'critical' && !ui.rulings[item.id] &&
           !(ui.bulkPending && ui.bulkPending.ids.indexOf(item.id) !== -1);
       });
     }
@@ -2557,6 +2564,10 @@
       }
       ui.snapshot = snapshot;
       ui.syncedAt = new Date(snapshot.generated_at);
+      // Data read in the last two minutes proves a connection. Some hosts'
+      // webviews report navigator.onLine === false while everything works,
+      // which left "You're offline" over a panel that had just loaded.
+      if (ui.offline && !isGallery && Date.now() - ui.syncedAt.getTime() < 120000) ui.offline = false;
       // The thread entrypoint: OrgX named the conversation this panel sits
       // beside, so open on this chat's view rather than the sidebar's. A
       // fullscreen panel is the sidebar (global) entrypoint and stays global.

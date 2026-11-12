@@ -20,6 +20,15 @@ describe('artifacts awaiting acceptance', () => {
     expect(list[0].url).toContain(id(2));
   });
 
+  it('leaves out blocker reports: a stopped run is not work to accept', () => {
+    const list = listAwaitingAcceptance([
+      { id: id(30), title: 'Sales run blocked — follow up', status: 'in_review', artifact_type: 'sales.structured_blocker' },
+      { id: id(31), title: 'Run stopped', status: 'in_review', artifact_type: 'document', metadata: { structured_blocker: true } },
+      { id: id(32), title: 'Follow-up email', status: 'in_review', artifact_type: 'document' },
+    ]);
+    expect(list.map((a) => a.title)).toEqual(['Follow-up email']);
+  });
+
   it('caps the list and tolerates an unreadable artifact source', () => {
     const many = Array.from({ length: 6 }, (_, i) => ({ id: id(i + 10), title: `A${i}`, status: 'in_review' }));
     expect(listAwaitingAcceptance(many)).toHaveLength(PANEL_AWAITING_LIMIT);

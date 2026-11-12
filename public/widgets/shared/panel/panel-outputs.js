@@ -82,20 +82,23 @@
     return [
       { name: 'Made', s: 'on', line: o.made_at ? ago(o.made_at) : 'Time not recorded' },
       { name: 'Accepted', s: accepted.s, line: accepted.line + (a.at && accepted.s === 'on' ? ' · ' + ago(a.at) : '') },
-      o.landed ? { name: 'Landed', s: 'on', line: o.landed.label + (o.landed.at ? ' · ' + ago(o.landed.at) : '') } : { name: 'Landed', s: 'off', line: 'Not recorded' },
-      o.moved ? { name: 'Moved', s: 'on', line: o.moved.label } : { name: 'Moved', s: 'off', line: 'Not recorded' },
+      o.landed ? { name: 'Shipped', s: 'on', line: o.landed.label + (o.landed.at ? ' · ' + ago(o.landed.at) : '') } : { name: 'Shipped', s: 'off', line: 'Not recorded' },
+      o.moved ? { name: 'Moved a goal', s: 'on', line: o.moved.label } : { name: 'Moved a goal', s: 'off', line: 'Not recorded' },
     ];
   }
   function stageWord(chain) {
     var at = 0;
     chain.forEach(function last(c, k) { if (c.s === 'on') at = k; });
-    var waiting = chain[1].s === 'wait' ? ', waiting on review' : chain[1].s === 'back' ? ', sent back' : '';
-    return chain[at].name + waiting;
+    // The row says the one thing that matters now, in words; the dots only repeat it.
+    if (chain[1].s === 'wait') return 'To review';
+    if (chain[1].s === 'back') return 'Sent back';
+    return chain[at].name;
   }
   function dotsHtml(o) {
     var chain = chainOf(o);
-    return '<span class="oc-dots" role="img" aria-label="' + esc(stageWord(chain)) + '" title="' + esc(stageWord(chain)) + '">' +
-      chain.map(function d(c) { return '<i data-s="' + c.s + '"></i>'; }).join('') + '</span>';
+    var tip = chain.map(function t(c) { return c.name + ': ' + c.line; }).join(' · ');
+    return '<span class="oc-stage" title="' + esc(tip) + '"><span class="oc-stage-w" data-s="' + chain[1].s + '">' + esc(stageWord(chain)) + '</span>' +
+      '<span class="oc-dots" aria-hidden="true">' + chain.map(function d(c) { return '<i data-s="' + c.s + '"></i>'; }).join('') + '</span></span>';
   }
 
   function rowHtml(o, on, idx) {
@@ -211,6 +214,8 @@
     var goal = idx ? opts.goal || 'all' : 'all';
     var list = filtered(data, { range: range, family: family, goal: goal, now: opts.now }, idx);
     var toReview = list.filter(function w(o) { return o.accepted && o.accepted.state === 'waiting'; });
+    // The tab counts everything that waits; say so when these filters hide some of it.
+    var hidden = (toReviewCount(data) || 0) - toReview.length;
     var goalItems = idx ? [{ label: 'All goals', action: 'out-goal', id: 'all', on: goal === 'all' }].concat(opts.goals.items.map(function g(x) {
       return { label: x.title, action: 'out-goal', id: x.id, on: goal === x.id, lead: levelIcon('goal') };
     })).concat(opts.goals.unlinked_total ? [{ label: 'No goal', action: 'out-goal', id: 'none', on: goal === 'none', lead: levelIcon('initiative') }] : []) : null;
@@ -226,7 +231,8 @@
     list.forEach(function n(o) { if (o.initiative_id) inits[o.initiative_id] = true; });
     var nInits = Object.keys(inits).length;
     var sum = '<p class="pn-done-sum"><b>' + count(list.length, 'output', 'outputs') + '</b>' + (nInits ? ' · ' + count(nInits, 'initiative', 'initiatives') : '') +
-      (toReview.length ? ' · <b>' + toReview.length + '</b> to review' : ' · nothing to review') + (data.total > data.items.length ? ' · newest ' + data.items.length + ' of ' + data.total + ' read' : '') + '</p>';
+      (toReview.length ? ' · <b>' + toReview.length + '</b> to review' : ' · nothing to review') + (data.total > data.items.length ? ' · newest ' + data.items.length + ' of ' + data.total + ' read' : '') +
+      (hidden > 0 ? ' · <button type="button" class="text-btn" data-action="out-clear">' + hidden + ' more to review outside this view</button>' : '') + '</p>';
     if (!list.length) {
       // The filters stay so they can be changed; the empty count line does not repeat the message.
       return open(scope + '<div class="pn-empty is-small"><h3 class="pn-empty-h">No outputs match these filters.</h3>' +
@@ -245,7 +251,7 @@
     rows += '</ul>';
     var overview = '<div class="md-card md-overview oc-overview" role="region" aria-label="Outputs overview"><p class="md-kicker">' + esc(RANGE_SHORT[range]) + '</p>' +
       '<h3 class="md-title">' + count(list.length, 'output', 'outputs') + '</h3>' +
-      '<ul class="oc-key" role="list">' + ['Made', 'Accepted', 'Landed', 'Moved'].map(function k(n, i) {
+      '<ul class="oc-key" role="list">' + ['Made', 'Accepted', 'Shipped', 'Moved a goal'].map(function k(n, i) {
         var c = list.filter(function on(o) { return chainOf(o)[i].s === 'on'; }).length;
         return '<li><i data-s="on" aria-hidden="true"></i><b>' + c + '</b> ' + n.toLowerCase() + '</li>';
       }).join('') + '</ul>' +
