@@ -12,7 +12,7 @@
  *   tour.start(); tour.refresh(); tour.active(); tour.practice(footerEl);
  *   OrgXPanelTour.seen() / .markSeen()
  *
- * Phone (under 760px): the card is a sheet on the side away from the
+ * Phone (under 700px): the card is a sheet on the side away from the
  * target, the target's own pane scrolls into the open area (never the
  * frame), swipe moves between steps, buttons stay 44px.
  */
@@ -117,7 +117,7 @@
     var root = opts.root;
     var state = { el: null, i: 0, done: {}, swipe: null, timer: 0 };
 
-    function narrow() { return (global.innerWidth || 0) < 760; }
+    function narrow() { return (global.innerWidth || 0) < 700; }
     /** How much of the view the host's own chrome covers (ChatGPT's title bar and composer on a phone). */
     function safe() {
       var H = global.OrgXPanelHost;

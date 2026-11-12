@@ -70,6 +70,7 @@
     });
   }
 
+  var OUT_PAGE = 12;
   /** Made → Accepted → Landed → Moved, each as OrgX recorded it. */
   function chainOf(o) {
     var a = o.accepted || { state: 'unknown' };
@@ -97,8 +98,10 @@
   function dotsHtml(o) {
     var chain = chainOf(o);
     var tip = chain.map(function t(c) { return c.name + ': ' + c.line; }).join(' · ');
-    return '<span class="oc-stage" title="' + esc(tip) + '"><span class="oc-stage-w" data-s="' + chain[1].s + '">' + esc(stageWord(chain)) + '</span>' +
-      '<span class="oc-dots" aria-hidden="true">' + chain.map(function d(c) { return '<i data-s="' + c.s + '"></i>'; }).join('') + '</span></span>';
+    // One word, with a mark whose shape says the same thing: the four-step trail lives in the detail.
+    var word = stageWord(chain);
+    var kind = chain[1].s === 'wait' ? 'wait' : chain[1].s === 'back' ? 'back' : word === 'Made' ? 'made' : 'on';
+    return '<span class="oc-stage" title="' + esc(tip) + '"><span class="oc-stage-w" data-s="' + chain[1].s + '" data-k="' + kind + '"><i class="oc-stage-i" aria-hidden="true"></i>' + esc(word) + '</span></span>';
   }
 
   function rowHtml(o, on, idx) {
@@ -238,8 +241,12 @@
       return open(scope + '<div class="pn-empty is-small"><h3 class="pn-empty-h">No outputs match these filters.</h3>' +
         '<button type="button" class="text-btn" data-action="out-clear">Clear filters</button></div>');
     }
-    var ordered = toReview.concat(list.filter(function rest(o) { return toReview.indexOf(o) === -1; }));
-    var sel = ordered.filter(function f(o) { return o.id === opts.sel; })[0] || null;
+    var every = toReview.concat(list.filter(function rest(o) { return toReview.indexOf(o) === -1; }));
+    var sel = every.filter(function f(o) { return o.id === opts.sel; })[0] || null;
+    // Everything to review always shows; the rest comes a page at a time.
+    var cap = Math.max(toReview.length, Math.max(1, opts.page || 1) * OUT_PAGE);
+    var ordered = every.slice(0, cap);
+    if (sel && ordered.indexOf(sel) === -1) ordered.push(sel);
     var group = null;
     var rows = '';
     ordered.forEach(function each(o) {
@@ -249,12 +256,16 @@
       rows += rowHtml(o, Boolean(sel && sel.id === o.id), idx);
     });
     rows += '</ul>';
+    if (every.length > ordered.length) rows += '<div class="gl-more-row"><button type="button" class="text-btn" data-action="out-more">Show ' + Math.min(OUT_PAGE, every.length - ordered.length) + ' more</button><span class="gl-more-n">' + ordered.length + ' of ' + every.length + ' shown</span></div>';
+    var tally = ['Made', 'Accepted', 'Shipped', 'Moved a goal'].map(function k(n, i) { return [n, list.filter(function on(o) { return chainOf(o)[i].s === 'on'; }).length]; });
+    var after = tally.slice(1).filter(function some(t) { return t[1] > 0; });
     var overview = '<div class="md-card md-overview oc-overview" role="region" aria-label="Outputs overview"><p class="md-kicker">' + esc(RANGE_SHORT[range]) + '</p>' +
       '<h3 class="md-title">' + count(list.length, 'output', 'outputs') + '</h3>' +
-      '<ul class="oc-key" role="list">' + ['Made', 'Accepted', 'Shipped', 'Moved a goal'].map(function k(n, i) {
-        var c = list.filter(function on(o) { return chainOf(o)[i].s === 'on'; }).length;
-        return '<li><i data-s="on" aria-hidden="true"></i><b>' + c + '</b> ' + n.toLowerCase() + '</li>';
-      }).join('') + '</ul>' +
+      // Only what happened is counted; a row of zeros says less than one sentence.
+      (after.length
+        ? '<ul class="oc-key" role="list">' + after.map(function k(t) { return '<li><b>' + t[1] + '</b> ' + t[0].toLowerCase() + '</li>'; }).join('') + '</ul>'
+        : '<p class="md-text oc-none">None accepted, shipped or tied to a goal yet.</p>') +
+      (toReview.length ? '<p class="md-text"><b>' + toReview.length + '</b> ' + (toReview.length === 1 ? 'waits' : 'wait') + ' on your review, at the top of the list.</p>' : '') +
       '<p class="md-text">Select an output to see what it is, how it checked out, and what it moved.</p></div>';
     return open(scope + sum + '<div class="pn-md is-push' + (sel ? ' has-sel' : '') + '"><div class="pn-md-list">' + rows + '</div>' +
       '<aside class="pn-md-detail">' + (sel ? detailHtml(sel, opts, idx) : overview) + '</aside></div>', phase === 'loading');
