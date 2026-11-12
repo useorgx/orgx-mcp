@@ -1682,6 +1682,11 @@ button.crumb:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); col
 .oc-t { font-size: 13.5px; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .oc-m { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 12px; color: var(--ox-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .oc-dots { display: inline-flex; gap: 3px; padding: 0 2px; }
+.oc-stage { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.oc-stage-w { font-size: 11.5px; line-height: 1; color: var(--ox-text-muted); white-space: nowrap; }
+.oc-stage-w[data-s="wait"], .oc-stage-w[data-s="back"] { color: var(--ox-text); font-weight: 650; }
+/* Sent back is a square, so it does not rest on colour alone. */
+.oc-dots i[data-s="back"] { border-radius: 1px; }
 .oc-dots i, .oc-key i { display: block; width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1.3px var(--ox-border-strong); }
 .oc-dots i[data-s="on"], .oc-key i[data-s="on"] { background: var(--ox-teal); box-shadow: none; }
 .oc-dots i[data-s="wait"] { background: var(--ox-warning); box-shadow: none; }

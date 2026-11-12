@@ -59,6 +59,7 @@ import {
   buildPanelGoals,
   buildPanelGoalsWithReasons,
   buildPanelOutputs,
+  isBlockerReport,
   goalsFailure,
   PANEL_PREVIEW_META_KEY,
   PANEL_GOAL_REASONS_META_KEY,
@@ -363,6 +364,12 @@ export interface PanelFocus {
   kind: PanelItemKind;
   version: string;
   question: string;
+  /**
+   * The asker's own summary when the question (its title) does not already
+   * say it: why it is asking, the command it wants to run. Null when the
+   * question is the whole ask.
+   */
+  detail?: string | null;
   urgency: PanelUrgency;
   waiting_since: string | null;
   initiative_id: string | null;
@@ -613,6 +620,7 @@ interface NormalizedDecision {
   version: string;
   title: string;
   question: string;
+  detail: string | null;
   urgency: PanelUrgency;
   createdAt: string | null;
   initiativeId: string | null;
@@ -1032,6 +1040,11 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
   const runId = str(context.run_id);
   const asker = panelAsker(record, current);
   const question = str(packet?.question) ?? summary;
+  // The packet's question is the asker's title; its summary is the reason and
+  // the command. Kept beside the question unless the question already says it.
+  const ownSummary = str(record.summary);
+  const flat = (text: string) => text.replace(/\s+/g, ' ').trim().toLowerCase();
+  const detail = ownSummary && !flat(question).includes(flat(ownSummary)) ? ownSummary : null;
   const metadata = asRecord(record.metadata) ?? {};
   const cleanInitiative = initiativeId && UUID_RE.test(initiativeId) ? initiativeId : null;
   const initiativeTitle = clipText(initiativeRef?.label, PANEL_TITLE_MAX);
@@ -1043,13 +1056,15 @@ function normalizeDecision(input: unknown): NormalizedDecision | null {
     artifactId: artifactId && UUID_RE.test(artifactId) ? artifactId : null,
     artifactType: artifactId && UUID_RE.test(artifactId) ? artifactType : null,
     asker,
-    askerKind: askerKindOf(record, asker, question),
-    sessionLabel: clipText(/\bin an? ([\w.-]{2,40}) session\b/i.exec(question)?.[1], 40)?.concat(' session') ?? null,
+    askerKind: askerKindOf(record, asker, `${question} ${detail ?? ''}`),
+    sessionLabel:
+      clipText(/\bin an? ([\w.-]{2,40}) session\b/i.exec(`${question} ${detail ?? ''}`)?.[1], 40)?.concat(' session') ?? null,
     policyKey: str(context.policy_key),
     id,
     version: str(packet?.updatedAt) ?? str(record.updated_at) ?? createdAt ?? id,
     title: summary,
     question,
+    detail,
     urgency: normalizeUrgency(record.urgency),
     createdAt,
     initiativeId: cleanInitiative,
@@ -1177,6 +1192,7 @@ function toFocus(decision: NormalizedDecision): PanelFocus {
     kind: decision.kind,
     version: decision.version,
     question: clipText(decision.question, PANEL_QUESTION_MAX) ?? 'Decision',
+    detail: clipText(decision.detail, PANEL_QUESTION_MAX),
     urgency: decision.urgency,
     waiting_since: decision.createdAt,
     initiative_id: decision.initiativeId,
@@ -1386,6 +1402,7 @@ export function listAwaitingAcceptance(records: unknown[] | null): PanelAwaiting
     const status = normalized.status.toLowerCase();
     if (status !== 'in_review' && status !== 'eval_passed') continue;
     if (typeof record.superseded_by === 'string' && record.superseded_by) continue;
+    if (isBlockerReport(normalized.artifact_type, normalized.metadata ?? record.metadata)) continue;
     out.push({
       artifact_id: id,
       title: clipText(normalized.title, PANEL_TITLE_MAX) ?? 'Untitled artifact',
