@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-12T19:05:00.001Z",
-  "sourceHash": "92f37340d821da61",
+  "generatedAt": "2026-11-12T21:20:42.350Z",
+  "sourceHash": "33b3141b44811d35",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -18948,7 +18948,7 @@
     {
       "id": "orgx_update_work",
       "title": "Update OrgX Work Content",
-      "description": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. type workspace edits only name and description (owner only). type quality_bar takes the kind of work as id and fields.patches; edits save an open draft, and a person publishes from the returned review_path. Read current bars in orgx_get_workspace_context.",
+      "description": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. type workspace edits only name, description and facts (owner only). fields.facts records what every agent should know (keys offer, buyer, proof, voice, or your own): each is saved as derived, never as confirmed, and never replaces a fact a person confirmed. type quality_bar takes the kind of work as id and fields.patches; edits save an open draft, and a person publishes from the returned review_path. Read current bars in orgx_get_workspace_context.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -19308,6 +19308,40 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "facts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9_]{1,47}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 320
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "source": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 12
                   }
                 },
                 "additionalProperties": false

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { executeProfileWorkUpdate, PROFILE_WORK_RETRY_CONTRACT } from '../src/profileWorkUpdate';
+import { executeProfileWorkUpdate, PROFILE_WORK_RETRY_CONTRACT, validateProfileWorkUpdate } from '../src/profileWorkUpdate';
 import { getWorkflowToolContract } from '../src/workflowTools';
 import { CANONICAL_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas/canonical';
 
@@ -30,6 +30,19 @@ describe('quality bar drafts and workspace profile through update work', () => {
     expect(result.data).toMatchObject({ id: ID, description: null });
     expect(result.idempotent_replay).toBe(true);
     expect(CANONICAL_OUTPUT_SCHEMAS.orgx_write.safeParse(result).success).toBe(true);
+  });
+
+  it('writes workspace facts and says which were saved and which a person had already confirmed', async () => {
+    const facts = [{ key: 'offer', text: 'Checked agent work', source: 'artifact:homepage' }, { key: 'buyer', text: 'Everyone' }];
+    const request = vi.fn().mockResolvedValue({ data: { workspace: { id: ID, name: 'OrgX', description: null }, facts: { written: ['offer'], skipped_confirmed: ['buyer'] }, ...retry, idempotent_replay: false } });
+    const result = await executeProfileWorkUpdate(args({ type: 'workspace', id: ID, fields: { facts } }), request);
+    expect(JSON.parse(request.mock.calls[0]?.[1].body)).toMatchObject({ facts, workspace_id: ID });
+    expect(result.data).toMatchObject({ facts: { written: ['offer'], skipped_confirmed: ['buyer'] } });
+    expect(result.message).toContain('1 fact(s) saved as derived');
+    expect(result.message).toContain('buyer');
+    expect(CANONICAL_OUTPUT_SCHEMAS.orgx_write.safeParse(result).success).toBe(true);
+    for (const bad of [{ facts: [] }, { facts: [{ key: 'offer', text: 'x', readiness: 'known' }] }, { facts: [{ key: 'Bad Key', text: 'x' }] }, { facts: [{ key: 'offer', text: 'x'.repeat(321) }] }])
+      expect(() => validateProfileWorkUpdate({ type: 'workspace', id: ID, fields: bad })).toThrow();
   });
 
   it('rejects publication, cross-type patches and non-content workspace fields before a request', () => {
