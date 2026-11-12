@@ -918,7 +918,9 @@
       if (ui.offline && ui.snapshot) {
         parts.push('<div class="notice is-offline" data-tone="amber" role="status"><p><strong>You’re offline.</strong> Showing what loaded' + (ui.syncedAt ? ' at ' + esc(clock(ui.syncedAt)) : ' last') + '. It refreshes when you’re back.</p></div>');
       }
-      if (ui.readState.phase === 'failed' && ui.snapshot) {
+      // On Needs you the decision's own footer already says the refresh failed; one notice, not two.
+      var footerSaysIt = ui.tab === 'needs' && ui.mode === 'global' && ui.snapshot && ui.snapshot.focus && !ui.rulings[ui.snapshot.focus.id];
+      if (ui.readState.phase === 'failed' && ui.snapshot && !footerSaysIt) {
         parts.push('<div class="notice" data-tone="amber" role="status"><p>Showing the snapshot from ' + esc(clock(ui.syncedAt)) +
           '. The latest snapshot could not be loaded.</p><button type="button" class="text-btn" data-action="refresh">Refresh</button></div>');
       }
@@ -1241,7 +1243,8 @@
     function askerAvatar(kind, name, size) {
       if (kind === 'floor') return '<span class="ax ax-floor ax-' + size + '" title="Stopped by the OrgX floor">' + GLYPH.floor + '</span>';
       if (kind === 'unnamed') return '<span class="ax ax-agent ax-' + size + '" title="An agent (not named)">' + GLYPH.agent + '</span>';
-      return Views ? Views.avatar(kind === 'agent' ? name || '' : '', size) : '';
+      // A named asker with no recorded kind is still shown as who they are, never as the OrgX mark.
+      return Views ? Views.avatar(kind === 'agent' || (!kind && name) ? name || '' : '', size) : '';
     }
     function askerPhrase(f) {
       if (f.asker_kind === 'floor') return 'Stopped by the OrgX floor' + (f.session_label ? ' · ' + f.session_label : '');
@@ -1282,17 +1285,20 @@
       var askerAvatarHtml = '<span class="pn-asker" aria-hidden="true">' + askerAvatar(f.asker_kind, f.asker, 'inline') + '</span>';
       var error = ui.actionError && ui.actionError.id === f.id ? actionErrorHtml() : '';
       var changed = ui.changedSince
-        ? '<div class="notice" role="status"><p>Changed since ' + esc(ui.changedSince) + '</p></div>' : '';
+        ? '<div class="notice" role="status"><p>This decision changed after ' + esc(ui.changedSince) + '. You are reading the new version.</p>' +
+          '<button type="button" class="text-btn" data-action="dismiss-changed">Dismiss</button></div>' : '';
       var facts = [];
       var evidenceSlot = '';
       var head = splitHeadline(f.question);
-      var body = structureBody(head.body);
+      // The asker's own summary (why, the command) follows what the title left over.
+      var body = structureBody([head.body, f.detail].filter(Boolean).join('\n'));
       body.facts.forEach(function fact(x) {
         facts.push('<div class="fact"><dt>' + esc(x.k) + '</dt><dd>' + inline(x.v) + '</dd></div>');
       });
       if (f.recommendation && f.recommendation.action) {
         facts.push('<div class="fact"><dt>Recommendation</dt><dd>' + esc(f.recommendation.action) +
-          (f.recommendation.status === 'unverified' ? ' <span class="sub">(unverified)</span>' : '') + '</dd></div>');
+          // OrgX's own checks recommend by rule; "unverified" is about a model's receipt.
+          (f.recommendation.status === 'unverified' && f.asker_kind !== 'system' ? ' <span class="sub">(unverified)</span>' : '') + '</dd></div>');
       } else if (f.recommendation && kindOf(f) === 'decision') {
         // Said, quietly: no recommendation is information for a decision.
         facts.push('<div class="fact"><dt>Recommendation</dt><dd class="quiet">No recommendation yet</dd></div>');
@@ -1641,9 +1647,14 @@
      * here, not critical, not already settling. Anything that asks for a
      * choice, an answer or a read stays one at a time.
      */
+    /** Asks that cannot be taken back (a force push, a delete, a reset) are decided one at a time, never in a batch. */
+    var ONE_WAY_ASK_RE = /\b(force[- ]?push|--force\b|push -f\b|reset --hard|rm -rf|drop (table|database)|delete|destroy|wipe|purge|truncate|overwrite|irreversibl[ey]|destructive)\b/i;
+    function oneWayAsk(item) {
+      return ONE_WAY_ASK_RE.test([item.title, item.detail, item.consequence_if_approved].filter(Boolean).join(' '));
+    }
     function bulkEligible(s) {
       return s.queue.filter(function plain(item) {
-        return quickDecide(item) && Boolean(tokenFor(item.id)) && item.urgency !== 'critical' && !ui.rulings[item.id] &&
+        return quickDecide(item) && !oneWayAsk(item) && Boolean(tokenFor(item.id)) && item.urgency !== 'critical' && !ui.rulings[item.id] &&
           !(ui.bulkPending && ui.bulkPending.ids.indexOf(item.id) !== -1);
       });
     }
@@ -2557,6 +2568,10 @@
       }
       ui.snapshot = snapshot;
       ui.syncedAt = new Date(snapshot.generated_at);
+      // Data read in the last two minutes proves a connection. Some hosts'
+      // webviews report navigator.onLine === false while everything works,
+      // which left "You're offline" over a panel that had just loaded.
+      if (ui.offline && !isGallery && Date.now() - ui.syncedAt.getTime() < 120000) ui.offline = false;
       // The thread entrypoint: OrgX named the conversation this panel sits
       // beside, so open on this chat's view rather than the sidebar's. A
       // fullscreen panel is the sidebar (global) entrypoint and stays global.
@@ -3056,6 +3071,7 @@
         case 'workspaces': transition('menu', function toggleWs() { if (ui.wsOpen) closeWorkspaces(true); else openWorkspaces(); }); break;
         case 'workspaces-retry': ui.workspaces = null; ui.wsPhase = 'idle'; openWorkspaces(); break;
         case 'switch-workspace': switchWorkspace(id); break;
+        case 'dismiss-changed': ui.changedSince = null; render(); break;
         case 'refresh':
           if (ui.auth) { ui.auth = null; ui.bootStage = 'reading'; }
           fetchSnapshot(ui.snapshot && ui.snapshot.selection.status === 'selected' && ui.snapshot.focus ? ui.snapshot.focus.id : null, 'refresh');

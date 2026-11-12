@@ -113,7 +113,7 @@
     push(c.met, 'met'); push(c.unmet, 'unmet'); push(c.unknown, 'unknown');
     var label = c.met + ' of ' + total + ' checks met' + (c.unmet ? ', ' + c.unmet + ' not met' : '') + (c.unknown ? ', ' + c.unknown + ' with no evidence' : '');
     return '<span class="rc-pips" role="img" aria-label="' + esc(label) + '">' + parts.join('') + '</span>' +
-      '<span class="rc-pn">' + c.met + '/' + total + '</span>';
+      '<span class="rc-pn">' + c.met + ' of ' + total + (total === 1 ? ' check' : ' checks') + '</span>';
   }
 
   function chip(pair) { return '<span class="rc-chip" data-tone="' + pair[1] + '">' + esc(pair[0]) + '</span>'; }
@@ -128,6 +128,7 @@
       var on = opts.sel === r.id;
       var meta = [r.actor, ago(r.at), r.entity_title || r.area].filter(Boolean).join(' · ');
       return '<li><button type="button" class="rc-row" data-action="work-receipt" data-id="' + esc(r.id) + '" aria-pressed="' + on + '">' +
+        (r.actor && global.OrgXPanelViews ? '<span class="rc-av">' + global.OrgXPanelViews.avatar(r.actor, 'row') + '</span>' : '') +
         '<span class="rc-main"><span class="rc-t">' + esc(r.summary) + '</span><span class="rc-m">' + esc(meta) + '</span></span>' +
         '<span class="rc-side">' + chip(outcomeOf(r)) + '<span class="rc-crit">' + pips(r.criteria, 8) + '</span></span></button></li>';
     }).join('');

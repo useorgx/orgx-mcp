@@ -198,7 +198,8 @@
       ? 'Marked in progress, but nothing has been reported for ' + (ago(item.updated_at) || 'a while') + '. It may be stalled.'
       : item.state === 'blocked' ? 'Waiting on something before it can continue.'
       : item.state === 'running' ? 'An agent is working on this now.'
-      : item.state === 'held' ? 'This task is held by its initiative or a prerequisite.'
+      // OrgX says what holds it and what releases it; the generic line only when it does not.
+      : item.state === 'held' ? (item.blocker || 'This task is held by its initiative or a prerequisite. Open it in OrgX to see which.')
       : item.state === 'planned' ? 'Saved work. Execution has not been queued.'
       : 'Execution has been queued.';
     var ask = 'In OrgX, what is ' + (item.state === 'blocked' || item.stale ? 'holding up' : 'the status of') + ' “' + item.title.slice(0, 120) + '”?';
@@ -480,7 +481,10 @@
       var w = workReceiptsBody(Object.assign({}, opts, { range: wrange }));
       if (w.empty) {
         return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
-          '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + wseg + '</div></div>' + w.body + '</section>';
+          '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + wseg + '</div></div>' + w.body +
+          // The tab counts what was decided here; with no finished work to show, point at those decisions.
+          ((opts.session || []).length ? '<p class="pn-done-sum dn-also"><b>' + count(opts.session.length, 'decision', 'decisions') + '</b> settled since you opened the panel · ' +
+            '<button type="button" class="text-btn" data-action="done-lens" data-id="decisions">Show them</button></p>' : '') + '</section>';
       }
       return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
         '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + wseg + '</div></div>' + (w.summary || '') +

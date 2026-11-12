@@ -1682,6 +1682,11 @@ button.crumb:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); col
 .oc-t { font-size: 13.5px; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .oc-m { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 12px; color: var(--ox-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .oc-dots { display: inline-flex; gap: 3px; padding: 0 2px; }
+.oc-stage { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.oc-stage-w { font-size: 11.5px; line-height: 1; color: var(--ox-text-muted); white-space: nowrap; }
+.oc-stage-w[data-s="wait"], .oc-stage-w[data-s="back"] { color: var(--ox-text); font-weight: 650; }
+/* Sent back is a square, so it does not rest on colour alone. */
+.oc-dots i[data-s="back"] { border-radius: 1px; }
 .oc-dots i, .oc-key i { display: block; width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1.3px var(--ox-border-strong); }
 .oc-dots i[data-s="on"], .oc-key i[data-s="on"] { background: var(--ox-teal); box-shadow: none; }
 .oc-dots i[data-s="wait"] { background: var(--ox-warning); box-shadow: none; }
@@ -1839,3 +1844,30 @@ html[data-platform="mobile"] .gl-init-t { min-height: 44px; margin: -8px 0; }
 
 .ag-n[data-s="planned"], .ov-bar i[data-s="planned"] { color: var(--ox-text-2); background: var(--ox-text-muted); opacity: .5; }
 .ag-n[data-s="held"], .ov-bar i[data-s="held"] { color: var(--ox-text-2); background: var(--ox-warning, #ba8c44); }
+
+/* Layout pass (2026-11-12): even rows, room used on wide panels, nothing clipped on phones. */
+.ev-item { align-items: center; min-height: 44px; padding: 0; }
+.ev-mark { margin-top: 0; }
+.rc-row:has(.rc-av) { grid-template-columns: auto minmax(0, 1fr) auto; }
+.rc-av { display: inline-flex; align-self: start; margin-top: 2px; }
+.rc-pn { white-space: nowrap; }
+/* Not met is a square, so it does not rest on colour alone. */
+.rc-pips i[data-s="met"] { border-radius: 50%; }
+.rc-pips i[data-s="unmet"] { border-radius: 0; }
+@container pn (min-width: 1000px) {
+  .pn-md { grid-template-columns: minmax(0, 1fr) minmax(360px, 42%); gap: 20px; }
+}
+@container pn (max-width: 520px) {
+  /* Two or three short asks wrap; a row that scrolls sideways hides the last one. */
+  .pn-asks { flex-wrap: wrap; overflow-x: visible; margin-inline: 0; padding-inline: 0; -webkit-mask-image: none; mask-image: none; }
+  .pn-tools { flex-wrap: nowrap; }
+  .pn-tools > .seg { flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .pn-tools > .seg::-webkit-scrollbar { display: none; }
+  .pn-tools > .pn-tokw { flex: none; margin-left: auto; }
+  .bulk-n { flex-basis: 100%; }
+  .bulk > button { flex: 1 1 0; }
+}
+@container pn (min-width: 760px) {
+  .pn-list .bulk-n { flex-basis: 100%; }
+  .pn-list .bulk > button { flex: 1 1 0; }
+}
