@@ -151,8 +151,8 @@
     },
     "decisions": {
       "file": "public/widgets/decisions.html",
-      "bytes": 177225,
-      "hash": "37e295f2bae1",
+      "bytes": 177589,
+      "hash": "9a2bb716771e",
       "primaryRgb": "191,255,0",
       "sharedRefs": [
         "shared/agent-identity.js",
@@ -241,8 +241,8 @@
     },
     "initiative-pulse": {
       "file": "public/widgets/initiative-pulse.html",
-      "bytes": 99048,
-      "hash": "e46b75ccbc73",
+      "bytes": 99235,
+      "hash": "744a56c62159",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/agent-identity.js",
