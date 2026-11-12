@@ -362,7 +362,6 @@
       "kitElements": [
         "ox-state-chip",
         "ox-attention-line",
-        "ox-receipt-row",
         "ox-footer",
         "ox-avatar"
       ],

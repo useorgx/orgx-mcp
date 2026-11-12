@@ -703,6 +703,33 @@
         default:
           break;
       }
+      // ?real=1: the shape of a large, messy workspace (long titles, a
+      // hundred unlinked initiatives, repeated quality bars, old acceptance).
+      if (params.get('real')) {
+        var longT = ['Sales run blocked — no prospect list source configured for the outbound agent', 'Gateway code-change proof for the delegated stream admission acknowledgement fix', 'AfroTech follow-up sequence, variant B with founder voice and three subject lines', 'Weekly operating review packet: runs, receipts, spend and open decisions'];
+        s.workspace = { id: IDS.ws, name: 'OrgX Business Operations Workspace' };
+        s.proof = {
+          last_accepted: { artifact_id: IDS.art, title: longT[1], accepted_at: isoAgo(75 * D), accepted_by: 'you', url: window.OrgXLinks.artifact(IDS.art) },
+          completed_unaccepted: 2656,
+        };
+        s.awaiting_acceptance = longT.slice(0, 3).map(function a(t, k) { return { artifact_id: 'aw-' + k, title: t }; });
+        if (ui.goals && ui.goals.status === 'ok' && ui.goals.items.length) {
+          ui.goals.items[1] = Object.assign({}, ui.goals.items[1], { current: null, target: null, history: [], moves: [], due: null });
+          ui.goals.unlinked = []; 
+          for (var ri = 0; ri < 135; ri += 1) ui.goals.unlinked.push({ id: 'ul-' + ri, title: longT[ri % 4] + ' ' + (ri + 1), status: 'active', risk: null, milestones_total: ri % 3 ? 4 : 0, milestones_done: ri % 3, url: window.OrgXLinks.initiative('ul-' + ri) });
+          ui.goals.unlinked_total = 135;
+          ui.goals.quality_bars = [0, 1, 2, 3].map(function qb(k) { return { id: 'qb-' + k, name: 'Gateway code-change proof', domain: 'engineering', criteria: 4, version: 1, updated_at: isoAgo(k * D) }; }).concat([{ id: 'qb-x', name: 'Launch post', domain: 'marketing', criteria: 4, version: 2, updated_at: isoAgo(9 * D) }]);
+        }
+        if (ui.outputs && ui.outputs.status === 'ok') {
+          var makers = ['Codex', 'ChatGPT', 'claude-code', null, 'Eli'];
+          var base = ui.outputs.items.slice();
+          ui.outputs.items = []; 
+          for (var ro = 0; ro < 15; ro += 1) ui.outputs.items.push(Object.assign({}, base[ro % base.length], { id: 'ro-' + ro, title: longT[ro % 4], made_by: makers[ro % 5], accepted: { state: 'not_reviewed', at: null, by: null }, landed: null, moved: null, decision_id: null }));
+          ui.outputs.total = 15;
+          ui.outSel = null;
+        }
+        if (ui.tab === 'done' && params.get('lens') === 'decisions') { ui.doneLens = 'decisions'; ui.doneRange = '7d'; ui.history['7d'] = galleryHistory('7d'); }
+      }
       // Thread-mode brief: ?mode=thread&brief=populated|empty|degraded|long.
       if (params.get('mode') === 'thread') ui.mode = 'thread';
       var briefState = params.get('brief');

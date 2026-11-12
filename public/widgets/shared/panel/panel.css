@@ -410,7 +410,7 @@
 .pn-detail { grid-area: detail; min-width: 0; }
 .pn-list { grid-area: list; min-width: 0; }
 .queue-n { margin-left: 4px; font-weight: 600; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
-@container pn (min-width: 760px) {
+@container pn (min-width: 700px) {
   /* Views without the split keep a readable measure. */
   .panel > :not(.top):not(.pn-split):not(.notice):not(.pn-boot):not(.pn-work):not(.pn-outputs):not(.pn-goals):not(.pn-done):not(.pn-start):not(.ws-menu):not(.pn-skel):not(.pn-calm) { max-width: 760px; }
   .pn-split {
@@ -566,7 +566,7 @@
 .pn-pips i { width: 6px; height: 6px; border-radius: 50%; background: var(--ox-border-strong); transition: all 180ms var(--pn-ease); }
 .pn-pips i.on { width: 18px; border-radius: 3px; background: var(--ox-text); }
 .pn-pips i.past { background: var(--ox-text-muted); }
-@media (max-width: 759px) {
+@media (max-width: 699px) {
   .pn-coach, .pn-coach.is-center { left: 8px !important; right: 8px; width: auto; max-width: none; padding: 14px 14px calc(10px + env(safe-area-inset-bottom, 0px)); touch-action: pan-y; }
   .pn-coach-t { font-size: 16px; }
   .pn-coach-b { font-size: 13.5px; margin-top: 6px; }
@@ -577,7 +577,7 @@
 
 /* Tour visuals: small looping scenes made from panel pieces. */
 .pn-vis { position: relative; display: grid; place-items: center; height: 112px; margin: -4px -4px 14px; overflow: hidden; border-radius: 14px; background: var(--ox-well-bg, var(--ox-hover)); }
-@media (max-width: 759px) { .pn-vis { height: 92px; margin-bottom: 12px; } }
+@media (max-width: 699px) { .pn-vis { height: 92px; margin-bottom: 12px; } }
 .pn-vis ox-avatar { display: block; }
 .pn-v-logo { display: block; }
 .pn-v-orbit { position: relative; display: grid; place-items: center; width: 110px; height: 110px; }
@@ -876,7 +876,7 @@
 .pn-md { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .pn-md-detail { order: 2; }
 .pn-md.has-sel .pn-md-detail { order: -1; }
-@container pn (min-width: 760px) {
+@container pn (min-width: 700px) {
   .pn-md { grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); align-items: start; }
   .pn-md-detail, .pn-md.has-sel .pn-md-detail { order: 2; position: sticky; top: 8px; }
   .md-close { display: none; }
@@ -979,7 +979,7 @@
 .sk-dot { width: 8px; height: 8px; border-radius: 50%; }
 .sk-att .sk-line { margin: 0; }
 .sk-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding-top: 12px; }
-@container pn (min-width: 760px) { .sk-split { grid-template-columns: 300px minmax(0, 1fr); } .sk-list { order: 0; } }
+@container pn (min-width: 700px) { .sk-split { grid-template-columns: 300px minmax(0, 1fr); } .sk-list { order: 0; } }
 .sk-list { order: 2; }
 .sk-row { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: center; padding: 8px 0; opacity: 0; animation: pn-in 300ms var(--pn-ease) forwards; animation-delay: calc(var(--i) * 70ms + 120ms); }
 .sk-av { width: 24px; height: 24px; border-radius: 50%; }
@@ -1538,7 +1538,7 @@ html[data-display-mode="fullscreen"] .panel { min-height: 100dvh; }
 
 /* Narrow: the selected item replaces the list, with Back. */
 .md-back { display: none; align-items: center; gap: 4px; font: 600 13px/1 var(--ox-font); }
-@container pn (max-width: 759px) {
+@container pn (max-width: 699px) {
   .pn-md.is-push.has-sel .pn-md-list { display: none; }
   .pn-md.is-push .md-close, .gl-md .md-close { position: static; display: inline-flex; width: auto; height: 44px; padding: 0 8px 0 2px; margin: -8px 0 2px -4px; color: var(--ox-text); }
   .pn-md.is-push .md-close .md-x, .gl-md .md-close .md-x { display: none; }
@@ -1737,7 +1737,7 @@ button.crumb:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); col
 .pn-empty .st-link { margin: 4px 0 0; padding: 0; border: 0; }
 .md-links { gap: 4px 16px; }
 /* Narrow: the outputs overview would only repeat the count line beneath the list. */
-@container pn (max-width: 759px) { .pn-md:not(.has-sel) > .pn-md-detail:has(> .oc-overview) { display: none; } }
+@container pn (max-width: 699px) { .pn-md:not(.has-sel) > .pn-md-detail:has(> .oc-overview) { display: none; } }
 
 /* Goals. */
 .gl-rows { list-style: none; margin: 0; padding: 0; }
@@ -1785,7 +1785,7 @@ button.crumb:hover { background: var(--ox-hover, rgba(127, 127, 127, 0.08)); col
 .goalswitch::-webkit-scrollbar { display: none; }
 .goalswitch .pn-chip { flex: none; min-height: 44px; }
 .goalswitch .pn-chip[aria-pressed="true"] { background: var(--pn-sel-bg); border-color: var(--ox-text-muted); }
-@container pn (max-width: 759px) {
+@container pn (max-width: 699px) {
   .goalswitch { display: flex; }
   .pn-goals .gl-rows { display: none; }
 }
@@ -1867,7 +1867,79 @@ html[data-platform="mobile"] .gl-init-t { min-height: 44px; margin: -8px 0; }
   .bulk-n { flex-basis: 100%; }
   .bulk > button { flex: 1 1 0; }
 }
-@container pn (min-width: 760px) {
+@container pn (min-width: 700px) {
   .pn-list .bulk-n { flex-basis: 100%; }
   .pn-list .bulk > button { flex: 1 1 0; }
 }
+
+/* ── Sub-view pass: every list reads at a glance, nothing repeats, nothing runs on ── */
+/* Accepted work: label, title, when; then what waits, one row each with its own button. */
+.proof { display: grid; gap: 10px; }
+.proof-last { display: grid; gap: 2px; }
+.proof-k, .proof-cap { margin: 0; font: 650 11.5px/1.3 var(--ox-font); letter-spacing: 0.02em; text-transform: uppercase; color: var(--ox-text-muted); }
+.proof-t { appearance: none; border: 0; background: none; padding: 0; margin: 0; justify-self: start; text-align: left; cursor: pointer; color: var(--ox-text); font: 600 13.5px/1.4 var(--ox-font); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.proof-t:hover { text-decoration: underline; text-underline-offset: 3px; }
+.proof-t:focus-visible { outline: 2px solid var(--ox-primary); outline-offset: 2px; border-radius: 4px; }
+.proof-m { font-size: 12.5px; color: var(--ox-text-muted); }
+.proof-m b { font-weight: 650; color: var(--ox-text-2, var(--ox-text)); }
+.proof-cap { padding-top: 10px; border-top: 1px solid var(--ox-border); }
+.proof-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.proof-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 44px; padding: 6px 0; border-top: 1px solid var(--ox-border); }
+.proof-list li:first-child { border-top: 0; }
+.proof-lt { font-size: 13.5px; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.proof-go { min-height: 32px; padding: 0 12px; }
+.proof-all { justify-self: start; }
+.proof-more { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; padding-top: 10px; border-top: 1px solid var(--ox-border); font-size: 13px; color: var(--ox-text-2, var(--ox-text-muted)); }
+.proof-more b { color: var(--ox-text); font-variant-numeric: tabular-nums; }
+.md-overview .proof { margin: 0; border: 0; padding: 0; }
+.md-overview .md-links { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--ox-border); }
+
+/* A settled decision says its ruling in a word; the mark's shape repeats it. */
+.dn-row .dn-chip { grid-column: 2; grid-row: 1 / span 2; }
+.dn-chip { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px 0 6px; border-radius: 999px; font: 600 12px/1 var(--ox-font); white-space: nowrap; color: var(--ox-text-2, var(--ox-text)); background: var(--ox-hover, rgba(127, 127, 127, 0.1)); }
+.dn-chip svg { width: 12px; height: 12px; flex: none; }
+.dn-chip[data-s="pass"] svg { color: var(--ox-teal, #00c9a7); }
+.dn-chip[data-s="fail"] { box-shadow: inset 0 0 0 1px var(--ox-border-strong); background: none; }
+
+/* A connected client is a tool: a square tile with its code, never a portrait. */
+.cl-av { display: inline-grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--ox-border-strong); background: var(--ox-surface-subtle, rgba(127, 127, 127, 0.06)); color: var(--ox-text-2, var(--ox-text)); font: 650 11px/1 var(--ox-mono, ui-monospace, SFMono-Regular, Menlo, monospace); letter-spacing: -0.02em; }
+.cl-av[data-size="inline"], .md-av .cl-av, .oc-m .cl-av { width: 22px; height: 22px; border-radius: 6px; font-size: 9.5px; }
+
+/* Outputs: a title may take two lines before it is cut; the stage is one word with one mark. */
+.oc-t { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 1.35; }
+.oc-stage-w { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.oc-stage-i { width: 7px; height: 7px; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 1.3px var(--ox-border-strong); }
+.oc-stage-w[data-k="on"] .oc-stage-i { background: var(--ox-teal); box-shadow: none; }
+.oc-stage-w[data-k="wait"] .oc-stage-i { background: var(--ox-warning); box-shadow: none; border-radius: 1px; transform: rotate(45deg); }
+.oc-stage-w[data-k="back"] .oc-stage-i { background: none; border-radius: 0; box-shadow: inset 0 0 0 1.6px var(--ox-text); }
+.oc-key { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.oc-key li { display: grid; gap: 0; font-size: 12px; color: var(--ox-text-muted); }
+.oc-key li b { font: 650 18px/1.2 var(--ox-font); color: var(--ox-text); font-variant-numeric: tabular-nums; }
+.oc-none { color: var(--ox-text-muted); }
+
+/* Goals: long lists come a page at a time with a filter; titles wrap before they are cut. */
+.gl-init-t { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.gl-init-r .pn-btn { min-height: 32px; padding: 0 12px; }
+.gl-find { margin: 2px 0 6px; }
+.gl-find input { width: 100%; min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--ox-border); background: var(--ox-surface, transparent); color: var(--ox-text); font: inherit; font-size: 13.5px; }
+.gl-find input:focus-visible { outline: 2px solid var(--ox-primary); outline-offset: 1px; }
+.gl-more-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 8px; margin-top: 4px; border-top: 1px solid var(--ox-border); }
+.gl-more-n { font-size: 12px; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+.gl-bars { list-style: none; margin: 4px 0 6px; padding: 0; display: grid; }
+.gl-bars li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--ox-border); font-size: 13px; }
+.gl-bars li:first-child { border-top: 0; }
+.gl-bar-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ox-text); }
+.gl-bar-m { flex: none; font-size: 12px; color: var(--ox-text-muted); font-variant-numeric: tabular-nums; }
+
+/* Work: a blocked count is squared and outlined, so it is not told apart by colour alone. */
+.ag-n[data-s="blocked"] { border-radius: 5px; box-shadow: inset 0 0 0 1.2px currentColor; }
+.ag-n[data-s="held"] { border-radius: 5px; }
+
+/* A notice that only informs can be put away. */
+.notice-x { appearance: none; border: 0; background: none; flex: none; margin-left: auto; width: 32px; height: 32px; display: inline-grid; place-items: center; border-radius: 8px; color: var(--ox-text-muted); cursor: pointer; }
+.notice-x:hover { color: var(--ox-text); background: var(--ox-hover, rgba(127, 127, 127, 0.1)); }
+.notice-x:focus-visible { outline: 2px solid var(--ox-primary); outline-offset: 1px; }
+.notice > .text-btn + .notice-x { margin-left: 0; }
+
+/* Tablet: the queue column gives the decision more room. */
+@container pn (min-width: 700px) and (max-width: 899px) { .pn-split { grid-template-columns: 264px minmax(0, 1fr); } .pn-detail { padding: 0 20px 16px; } }

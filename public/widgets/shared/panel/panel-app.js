@@ -133,6 +133,10 @@
       outputs: null,
       outputsPhase: 'idle',
       outSel: null,
+      outPage: 1,
+      noticeHidden: { offline: false, stale: false },
+      proofAll: false,
+      goalUnlinked: { page: 1, query: '' },
       // What each output says (summary, preview): widget-only, from the read's _meta, never the snapshot.
       outPreviews: {},
       outDoorPending: {},
@@ -180,9 +184,24 @@
       return SAFE_ERROR_CODES.indexOf(code) !== -1 ? code : 'other';
     }
     /** Times one read and reports it; the promise itself is returned untouched. */
-    function observeRead(kind, trigger, promise) {
+    var READ_DEADLINE_MS = 25000;
+    /** A host that never answers leaves loading rows up for good; after the deadline the read fails like any other. */
+    function withDeadline(promise, ms) {
+      return new Promise(function race(resolve, reject) {
+        var timer = window.setTimeout(function late() {
+          var e = new Error('OrgX did not answer in time. Try again.');
+          e.code = 'timeout';
+          reject(e);
+        }, ms);
+        promise.then(function ok(v) { window.clearTimeout(timer); resolve(v); }, function no(e) { window.clearTimeout(timer); reject(e); });
+      });
+    }
+    function observeRead(kind, trigger, source) {
+      var promise = withDeadline(source, READ_DEADLINE_MS);
       var started = performance.now();
       promise.then(function ok() {
+        // An answered read proves a connection, whatever the host's webview reports.
+        if (ui.offline && !isGallery) { ui.offline = false; render(); }
         track('panel_read', { panel_read_kind: kind, panel_trigger: trigger, latency_ms: performance.now() - started, ok: true });
       }, function failed(error) {
         var code = errorCodeOf(error && error.result ? error.result : error);
@@ -760,7 +779,7 @@
     /** The workspace name doubles as the switcher's trigger. */
     function workspaceButtonHtml(name) {
       return '<button type="button" class="ws ws-btn" data-action="workspaces" aria-haspopup="true" aria-expanded="' + (ui.wsOpen ? 'true' : 'false') + '"' +
-        ' aria-controls="pn-ws-menu" title="Switch workspace"><span class="ws-n">' + esc(name) + '</span>' +
+        ' aria-controls="pn-ws-menu" title="' + esc(name) + '. Switch workspace"><span class="ws-n">' + esc(name) + '</span>' +
         '<svg class="ws-caret" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
         '<span class="sr-only">, switch workspace</span></button>';
     }
@@ -915,14 +934,14 @@
 
     function noticeHtml() {
       var parts = [];
-      if (ui.offline && ui.snapshot) {
-        parts.push('<div class="notice is-offline" data-tone="amber" role="status"><p><strong>You’re offline.</strong> Showing what loaded' + (ui.syncedAt ? ' at ' + esc(clock(ui.syncedAt)) : ' last') + '. It refreshes when you’re back.</p></div>');
+      if (ui.offline && ui.snapshot && !ui.noticeHidden.offline) {
+        parts.push('<div class="notice is-offline" data-tone="amber" role="status"><p><strong>You’re offline.</strong> Showing what loaded' + (ui.syncedAt ? ' at ' + esc(clock(ui.syncedAt)) : ' last') + '. It refreshes when you’re back.</p><button type="button" class="notice-x" data-action="notice-hide" data-id="offline" aria-label="Dismiss" title="Dismiss"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>');
       }
       // On Needs you the decision's own footer already says the refresh failed; one notice, not two.
       var footerSaysIt = ui.tab === 'needs' && ui.mode === 'global' && ui.snapshot && ui.snapshot.focus && !ui.rulings[ui.snapshot.focus.id];
-      if (ui.readState.phase === 'failed' && ui.snapshot && !footerSaysIt) {
+      if (ui.readState.phase === 'failed' && ui.snapshot && !footerSaysIt && !ui.noticeHidden.stale) {
         parts.push('<div class="notice" data-tone="amber" role="status"><p>Showing the snapshot from ' + esc(clock(ui.syncedAt)) +
-          '. The latest snapshot could not be loaded.</p><button type="button" class="text-btn" data-action="refresh">Refresh</button></div>');
+          '. The latest snapshot could not be loaded.</p><button type="button" class="text-btn" data-action="refresh">Refresh</button><button type="button" class="notice-x" data-action="notice-hide" data-id="stale" aria-label="Dismiss" title="Dismiss"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>');
       }
       // One line, then it gets out of the way: Done keeps the receipt.
       if (ui.lastRuling && ui.tab !== 'done') {
@@ -1465,31 +1484,40 @@
       return '<span class="row-sub' + (l.cmd ? ' is-cmd' : '') + '"' + (cut ? ' title="' + esc(l.text) + '"' : '') + '>' + esc(text.length > 90 ? text.slice(0, 89) + '…' : text) + '</span>';
     }
 
+    /** How many "ready for you" rows show before the rest fold away. */
+    var PROOF_AWAIT_SHOWN = 3;
     function proofHtml(s, calm) {
       var p = s.proof;
       var degradedProof = s.degraded.indexOf('proof_unavailable') !== -1;
       var html = '';
       if (p.last_accepted) {
-        var who = p.last_accepted.accepted_by === 'you' ? 'accepted by you' : 'accepted by a workspace member';
+        var who = p.last_accepted.accepted_by === 'you' ? 'by you' : 'by a workspace member';
         var when = agoLong(p.last_accepted.accepted_at);
         var acceptedAt = Date.parse(p.last_accepted.accepted_at || '');
         // A two-week-old acceptance is a signal to look, not a reason to relax.
         var stale = isFinite(acceptedAt) && Date.now() - acceptedAt > 14 * 86400 * 1000;
-        html += '<ox-receipt-row status="' + (stale ? 'unverified' : 'met') + '" label="Last accepted: ' + esc(p.last_accepted.title) + '" detail="' + esc([who, when, stale ? 'nothing accepted since' : ''].filter(Boolean).join(' · ')) + '" href="' + esc(p.last_accepted.url) + '"></ox-receipt-row>';
+        html += '<div class="proof-last" data-stale="' + stale + '"><span class="proof-k">Last accepted</span>' +
+          '<button type="button" class="proof-t" data-action="open" data-url="' + esc(p.last_accepted.url) + '">' + esc(p.last_accepted.title) + '</button>' +
+          '<span class="proof-m">' + esc([who, when].filter(Boolean).join(' · ')) + (stale ? ' · <b>nothing accepted since</b>' : '') + '</span></div>';
       } else if (degradedProof) {
         html += '<p class="proof-quiet">Accepted work could not be read right now.</p>';
       } else if (calm) {
         html += '<p class="proof-quiet">No output has been accepted yet.</p>';
       }
-      (s.awaiting_acceptance || []).forEach(function awaitingRow(a) {
-        html += '<p class="proof-sub proof-await"><span>' + esc(a.title) + ' is ready for you</span> ' +
-          '<button type="button" class="text-btn" data-action="review-artifact" data-prompt="' +
-          esc('Open the OrgX review for the artifact "' + a.title + '" (' + a.artifact_id + ') so I can accept it or ask for changes.') +
-          '">Review here</button></p>';
-      });
+      var waiting = s.awaiting_acceptance || [];
+      if (waiting.length) {
+        var all = ui.proofAll || waiting.length <= PROOF_AWAIT_SHOWN;
+        html += '<h4 class="proof-cap">Ready for your review · ' + waiting.length + '</h4><ul class="proof-list" role="list">' +
+          (all ? waiting : waiting.slice(0, PROOF_AWAIT_SHOWN)).map(function awaitingRow(a) {
+            return '<li><span class="proof-lt">' + esc(a.title) + '</span>' +
+              '<button type="button" class="pn-btn proof-go" data-action="review-artifact" aria-label="Review ' + esc(a.title) + '" data-prompt="' +
+              esc('Open the OrgX review for the artifact "' + a.title + '" (' + a.artifact_id + ') so I can accept it or ask for changes.') + '">Review</button></li>';
+          }).join('') + '</ul>' +
+          (all ? '' : '<button type="button" class="text-btn proof-all" data-action="proof-all">Show ' + (waiting.length - PROOF_AWAIT_SHOWN) + ' more</button>');
+      }
       if (p.completed_unaccepted > 0) {
-        html += '<p class="proof-sub">' + p.completed_unaccepted.toLocaleString() + (p.completed_unaccepted === 1 ? ' finished output waits' : ' finished outputs wait') + ' for acceptance' +
-          ' <button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.workLedger({ center: s.workspace && s.workspace.id, range: '30d' })) + '">Review in OrgX ↗</button></p>';
+        html += '<div class="proof-more"><span><b>' + p.completed_unaccepted.toLocaleString() + '</b> ' + (p.completed_unaccepted === 1 ? 'finished output waits' : 'finished outputs wait') + ' for acceptance</span>' +
+          '<button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.workLedger({ center: s.workspace && s.workspace.id, range: '30d' })) + '">Review in OrgX ↗</button></div>';
       }
       return html ? '<div class="proof">' + html + '</div>' : '';
     }
@@ -1588,13 +1616,13 @@
       }
       if (ui.tab === 'outputs' && Outputs) {
         return html + Outputs.html(ui.outputs, ui.outputsPhase, {
-          sel: ui.outSel, range: ui.outRange, family: ui.outFamily, goal: ui.outGoal, goals: ui.goals, pop: ui.pop, decision: outputDecision,
+          sel: ui.outSel, range: ui.outRange, family: ui.outFamily, goal: ui.outGoal, goals: ui.goals, pop: ui.pop, decision: outputDecision, page: ui.outPage,
           previewFor: function previewFor(id) { var p = ui.outPreviews[id]; return p && typeof p === 'object' ? p : null; },
         });
       }
       if (ui.tab === 'goals' && Goals) {
         return html + Goals.html(ui.goals, ui.goalsPhase, {
-          sel: ui.goalSel, needs: needsByInitiative(s), links: ui.goalLinks, form: ui.goalForm, qualityUrl: ORGX_HOME, reasons: ui.goalReasons,
+          sel: ui.goalSel, needs: needsByInitiative(s), links: ui.goalLinks, form: ui.goalForm, qualityUrl: ORGX_HOME, reasons: ui.goalReasons, unlinked: ui.goalUnlinked,
         });
       }
       if (ui.tab === 'done' && Views) {
@@ -2618,6 +2646,7 @@
 
     function fetchSnapshot(focusId, reason) {
       focusId = focusId || null;
+      ui.noticeHidden.stale = false;
       ui.readState = window.OrgXPanelState.readTransition(ui.readState, { type: 'requested', focusId: focusId });
       render();
       announce(focusId ? 'Opening decision.' : 'Refreshing decisions.');
@@ -3071,6 +3100,7 @@
         case 'workspaces': transition('menu', function toggleWs() { if (ui.wsOpen) closeWorkspaces(true); else openWorkspaces(); }); break;
         case 'workspaces-retry': ui.workspaces = null; ui.wsPhase = 'idle'; openWorkspaces(); break;
         case 'switch-workspace': switchWorkspace(id); break;
+        case 'notice-hide': if (id === 'offline' || id === 'stale') { ui.noticeHidden[id] = true; render(); } break;
         case 'dismiss-changed': ui.changedSince = null; render(); break;
         case 'refresh':
           if (ui.auth) { ui.auth = null; ui.bootStage = 'reading'; }
@@ -3209,6 +3239,7 @@
           });
           break;
         }
+        case 'proof-all': ui.proofAll = true; render(); break;
         case 'done-more': transition('expand', function more() { ui.donePage += 1; render(); }); break;
         case 'start-open': setTab('start', true, function focusComposer() { focusFirst('#st-text'); }); break;
         case 'start-who':
@@ -3278,9 +3309,11 @@
             focusFirst(ui.outSel ? '.pn-md-detail .md-close' : '.oc-row');
           });
           break;
-        case 'out-range': ui.outRange = id || '7d'; closePop(false); focusFirst('[data-action="pop"][data-id="orange"]'); break;
-        case 'out-family': ui.outFamily = id || 'all'; closePop(false); focusFirst('[data-action="pop"][data-id="ofam"]'); break;
-        case 'out-goal': ui.outGoal = id || 'all'; closePop(false); focusFirst('[data-action="pop"][data-id="ogoal"]'); break;
+        case 'out-more': transition('expand', function moreOut() { ui.outPage += 1; render(); }); break;
+        case 'goal-more': transition('expand', function moreInit() { ui.goalUnlinked.page += 1; render(); }); break;
+        case 'out-range': ui.outPage = 1; ui.outRange = id || '7d'; closePop(false); focusFirst('[data-action="pop"][data-id="orange"]'); break;
+        case 'out-family': ui.outPage = 1; ui.outFamily = id || 'all'; closePop(false); focusFirst('[data-action="pop"][data-id="ofam"]'); break;
+        case 'out-goal': ui.outPage = 1; ui.outGoal = id || 'all'; closePop(false); focusFirst('[data-action="pop"][data-id="ogoal"]'); break;
         case 'out-clear': ui.outRange = '30d'; ui.outFamily = 'all'; ui.outGoal = 'all'; render(); focusFirst('.oc-row'); break;
         case 'outputs-retry': ui.outputsPhase = 'failed'; fetchOutputs(); break;
         case 'out-decide': {
@@ -3484,6 +3517,14 @@
         render();
         var wsAgain = root.querySelector('input[data-action="ws-query"]');
         if (wsAgain) { wsAgain.focus(); try { wsAgain.setSelectionRange(wcaret, wcaret); } catch (_) { /* not a text input */ } }
+        return;
+      }
+      if (area.matches('input[data-action="goal-find"]')) {
+        ui.goalUnlinked = { page: 1, query: area.value };
+        var gcaret = area.selectionStart;
+        render();
+        var gagain = root.querySelector('input[data-action="goal-find"]');
+        if (gagain) { gagain.focus(); try { gagain.setSelectionRange(gcaret, gcaret); } catch (_) { /* not a text input */ } }
         return;
       }
       if (area.matches('input[data-action="work-query"]')) {
@@ -4046,6 +4087,7 @@
     function setOffline(off) {
       if (ui.offline === off) return;
       ui.offline = off;
+      ui.noticeHidden.offline = false;
       if (off) { announce('You’re offline. Showing what loaded last.'); render(); return; }
       announce('Back online. Refreshing.');
       if (isGallery) { render(); return; }

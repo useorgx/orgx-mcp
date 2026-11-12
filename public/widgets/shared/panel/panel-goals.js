@@ -108,7 +108,7 @@
     var bits = [];
     if (isNum(g.current) && isNum(g.target)) bits.push(fmt(g.current, g.unit, true) + ' of ' + fmt(g.target, g.unit));
     else if (isNum(g.current)) bits.push(fmt(g.current, g.unit) + ' · no target');
-    else bits.push('No number recorded');
+    else bits.push(g.initiative_total ? count(g.initiative_total, 'initiative', 'initiatives') + ' · no number yet' : 'No number yet');
     if (g.due) bits.push(dueText(g.due));
     return bits.join(' · ');
   }
@@ -133,6 +133,28 @@
     }).join('') + '</ul>';
   }
 
+  /**
+   * The initiatives with no goal can run to hundreds: a few at a time, with a
+   * filter once the list is longer than one page. opts.unlinked: { page, query }.
+   */
+  var UNLINKED_PAGE = 8;
+  function unlinkedHtml(data, opts) {
+    var st = opts.unlinked || {};
+    var q = String(st.query || '').trim().toLowerCase();
+    var all = data.unlinked || [];
+    var list = q ? all.filter(function hit(i) { return String(i.title || '').toLowerCase().indexOf(q) !== -1; }) : all;
+    var shown = list.slice(0, Math.max(1, st.page || 1) * UNLINKED_PAGE);
+    var find = all.length > UNLINKED_PAGE
+      ? '<div class="gl-find"><label class="sr-only" for="gl-find">Find an initiative</label><input id="gl-find" type="search" data-action="goal-find" autocomplete="off" placeholder="Find an initiative" value="' + esc(st.query || '') + '"></div>'
+      : '';
+    var cap = '<h4 class="oc-cap">Initiatives · ' + (q ? list.length + ' of ' + data.unlinked_total : data.unlinked_total) + '</h4>';
+    var rows = list.length ? initiativeRows(shown, opts, true) : '<p class="oc-quiet">No initiative matches “' + esc(st.query) + '”.</p>';
+    var rest = list.length - shown.length;
+    var more = rest > 0 ? '<button type="button" class="text-btn gl-more" data-action="goal-more">Show ' + Math.min(UNLINKED_PAGE, rest) + ' more</button><span class="gl-more-n">' + shown.length + ' of ' + list.length + ' shown</span>' : '';
+    var beyond = !q && data.unlinked_total > all.length ? '<p class="oc-quiet">' + (data.unlinked_total - all.length) + ' more in OrgX.</p>' : '';
+    return cap + find + rows + (more ? '<div class="gl-more-row">' + more + '</div>' : '') + beyond;
+  }
+
   function movesHtml(g, reasons) {
     if (!g.moves.length) return '';
     var said = reasons && Array.isArray(reasons[g.id]) ? reasons[g.id] : [];
@@ -145,10 +167,30 @@
     }).join('') + '</ul>';
   }
 
+  /** Bars that share a name are one line with a count, never the same words four times. */
+  function groupBars(bars) {
+    var seen = {};
+    var out = [];
+    bars.forEach(function each(b) {
+      var key = String(b.name || '').trim().toLowerCase();
+      if (!seen[key]) { seen[key] = { name: b.name, n: 0, min: b.criteria, max: b.criteria }; out.push(seen[key]); }
+      var g = seen[key];
+      g.n += 1; g.min = Math.min(g.min, b.criteria); g.max = Math.max(g.max, b.criteria);
+    });
+    return out;
+  }
+  var BARS_SHOWN = 4;
   function barsHtml(bars, url) {
-    var text = bars === null ? 'Quality bars could not be read right now.'
-      : !bars.length ? 'No quality bars yet. Send-back notes can become one.'
-      : count(bars.length, 'quality bar', 'quality bars') + ': ' + bars.slice(0, 4).map(function n(b) { return b.name + ' (' + count(b.criteria, 'check', 'checks') + ')'; }).join(', ') + (bars.length > 4 ? ', and ' + (bars.length - 4) + ' more' : '') + '.';
+    var head = '<div class="gl-judge"><h3 class="pn-cap">How you judge work' + (bars && bars.length ? ' · ' + count(bars.length, 'quality bar', 'quality bars') : '') + '</h3>';
+    var tail = (url ? '<button type="button" class="text-btn" data-action="open" data-url="' + esc(url) + '">Review in OrgX ↗</button>' : '') + '</div>';
+    if (bars && bars.length) {
+      var groups = groupBars(bars);
+      return head + '<ul class="gl-bars" role="list">' + groups.slice(0, BARS_SHOWN).map(function li(g) {
+        var checks = g.min === g.max ? count(g.min, 'check', 'checks') + (g.n > 1 ? ' each' : '') : g.min + ' to ' + g.max + ' checks';
+        return '<li><span class="gl-bar-n">' + esc(g.name) + '</span><span class="gl-bar-m">' + (g.n > 1 ? g.n + ' bars · ' : '') + checks + '</span></li>';
+      }).join('') + '</ul>' + (groups.length > BARS_SHOWN ? '<p class="gl-judge-t">And ' + (groups.length - BARS_SHOWN) + ' more in OrgX.</p>' : '') + tail;
+    }
+    var text = bars === null ? 'Quality bars could not be read right now.' : 'No quality bars yet. Send-back notes can become one.';
     return '<div class="gl-judge"><h3 class="pn-cap">How you judge work</h3><p class="gl-judge-t">' + esc(text) + '</p>' +
       (url ? '<button type="button" class="text-btn" data-action="open" data-url="' + esc(url) + '">Review in OrgX ↗</button>' : '') + '</div>';
   }
@@ -222,7 +264,7 @@
           ? '<p class="gl-now"><span class="gl-big">' + esc(fmt(g.current, g.unit, true)) + '</span><span class="gl-of">' + (isNum(g.target) ? 'of ' + esc(fmt(g.target, g.unit)) : 'No target recorded') +
             (pace ? ' · <span class="gl-pace" data-pace="' + pace.key + '">' + esc(pace.text) + '</span>' : '') + '</span></p>' +
             (needsText(g) ? '<p class="gl-needs">' + esc(needsText(g)) + '</p>' : '')
-          : '<p class="oc-quiet">No number has been recorded for this goal yet.</p>') +
+          : '<p class="oc-quiet">No number yet. Say the current value in the chat and OrgX records it.</p>') +
         sparkHtml(g) +
         '<h4 class="oc-cap">Initiatives · ' + g.initiative_total + '</h4>' + initiativeRows(g.initiatives, opts, false) +
         (g.initiative_total > g.initiatives.length ? '<p class="oc-quiet">' + (g.initiative_total - g.initiatives.length) + ' more in OrgX.</p>' : '') +
@@ -233,7 +275,7 @@
         '<p class="md-kicker oc-kind">' + levelIcon('initiative') + '<span>Not linked</span></p>' +
         '<h3 class="md-title">Initiatives with no goal</h3>' +
         '<p class="md-text">Their outputs can’t count toward anything until they’re linked.</p>' +
-        '<h4 class="oc-cap">Initiatives · ' + data.unlinked_total + '</h4>' + initiativeRows(data.unlinked, opts, true) + '</div>';
+        unlinkedHtml(data, opts) + '</div>';
     }
     return open(scope + '<div class="pn-md gl-md has-sel"><div class="pn-md-list"><ul class="gl-rows" role="list">' + rows + '</ul>' + barsHtml(data.quality_bars, opts.qualityUrl) + '</div>' +
       '<aside class="pn-md-detail">' + sw + body + '</aside></div>', phase === 'loading');
