@@ -25,10 +25,22 @@ const qualityBarPatch = z.union([
 ]);
 
 export const qualityBarPatchFields = z.object({ patches: z.array(qualityBarPatch).min(1).max(8) }).strict();
+/**
+ * One thing every agent should know about the workspace (what we sell, who buys it...).
+ * The app stores a written fact as derived, not confirmed, and never replaces a fact a
+ * person confirmed, so there is no readiness field to send.
+ */
+export const workspaceFactWrite = z.object({
+  key: z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9_]{1,47}$/),
+  text: z.string().trim().min(1).max(320),
+  label: z.string().trim().min(1).max(60).optional(),
+  source: z.string().trim().min(1).max(120).optional(),
+}).strict();
 export const workspaceProfileFields = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().max(2000).nullable().optional(),
-}).strict().refine((fields) => fields.name !== undefined || fields.description !== undefined, 'Provide name or description.');
+  facts: z.array(workspaceFactWrite).min(1).max(12).optional(),
+}).strict().refine((fields) => fields.name !== undefined || fields.description !== undefined || fields.facts !== undefined, 'Provide name, description or facts.');
 const kindKey = z.string().trim().min(1).max(200).regex(/^[a-z0-9_.-]+$/i);
 
 export function validateProfileWorkUpdate(args: Record<string, unknown>): void {
@@ -77,10 +89,12 @@ export async function executeProfileWorkUpdate(
     raw = await request('/api/v1/workspaces/profile', { method: 'PATCH', headers,
       body: JSON.stringify({ ...workspaceProfileFields.parse(args.fields), workspace_id: args.id, ...retry }),
     });
-    const saved = z.object({ workspace: z.object({ id: z.string().uuid(), name: z.string(), description: z.string().nullable() }).passthrough() }).parse(raw.data);
+    const saved = z.object({ workspace: z.object({ id: z.string().uuid(), name: z.string(), description: z.string().nullable() }).passthrough(),
+      facts: z.object({ written: z.array(z.string()), skipped_confirmed: z.array(z.string()) }).optional() }).parse(raw.data);
     if (saved.workspace.id !== args.id) throw new Error('Workspace acknowledgement does not match the requested workspace.');
-    data = saved.workspace;
-    message = 'Workspace updated.';
+    data = saved.facts ? { ...saved.workspace, facts: saved.facts } : saved.workspace;
+    message = !saved.facts ? 'Workspace updated.'
+      : `${saved.facts.written.length} fact(s) saved as derived; a person confirms them.${saved.facts.skipped_confirmed.length ? ` Not changed, already confirmed by a person: ${saved.facts.skipped_confirmed.join(', ')}.` : ''}`;
   } else {
     throw new Error('Unsupported profile work update.');
   }
