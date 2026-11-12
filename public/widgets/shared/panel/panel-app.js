@@ -1241,7 +1241,8 @@
     function askerAvatar(kind, name, size) {
       if (kind === 'floor') return '<span class="ax ax-floor ax-' + size + '" title="Stopped by the OrgX floor">' + GLYPH.floor + '</span>';
       if (kind === 'unnamed') return '<span class="ax ax-agent ax-' + size + '" title="An agent (not named)">' + GLYPH.agent + '</span>';
-      return Views ? Views.avatar(kind === 'agent' ? name || '' : '', size) : '';
+      // A named asker with no recorded kind is still shown as who they are, never as the OrgX mark.
+      return Views ? Views.avatar(kind === 'agent' || (!kind && name) ? name || '' : '', size) : '';
     }
     function askerPhrase(f) {
       if (f.asker_kind === 'floor') return 'Stopped by the OrgX floor' + (f.session_label ? ' · ' + f.session_label : '');
