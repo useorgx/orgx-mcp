@@ -7,7 +7,7 @@ import { z } from 'zod';
 /** A new proof report replaces this exact predecessor; old reviews stay intact. */
 export const ArtifactProofPredecessorSchema = z
   .object({
-    artifact_id: z.string().guid(),
+    artifact_id: z.string().uuid(),
     expected_version: z.number().int().positive().max(2_147_483_647),
     expected_updated_at: z.string().datetime({ offset: true }),
   })

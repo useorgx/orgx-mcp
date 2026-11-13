@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { toListedJsonSchema } from '../src/listedToolJsonSchema';
 
 import { getPublicOperationContract } from '../src/publicOperationContracts';
 import { CHATGPT_PUBLIC_SURFACE } from '../src/toolProfiles';
@@ -50,7 +50,7 @@ const tools = CHATGPT_PUBLIC_SURFACE.map((name) => {
       ui: { resourceUri: WIDGET_URIS.proofReceipt },
     } : {}),
   });
-  const inputSchema = zodToJsonSchema(z.object(contract.inputSchema).strict(), { $refStrategy: 'none' });
+  const inputSchema = toListedJsonSchema(z.object(contract.inputSchema).strict(), 'input', { refs: 'none' });
   return { name, title: contract.title, description: contract.description, inputSchema,
     annotations: contract.annotations, securitySchemes: contract.securitySchemes,
     ...(Object.keys(meta).length ? { _meta: meta } : {}),

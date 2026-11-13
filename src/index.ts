@@ -11,6 +11,7 @@ import {
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { installListedToolSchemas } from './listedToolJsonSchema';
 import * as Sentry from '@sentry/cloudflare';
 import {
   registerAppTool,
@@ -1746,6 +1747,9 @@ export class OrgXMcp extends McpAgent<
     }
 
     this.registerTools();
+    // List schemas the way zod 3 listed them (additionalProperties:false on
+    // every object, which ChatGPT strict mode relies on).
+    installListedToolSchemas(this.server);
     // A scoped run token (oxrun2) is granted tools by name and nothing else:
     // resources and prompts would read OrgX data outside that grant.
     if (!this.hasScopedRunToken()) {

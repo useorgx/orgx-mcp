@@ -4658,34 +4658,33 @@
       ]
     },
     "portableCore": {
-      "ok": true,
-      "data": {
-        "workspace_id": "11111111-1111-0111-8111-111111111111",
-        "subject_ref": {
-          "type": "workspace",
-          "id": "11111111-1111-0111-8111-111111111111"
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "workspace_id"
+          ],
+          "message": "Invalid UUID"
         },
-        "metric_ref": {
-          "registry_id": "orgx.run_receipt_coverage.v1",
-          "query_version": "1",
-          "parameters": {
-            "workspace_id": "11111111-1111-0111-8111-111111111111",
-            "capture_path": "automatic_session_summary",
-            "exclude_benchmark": true,
-            "receipt_deadline_seconds": 60
-          }
+        {
+          "code": "invalid_format",
+          "path": [
+            "subject_ref",
+            "id"
+          ],
+          "message": "Invalid UUID"
         },
-        "predicate": {
-          "operator": "gte",
-          "threshold": 0.95
-        },
-        "window": {
-          "starts_at": "2026-10-01T00:00:00Z",
-          "ends_at": "2026-10-02T00:00:00Z"
-        },
-        "minimum_sample_size": 20,
-        "evaluation_interval_seconds": 300
-      }
+        {
+          "code": "invalid_format",
+          "path": [
+            "metric_ref",
+            "parameters",
+            "workspace_id"
+          ],
+          "message": "Invalid UUID"
+        }
+      ]
     }
   },
   {

@@ -5,6 +5,12 @@ import {
   FOUNDER_TEAM_ARTIFACT_TYPES,
 } from '../src/artifactContracts';
 import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
+import { z } from 'zod';
+import { toListedJsonSchema } from '../src/listedToolJsonSchema';
+
+/** A tool as clients see it: its input schema listed as JSON Schema. */
+const listed = (tool: { inputSchema: Record<string, z.ZodType> } | undefined) =>
+  JSON.stringify(tool && { ...tool, inputSchema: toListedJsonSchema(z.object(tool.inputSchema), 'input') });
 
 describe('founder/team artifact contracts', () => {
   it('keeps practical artifact types available across every OrgX agent domain', () => {
@@ -61,11 +67,11 @@ describe('founder/team artifact contracts', () => {
     expect(attach?.inputSchema).toHaveProperty('business_outcome');
     expect(attach?.inputSchema).toHaveProperty('company_stage');
     expect(attach?.inputSchema).toHaveProperty('verification');
-    expect(JSON.stringify(attach)).toContain('sales.strategy');
+    expect(listed(attach as never)).toContain('sales.strategy');
 
     expect(receipt?.inputSchema).toHaveProperty('artifact_type');
     expect(receipt?.inputSchema).toHaveProperty('business_outcome');
     expect(receipt?.inputSchema).toHaveProperty('verification_status');
-    expect(JSON.stringify(receipt)).toContain('ops.operator_brief');
+    expect(listed(receipt as never)).toContain('ops.operator_brief');
   });
 });

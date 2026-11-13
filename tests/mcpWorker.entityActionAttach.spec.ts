@@ -77,7 +77,7 @@ describe('entity_action attach payload builder', () => {
         artifact_type: 'shared.project_handbook',
         external_url: 'https://example.com',
       } as never)
-    ).toThrow(/invalid_enum_value/i);
+    ).toThrow(/invalid_value/i);
   });
 
   it('requires a content URL', () => {

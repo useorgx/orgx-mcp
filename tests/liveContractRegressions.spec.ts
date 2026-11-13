@@ -114,7 +114,7 @@ describe('live MCP contract regressions', () => {
     const handler = workerSource.slice(start, end);
 
     expect(start).toBeGreaterThanOrEqual(0);
-    expect(handler).toMatch(/workspace_id:\s*z\s*\.string\(\)\s*\.uuid\(\)/);
+    expect(handler).toMatch(/workspace_id:\s*z\s*\.string\(\)\s*\.guid\(\)/);
 
     const workspaceId = '00000000-0000-4000-8000-000000000000';
     const result = mapMorningBriefApiError(

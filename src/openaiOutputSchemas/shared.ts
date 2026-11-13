@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { z as z4 } from 'zod/v4';
+import { listAsPlainZod4 } from '../listedToolJsonSchema';
 
 export type SourceOutputSchema = z.ZodObject;
 export type PortableOutputSchema = ReturnType<typeof z4.object>;
@@ -342,7 +343,7 @@ export function makePortableJsonAdvertisedSchema(
     Object.keys(schema.shape).map((key) => [key, jsonValue.optional()])
   ) as Record<string, ReturnType<typeof jsonValue.optional>>;
 
-  return z4
+  return listAsPlainZod4(z4
     .object(projectedShape)
     .strict()
     .superRefine((value, context) => {
@@ -356,7 +357,7 @@ export function makePortableJsonAdvertisedSchema(
           path: issue.path,
         });
       }
-    });
+    }));
 }
 
 export const paginationSchema = z.object({

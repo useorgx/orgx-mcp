@@ -4,7 +4,7 @@ import { taskPredictionInputShape, taskPredictionOutputSchema } from '../src/tas
 import { RegisterTaskPredictionSchema, TaskPredictionSchema } from '../src/generated/taskPrediction';
 import fixtures from './fixtures/task-prediction-v1.json';
 
-const requestSchema = z.object({ workspace_id: z.string().uuid(), ...taskPredictionInputShape }).strict();
+const requestSchema = z.object({ workspace_id: z.string().guid(), ...taskPredictionInputShape }).strict();
 describe('task prediction input compatibility', () => {
   it.each([Number.NaN, Infinity, -Infinity])('refuses nonfinite confidence %s', (confidence) => {
     const request = { ...fixtures.find((fixture) => fixture.name === 'request accepted')!.input, confidence };

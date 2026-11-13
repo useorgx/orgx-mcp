@@ -57,7 +57,7 @@ const workstream = z
 
 export const McpScaffoldWorkflowSchema = z
   .object({
-    workspace_id: z.string().guid().optional(),
+    workspace_id: z.string().uuid().optional(),
     plan_digest: z
       .string()
       .regex(/^sha256:[a-f0-9]{64}$/)

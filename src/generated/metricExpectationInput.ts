@@ -21,11 +21,11 @@ export const RunReceiptCoverageParametersSchema = ReceiptCoverageParametersSchem
 
 export const RegisterMetricExpectationSchema = z
   .object({
-    workspace_id: z.string().guid(),
+    workspace_id: z.string().uuid(),
     subject_ref: z
       .object({
         type: z.enum(['workspace', 'initiative', 'goal']),
-        id: z.string().guid(),
+        id: z.string().uuid(),
       })
       .strict(),
     metric_ref: RegisteredMetricRefSchema,

@@ -102,9 +102,7 @@ describe('dispatch contract parity', () => {
     for (const id of DISPATCH_TOOL_IDS) {
       const schema = findTool(id).inputSchema as Record<string, unknown>;
       const deadline = schema.deadline as { description?: string } | undefined;
-      const described =
-        (deadline as { _def?: { description?: string } } | undefined)?._def
-          ?.description ?? '';
+      const described = deadline?.description ?? '';
       expect(described.toLowerCase()).toContain('iso-8601');
       expect(described.toLowerCase()).not.toContain('plain-text deadline');
     }
@@ -113,14 +111,14 @@ describe('dispatch contract parity', () => {
 
 describe('effect vocabulary in the served schema', () => {
   const effects = DISPATCH_CONTRACT_SHAPE.effects as unknown as {
-    _def: { innerType: { shape: Record<string, { _def: { description?: string } }> } };
+    _def: { innerType: { shape: Record<string, { description?: string }> } };
   };
   const shape = effects._def.innerType.shape;
 
   it('names every effect the app accepts, instead of examples it would refuse', () => {
-    const described = shape.allowed._def.description ?? '';
+    const described = shape.allowed.description ?? '';
     for (const name of DISPATCH_EFFECT_NAMES) expect(described).toContain(name);
     for (const stale of ['branch.write', 'tests.run']) expect(described).not.toContain(stale);
-    expect(shape.approval_required._def.description ?? '').not.toMatch(/e\.g\./);
+    expect(shape.approval_required.description ?? '').not.toMatch(/e\.g\./);
   });
 });

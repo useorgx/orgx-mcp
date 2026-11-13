@@ -425,7 +425,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"guid\",\n    \"pattern\": \"/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/\",\n    \"path\": [\n      \"artifact_id\"\n    ],\n    \"message\": \"Invalid GUID\"\n  }\n]"
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"uuid\",\n    \"pattern\": \"/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/\",\n    \"path\": [\n      \"artifact_id\"\n    ],\n    \"message\": \"Invalid UUID\"\n  }\n]"
     }
   },
   {
@@ -442,12 +442,9 @@
       "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"uuid\",\n    \"pattern\": \"/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/\",\n    \"path\": [\n      \"artifact_id\"\n    ],\n    \"message\": \"Invalid UUID\"\n  }\n]"
     },
     "mcp": {
-      "ok": true,
-      "data": {
-        "artifact_id": "11111111-1111-0111-8111-111111111111",
-        "expected_version": 1,
-        "expected_updated_at": "2026-10-12T00:00:00Z"
-      }
+      "ok": false,
+      "name": "ZodError",
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"uuid\",\n    \"pattern\": \"/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/\",\n    \"path\": [\n      \"artifact_id\"\n    ],\n    \"message\": \"Invalid UUID\"\n  }\n]"
     }
   },
   {

@@ -342,22 +342,16 @@
       ]
     },
     "mcp": {
-      "ok": true,
-      "data": {
-        "workspace_id": "11111111-1111-4111-8111-111111111111",
-        "task_id": "11111111-1111-0111-8111-111111111111",
-        "expectation_set_id": "11111111-1111-4111-8111-111111111111",
-        "expectation_set_version": 1,
-        "expected_outcome": "Tests pass",
-        "confidence": 0.9,
-        "criteria_predictions": [
-          {
-            "criterion_id": "tests",
-            "predicted": "met",
-            "confidence": 0.9
-          }
-        ]
-      }
+      "ok": false,
+      "issues": [
+        {
+          "code": "invalid_format",
+          "path": [
+            "task_id"
+          ],
+          "message": "Invalid UUID"
+        }
+      ]
     }
   },
   {
@@ -3061,7 +3055,7 @@
           "path": [
             "owner_id"
           ],
-          "message": "Invalid GUID"
+          "message": "Invalid UUID"
         }
       ]
     }
