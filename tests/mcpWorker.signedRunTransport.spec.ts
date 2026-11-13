@@ -12,7 +12,10 @@ vi.mock('agents/mcp', () => ({
 }));
 vi.mock('agents', () => ({ getAgentByName: transport.getAgentByName }));
 vi.mock('../src/oauth', () => ({ OAuthState: class {} }));
-vi.mock('@cloudflare/workers-oauth-provider', () => ({ default: class { fetch = transport.oauth; } }));
+// The authorization server is the seam: a token it cannot validate must never reach a transport.
+vi.mock('@cloudflare/workers-oauth-provider', () => ({ OAuthAuthorizationServer: class {
+  validateToken = transport.oauth; fetch = vi.fn(); getOAuthApi = () => ({});
+} }));
 vi.mock('@sentry/cloudflare', () => ({
   captureException: vi.fn(), captureMessage: vi.fn(),
   wrapMcpServerWithSentry: <T>(server: T) => server,
@@ -50,7 +53,7 @@ async function setup() {
   transport.sse.mockImplementation(async (request: Request) => request.method === 'GET'
     ? new Response('event: endpoint\ndata: /sse/message?sessionId=signed-session&profile=chatgpt\n\n', { headers: { 'content-type': 'text/event-stream' } })
     : new Response('Accepted', { status: 202 }));
-  transport.oauth.mockResolvedValue(Response.json({ error: 'invalid_token' }, { status: 401 }));
+  transport.oauth.mockResolvedValue(null);
   const env = { ORGX_RUN_MCP_TOKEN_SECRET: SECRET, MCP_OBJECT: {}, MCP_SERVER_URL: 'http://localhost:8787',
     // The real worker binding exists even when this fixture mocks OAuth.fetch.
     OAUTH_KV: {},
@@ -106,7 +109,8 @@ describe('signed-run authentication on actual native SSE paths', () => {
   it.each(['/sse/message-extra', '/sse/unknown', '/not-mcp'])('does not authenticate arbitrary path %s as a run transport', async (path) => {
     const { worker, env, request, ctx } = await setup();
     const response = await worker.fetch(await request(path), env as any, ctx());
-    expect(response.status).toBe(401);
+    // Below /sse the OAuth gate refuses the run bearer; elsewhere nothing is served.
+    expect(response.status).toBe(path === '/not-mcp' ? 404 : 401);
     expect(transport.sse).not.toHaveBeenCalled();
     expect(transport.http).not.toHaveBeenCalled();
     expect(transport.getAgentByName).not.toHaveBeenCalled();
