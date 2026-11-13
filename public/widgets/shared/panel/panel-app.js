@@ -1516,7 +1516,10 @@
           (all ? '' : '<button type="button" class="text-btn proof-all" data-action="proof-all">Show ' + (waiting.length - PROOF_AWAIT_SHOWN) + ' more</button>');
       }
       if (p.completed_unaccepted > 0) {
-        html += '<div class="proof-more"><span><b>' + p.completed_unaccepted.toLocaleString() + '</b> ' + (p.completed_unaccepted === 1 ? 'finished output waits' : 'finished outputs wait') + ' for acceptance</span>' +
+        // This count has no date range (every finished output never accepted
+        // by a person), so it says "all time": it sits beside lists that are
+        // scoped to days and must not read as if it shared their range.
+        html += '<div class="proof-more"><span><b>' + p.completed_unaccepted.toLocaleString() + '</b> ' + (p.completed_unaccepted === 1 ? 'finished output waits' : 'finished outputs wait') + ' for acceptance, all time</span>' +
           '<button type="button" class="text-btn" data-action="open" data-url="' + esc(window.OrgXLinks.workLedger({ center: s.workspace && s.workspace.id, range: '30d' })) + '">Review in OrgX ↗</button></div>';
       }
       return html ? '<div class="proof">' + html + '</div>' : '';

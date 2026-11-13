@@ -269,3 +269,11 @@ describe('fast by default', () => {
     expect(reads.length).toBe(1);
   });
 });
+
+describe('counts say their scope', () => {
+  it('labels the never-accepted count "all time", because it has no date range', () => {
+    const source = readFileSync(resolve(process.cwd(), 'public/widgets/shared/panel/panel-app.js'), 'utf8');
+    expect(source).toContain("' for acceptance, all time</span>'");
+    expect(source).not.toContain("' for acceptance</span>'");
+  });
+});
