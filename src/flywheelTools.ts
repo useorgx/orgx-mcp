@@ -101,7 +101,7 @@ export const FLYWHEEL_TOOL_DEFINITIONS = [
       sourceId: z.string().optional().describe('CamelCase alias for source_id'),
       occurred_at: z.string().optional().describe('ISO datetime when the outcome occurred'),
       occurredAt: z.string().optional().describe('CamelCase alias for occurred_at'),
-      metadata: z.record(z.unknown()).optional().describe('Additional context'),
+      metadata: z.record(z.string(), z.unknown()).optional().describe('Additional context'),
     }),
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     securitySchemes: [

@@ -60,7 +60,7 @@ export const acceptanceCheckSchema = z.object({
     .max(500)
     .describe('What must become true. One falsifiable sentence.'),
   verify: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .describe(
       'How the check is evaluated. One of: { kind: "command", command, expect_exit } | { kind: "http", url, expect_status } | { kind: "artifact", artifact_type } | { kind: "manual", reviewer }.'
     ),

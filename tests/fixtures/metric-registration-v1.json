@@ -3646,12 +3646,12 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_type",
+          "code": "invalid_value",
           "path": [
             "subject_ref",
             "type"
           ],
-          "message": "Expected 'workspace' | 'initiative' | 'goal', received array"
+          "message": "Invalid option: expected one of \"workspace\"|\"initiative\"|\"goal\""
         }
       ]
     }
@@ -4931,7 +4931,7 @@
         {
           "code": "unrecognized_keys",
           "path": [],
-          "message": "Unrecognized key(s) in object: 'approved'"
+          "message": "Unrecognized key: \"approved\""
         }
       ]
     }
@@ -5611,12 +5611,12 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_enum_value",
+          "code": "invalid_value",
           "path": [
             "predicate",
             "operator"
           ],
-          "message": "Invalid enum value. Expected 'gte' | 'gt' | 'lte' | 'lt' | 'eq', received 'unsupported'"
+          "message": "Invalid option: expected one of \"gte\"|\"gt\"|\"lte\"|\"lt\"|\"eq\""
         }
       ]
     }
@@ -5668,7 +5668,7 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_union_discriminator",
+          "code": "invalid_union",
           "path": [
             "metric_ref",
             "registry_id"
@@ -5725,12 +5725,12 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_literal",
+          "code": "invalid_value",
           "path": [
             "metric_ref",
             "query_version"
           ],
-          "message": "Invalid literal value, expected \"1\""
+          "message": "Invalid input: expected \"1\""
         }
       ]
     }
@@ -5788,7 +5788,7 @@
             "metric_ref",
             "parameters"
           ],
-          "message": "Unrecognized key(s) in object: 'sql'"
+          "message": "Unrecognized key: \"sql\""
         }
       ]
     }

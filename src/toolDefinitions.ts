@@ -733,7 +733,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       'Read the current state of something already started: a decision waiting on a person, an agent run, or a work command. Also known as: is it done yet, did it go through, run status, poll. USE WHEN: a widget or the user needs to know whether a decision, run or command has settled. NEXT: when next_poll_after_ms is a number, check again after that many milliseconds; when it is null the state is final. DO NOT USE: to start or change work. Read-only.',
     inputSchema: {
       kind: z.enum(['decision', 'run', 'command']).describe('What the id refers to'),
-      id: z.string().uuid().describe('Decision, run or command UUID'),
+      id: z.string().guid().describe('Decision, run or command UUID'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.decisionReadRequiresAuth,
@@ -774,7 +774,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
         .optional()
         .describe('The options the person chose, when widget_actions.selection.mode is multiple'),
       answers: z
-        .record(z.union([z.string().max(2000), z.number(), z.boolean(), z.array(z.string().min(1).max(120)).max(10)]))
+        .record(z.string(), z.union([z.string().max(2000), z.number(), z.boolean(), z.array(z.string().min(1).max(120)).max(10)]))
         .optional()
         .describe('Answers by field id, when widget_actions.questions lists fields; a number field takes a number'),
       item_reviews: z
@@ -815,9 +815,9 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       'Use when the user asks what agents are working on right now, whether delegated work is still running, or why nothing has landed yet. Successful calls record metered MCP allowance usage but do not change business records. Also known as: agent status, what agents are doing, active runs. USE WHEN: user asks about agent activity, progress, or what agents are working on. NEXT: If agents are stuck, use orgx_search or orgx_inspect to read the related blocker context. DO NOT USE: to check initiative health — use get_initiative_pulse instead.',
     inputSchema: {
       agent_id: z.string().optional().describe('Optional agent ID to inspect'),
-      workspace_id: z.string().uuid().optional().describe('Optional workspace UUID to scope agent status'),
-      command_center_id: z.string().uuid().optional().describe('Deprecated alias for workspace_id'),
-      initiative_id: z.string().uuid().optional().describe('Optional initiative UUID to scope agent status'),
+      workspace_id: z.string().guid().optional().describe('Optional workspace UUID to scope agent status'),
+      command_center_id: z.string().guid().optional().describe('Deprecated alias for workspace_id'),
+      initiative_id: z.string().guid().optional().describe('Optional initiative UUID to scope agent status'),
       include_idle: z
         .boolean()
         .optional()
@@ -989,7 +989,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
     description:
       'Use when in-flight work must move to a different specialist agent without losing its context or execution state. Also known as: handoff task, transfer work, change assignee. USE WHEN: a task needs to be reassigned to a different specialist agent. NEXT: Use get_agent_status to confirm the new agent picked up the task. DO NOT USE: for new tasks — use spawn_agent_task instead.',
     inputSchema: {
-      task_id: z.string().uuid().describe('Task UUID to hand off'),
+      task_id: z.string().guid().describe('Task UUID to hand off'),
       agent: z
         .string()
         .min(1)
@@ -1206,7 +1206,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       command_center_id: z.string().optional().describe('Deprecated alias for workspace_id'),
       enabled: z.boolean().optional().describe('Enable/disable scoring_v2 (action=update only)'),
       active_signals: z.array(z.string()).optional().describe('Signal names to activate (action=update only)'),
-      weights: z.record(z.number()).optional().describe('Partial weight overrides e.g. { priority: 300 } (action=update only)'),
+      weights: z.record(z.string(), z.number()).optional().describe('Partial weight overrides e.g. { priority: 300 } (action=update only)'),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.readOptionalAuth,
@@ -1293,7 +1293,7 @@ export const CHATGPT_TOOL_DEFINITIONS = [
       approval_required: z.array(z.string()).optional().describe('Actions requiring approval (configure_agent only)'),
       skip_approval: z.array(z.string()).optional().describe('Actions without approval (configure_agent only)'),
       policy_type: z.enum(CONFIGURE_ORG_POLICY_TYPES).optional().describe('Policy type (set_policy only)'),
-      config: z.record(z.any()).optional().describe('Policy configuration (set_policy only)'),
+      config: z.record(z.string(), z.any()).optional().describe('Policy configuration (set_policy only)'),
       workspace_id: z.string().optional().describe('Workspace UUID to scope policy overrides (set_policy only)'),
       command_center_id: z.string().optional().describe('Deprecated alias for workspace_id (set_policy only)'),
     },
@@ -1434,7 +1434,7 @@ const reportingChokepointSchema = z.object({
     .optional()
     .describe('Concrete recovery actions to show in /live'),
   metadata: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .describe('Additional runtime evidence, never secrets'),
 });
@@ -1501,8 +1501,8 @@ const applyChangesetOperationSchema = z.union([
     .object({
       op: z.literal('task.create'),
       title: z.string().min(1),
-      milestone_id: z.string().uuid().optional(),
-      workstream_id: z.string().uuid().optional(),
+      milestone_id: z.string().guid().optional(),
+      workstream_id: z.string().guid().optional(),
       description: z.string().optional(),
       priority: z.enum(['low', 'medium', 'high']).optional(),
       due_date: z.string().optional(),
@@ -1519,7 +1519,7 @@ const applyChangesetOperationSchema = z.union([
   z
     .object({
       op: z.literal('task.update'),
-      task_id: z.string().uuid(),
+      task_id: z.string().guid(),
       status: z.enum(['todo', 'in_progress', 'done', 'blocked']).optional(),
       title: z.string().optional(),
       description: z.string().optional(),
@@ -1543,7 +1543,7 @@ const applyChangesetOperationSchema = z.union([
   z
     .object({
       op: z.literal('milestone.update'),
-      milestone_id: z.string().uuid(),
+      milestone_id: z.string().guid(),
       status: z
         .enum(['planned', 'in_progress', 'completed', 'at_risk', 'cancelled'])
         .optional(),
@@ -1611,7 +1611,7 @@ const executionGraphNodeSchema = z.object({
     .describe('Per-step economy: which model ran this and what it cost'),
   started_at: z.string().optional(),
   completed_at: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const otelSemanticEventSchema = z.object({
@@ -1621,7 +1621,7 @@ const otelSemanticEventSchema = z.object({
   name: z.string().min(1).max(500),
   timestamp: z.string().datetime(),
   attributes: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .describe(
       'OTel attributes. Promotion requires orgx.material=true, orgx.episode.id, and orgx.semantic.kind; inferred events remain explicit gaps.'
     ),
@@ -1709,9 +1709,9 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     description:
       'Use when an agent is mid-execution and its progress must stay visible to operators and to the next agent that resumes the run. Emit append-only run telemetry for OrgX control-plane reporting. USE WHEN: agent is executing and needs to report progress. NEXT: Continue work; emit again at each phase change. DO NOT USE: for entity status changes — use entity_action instead. Setting phase="completed" records telemetry only and does not mark tasks, workstreams, or initiatives complete.',
     inputSchema: {
-      initiative_id: z.string().uuid().describe('Initiative UUID'),
+      initiative_id: z.string().guid().describe('Initiative UUID'),
       message: z.string().min(1).describe('Human-readable activity update'),
-      run_id: z.string().uuid().optional().describe('Existing run UUID'),
+      run_id: z.string().guid().optional().describe('Existing run UUID'),
       correlation_id: z
         .string()
         .optional()
@@ -1737,7 +1737,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .optional()
         .describe('Optional next step to surface after this activity event'),
       metadata: z
-        .record(z.unknown())
+        .record(z.string(), z.unknown())
         .optional()
         .describe('Optional structured metadata to attach to the activity event'),
       runtime: reportingRuntimeContextSchema
@@ -1764,7 +1764,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     description:
       'Forward a typed human-interruption request while preserving the originating run and session. Use kind=question for missing context, permission for a scoped tool or file action, approval for owner sign-off, and recovery only when automatic retry cannot safely continue. USE WHEN: a native client reaches a genuine human decision that prevents the preserved session from continuing safely. NEXT: poll orgx_poll_attention; resume only after the answer is applied, then call orgx_ack_attention so Live can show that work actually restarted. DO NOT USE: for internal turn boundaries or retryable runtime events.',
     inputSchema: {
-      initiative_id: z.string().uuid().describe('Initiative UUID'),
+      initiative_id: z.string().guid().describe('Initiative UUID'),
       attention_kind: z
         .enum(['question', 'permission', 'approval', 'recovery'])
         .describe('Why human attention is required'),
@@ -1846,10 +1846,10 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .describe('Owner attention urgency; default medium'),
       workstream_id: z
         .string()
-        .uuid()
+        .guid()
         .optional()
         .describe('Affected workstream UUID'),
-      run_id: z.string().uuid().optional().describe('Existing OrgX run UUID'),
+      run_id: z.string().guid().optional().describe('Existing OrgX run UUID'),
       correlation_id: z
         .string()
         .max(120)
@@ -1877,7 +1877,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .optional()
         .describe('Originating hook or tool-call event identifier'),
       source_ref: z
-        .record(z.unknown())
+        .record(z.string(), z.unknown())
         .optional()
         .describe('Additional non-secret source and continuation references'),
       continuation: z
@@ -1895,14 +1895,14 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
           thread_id: z.string().max(500).optional(),
           turn_id: z.string().max(500).optional(),
           tool_call_id: z.string().max(500).optional(),
-          checkpoint_id: z.string().uuid().optional(),
-          peer_id: z.string().uuid().optional(),
+          checkpoint_id: z.string().guid().optional(),
+          peer_id: z.string().guid().optional(),
           capability_version: z.string().max(64).optional(),
         })
         .optional()
         .describe('How OrgX should return the answer to the preserved client session'),
       metadata: z
-        .record(z.unknown())
+        .record(z.string(), z.unknown())
         .optional()
         .describe('Additional non-secret request context'),
     },
@@ -1919,7 +1919,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     description:
       'Read the durable owner response and continuation state for orgx_request_attention. USE WHEN: the client has a preserved attention_id and must determine whether the owner answered without creating another request. When resolved=true, apply the answer to the preserved session. NEXT: call orgx_ack_attention with state=resuming, then state=resumed only after native execution actually restarts. Read-only.',
     inputSchema: {
-      attention_id: z.string().uuid().describe('Attention/decision UUID'),
+      attention_id: z.string().guid().describe('Attention/decision UUID'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
@@ -1935,7 +1935,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     description:
       'Report what happened after an owner answered an attention request. Use answer_received when stored locally, resuming when native continuation begins, resumed only after work emits again, resume_failed with an actionable detail when it cannot restart, or cancelled when intentionally stopped. USE WHEN: the source client has objective evidence for a continuation state transition. NEXT: keep the same attention_id and idempotency key through terminal resumed, resume_failed, or cancelled state. DO NOT USE: to infer that work resumed merely because the decision was resolved; wait for native execution evidence. This receipt prevents Live from claiming work is moving before the source client confirms it.',
     inputSchema: {
-      attention_id: z.string().uuid().describe('Attention/decision UUID'),
+      attention_id: z.string().guid().describe('Attention/decision UUID'),
       state: z
         .enum([
           'answer_received',
@@ -1971,7 +1971,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .optional()
         .describe('ISO timestamp when this state was observed'),
       metadata: z
-        .record(z.unknown())
+        .record(z.string(), z.unknown())
         .optional()
         .describe('Additional non-secret receipt metadata'),
     },
@@ -1988,7 +1988,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     description:
       'Pause at a safe checkpoint and forward a contextual question to the initiative owner. OrgX renders the right single-select, multi-select, free-text, or confirmation control and preserves the source run/session so work can resume with the exact answer. USE WHEN: Claude Code AskUserQuestion, Codex request_user_input, Cursor, OpenClaw, or another client needs human judgment to continue. NEXT: poll orgx_poll_question with the returned question_id; continue only when continuation.should_resume is true. DO NOT USE: for runtime failures with an automatic retry path — report a chokepoint instead.',
     inputSchema: {
-      initiative_id: z.string().uuid().describe('Initiative UUID'),
+      initiative_id: z.string().guid().describe('Initiative UUID'),
       idempotency_key: z
         .string()
         .min(1)
@@ -2023,10 +2023,10 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .describe('Owner attention urgency; default medium'),
       workstream_id: z
         .string()
-        .uuid()
+        .guid()
         .optional()
         .describe('Affected workstream UUID'),
-      run_id: z.string().uuid().optional().describe('Existing run UUID'),
+      run_id: z.string().guid().optional().describe('Existing run UUID'),
       correlation_id: z
         .string()
         .max(120)
@@ -2054,11 +2054,11 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .optional()
         .describe('Originating question/tool-call event identifier'),
       source_ref: z
-        .record(z.unknown())
+        .record(z.string(), z.unknown())
         .optional()
         .describe('Additional non-secret client continuation references'),
       metadata: z
-        .record(z.unknown())
+        .record(z.string(), z.unknown())
         .optional()
         .describe('Additional non-secret structured context'),
     },
@@ -2081,7 +2081,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     inputSchema: {
       question_id: z
         .string()
-        .uuid()
+        .guid()
         .describe('Question/decision UUID returned by orgx_request_question'),
     },
     annotations: {
@@ -2102,8 +2102,8 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     description:
       'Emit the deterministic execution graph + trust ledger for the active run from explicit nodes, OTel semantic events, or both. OTel promotion requires orgx.material=true plus episode/kind attributes; inferred events stay gaps and raw prompts are never retained. OrgX derives false-completion, hallucinated-receipt, and dependency-violation signals from this and surfaces them on /live. USE WHEN: reporting the structured shape of multi-step work — NOT a single progress line (use orgx_emit_activity for that). NEXT: continue work; re-emit as the graph advances (idempotent per run + graph fingerprint). DO NOT USE to mark entities complete — telemetry only.',
     inputSchema: {
-      initiative_id: z.string().uuid().describe('Initiative UUID'),
-      run_id: z.string().uuid().optional().describe('Existing run UUID'),
+      initiative_id: z.string().guid().describe('Initiative UUID'),
+      run_id: z.string().guid().optional().describe('Existing run UUID'),
       correlation_id: z
         .string()
         .optional()
@@ -2144,7 +2144,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .optional()
         .describe('Explicit trust-ledger events such as authority_exceeded that OrgX cannot infer from graph shape'),
       metadata: z
-        .record(z.unknown())
+        .record(z.string(), z.unknown())
         .optional()
         .describe('Optional structured metadata to attach to the execution-graph emission'),
     },
@@ -2161,7 +2161,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     description:
       'Apply an idempotent transactional changeset for task/milestone/decision mutations. USE WHEN: agent needs to create/update multiple tasks, milestones, or decisions atomically. NEXT: Call orgx_emit_activity to log what was changed. DO NOT USE: for single entity updates — use entity_action or update_entity instead.',
     inputSchema: {
-      initiative_id: z.string().uuid().describe('Initiative UUID'),
+      initiative_id: z.string().guid().describe('Initiative UUID'),
       idempotency_key: z
         .string()
         .min(1)
@@ -2172,7 +2172,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .min(1)
         .max(25)
         .describe('Ordered task, milestone, and decision mutations to apply atomically'),
-      run_id: z.string().uuid().optional().describe('Existing run UUID'),
+      run_id: z.string().guid().optional().describe('Existing run UUID'),
       correlation_id: z
         .string()
         .optional()
@@ -2206,20 +2206,20 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
         .describe(
           'GitHub pull request URL, e.g. https://github.com/org/repo/pull/123. OrgX must have server-side GitHub credentials to inspect it.'
         ),
-      workspace_id: z.string().uuid().optional().describe('OrgX workspace UUID'),
+      workspace_id: z.string().guid().optional().describe('OrgX workspace UUID'),
       initiative_id: z
         .string()
-        .uuid()
+        .guid()
         .optional()
         .describe('Initiative to attach the consolidation_pass artifact to'),
       task_id: z
         .string()
-        .uuid()
+        .guid()
         .optional()
         .describe('Task to attach the consolidation_pass artifact to'),
       decision_id: z
         .string()
-        .uuid()
+        .guid()
         .optional()
         .describe('Decision to attach the consolidation_pass artifact to'),
       commit_sha: z
@@ -2353,7 +2353,7 @@ export const CLIENT_INTEGRATION_TOOL_DEFINITIONS = [
     inputSchema: {
       artifact_id: z
         .string()
-        .uuid()
+        .guid()
         .describe('Completed work_artifacts UUID to evaluate'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },

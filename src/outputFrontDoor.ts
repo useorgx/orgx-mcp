@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const uuid = z.string().uuid();
+const uuid = z.string().guid();
 const nullableText = z.string().min(1).max(300).nullable();
 const finiteAmount = z.number().finite().nonnegative().nullable();
 

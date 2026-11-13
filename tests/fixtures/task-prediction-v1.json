@@ -161,11 +161,11 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_string",
+          "code": "invalid_format",
           "path": [
             "workspace_id"
           ],
-          "message": "Invalid uuid"
+          "message": "Invalid GUID"
         }
       ]
     }
@@ -208,7 +208,7 @@
           "path": [
             "workspace_id"
           ],
-          "message": "Expected string, received null"
+          "message": "Invalid input: expected string, received null"
         }
       ]
     }
@@ -247,11 +247,11 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_string",
+          "code": "invalid_format",
           "path": [
             "workspace_id"
           ],
-          "message": "Invalid uuid"
+          "message": "Invalid GUID"
         }
       ]
     }
@@ -453,7 +453,7 @@
           "path": [
             "expectation_set_id"
           ],
-          "message": "Expected string, received null"
+          "message": "Invalid input: expected string, received null"
         }
       ]
     }
@@ -496,7 +496,7 @@
           "path": [
             "expectation_set_version"
           ],
-          "message": "Number must be greater than 0"
+          "message": "Too small: expected number to be >0"
         }
       ]
     }
@@ -539,7 +539,7 @@
           "path": [
             "expectation_set_version"
           ],
-          "message": "Number must be greater than 0"
+          "message": "Too small: expected number to be >0"
         }
       ]
     }
@@ -582,7 +582,7 @@
           "path": [
             "expectation_set_version"
           ],
-          "message": "Expected integer, received float"
+          "message": "Invalid input: expected int, received number"
         }
       ]
     }
@@ -625,7 +625,7 @@
           "path": [
             "expectation_set_version"
           ],
-          "message": "Expected number, received string"
+          "message": "Invalid input: expected number, received string"
         }
       ]
     }
@@ -668,7 +668,7 @@
           "path": [
             "expected_outcome"
           ],
-          "message": "String must contain at least 1 character(s)"
+          "message": "Too small: expected string to have >=1 characters"
         }
       ]
     }
@@ -711,7 +711,7 @@
           "path": [
             "expected_outcome"
           ],
-          "message": "String must contain at least 1 character(s)"
+          "message": "Too small: expected string to have >=1 characters"
         }
       ]
     }
@@ -864,7 +864,7 @@
           "path": [
             "expected_outcome"
           ],
-          "message": "String must contain at most 500 character(s)"
+          "message": "Too big: expected string to have <=500 characters"
         }
       ]
     }
@@ -907,7 +907,7 @@
           "path": [
             "confidence"
           ],
-          "message": "Number must be greater than or equal to 0"
+          "message": "Too small: expected number to be >=0"
         }
       ]
     }
@@ -1060,7 +1060,7 @@
           "path": [
             "confidence"
           ],
-          "message": "Number must be less than or equal to 1"
+          "message": "Too big: expected number to be <=1"
         }
       ]
     }
@@ -1103,7 +1103,7 @@
           "path": [
             "confidence"
           ],
-          "message": "Expected number, received null"
+          "message": "Invalid input: expected number, received null"
         }
       ]
     }
@@ -1140,7 +1140,7 @@
           "path": [
             "criteria_predictions"
           ],
-          "message": "Array must contain at least 1 element(s)"
+          "message": "Too small: expected array to have >=1 items"
         }
       ]
     }
@@ -2223,7 +2223,7 @@
           "path": [
             "criteria_predictions"
           ],
-          "message": "Array must contain at most 50 element(s)"
+          "message": "Too big: expected array to have <=50 items"
         }
       ]
     }
@@ -2320,7 +2320,7 @@
             0,
             "criterion_id"
           ],
-          "message": "String must contain at least 1 character(s)"
+          "message": "Too small: expected string to have >=1 characters"
         }
       ]
     }
@@ -2367,7 +2367,7 @@
             0,
             "criterion_id"
           ],
-          "message": "String must contain at most 200 character(s)"
+          "message": "Too big: expected string to have <=200 characters"
         }
       ]
     }
@@ -2408,13 +2408,13 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_enum_value",
+          "code": "invalid_value",
           "path": [
             "criteria_predictions",
             0,
             "predicted"
           ],
-          "message": "Invalid enum value. Expected 'met' | 'unmet', received 'approved'"
+          "message": "Invalid option: expected one of \"met\"|\"unmet\""
         }
       ]
     }
@@ -2461,7 +2461,7 @@
             0,
             "confidence"
           ],
-          "message": "Number must be less than or equal to 1"
+          "message": "Too big: expected number to be <=1"
         }
       ]
     }
@@ -2507,7 +2507,7 @@
             "criteria_predictions",
             0
           ],
-          "message": "Unrecognized key(s) in object: 'approved'"
+          "message": "Unrecognized key: \"approved\""
         }
       ]
     }
@@ -2547,7 +2547,7 @@
         {
           "code": "unrecognized_keys",
           "path": [],
-          "message": "Unrecognized key(s) in object: 'approved'"
+          "message": "Unrecognized key: \"approved\""
         }
       ]
     }
@@ -2592,11 +2592,11 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_string",
+          "code": "invalid_format",
           "path": [
             "registered_at"
           ],
-          "message": "Invalid datetime"
+          "message": "Invalid ISO datetime"
         }
       ]
     }
@@ -2714,11 +2714,11 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_string",
+          "code": "invalid_format",
           "path": [
             "registered_at"
           ],
-          "message": "Invalid datetime"
+          "message": "Invalid ISO datetime"
         }
       ]
     }
@@ -2763,11 +2763,11 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_literal",
+          "code": "invalid_value",
           "path": [
             "state"
           ],
-          "message": "Invalid literal value, expected \"pending\""
+          "message": "Invalid input: expected \"pending\""
         }
       ]
     }
@@ -2812,11 +2812,11 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_literal",
+          "code": "invalid_value",
           "path": [
             "state"
           ],
-          "message": "Invalid literal value, expected \"pending\""
+          "message": "Invalid input: expected \"pending\""
         }
       ]
     }
@@ -2861,11 +2861,11 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_literal",
+          "code": "invalid_value",
           "path": [
             "state"
           ],
-          "message": "Invalid literal value, expected \"pending\""
+          "message": "Invalid input: expected \"pending\""
         }
       ]
     }
@@ -2910,11 +2910,11 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_string",
+          "code": "invalid_format",
           "path": [
             "contract_hash"
           ],
-          "message": "Invalid"
+          "message": "Invalid string: must match pattern /^[0-9a-f]{64}$/"
         }
       ]
     }
@@ -2959,11 +2959,11 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_string",
+          "code": "invalid_format",
           "path": [
             "contract_hash"
           ],
-          "message": "Invalid"
+          "message": "Invalid string: must match pattern /^[0-9a-f]{64}$/"
         }
       ]
     }
@@ -3008,11 +3008,11 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_string",
+          "code": "invalid_format",
           "path": [
             "contract_hash"
           ],
-          "message": "Invalid"
+          "message": "Invalid string: must match pattern /^[0-9a-f]{64}$/"
         }
       ]
     }
@@ -3057,11 +3057,11 @@
       "ok": false,
       "issues": [
         {
-          "code": "invalid_string",
+          "code": "invalid_format",
           "path": [
             "owner_id"
           ],
-          "message": "Invalid uuid"
+          "message": "Invalid GUID"
         }
       ]
     }
@@ -3110,7 +3110,7 @@
           "path": [
             "confidence"
           ],
-          "message": "Number must be less than or equal to 1"
+          "message": "Too big: expected number to be <=1"
         }
       ]
     }
