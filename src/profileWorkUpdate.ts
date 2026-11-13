@@ -18,7 +18,7 @@ const qualityBarPatch = z.union([
     checks: z.array(z.object({ id: z.string().min(1).max(120), label: z.string().min(1).max(160), description: z.string().min(1).max(600), blocking: z.boolean(), checkerId: z.string().min(1).max(160), checkerVersion: z.string().min(1).max(40), added: z.boolean(), source }).strict()).max(20).optional(),
   }).strict(),
   z.object({ part: z.literal('line'), value: z.number().min(30).max(100).optional(), decide: z.boolean().optional() }).strict(),
-  z.object({ part: z.literal('references'), pinned: z.record(z.string().uuid(), z.boolean()).optional(), decide: z.boolean().optional() }).strict(),
+  z.object({ part: z.literal('references'), pinned: z.record(z.string().guid(), z.boolean()).optional(), decide: z.boolean().optional() }).strict(),
   z.object({ part: z.literal('calibration'), choice: z.enum(['after_publish', 'not_now']).optional(), decide: z.boolean().optional() }).strict(),
   z.object({ part: z.literal('shipRule'), choice: z.enum(['approve_every', 'clear_when_trusted']).optional(), decide: z.boolean().optional() }).strict(),
   z.object({ part: z.literal('reopen'), target: z.enum(['criteria', 'line', 'references', 'calibration', 'shipRule']) }).strict(),
@@ -50,7 +50,7 @@ export function validateProfileWorkUpdate(args: Record<string, unknown>): void {
       kindKey.parse(args.id);
       qualityBarPatchFields.parse(args.fields);
     } else {
-      z.string().uuid().parse(args.id);
+      z.string().guid().parse(args.id);
       workspaceProfileFields.parse(args.fields);
       if (args.workspace_id !== undefined && args.workspace_id !== args.id)
         throw new Error('workspace_id must match the workspace id being edited.');
@@ -69,7 +69,7 @@ export async function executeProfileWorkUpdate(
   const key = idempotencyKeySchema.parse(args.idempotency_key);
   const headers = { 'Idempotency-Key': key };
   const retry = { retry_contract: PROFILE_WORK_RETRY_CONTRACT, idempotency_key: key };
-  const workspaceId = args.workspace_id === undefined ? undefined : z.string().uuid().parse(args.workspace_id);
+  const workspaceId = args.workspace_id === undefined ? undefined : z.string().guid().parse(args.workspace_id);
   let data: Record<string, unknown>;
   let message: string;
   let raw: Record<string, unknown>;
@@ -78,7 +78,7 @@ export async function executeProfileWorkUpdate(
     raw = await request('/api/v1/quality-bars/drafts', { method: 'POST', headers,
       body: JSON.stringify({ kind_key: kindKey.parse(args.id), patches: fields.patches, ...(workspaceId ? { workspace_id: workspaceId } : {}), ...retry }),
     });
-    const saved = z.object({ draft: z.object({ id: z.string().uuid(), kindKey, status: z.literal('open') }).passthrough(),
+    const saved = z.object({ draft: z.object({ id: z.string().guid(), kindKey, status: z.literal('open') }).passthrough(),
       review_path: z.string().startsWith('/settings/quality/'), publish: z.literal('person_only'), created: z.boolean(),
     }).passthrough().parse(raw.data);
     if (saved.draft.kindKey !== args.id) throw new Error('Quality bar acknowledgement does not match the requested kind.');
@@ -89,7 +89,7 @@ export async function executeProfileWorkUpdate(
     raw = await request('/api/v1/workspaces/profile', { method: 'PATCH', headers,
       body: JSON.stringify({ ...workspaceProfileFields.parse(args.fields), workspace_id: args.id, ...retry }),
     });
-    const saved = z.object({ workspace: z.object({ id: z.string().uuid(), name: z.string(), description: z.string().nullable() }).passthrough(),
+    const saved = z.object({ workspace: z.object({ id: z.string().guid(), name: z.string(), description: z.string().nullable() }).passthrough(),
       facts: z.object({ written: z.array(z.string()), skipped_confirmed: z.array(z.string()) }).optional() }).parse(raw.data);
     if (saved.workspace.id !== args.id) throw new Error('Workspace acknowledgement does not match the requested workspace.');
     data = saved.facts ? { ...saved.workspace, facts: saved.facts } : saved.workspace;

@@ -11,8 +11,8 @@ export const CriterionPredictionSchema = z.object({
 }).strict();
 
 export const TaskPredictionInputShape = {
-  task_id: z.string().uuid(),
-  expectation_set_id: z.string().uuid(),
+  task_id: z.string().guid(),
+  expectation_set_id: z.string().guid(),
   expectation_set_version: z.number().int().positive(),
   expected_outcome: z.string().trim().min(1).max(500),
   confidence: z.number().finite().min(0).max(1),
@@ -20,9 +20,9 @@ export const TaskPredictionInputShape = {
 };
 
 export const TaskPredictionRecordShape = {
-  id: z.string().uuid(),
-  owner_id: z.string().uuid(),
-  initiative_id: z.string().uuid(),
+  id: z.string().guid(),
+  owner_id: z.string().guid(),
+  initiative_id: z.string().guid(),
   contract_hash: z.string().regex(/^[0-9a-f]{64}$/),
   registered_at: z.string().datetime({ offset: true }),
   state: z.literal('pending'),
@@ -40,7 +40,7 @@ export function duplicateCriterionPredictionIndexes(predictions: readonly { crit
 }
 
 const requestObjectSchema = z.object({
-  workspace_id: z.string().uuid(),
+  workspace_id: z.string().guid(),
   ...TaskPredictionInputShape,
 }).strict();
 

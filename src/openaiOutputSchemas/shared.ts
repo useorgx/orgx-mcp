@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { z as z4 } from 'zod/v4';
 
-export type SourceOutputSchema = z.AnyZodObject;
+export type SourceOutputSchema = z.ZodObject;
 export type PortableOutputSchema = ReturnType<typeof z4.object>;
 export type OutputSchema = SourceOutputSchema | PortableOutputSchema;
 
@@ -25,7 +25,7 @@ export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
     z.boolean(),
     z.null(),
     z.array(jsonValueSchema),
-    z.record(jsonValueSchema),
+    z.record(z.string(), jsonValueSchema),
   ])
 );
 
@@ -52,7 +52,7 @@ export const streamGrantSchema = z.object({
   streamUrl: z.string(),
   expiresAt: z.number(),
   refreshTool: z.string(),
-  refreshArgs: z.record(z.string()),
+  refreshArgs: z.record(z.string(), z.string()),
   label: z.string(),
 }).strict();
 
@@ -471,7 +471,7 @@ export const artifactSchema = resourceSchema.extend({
   }).nullable().optional(),
   context: artifactContextSchema.nullable().optional(),
   content: jsonValueSchema.optional(),
-  verification: z.record(jsonValueSchema).nullable().optional(),
+  verification: z.record(z.string(), jsonValueSchema).nullable().optional(),
   version: z.union([z.string(), z.number()]).nullable().optional(),
   artifact_type: nullableString.optional(),
   eval_score: nullableNumber.optional(),

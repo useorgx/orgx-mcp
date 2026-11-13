@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { jsonValueSchema } from './openaiOutputSchemas/shared';
 import { normalizeProofRevisionDescription, type ArtifactProofPredecessor } from './proofRevisionDescription';
 
-const detail = z.record(jsonValueSchema);
+const detail = z.record(z.string(), jsonValueSchema);
 export const WORKFLOW_COMPLETION_OUTPUT_SCHEMA = z.object({
   data: z.object({
     completed: z.boolean().optional(), state: z.string().optional(), proof_attached: z.boolean().optional(),

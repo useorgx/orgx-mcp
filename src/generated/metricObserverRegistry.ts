@@ -10,21 +10,21 @@ export const MetricRegistryIdSchema = z.enum(METRIC_REGISTRY_IDS);
 export type MetricRegistryId = z.infer<typeof MetricRegistryIdSchema>;
 
 export const ReceiptCoverageParametersSchema = z.object({
-  workspace_id: z.string().uuid(),
+  workspace_id: z.string().guid(),
   capture_path: z.literal(AUTOMATIC_SESSION_CAPTURE_PATH),
   exclude_benchmark: z.literal(true),
   receipt_deadline_seconds: z.number().int().min(METRIC_REGISTRATION_LIMITS.minimumReceiptDeadlineSeconds).max(METRIC_REGISTRATION_LIMITS.maximumReceiptDeadlineSeconds),
 }).strict();
 
 export const AgentRunSuccessParametersSchema = z.object({
-  workspace_id: z.string().uuid(),
+  workspace_id: z.string().guid(),
   agent_id: z.enum(METRIC_OBSERVER_AGENT_IDS),
   exclude_qa: z.literal(true),
   include_canaries: z.boolean(),
 }).strict();
 
 export const SignupFirstSuccessParametersSchema = z.object({
-  workspace_id: z.string().uuid(),
+  workspace_id: z.string().guid(),
   project_id: z.number().int().positive(),
   success_deadline_hours: z.literal(METRIC_SIGNUP_SUCCESS_DEADLINE_HOURS),
   exclude_qa: z.literal(true),

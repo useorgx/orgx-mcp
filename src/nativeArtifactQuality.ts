@@ -40,11 +40,11 @@ export const artifactCurrentChecksSchema = z
 export const nativeArtifactQualitySchema = z
   .object({
     source: z.literal("native_four_lens"),
-    verificationId: z.string().uuid(),
+    verificationId: z.string().guid(),
     subjectDigest: digest,
     report: z
       .object({
-        id: z.string().uuid(),
+        id: z.string().guid(),
         uri: z.string().trim().min(1),
         digest,
         mediaType: z.string().trim().min(1).optional(),

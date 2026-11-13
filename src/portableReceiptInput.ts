@@ -7,7 +7,7 @@ import { z } from 'zod';
  * accepted only in the standard's explicitly namespaced extension/metadata slots.
  * Metadata carries producer data and never selects an operation or grants trust.
  */
-const portable_json_object = z.record(z.unknown());
+const portable_json_object = z.record(z.string(), z.unknown());
 
 // Some schema consumers require patterns to match the complete string. Keep
 // the portable contract's contains-nonwhitespace rule, including multiline

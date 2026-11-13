@@ -324,7 +324,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key(s) in object: 'accepted'\"\n  }\n]"
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key: \\\"accepted\\\"\"\n  }\n]"
     }
   },
   {
@@ -368,7 +368,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"too_small\",\n    \"minimum\": 0,\n    \"type\": \"number\",\n    \"inclusive\": false,\n    \"exact\": false,\n    \"message\": \"Number must be greater than 0\",\n    \"path\": [\n      \"expected_version\"\n    ]\n  }\n]"
+      "message": "[\n  {\n    \"origin\": \"number\",\n    \"code\": \"too_small\",\n    \"minimum\": 0,\n    \"inclusive\": false,\n    \"path\": [\n      \"expected_version\"\n    ],\n    \"message\": \"Too small: expected number to be >0\"\n  }\n]"
     }
   },
   {
@@ -387,7 +387,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"too_big\",\n    \"maximum\": 2147483647,\n    \"type\": \"number\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"Number must be less than or equal to 2147483647\",\n    \"path\": [\n      \"expected_version\"\n    ]\n  }\n]"
+      "message": "[\n  {\n    \"origin\": \"number\",\n    \"code\": \"too_big\",\n    \"maximum\": 2147483647,\n    \"inclusive\": true,\n    \"path\": [\n      \"expected_version\"\n    ],\n    \"message\": \"Too big: expected number to be <=2147483647\"\n  }\n]"
     }
   },
   {
@@ -406,7 +406,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"invalid_type\",\n    \"expected\": \"integer\",\n    \"received\": \"float\",\n    \"message\": \"Expected integer, received float\",\n    \"path\": [\n      \"expected_version\"\n    ]\n  }\n]"
+      "message": "[\n  {\n    \"expected\": \"int\",\n    \"format\": \"safeint\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"expected_version\"\n    ],\n    \"message\": \"Invalid input: expected int, received number\"\n  }\n]"
     }
   },
   {
@@ -425,7 +425,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"validation\": \"uuid\",\n    \"code\": \"invalid_string\",\n    \"message\": \"Invalid uuid\",\n    \"path\": [\n      \"artifact_id\"\n    ]\n  }\n]"
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"guid\",\n    \"pattern\": \"/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/\",\n    \"path\": [\n      \"artifact_id\"\n    ],\n    \"message\": \"Invalid GUID\"\n  }\n]"
     }
   },
   {
@@ -466,7 +466,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"invalid_string\",\n    \"validation\": \"datetime\",\n    \"message\": \"Invalid datetime\",\n    \"path\": [\n      \"expected_updated_at\"\n    ]\n  }\n]"
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"datetime\",\n    \"pattern\": \"/^(?:(?:\\\\d\\\\d[2468][048]|\\\\d\\\\d[13579][26]|\\\\d\\\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\\\d|30)|(?:02)-(?:0[1-9]|1\\\\d|2[0-8])))T(?:(?:[01]\\\\d|2[0-3]):[0-5]\\\\d:[0-5]\\\\d(?:\\\\.\\\\d+)?(?:Z|([+-](?:[01]\\\\d|2[0-3]):[0-5]\\\\d)))$/\",\n    \"path\": [\n      \"expected_updated_at\"\n    ],\n    \"message\": \"Invalid ISO datetime\"\n  }\n]"
     }
   },
   {
@@ -485,7 +485,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"invalid_string\",\n    \"validation\": \"datetime\",\n    \"message\": \"Invalid datetime\",\n    \"path\": [\n      \"expected_updated_at\"\n    ]\n  }\n]"
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"datetime\",\n    \"pattern\": \"/^(?:(?:\\\\d\\\\d[2468][048]|\\\\d\\\\d[13579][26]|\\\\d\\\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\\\d|30)|(?:02)-(?:0[1-9]|1\\\\d|2[0-8])))T(?:(?:[01]\\\\d|2[0-3]):[0-5]\\\\d:[0-5]\\\\d(?:\\\\.\\\\d+)?(?:Z|([+-](?:[01]\\\\d|2[0-3]):[0-5]\\\\d)))$/\",\n    \"path\": [\n      \"expected_updated_at\"\n    ],\n    \"message\": \"Invalid ISO datetime\"\n  }\n]"
     }
   },
   {
@@ -505,7 +505,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"review_eligible\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key(s) in object: 'review_eligible'\"\n  }\n]"
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"review_eligible\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key: \\\"review_eligible\\\"\"\n  }\n]"
     }
   },
   {
@@ -1022,7 +1022,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"received\": \"approval\",\n    \"code\": \"invalid_enum_value\",\n    \"options\": [\n      \"playback\",\n      \"execution\",\n      \"schema\",\n      \"render\",\n      \"runtime\",\n      \"mixed\"\n    ],\n    \"path\": [\n      \"kind\"\n    ],\n    \"message\": \"Invalid enum value. Expected 'playback' | 'execution' | 'schema' | 'render' | 'runtime' | 'mixed', received 'approval'\"\n  }\n]"
+      "message": "[\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"playback\",\n      \"execution\",\n      \"schema\",\n      \"render\",\n      \"runtime\",\n      \"mixed\"\n    ],\n    \"path\": [\n      \"kind\"\n    ],\n    \"message\": \"Invalid option: expected one of \\\"playback\\\"|\\\"execution\\\"|\\\"schema\\\"|\\\"render\\\"|\\\"runtime\\\"|\\\"mixed\\\"\"\n  }\n]"
     }
   },
   {
@@ -1049,7 +1049,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"received\": \"accepted\",\n    \"code\": \"invalid_enum_value\",\n    \"options\": [\n      \"passed\",\n      \"failed\",\n      \"blocked\",\n      \"not_run\"\n    ],\n    \"path\": [\n      \"status\"\n    ],\n    \"message\": \"Invalid enum value. Expected 'passed' | 'failed' | 'blocked' | 'not_run', received 'accepted'\"\n  }\n]"
+      "message": "[\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"passed\",\n      \"failed\",\n      \"blocked\",\n      \"not_run\"\n    ],\n    \"path\": [\n      \"status\"\n    ],\n    \"message\": \"Invalid option: expected one of \\\"passed\\\"|\\\"failed\\\"|\\\"blocked\\\"|\\\"not_run\\\"\"\n  }\n]"
     }
   },
   {
@@ -1076,7 +1076,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"received\": 2,\n    \"code\": \"invalid_literal\",\n    \"expected\": 1,\n    \"path\": [\n      \"artifact_version\"\n    ],\n    \"message\": \"Invalid literal value, expected 1\"\n  }\n]"
+      "message": "[\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      1\n    ],\n    \"path\": [\n      \"artifact_version\"\n    ],\n    \"message\": \"Invalid input: expected 1\"\n  }\n]"
     }
   },
   {
@@ -1103,7 +1103,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"invalid_string\",\n    \"validation\": \"datetime\",\n    \"message\": \"Invalid datetime\",\n    \"path\": [\n      \"checked_at\"\n    ]\n  }\n]"
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"datetime\",\n    \"pattern\": \"/^(?:(?:\\\\d\\\\d[2468][048]|\\\\d\\\\d[13579][26]|\\\\d\\\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\\\d|30)|(?:02)-(?:0[1-9]|1\\\\d|2[0-8])))T(?:(?:[01]\\\\d|2[0-3]):[0-5]\\\\d:[0-5]\\\\d(?:\\\\.\\\\d+)?(?:Z|([+-](?:[01]\\\\d|2[0-3]):[0-5]\\\\d)))$/\",\n    \"path\": [\n      \"checked_at\"\n    ],\n    \"message\": \"Invalid ISO datetime\"\n  }\n]"
     }
   },
   {
@@ -1124,7 +1124,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"too_small\",\n    \"minimum\": 1,\n    \"type\": \"array\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"Array must contain at least 1 element(s)\",\n    \"path\": [\n      \"evidence_refs\"\n    ]\n  }\n]"
+      "message": "[\n  {\n    \"origin\": \"array\",\n    \"code\": \"too_small\",\n    \"minimum\": 1,\n    \"inclusive\": true,\n    \"path\": [\n      \"evidence_refs\"\n    ],\n    \"message\": \"Too small: expected array to have >=1 items\"\n  }\n]"
     }
   },
   {
@@ -1301,7 +1301,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"too_big\",\n    \"maximum\": 30,\n    \"type\": \"array\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"Array must contain at most 30 element(s)\",\n    \"path\": [\n      \"evidence_refs\"\n    ]\n  }\n]"
+      "message": "[\n  {\n    \"origin\": \"array\",\n    \"code\": \"too_big\",\n    \"maximum\": 30,\n    \"inclusive\": true,\n    \"path\": [\n      \"evidence_refs\"\n    ],\n    \"message\": \"Too big: expected array to have <=30 items\"\n  }\n]"
     }
   },
   {
@@ -1327,7 +1327,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"too_small\",\n    \"minimum\": 1,\n    \"type\": \"string\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"String must contain at least 1 character(s)\",\n    \"path\": [\n      \"evidence_refs\",\n      0,\n      \"hash\"\n    ]\n  }\n]"
+      "message": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"too_small\",\n    \"minimum\": 1,\n    \"inclusive\": true,\n    \"path\": [\n      \"evidence_refs\",\n      0,\n      \"hash\"\n    ],\n    \"message\": \"Too small: expected string to have >=1 characters\"\n  }\n]"
     }
   },
   {
@@ -1353,7 +1353,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [\n      \"evidence_refs\",\n      0\n    ],\n    \"message\": \"Unrecognized key(s) in object: 'accepted'\"\n  }\n]"
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [\n      \"evidence_refs\",\n      0\n    ],\n    \"message\": \"Unrecognized key: \\\"accepted\\\"\"\n  }\n]"
     }
   },
   {
@@ -1378,7 +1378,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"validation\": \"url\",\n    \"code\": \"invalid_string\",\n    \"message\": \"Invalid url\",\n    \"path\": [\n      \"evidence_refs\",\n      0,\n      \"url\"\n    ]\n  }\n]"
+      "message": "[\n  {\n    \"code\": \"invalid_format\",\n    \"format\": \"url\",\n    \"path\": [\n      \"evidence_refs\",\n      0,\n      \"url\"\n    ],\n    \"message\": \"Invalid URL\"\n  }\n]"
     }
   },
   {
@@ -1418,7 +1418,7 @@
         "checked_at": "2026-10-12T00:00:00Z",
         "evidence_refs": [
           {
-            "url": " https://fixture.example.test/proof "
+            "url": "https://fixture.example.test/proof"
           }
         ]
       }
@@ -1449,7 +1449,7 @@
     "mcp": {
       "ok": false,
       "name": "ZodError",
-      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key(s) in object: 'accepted'\"\n  }\n]"
+      "message": "[\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"accepted\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key: \\\"accepted\\\"\"\n  }\n]"
     }
   },
   {
