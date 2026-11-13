@@ -34,8 +34,8 @@ export const workLeaseInputSchema = {
     .optional()
     .describe('Repo-relative files or globs you are about to edit. Required for claim.'),
   minutes: z.number().int().min(1).max(480).optional().describe('How long to hold the lease; default 60.'),
-  lease_id: z.string().uuid().optional().describe('The lease to release. Required for release.'),
-  task_id: z.string().uuid().optional().describe('OrgX task the edit belongs to, if any.'),
+  lease_id: z.string().guid().optional().describe('The lease to release. Required for release.'),
+  task_id: z.string().guid().optional().describe('OrgX task the edit belongs to, if any.'),
   reason: z.string().max(500).optional().describe('One line other agents will see.'),
 };
 

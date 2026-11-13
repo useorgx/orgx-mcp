@@ -47,7 +47,7 @@ const appendOnly = { readOnlyHint: false, destructiveHint: false, openWorldHint:
 const modifiesRecords = { readOnlyHint: false, destructiveHint: true, openWorldHint: false };
 const dispatchesWork = { readOnlyHint: false, destructiveHint: true, openWorldHint: true };
 const id = z.string().trim().min(1);
-const workspaceId = z.string().uuid().optional().describe('Workspace UUID. Defaults to the authenticated session workspace when unambiguous.');
+const workspaceId = z.string().guid().optional().describe('Workspace UUID. Defaults to the authenticated session workspace when unambiguous.');
 /** Every mutating operation requires one; see src/idempotencyKeys.ts. */
 const retryKey = idempotencyKeySchema;
 const workType = z.enum(['initiative', 'workstream', 'milestone', 'task']);
@@ -69,8 +69,8 @@ const responsibilityInput = z.object({
     purpose: z.string().trim().min(1).max(1000).optional(),
     authority: z.enum(['observe', 'prepare', 'gated', 'autonomous']).describe('gated: the person approves before this stage acts outside OrgX.'),
   }).strict()).min(1).max(20),
-  accountable_owner_id: z.string().uuid().optional().describe('Defaults to the signed-in person.'),
-  system_ids: z.array(z.string().uuid()).max(50).optional().describe('Connector ids from capability_report in orgx_get_workspace_context.'),
+  accountable_owner_id: z.string().guid().optional().describe('Defaults to the signed-in person.'),
+  system_ids: z.array(z.string().guid()).max(50).optional().describe('Connector ids from capability_report in orgx_get_workspace_context.'),
   limitations: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
   tags: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
 }).strict();
@@ -79,7 +79,7 @@ const planVersion = z.number().int().positive().max(2_147_483_646)
   .describe('Authoritative plan_ref.version from the most recent read. Required to prevent overwriting another edit.');
 const planAttachment = z.object({
   entity_type: workType,
-  entity_id: z.string().uuid(),
+  entity_id: z.string().guid(),
   section: z.string().trim().min(1).max(500).optional(),
   label: z.string().trim().min(1).max(500).optional(),
   relevance: z.string().trim().min(1).max(4000).optional(),
@@ -198,7 +198,7 @@ export const WORK_CONTENT_PATCH_SCHEMA = z.object({
   description: z.string().max(20000).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  goal_ids: z.array(z.string().uuid()).optional(),
+  goal_ids: z.array(z.string().guid()).optional(),
   metadata: contentMetadataSchema.optional(),
 }).strict().refine((value) => Object.values(value).some((field) => field !== undefined), 'A nonempty content patch is required.');
 
@@ -249,8 +249,8 @@ const legacyNodeFields = {
   persona: z.string().optional(),
   assigned_agent_ids: z.array(id).optional(),
   assigned_agent_names: z.array(id).optional(),
-  goal_ids: z.array(z.string().uuid()).optional(),
-  objective_ids: z.array(z.string().uuid()).optional(),
+  goal_ids: z.array(z.string().guid()).optional(),
+  objective_ids: z.array(z.string().guid()).optional(),
   depends_on: z.array(id).optional(),
   due_date: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
@@ -285,8 +285,8 @@ const legacyScaffoldInput = {
   summary: z.string().optional(),
   description: z.string().optional(),
   workspace_id: workspaceId,
-  goal_ids: z.array(z.string().uuid()).optional(),
-  objective_ids: z.array(z.string().uuid()).optional(),
+  goal_ids: z.array(z.string().guid()).optional(),
+  objective_ids: z.array(z.string().guid()).optional(),
   workstreams: z.array(legacyWorkstreamSchema).optional(),
   source_evidence: legacySourceEvidenceSchema.optional(),
   context: z.array(z.object({
@@ -307,7 +307,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     {
       workspace_id: workspaceId, initiative_id: id.optional(),
       bars: z.enum(['in_use', 'all']).optional().describe('Quality bars to list: in_use (default) lists bars with recent work, waiting on the person first; all lists every bar.'),
-      responsibility_id: z.string().uuid().optional().describe('A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, learned rules waiting for the person to confirm (tell them, never confirm for them), limits, the review_path where the person turns it on, and a checkpoint).'),
+      responsibility_id: z.string().guid().optional().describe('A responsibility process_id from responsibilities: adds its responsibility_brief (next action and who it waits on, whether this cycle is due, dated history, rules in force, learned rules waiting for the person to confirm (tell them, never confirm for them), limits, the review_path where the person turns it on, and a checkpoint).'),
       since: z.string().datetime({ offset: true }).optional().describe('With responsibility_id: only history after this time, and how many changes there were. Pass the last brief\'s checkpoint to resume where any agent left off.'),
     }, {
       annotations: readOnly, securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
@@ -343,7 +343,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
     }), { executionKind: 'chatgpt' }),
   operation('orgx_get_operation_status', 'orgx_command_status', 'Read OrgX Operation Status',
     'Read a durable work command, run, or decision. Prefer operation_id returned by a prior operation; compatibility callers can supply kind and id together. Never starts or settles work.',
-    { operation_id: id.optional(), kind: z.enum(['decision', 'run', 'command']).optional(), id: z.string().uuid().optional() }, {
+    { operation_id: id.optional(), kind: z.enum(['decision', 'run', 'command']).optional(), id: z.string().guid().optional() }, {
       executionKind: 'chatgpt', annotations: readOnly, securitySchemes: SECURITY_SCHEMES.anyReadRequiresAuth,
       transformArgs: (args) => {
         if (typeof args.operation_id !== 'string') return args;
@@ -493,7 +493,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   operation('orgx_complete_work_with_proof', 'orgx_act', 'Complete OrgX Work With Proof',
     'Register typed proof, verify completion requirements, and apply the allowed work completion transition. May return proof recorded with completion blocked or awaiting review. Verification and human acceptance remain separate facts.',
     { ...project('orgx_act', ['type', 'id', 'artifact', 'verification', 'quality_score', 'note', 'idempotency_key', 'session_id'], {
-      type: workType, id: z.string().uuid(), artifact: completionProofArtifactSchema,
+      type: workType, id: z.string().guid(), artifact: completionProofArtifactSchema,
       verification: z.array(z.string().trim().min(1).max(2000)).max(30).optional().describe('Verification notes. A client with a cached schema can encode one producer modality_proof as orgx:modality-proof:v1: followed by the same closed JSON envelope; OrgX validates it before recording.'),
       note: z.string().trim().max(4000).optional(),
     }), workspace_id: workspaceId }, {
@@ -580,7 +580,7 @@ export const EXTENDED_WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
   exactWorkAction('delete', ['workspace', 'initiative', 'workstream', 'milestone', 'task', 'objective', 'playbook'], 'Permanently Delete OrgX Work', 'Permanently delete an authorized work record. Intended for an explicit administrative profile; dependent-record rules remain enforced by OrgX.', { note: z.string().min(1) }),
   operation('orgx_validate_studio_content', 'orgx_act', 'Validate OrgX Studio Video Specification',
     'Check the required template and structured content of one studio video specification before rendering. Returns the OrgX validation result.',
-    { id, spec: z.object({ template: z.string().min(1), version: z.string().optional(), title: z.string().optional(), content: z.record(jsonValueSchema), aspectRatio: z.enum(['9:16', '16:9', '1:1', '4:5']).optional(), metadata: contentMetadataSchema.optional() }).strict(), note: z.string().optional() }, {
+    { id, spec: z.object({ template: z.string().min(1), version: z.string().optional(), title: z.string().optional(), content: z.record(z.string(), jsonValueSchema), aspectRatio: z.enum(['9:16', '16:9', '1:1', '4:5']).optional(), metadata: contentMetadataSchema.optional() }).strict(), note: z.string().optional() }, {
       fixedArgs: { type: 'studio_content', action: 'validate' }, annotations: { ...readOnly, idempotentHint: true }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
 ];
@@ -613,7 +613,7 @@ const planEnvelopeSchema = z.object({
  * the legacy router payload solely because they reuse its widget template.
  * Root registration applies the normal error-compatible transport wrapper.
  */
-export const WORKFLOW_OUTPUT_SCHEMAS: Readonly<Record<string, z.AnyZodObject>> = {
+export const WORKFLOW_OUTPUT_SCHEMAS: Readonly<Record<string, z.ZodObject>> = {
   orgx_start_plan: planEnvelopeSchema,
   orgx_read_plan: planEnvelopeSchema,
   orgx_save_plan: planEnvelopeSchema,
@@ -633,7 +633,7 @@ export const WORKFLOW_OUTPUT_SCHEMAS: Readonly<Record<string, z.AnyZodObject>> =
     data: z.object({
       workspace: z.object({ id: z.string(), name: z.string().optional() }).catchall(jsonValueSchema),
       initiative: z.object({ id: z.string() }).catchall(jsonValueSchema).nullable().optional(),
-      capabilities: z.record(jsonValueSchema).optional(),
+      capabilities: z.record(z.string(), jsonValueSchema).optional(),
       references: z.array(z.object({ type: z.string(), id: z.string() }).catchall(jsonValueSchema)).optional(),
     }).catchall(jsonValueSchema),
     meta: workflowApiMetaSchema,
@@ -654,7 +654,7 @@ export const WORKFLOW_OUTPUT_SCHEMAS: Readonly<Record<string, z.AnyZodObject>> =
   orgx_create_initiative_hierarchy: z.object({
     data: z.object({
       initiativeId: z.string(), receiptId: z.string(), eventId: z.string(), aggregateVersion: z.number(),
-      eventHash: z.string(), duplicate: z.boolean(), initiative: z.record(jsonValueSchema),
+      eventHash: z.string(), duplicate: z.boolean(), initiative: z.record(z.string(), jsonValueSchema),
       created: z.object({
         workstreams: z.number(), milestones: z.number(), tasks: z.number(), dependency_edges: z.number(), agents_assigned: z.number(),
       }).strict(),

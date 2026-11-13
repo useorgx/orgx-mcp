@@ -3,14 +3,14 @@ import { callOrgxApiJson, type OrgxApiEnv } from './orgxApi';
 
 const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
 const captureSchema = z.object({
-  workspace_id: z.string().uuid(),
+  workspace_id: z.string().guid(),
   title: z.string().min(1).max(500),
   description: z.string().min(1).max(8000),
   shape: z.literal('generic'),
   shape_context: z.object({ description: z.string().min(1).max(8000) }),
   blocks_task: z.literal(false),
-  initiative_id: z.string().uuid().optional(),
-  workstream_id: z.string().uuid().optional(),
+  initiative_id: z.string().guid().optional(),
+  workstream_id: z.string().guid().optional(),
 });
 
 export async function captureDecision(
@@ -52,7 +52,7 @@ export async function captureDecision(
     allowFallback: false,
   });
   const result = z.object({ decision: z.object({
-    id: z.string().uuid(), title: z.string(), status: z.string(),
+    id: z.string().guid(), title: z.string(), status: z.string(),
     initiative_id: z.string().nullable().optional(),
   }) }).parse(await response.json());
   const message = `Decision recorded: ${result.decision.title}. Review state: ${result.decision.status}. Capturing a decision does not approve work.`;

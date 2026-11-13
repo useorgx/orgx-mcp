@@ -10,7 +10,7 @@ import { buildPortableReceiptProof } from './portableReceiptProof';
 import { toolCallSchema } from './openaiOutputSchemas/shared';
 import { workLedgerOutputShape, workLedgerQuerySchema } from './openaiOutputSchemas/workLedger';
 
-const workspace = z.string().uuid().optional().describe('Workspace UUID. Defaults to the authenticated workspace.');
+const workspace = z.string().guid().optional().describe('Workspace UUID. Defaults to the authenticated workspace.');
 const limit = z.number().int().min(1).max(100).default(25);
 const reviewKind = z.enum(['mapping', 'area', 'link', 'work_type', 'outcome', 'criterion']);
 const claimsSchema = z.object({

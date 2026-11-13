@@ -11,6 +11,7 @@ import {
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { installListedToolSchemas } from './listedToolJsonSchema';
 import * as Sentry from '@sentry/cloudflare';
 import {
   registerAppTool,
@@ -1746,6 +1747,9 @@ export class OrgXMcp extends McpAgent<
     }
 
     this.registerTools();
+    // List schemas the way zod 3 listed them (additionalProperties:false on
+    // every object, which ChatGPT strict mode relies on).
+    installListedToolSchemas(this.server);
     // A scoped run token (oxrun2) is granted tools by name and nothing else:
     // resources and prompts would read OrgX data outside that grant.
     if (!this.hasScopedRunToken()) {
@@ -9262,7 +9266,7 @@ export class OrgXMcp extends McpAgent<
               'Action to execute (leave empty to list available actions). Aliases: launch, pause, complete (resolved per type). Supports update (patch fields), attach (create an artifact linked to the entity), complete_with_proof (attach proof + verify + complete), delete for hard delete. For milestones: ship_batch (atomically attach one artifact + mark multiple subcomponent tasks complete). For initiatives: reassign_streams. For studio_content: render, validate, status, remix, vary, upscale'
             ),
           fields: z
-            .record(z.unknown())
+            .record(z.string(), z.unknown())
             .optional()
             .describe(
               'For action=update only: partial fields to patch on the entity (same payload style as update_entity minus type/id).'
@@ -9307,7 +9311,7 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe('For action=attach only: artifact workflow status.'),
           metadata: z
-            .record(z.unknown())
+            .record(z.string(), z.unknown())
             .optional()
             .describe('For action=attach only: artifact metadata payload.'),
           created_by_type: z
@@ -9329,7 +9333,7 @@ export class OrgXMcp extends McpAgent<
             .describe('Force action when server supports override semantics'),
           // Initiative reassign_streams fields
           mappings: z
-            .record(z.string())
+            .record(z.string(), z.string())
             .optional()
             .describe(
               'Workstream_id → agent_domain overrides (for initiative action=reassign_streams). If omitted, domains are inferred from workstream fields.'
@@ -9358,7 +9362,7 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe('Upscale mode (for studio_content action=upscale)'),
           spec: z
-            .record(z.unknown())
+            .record(z.string(), z.unknown())
             .optional()
             .describe(
               'Video spec to validate (for studio_content action=validate)'
@@ -9411,7 +9415,7 @@ export class OrgXMcp extends McpAgent<
                 .optional()
                 .describe('Markdown preview stored with the artifact'),
               metadata: z
-                .record(z.unknown())
+                .record(z.string(), z.unknown())
                 .optional()
                 .describe('Artifact metadata payload'),
             })
@@ -9458,7 +9462,7 @@ export class OrgXMcp extends McpAgent<
               'For action=complete_with_proof: whether the attached artifact conforms to the proof contract.'
             ),
           task_ids: z
-            .array(z.string().uuid())
+            .array(z.string().guid())
             .optional()
             .describe(
               'For action=ship_batch only (milestone): explicit list of subcomponent task UUIDs to mark complete. Omit to target all subcomponent tasks under the milestone.'
@@ -9968,13 +9972,13 @@ export class OrgXMcp extends McpAgent<
           summary: z.string().optional().describe('Summary/description'),
           description: z.string().optional().describe('Description'),
           context: z
-            .array(z.record(z.unknown()))
+            .array(z.record(z.string(), z.unknown()))
             .optional()
             .describe(
               'Optional context attachments (initiative, workstream, milestone, task). Each entry is a pointer with a relevance note.'
             ),
           metadata: z
-            .record(z.unknown())
+            .record(z.string(), z.unknown())
             .optional()
             .describe('Optional metadata payload persisted with supported entity types'),
           initiative_id: z
@@ -10718,7 +10722,7 @@ export class OrgXMcp extends McpAgent<
             .describe('Comment body in plain text or markdown.'),
           parent_comment_id: z
             .string()
-            .uuid()
+            .guid()
             .optional()
             .describe('Optional parent comment ID when replying in-thread.'),
           comment_type: z
@@ -10763,7 +10767,7 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe('Optional human-readable author name.'),
           metadata: z
-            .record(z.unknown())
+            .record(z.string(), z.unknown())
             .optional()
             .describe('Optional structured metadata attached to the comment.'),
         },
@@ -10920,7 +10924,7 @@ export class OrgXMcp extends McpAgent<
         },
         inputSchema: {
           entities: z
-            .array(z.record(z.unknown()))
+            .array(z.record(z.string(), z.unknown()))
             .min(1)
             .max(100)
             .describe(
@@ -11110,7 +11114,7 @@ export class OrgXMcp extends McpAgent<
     // levels made this one descriptor more than twice the size of any other
     // public OrgX tool, and ChatGPT silently omitted it from the callable set.
     const scaffoldHierarchySchema = z
-      .array(z.record(z.unknown()))
+      .array(z.record(z.string(), z.unknown()))
       .optional()
       .describe(
         'Workstreams as [{title|name, milestones:[{title, tasks:[{title}]}]}]. Nested records may include ref, description, dependencies, objectives, estimates, owners, status, priority, context, suggested_checks.'
@@ -11170,7 +11174,7 @@ export class OrgXMcp extends McpAgent<
               'Workspace UUID; resolved from session context when omitted.'
             ),
           context: z
-            .array(z.record(z.unknown()))
+            .array(z.record(z.string(), z.unknown()))
             .optional()
             .describe('Context attachment pointers.'),
           source_evidence: z
@@ -12705,7 +12709,7 @@ export class OrgXMcp extends McpAgent<
           summary: z.string().optional().describe('New summary'),
           description: z.string().optional().describe('New description'),
           context: z
-            .array(z.record(z.unknown()))
+            .array(z.record(z.string(), z.unknown()))
             .optional()
             .describe(
               'Optional context attachments (initiative, workstream, milestone, task). Each entry is a pointer with a relevance note.'
@@ -12923,7 +12927,7 @@ export class OrgXMcp extends McpAgent<
           approval_required: z.array(z.string()).optional().describe('Actions requiring approval (configure_agent only)'),
           skip_approval: z.array(z.string()).optional().describe('Actions without approval (configure_agent only)'),
           policy_type: z.enum(CONFIGURE_ORG_POLICY_TYPES).optional().describe('Policy type (set_policy only)'),
-          config: z.record(z.any()).optional().describe('Policy configuration (set_policy only)'),
+          config: z.record(z.string(), z.any()).optional().describe('Policy configuration (set_policy only)'),
           workspace_id: z.string().optional().describe('Workspace UUID to scope policy overrides (set_policy only)'),
           command_center_id: z.string().optional().describe('Deprecated alias for workspace_id (set_policy only)'),
         },
@@ -13814,7 +13818,7 @@ export class OrgXMcp extends McpAgent<
             .optional()
             .describe('CamelCase alias for occurred_at.'),
           metadata: z
-            .record(z.unknown())
+            .record(z.string(), z.unknown())
             .optional()
             .describe('Optional structured context attached to the outcome record.'),
         },
@@ -14326,7 +14330,7 @@ export class OrgXMcp extends McpAgent<
           inputSchema: this.withClientContext({
             workspace_id: z
               .string()
-              .uuid()
+              .guid()
               .describe('Workspace UUID to load the morning brief for'),
             session_id: z
               .string()
