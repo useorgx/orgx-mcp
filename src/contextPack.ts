@@ -8,8 +8,9 @@
  *
  * @module contextPack
  */
-import { callOrgxApiJson, type OrgxApiEnv } from './orgxApi';
+import { callOrgxApiJson, type GatewayDelegationClaims, type OrgxApiEnv } from './orgxApi';
 import { applyContextTransfer, type ContextContinuation } from './contextContinuation';
+import { OPTIONAL_READ_TIMEOUT_MS, withOptionalReadDeadline } from './optionalRead';
 
 // Optional transport acceleration. Current auth and current app preparation run on every call.
 const continuationBases = new Map<string, ContextContinuation>();
@@ -31,12 +32,17 @@ function retainContinuation(key: string, base: ContextContinuation) {
 const PACKABLE_TYPES = new Set(['initiative', 'workstream', 'task']);
 export const CONTEXT_PACK_API_PATH = '/api/v1/context-pack';
 export const CONTEXT_CAPSULE_SCHEMA_VERSION = 'orgx.context-capsule/v1';
-export const CONTEXT_CAPSULE_FETCH_TIMEOUT_MS = 4_000;
+export const CONTEXT_CAPSULE_FETCH_TIMEOUT_MS = OPTIONAL_READ_TIMEOUT_MS;
 
 export interface ContextPackAnchor {
   type: string;
   id: string;
 }
+
+export type ContextPackIdentity = GatewayDelegationClaims & {
+  userEmail?: string | null;
+  orgxUserId?: string | null;
+};
 
 /** Pure: the request body the app endpoint expects. */
 export interface ContextPackOptions {
@@ -79,21 +85,20 @@ export async function fetchContextPack(
   env: OrgxApiEnv,
   userId: string | null | undefined,
   anchor: ContextPackAnchor,
-  options: ContextPackOptions = {}
+  options: ContextPackOptions = {},
+  identity: ContextPackIdentity = {}
 ): Promise<unknown | null> {
   if (!isPackableAnchor(anchor)) return null;
-  try {
+  return withOptionalReadDeadline(async (signal) => {
     const response = await callOrgxApiJson(
       env,
       CONTEXT_PACK_API_PATH,
-      { method: 'POST', body: JSON.stringify(buildContextPackRequestBody(anchor, options)) },
-      { userId: userId ?? null }
+      { method: 'POST', body: JSON.stringify(buildContextPackRequestBody(anchor, options)), signal },
+      { ...identity, userId: userId ?? null }
     );
     const payload = (await response.json()) as { ok?: boolean; data?: unknown };
     return payload?.data ?? null;
-  } catch {
-    return null;
-  }
+  });
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -112,18 +117,14 @@ export async function fetchContextPreparation(
   env: OrgxApiEnv,
   userId: string | null | undefined,
   workspaceId: string,
-  initiativeId?: string
+  initiativeId?: string,
+  identity: ContextPackIdentity = {}
 ): Promise<{ context_capsule: Record<string, unknown> | null; context_delivery: Record<string, unknown> | null; context_pack: Record<string, unknown> | null; workflow_contracts?: Record<string, unknown> | null } | null> {
   const normalizedWorkspaceId = workspaceId.trim();
   if (!normalizedWorkspaceId) return null;
 
-  const controller = new AbortController();
-  const deadline = setTimeout(
-    () => controller.abort('context capsule deadline exceeded'),
-    CONTEXT_CAPSULE_FETCH_TIMEOUT_MS
-  );
-  try {
-    const key = JSON.stringify([env.ORGX_API_URL, userId, normalizedWorkspaceId, initiativeId]);
+  return withOptionalReadDeadline(async (signal) => {
+    const key = JSON.stringify([env.ORGX_API_URL, userId, identity, normalizedWorkspaceId, initiativeId]);
     const previous = continuationBases.get(key);
     const fetchPreparation = async (base?: ContextContinuation, prepared = false) => {
     const response = await callOrgxApiJson(
@@ -139,9 +140,9 @@ export async function fetchContextPreparation(
               ...(base ? { acknowledged_context_version: base.version } : {})
             }) }
         ),
-        signal: controller.signal,
+        signal,
       },
-      { userId: userId ?? null }
+      { ...identity, userId: userId ?? null }
     );
     const payload = (await response.json()) as { data?: unknown };
     const responseData = asRecord(payload.data);
@@ -149,13 +150,14 @@ export async function fetchContextPreparation(
     // Older app releases ignore the additive request and return the established full shape.
     if (!responseData.context_transfer) return responseData;
     const restored = await applyContextTransfer(responseData, base);
+    if (signal.aborted) return null;
     retainContinuation(key, restored);
     return restored.data;
     };
     let data: Record<string, unknown> | null;
     try { data = await fetchPreparation(initiativeId ? previous : undefined, !initiativeId); }
     catch (error) {
-      if (controller.signal.aborted || (initiativeId && !previous)) throw error;
+      if (signal.aborted || (initiativeId && !previous)) throw error;
       // Oversized prepared context uses the existing full/continuation path,
       // with the same owner, workspace and total deadline.
       data = await fetchPreparation(initiativeId ? undefined : previous);
@@ -168,11 +170,7 @@ export async function fetchContextPreparation(
       workflow_contracts: asRecord(data.workflow_contracts),
       context_pack: initiativeId ? data : null,
     };
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(deadline);
-  }
+  }, CONTEXT_CAPSULE_FETCH_TIMEOUT_MS);
 }
 
 /** Compatibility helper for consumers that only need the capsule. */

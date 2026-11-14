@@ -37,18 +37,20 @@ const ORGX_USER_ID = '33333333-3333-4333-8333-333333333333';
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_WORKSPACE_ID = '44444444-4444-4444-8444-444444444444';
 const INITIATIVE_ID = '22222222-2222-4222-8222-222222222222';
+const CONTEXT_IDENTITY = { userEmail: 'bootstrap-reviewer@example.test', orgxUserId: ORGX_USER_ID };
 const ownedWorkspace = { id: WORKSPACE_ID, type: 'workspace', name: 'Owned directory fixture' };
 const priorContext = {
   workspaceId: OTHER_WORKSPACE_ID, workspaceName: 'Prior authorized fixture',
   initiativeId: '55555555-5555-4555-8555-555555555555',
 };
 
-async function connectFixture(profile = 'claude-directory-legacy') {
+async function connectFixture(profile = 'claude-directory-legacy', authOverrides: Record<string, unknown> = {}) {
   const { OrgXMcp } = await import('../src/index');
   const worker = Object.create(OrgXMcp.prototype) as Record<string, any>;
   worker.props = {
     profile, userId: USER_ID, orgxUserId: ORGX_USER_ID,
     email: 'bootstrap-reviewer@example.test', scope: AUTHORIZATION_PRESETS.operate.scopes.join(' '),
+    ...authOverrides,
   };
   const storagePut = vi.fn(async () => undefined);
   const sqlExec = vi.fn(() => []);
@@ -165,11 +167,11 @@ describe('Claude directory bootstrap workspace authorization', () => {
     expect(guardedLookups()).toHaveLength(1);
     expect(lookupParams(guardedLookups()[0]!)).toEqual({ type: 'workspace', id: WORKSPACE_ID, limit: '1' });
     expect(guardedLookups()[0]?.[2]?.method ?? 'GET').toBe('GET');
-    expect(guardedLookups()[0]?.[3]).toMatchObject({ userId: USER_ID, orgxUserId: ORGX_USER_ID, allowFallback: false });
+    expect(guardedLookups()[0]?.[3]).toEqual({ userId: USER_ID, ...CONTEXT_IDENTITY, allowFallback: false });
     expect(fixture.worker.sessionContext).toMatchObject({ workspaceId: WORKSPACE_ID, workspaceName: ownedWorkspace.name });
     expect(result.structuredContent).toMatchObject({ workspace: { id: WORKSPACE_ID, name: ownedWorkspace.name } });
     expect(fixture.saveContext).toHaveBeenCalledTimes(1);
-    expect(apiMocks.fetchContextPreparation).toHaveBeenCalledExactlyOnceWith(fixture.worker.env, USER_ID, WORKSPACE_ID, undefined);
+    expect(apiMocks.fetchContextPreparation).toHaveBeenCalledExactlyOnceWith(fixture.worker.env, USER_ID, WORKSPACE_ID, undefined, CONTEXT_IDENTITY);
     expect(apiMocks.callOrgxApiJson.mock.invocationCallOrder[0]).toBeLessThan(fixture.saveContext.mock.invocationCallOrder[0]!);
     expect(fixture.saveContext.mock.invocationCallOrder[0]).toBeLessThan(apiMocks.fetchContextPreparation.mock.invocationCallOrder[0]!);
     expect(fixture.storagePut).not.toHaveBeenCalled();
@@ -183,7 +185,7 @@ describe('Claude directory bootstrap workspace authorization', () => {
     expect(guardedLookups()).toHaveLength(1);
     expect(lookupParams(guardedLookups()[0]!)).toEqual({ type: 'workspace', id: WORKSPACE_ID, limit: '1' });
     expect(fixture.saveContext).not.toHaveBeenCalled();
-    expect(apiMocks.fetchContextPreparation).toHaveBeenCalledWith(fixture.worker.env, USER_ID, WORKSPACE_ID, undefined);
+    expect(apiMocks.fetchContextPreparation).toHaveBeenCalledWith(fixture.worker.env, USER_ID, WORKSPACE_ID, undefined, CONTEXT_IDENTITY);
     expect(apiMocks.callOrgxApiJson.mock.calls.some((call) => String(call[1]).startsWith('/api/client/bootstrap'))).toBe(false);
   });
 
@@ -195,7 +197,7 @@ describe('Claude directory bootstrap workspace authorization', () => {
     expect(guardedLookups()).toHaveLength(1);
     expect(lookupParams(guardedLookups()[0]!)).toEqual({ type: 'workspace', id: WORKSPACE_ID, limit: '1' });
     expect(fixture.worker.sessionContext).toMatchObject({ workspaceId: WORKSPACE_ID, workspaceName: ownedWorkspace.name });
-    expect(apiMocks.fetchContextPreparation).toHaveBeenCalledWith(fixture.worker.env, USER_ID, WORKSPACE_ID, undefined);
+    expect(apiMocks.fetchContextPreparation).toHaveBeenCalledWith(fixture.worker.env, USER_ID, WORKSPACE_ID, undefined, CONTEXT_IDENTITY);
   });
 
   it('verifies the workspace inferred from an initiative parent before binding the initiative', async () => {
@@ -204,7 +206,7 @@ describe('Claude directory bootstrap workspace authorization', () => {
     expect(guardedLookups()).toHaveLength(1);
     expect(lookupParams(guardedLookups()[0]!)).toEqual({ type: 'workspace', id: WORKSPACE_ID, limit: '1' });
     expect(fixture.worker.sessionContext).toMatchObject({ workspaceId: WORKSPACE_ID, initiativeId: INITIATIVE_ID });
-    expect(apiMocks.fetchContextPreparation).toHaveBeenCalledWith(fixture.worker.env, USER_ID, WORKSPACE_ID, INITIATIVE_ID);
+    expect(apiMocks.fetchContextPreparation).toHaveBeenCalledWith(fixture.worker.env, USER_ID, WORKSPACE_ID, INITIATIVE_ID, CONTEXT_IDENTITY);
   });
 
   it.each([
@@ -287,6 +289,32 @@ describe('Claude directory bootstrap workspace authorization', () => {
     expect(actor).toMatchObject({ sub: USER_ID, orgx_user_id: ORGX_USER_ID, aud: 'orgx-api' });
   });
 
+  it('preserves the authenticated run and its tool ceiling when preparing workspace context', async () => {
+    const delegation = {
+      runId: '66666666-6666-4666-8666-666666666666',
+      workspaceId: WORKSPACE_ID,
+      scopes: ['orgx_bootstrap'],
+    };
+    const other = await connectFixture('claude-directory-legacy', {
+      authSource: 'run_token', runId: delegation.runId,
+      workspace_id: delegation.workspaceId, scopes: delegation.scopes,
+    });
+    try {
+      apiMocks.callOrgxApiJson.mockClear();
+      apiMocks.fetchContextPreparation.mockClear();
+      const result = await other.client.callTool({ name: 'orgx_bootstrap', arguments: { workspace_id: WORKSPACE_ID } });
+      expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+      expect(guardedLookups()).toHaveLength(1);
+      expect(guardedLookups()[0]?.[3]).toEqual({ userId: USER_ID, ...CONTEXT_IDENTITY, ...delegation, allowFallback: false });
+      expect(apiMocks.fetchContextPreparation).toHaveBeenCalledExactlyOnceWith(
+        other.worker.env, USER_ID, WORKSPACE_ID, undefined,
+        { ...CONTEXT_IDENTITY, ...delegation }
+      );
+    } finally {
+      await Promise.allSettled([other.client.close(), other.worker.server.close()]);
+    }
+  });
+
   it('uses no HTTP fallback and retains the prior context when the primary returns 503', async () => {
     fixture.worker.sessionContext = structuredClone(priorContext);
     const actual = await vi.importActual<typeof import('../src/orgxApi')>('../src/orgxApi');
@@ -313,7 +341,7 @@ describe('Claude directory bootstrap workspace authorization', () => {
       expect(lookupParams(workspaceReads[0]!)).toEqual({ type: 'workspace', id: WORKSPACE_ID, limit: '1' });
       expect(other.worker.sessionContext.workspaceId).toBe(WORKSPACE_ID);
       expect(other.saveContext).toHaveBeenCalledTimes(1);
-      expect(apiMocks.fetchContextPreparation).toHaveBeenCalledWith(other.worker.env, USER_ID, WORKSPACE_ID, undefined);
+      expect(apiMocks.fetchContextPreparation).toHaveBeenCalledWith(other.worker.env, USER_ID, WORKSPACE_ID, undefined, CONTEXT_IDENTITY);
     } finally {
       await Promise.allSettled([other.client.close(), other.worker.server.close()]);
     }

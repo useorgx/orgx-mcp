@@ -329,11 +329,12 @@ describe('offline', () => {
     await m.flush();
     expect(doc(m).querySelector('.notice.is-offline')!.textContent).toContain('You’re offline.');
     expect(doc(m).querySelector('#pk-q')!.textContent).toBe('Ship release 4.2?');
-    const before = m.calls.callServerTool.mock.calls.length;
+    const snapshotReads = () => m.calls.callServerTool.mock.calls.filter(([call]) => call.name === 'orgx_panel_snapshot');
+    const before = snapshotReads().length;
     m.calls.callServerTool.mockResolvedValueOnce({ structuredContent: snapshot({ generated_at: '2026-10-02T12:09:00.000Z' }) });
     m.dom.window.dispatchEvent(new m.dom.window.Event('online'));
     await m.flush(); await m.flush();
-    expect(m.calls.callServerTool.mock.calls.length).toBe(before + 1);
+    expect(snapshotReads()).toHaveLength(before + 1);
     expect(doc(m).querySelector('.notice.is-offline')).toBeNull();
   });
 

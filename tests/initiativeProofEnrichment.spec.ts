@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { OPTIONAL_READ_TIMEOUT_MS } from '../src/optionalRead';
 
 vi.mock('agents/mcp', () => ({ McpAgent: class { static serve() { return { fetch: vi.fn() }; } static serveSSE() { return { fetch: vi.fn() }; } } }));
 vi.mock('../src/oauth', () => ({ OAuthState: class {} }));
@@ -30,7 +31,7 @@ async function worker(records: Record<string, unknown>[]) {
   instance.fetchEntityCollection = vi.fn(async () => records);
   return instance;
 }
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe('real worker initiative proof enrichment', () => {
   it('overlaps status evidence reads, retaining scoped legacy proof and durable task reconciliation', async () => {
@@ -45,7 +46,7 @@ describe('real worker initiative proof enrichment', () => {
     const artifact = { id: 'proof', title: 'Legacy proof', version: 9, entity_type: 'task', entity_id: TASK, status: 'in_review' };
     try {
       expect([...releases.keys()].sort()).toEqual(['initiative', 'legacy', 'tasks']);
-      expect(instance.fetchEntityCollection).toHaveBeenCalledWith({ type: 'task', userId: 'authenticated-user', workspaceId: WORKSTREAM, limit: 100 });
+      expect(instance.fetchEntityCollection).toHaveBeenCalledWith({ type: 'task', userId: 'authenticated-user', workspaceId: WORKSTREAM, limit: 100, signal: expect.any(AbortSignal) });
     } finally {
       releases.get('legacy')?.([artifact, { ...artifact, id: 'foreign', entity_id: 'foreign-task' }]);
       releases.get('tasks')?.([{ id: TASK, title: 'Completed task', status: 'completed', assigned_agent_id: 'engineering-agent' }]);
@@ -102,5 +103,55 @@ describe('real worker initiative proof enrichment', () => {
     instance.fetchEntityCollection.mockRejectedValue(new Error('Supplement unavailable'));
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     await expect(instance.maybeEnrichWithArtifactProof({ toolId: 'get_initiative_pulse', args: {}, data: pulse, userId: 'authenticated-user' })).resolves.toBe(pulse);
+  });
+
+  it('returns authoritative status at the shared proof deadline and stops launching later batches', async () => {
+    const instance = await worker([]);
+    vi.useFakeTimers();
+    const releases: Array<(rows: Record<string, unknown>[]) => void> = [];
+    instance.fetchEntityCollection.mockImplementation(() => new Promise((resolve) => releases.push(resolve)));
+    const data = { agents: Array.from({ length: 18 }, (_, index) => ({ initiative_id: `initiative-${index}`, agent_id: 'engineering-agent' })) };
+    const pending = instance.maybeEnrichWithArtifactProof({ toolId: 'get_agent_status', args: {}, data, userId: 'authenticated-user' });
+    expect(releases).toHaveLength(10);
+    await vi.advanceTimersByTimeAsync(OPTIONAL_READ_TIMEOUT_MS);
+    await expect(pending).resolves.toBe(data);
+    const signals = instance.fetchEntityCollection.mock.calls.map(([query]) => query.signal as AbortSignal);
+    expect(signals.every((signal) => signal.aborted)).toBe(true);
+    expect(new Set(signals).size).toBe(1);
+    releases.forEach((resolve) => resolve([]));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(instance.fetchEntityCollection).toHaveBeenCalledTimes(10);
+  });
+
+  it('delivers a committed mutation even when its welcome-back digest stalls', async () => {
+    const instance = await worker([]) as unknown as Record<string, any>;
+    vi.useFakeTimers();
+    Object.assign(instance, {
+      isDirectoryReviewProfile: () => false,
+      isSubmittedInformationalToolExecution: () => false,
+      resolveUserId: () => 'authenticated-user',
+      mcpSessionReentryState: { version: 1, last_success_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), last_welcome_back_at: null },
+      fetchOrgxJsonOrNull: vi.fn(() => new Promise(() => {})),
+      saveMcpSessionReentryState: vi.fn(async () => {}),
+      ctx: { waitUntil: vi.fn() },
+    });
+    const committed = { content: [{ type: 'text', text: 'Task updated' }], structuredContent: { id: TASK, status: 'in_progress' } };
+    const pending = instance.withOrgx(async () => committed, 'orgx_update_work');
+    await vi.advanceTimersByTimeAsync(OPTIONAL_READ_TIMEOUT_MS);
+    const result = await pending;
+    expect(result.structuredContent).toBe(committed.structuredContent);
+    expect(result.content).toContainEqual(committed.content[0]);
+    expect(instance.fetchOrgxJsonOrNull.mock.calls[0][2].aborted).toBe(true);
+  });
+
+  it('keeps bootstrap available when the optional uptime KV read stalls', async () => {
+    const instance = await worker([]) as unknown as Record<string, any>;
+    vi.useFakeTimers();
+    const get = vi.fn(() => new Promise(() => {}));
+    instance.env = { ORGX_API_URL: 'https://api.example.test', OAUTH_KV: { get } };
+    const pending = instance.bootstrapServiceLevels();
+    await vi.advanceTimersByTimeAsync(OPTIONAL_READ_TIMEOUT_MS);
+    await expect(pending).resolves.toMatchObject({ availability_7d: null });
+    expect(get).toHaveBeenCalledTimes(7);
   });
 });

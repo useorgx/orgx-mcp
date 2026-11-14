@@ -173,13 +173,32 @@ describe('MCP API diagnostics', () => {
       'took too long'
     );
     expect(tool.completions[0].apiDiagnostics).toMatchObject({
-      attempts: 1,
+      attempts: 2,
+      fallbacks: 1,
       failures: 1,
-      timeouts: 1,
+      timeouts: 2,
       last_error: 'body_timeout',
       last_status: 200,
     });
     expect(JSON.stringify(logs.mock.calls)).not.toContain('secret');
+  });
+
+  it('counts a recovered body timeout without reporting the successful call as failed', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(new ReadableStream(), { headers: { 'content-type': 'application/json' } }))
+      .mockResolvedValueOnce(Response.json({ ok: true })));
+    const tool = wrapped(() => callOrgxApiJson(env, '/api/entities'));
+
+    await tool.run({}, { requestId: 'recovered-body' });
+
+    expect(tool.completions[0].apiDiagnostics).toMatchObject({
+      calls: 1,
+      attempts: 2,
+      fallbacks: 1,
+      failures: 0,
+      timeouts: 1,
+      last_status: 200,
+    });
   });
 
   it('records HTTP failures without disclosing the upstream body or exception message', async () => {
