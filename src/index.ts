@@ -6,6 +6,7 @@ import { McpAgent } from 'agents/mcp';
 import { applyRunTokenScopes } from './runTokenScopes';
 import { conformSpawnPayload } from './spawnOutput';
 import { fetchRunOutputs } from './runOutputs';
+import { withOptionalReadDeadline } from './optionalRead';
 import {
   McpServer,
   ResourceTemplate,
@@ -2221,13 +2222,14 @@ export class OrgXMcp extends McpAgent<
 
   private async fetchOrgxJsonOrNull<T extends Record<string, unknown>>(
     path: string,
-    userId?: string | null
+    userId?: string | null,
+    signal?: AbortSignal
   ): Promise<T | null> {
     try {
       const response = await callOrgxApiJson(
         this.env,
         path,
-        undefined,
+        signal ? { signal } : undefined,
         { userId: userId ?? undefined, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(userId ?? undefined) }
       );
       if (!response.ok) return null;
@@ -2382,7 +2384,7 @@ export class OrgXMcp extends McpAgent<
     }> = [];
 
     if (workspaceId) {
-      const pulse = await this.fetchOrgxJsonOrNull<{
+      const pulse = await withOptionalReadDeadline((signal) => this.fetchOrgxJsonOrNull<{
         stats?: {
           activeInitiatives?: number;
           pendingDecisions?: number;
@@ -2398,7 +2400,7 @@ export class OrgXMcp extends McpAgent<
           waitingFor?: string;
           priority?: string | null;
         }>;
-      }>(`/api/v1/workspaces/${workspaceId}/dashboard/pulse`, userId);
+      }>(`/api/v1/workspaces/${workspaceId}/dashboard/pulse`, userId, signal));
 
       if (pulse) {
         stats = {
@@ -2785,6 +2787,7 @@ export class OrgXMcp extends McpAgent<
     orderDirection?: 'asc' | 'desc';
     /** Extra projections the entities read adds (artifact: quality_bar). */
     include?: string[];
+    signal?: AbortSignal;
   }): Promise<Array<Record<string, unknown>>> {
     const page = await this.fetchEntityCollectionPage(params);
     return page.records;
@@ -2807,13 +2810,14 @@ export class OrgXMcp extends McpAgent<
     orderDirection?: 'asc' | 'desc';
     /** Extra projections the entities read adds (artifact: quality_bar). */
     include?: string[];
+    signal?: AbortSignal;
   }): Promise<EntitySearchPage> {
     const search = buildEntityCollectionSearchParams(params);
 
     const response = await callOrgxApiJson(
       this.env,
       `/api/entities?${search.toString()}`,
-      undefined,
+      params.signal ? { signal: params.signal } : undefined,
       params.userId ? { userId: params.userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(params.userId) } : undefined
     );
     const payload = await response.json().catch(() => null);
@@ -3032,7 +3036,7 @@ export class OrgXMcp extends McpAgent<
       return params.data;
     }
 
-    try {
+    return (await withOptionalReadDeadline(async (signal) => {
       const scope = artifactProofScope({
         ...params,
         sessionWorkspaceId: this.sessionContext?.workspaceId,
@@ -3047,10 +3051,11 @@ export class OrgXMcp extends McpAgent<
           if (initiativeIds.size > 0) {
             const initiativeIdList = Array.from(initiativeIds);
             for (let offset = 0; offset < initiativeIdList.length; offset += 8) {
+              if (signal.aborted) return records;
               const groups = await Promise.all(
                 initiativeIdList.slice(offset, offset + 8).map((initiativeId) =>
                   this.fetchEntityCollection({
-                    type: 'artifact', userId: params.userId, initiativeId,
+                    type: 'artifact', userId: params.userId, initiativeId, signal,
                     limit: params.toolId === 'get_agent_status' ? 24 : 8,
                     ...(params.toolId === 'get_initiative_pulse'
                       ? { orderBy: 'updated_at', orderDirection: 'desc' as const } : {}),
@@ -3068,18 +3073,18 @@ export class OrgXMcp extends McpAgent<
             // authenticated bounded head and exact visible-scope filter.
             return filterAgentStatusArtifactsByVisibleScope(params.data,
               await this.fetchEntityCollection({
-                type: 'artifact', userId: params.userId, limit: 100,
+                type: 'artifact', userId: params.userId, limit: 100, signal,
               })
             );
           } else if (workspaceId && params.toolId === 'get_morning_brief' && initiativeIds.size === 0) {
             return this.fetchEntityCollection({
-              type: 'artifact', userId: params.userId, workspaceId, limit: 8,
+              type: 'artifact', userId: params.userId, workspaceId, limit: 8, signal,
             });
           }
           return [];
         })(),
         workspaceId && params.toolId === 'get_agent_status'
-          ? this.fetchEntityCollection({ type: 'task', userId: params.userId, workspaceId, limit: 100 })
+          ? this.fetchEntityCollection({ type: 'task', userId: params.userId, workspaceId, limit: 100, signal })
           : Promise.resolve([]),
       ]);
       // Preserve deterministic precedence regardless of completion order:
@@ -3116,13 +3121,7 @@ export class OrgXMcp extends McpAgent<
         return enrichMorningBriefWithArtifacts(evidenceData, artifacts);
       }
       return evidenceData;
-    } catch (error) {
-      console.warn('[mcp:artifact-proof] enrichment skipped', {
-        toolId: params.toolId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return params.data;
-    }
+    })) ?? params.data;
   }
 
   private async maybeNormalizeAgentDispatchData(params: {
@@ -3256,7 +3255,8 @@ export class OrgXMcp extends McpAgent<
           this.env,
           userId(),
           { type: 'initiative', id: initiativeId },
-          { briefSources: true, relations: 0 }
+          { briefSources: true, relations: 0 },
+          actor(userId())
         ),
       inferWorkspace: () => this.inferSessionWorkspace(userId()),
       fetchPendingDecisions: async ({ workspaceId, limit }) => {
@@ -5214,7 +5214,8 @@ export class OrgXMcp extends McpAgent<
     const kv = (this.env as unknown as { OAUTH_KV?: KVNamespace }).OAUTH_KV;
     if (!kv) return { ...links, availability_7d: null };
     try {
-      const summary = await readUptimeSummary(kv, 7);
+      const summary = await withOptionalReadDeadline(() => readUptimeSummary(kv, 7));
+      if (!summary) return { ...links, availability_7d: null };
       return {
         ...links,
         availability_7d: {
@@ -5764,19 +5765,21 @@ export class OrgXMcp extends McpAgent<
             };
             await this.saveSessionContext();
           }
-          const preparation = this.sessionContext.workspaceId
-            ? await fetchContextPreparation(
+          const [preparation, serviceLevels] = await Promise.all([
+            this.sessionContext.workspaceId ? fetchContextPreparation(
                 this.env,
                 resolvedUserId,
                 this.sessionContext.workspaceId,
-                this.sessionContext.initiativeId ?? undefined
-              )
-            : null;
+                this.sessionContext.initiativeId ?? undefined,
+                { userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId), ...this.delegationClaims() }
+              ) : null,
+            this.bootstrapServiceLevels(),
+          ]);
           this.getLegacyBatchCapabilities().observe({ data: { workspace: { id: this.sessionContext.workspaceId }, workflow_contracts: preparation?.workflow_contracts } }, resolvedUserId);
           const context_pack = preparation?.context_pack ?? null;
           const payload = {
             ...this.buildBootstrapPayload(allowedTools ?? null),
-            service_levels: await this.bootstrapServiceLevels(),
+            service_levels: serviceLevels,
             context_pack,
             context_capsule: preparation?.context_capsule ?? null,
             context_delivery: preparation?.context_delivery ?? null,
@@ -5821,7 +5824,8 @@ export class OrgXMcp extends McpAgent<
                   this.env,
                   resolvedUserId,
                   { type: String(args.type), id: String(args.id) },
-                  { briefSources: true, relations: args.relations === 0 ? 0 : 1 }
+                  { briefSources: true, relations: args.relations === 0 ? 0 : 1 },
+                  { userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId), ...this.delegationClaims() }
                 ),
             // A run's answer lives in its outputs, not its row.
             args.type === 'run'
@@ -14394,16 +14398,16 @@ export class OrgXMcp extends McpAgent<
               throw error;
             }
             const result = (await response.json()) as Record<string, unknown>;
-            const [outcomeAttribution, workspacePulse] = await Promise.all([
+            const [outcomeAttribution, workspacePulse] = (await withOptionalReadDeadline((signal) => Promise.all([
               this.fetchOrgxJsonOrNull<Record<string, unknown>>(
                 `/api/flywheel/attribution?workspace_id=${wsId}&period=30d`,
-                resolvedUserId
+                resolvedUserId, signal
               ),
               this.fetchOrgxJsonOrNull<Record<string, unknown>>(
                 `/api/v1/workspaces/${wsId}/dashboard/pulse`,
-                resolvedUserId
+                resolvedUserId, signal
               ),
-            ]);
+            ]))) ?? [null, null];
             const valueDashboard = buildMorningBriefValueDashboard({
               brief: result,
               outcomeAttribution,

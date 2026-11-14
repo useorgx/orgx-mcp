@@ -748,7 +748,8 @@ describe('submission profile worker-local side-effect suppression', () => {
         expect.any(Object),
         'directory-reviewer',
         WORKSPACE_ID,
-        INITIATIVE_ID
+        INITIATIVE_ID,
+        expect.objectContaining({ orgxUserId: '33333333-3333-4333-8333-333333333333' })
       );
       expect(apiMocks.fetchContextPack).not.toHaveBeenCalled();
       expect(result.structuredContent).toMatchObject({

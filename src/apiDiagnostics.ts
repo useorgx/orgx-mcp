@@ -15,6 +15,8 @@ export interface ApiDiagnostics {
   last_error: string;
 }
 
+type ApiBodyOutcome = 'completed' | 'body_timeout' | 'body_error' | 'cancelled';
+
 type Invocation = { traceparent: string; diagnostics: ApiDiagnostics };
 const invocations = new AsyncLocalStorage<Invocation>();
 const requests = new AsyncLocalStorage<ApiRequestObservation>();
@@ -158,17 +160,20 @@ export class ApiRequestObservation {
       });
     }
   }
-  body(duration: number, timedOut: boolean): void {
-    if (timedOut) this.failure('body_timeout');
+  body(duration: number, outcome: ApiBodyOutcome, terminalFailure = true): void {
+    if (outcome !== 'completed') {
+      this.lastError = outcome;
+      if (terminalFailure) this.failure(outcome);
+    }
     if (this.diagnostics) {
       this.diagnostics.body_ms += duration;
-      if (timedOut) {
+      if (outcome === 'body_timeout') {
         this.diagnostics.timeouts++;
       }
     }
     this.log('orgx_api_body', {
       body_ms: duration,
-      outcome: timedOut ? 'body_timeout' : 'completed',
+      outcome,
     });
   }
 }
@@ -187,9 +192,10 @@ export function observedApiFetch(
 export function recordApiBody(
   response: Response,
   duration: number,
-  timedOut: boolean
+  outcome: ApiBodyOutcome,
+  terminalFailure = true
 ): void {
-  (responses.get(response) ?? requests.getStore())?.body(duration, timedOut);
+  (responses.get(response) ?? requests.getStore())?.body(duration, outcome, terminalFailure);
 }
 
 export function currentApiReferences(): Record<string, string> {

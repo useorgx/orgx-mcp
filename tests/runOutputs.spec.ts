@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CANONICAL_OUTPUT_SCHEMAS } from '../src/openaiOutputSchemas/canonical';
 import { fetchRunOutputs, formatRunOutputs, type RunOutput } from '../src/runOutputs';
+import { OPTIONAL_READ_TIMEOUT_MS } from '../src/optionalRead';
 
 const env = {
   ORGX_API_URL: 'https://api.example.test',
@@ -21,7 +22,7 @@ const answer: RunOutput = {
 };
 
 describe('run outputs for orgx_inspect', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
   it('reads the run output endpoint for the caller', async () => {
     const fetchMock = vi.fn(async () => Response.json({ ok: true, data: { outputs: [answer] } }));
@@ -38,6 +39,17 @@ describe('run outputs for orgx_inspect', () => {
     expect(await fetchRunOutputs(env, 'run-1', { userId: 'user-1' })).toBeNull();
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ok: true, data: {} })));
     expect(await fetchRunOutputs(env, 'run-1', { userId: 'user-1' })).toBeNull();
+  });
+
+  it('returns the run inspection when optional output retrieval stalls', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) => new Promise<Response>(() => {}));
+    vi.stubGlobal('fetch', fetchMock);
+    const pending = fetchRunOutputs({ ...env, ORGX_API_TIMEOUT_MS: '60000' }, 'run-1', { userId: 'user-1' });
+    await vi.advanceTimersByTimeAsync(OPTIONAL_READ_TIMEOUT_MS);
+    await expect(pending).resolves.toBeNull();
+    expect(fetchMock.mock.calls[0][1]?.signal?.aborted).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('puts the answer in the text an LLM reads', () => {

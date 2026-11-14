@@ -584,7 +584,8 @@ async function observeMcpResponse(
       const remainingMs = responseReadDeadline - Date.now();
       if (remainingMs <= 0) {
         responseReadError = true;
-        await reader.cancel('telemetry response observation timed out');
+        // Cancelling a tee waits for the client's branch; telemetry must finish independently.
+        void reader.cancel('telemetry response observation timed out').catch(() => undefined);
         break;
       }
       let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
@@ -598,7 +599,7 @@ async function observeMcpResponse(
       });
       if (read === null) {
         responseReadError = true;
-        await reader.cancel('telemetry response observation timed out');
+        void reader.cancel('telemetry response observation timed out').catch(() => undefined);
         break;
       }
       const { done, value } = read;

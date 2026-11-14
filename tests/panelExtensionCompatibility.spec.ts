@@ -113,10 +113,11 @@ describe('ChatGPT extension workspace and receipt operation contract', () => {
   ])('refuses a success response that does not confirm this receipt and judgment: %j', async (response) => {
     const m = await open();
     m.calls.callServerTool.mockResolvedValue({ structuredContent: response });
-    const before = m.calls.callServerTool.mock.calls.length;
+    const receiptWrites = () => m.calls.callServerTool.mock.calls.filter(([call]) => call.name === 'orgx_widget_receipt_call');
+    const before = receiptWrites().length;
     click(m, '[data-action="receipt-call"][data-status="failed"]');
     await m.flush(); await m.flush();
-    expect(m.calls.callServerTool.mock.calls.length).toBe(before + 1);
+    expect(receiptWrites()).toHaveLength(before + 1);
     expect(m.dom.window.document.querySelector('.rc-row .rc-chip')?.textContent).toBe('Agent reports done');
     expect(m.dom.window.document.querySelector('.rc-cn')?.textContent).toContain('could not be confirmed');
     expect(m.dom.window.document.getElementById('panel')?.textContent).not.toContain('Recorded your call.');
