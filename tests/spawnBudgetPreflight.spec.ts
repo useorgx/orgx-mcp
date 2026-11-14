@@ -178,6 +178,10 @@ describe('appSpawnBlock', () => {
       .toEqual({ message: 'Over cap', options: { code: 'budget_cap_exceeded', status: 402,
         details: { code: 'budget_cap_exceeded', estimated_cost_cents: 90 } } });
     expect(appSpawnBlock({ ok: false, error: 'Held', data: { code: 'budget_gate_blocked' } })?.options.status).toBe(424);
+    expect(appSpawnBlock({ ok: false, error: 'Held for budget approval', data: {
+      code: 'budget_approval_required', run_id: 'run-1', budget_decision_id: 'decision-1' } })?.options)
+      .toEqual({ code: 'budget_approval_required', status: 402,
+        details: { code: 'budget_approval_required', run_id: 'run-1', budget_decision_id: 'decision-1' } });
     expect(appSpawnBlock({ ok: false, error: 'Unknown', data: { code: 'cost_estimate_unavailable' } })?.options.code)
       .toBe('cost_estimate_unavailable');
   });
