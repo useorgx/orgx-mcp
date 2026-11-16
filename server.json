@@ -320,7 +320,7 @@
             "type": "integer",
             "minimum": 1000,
             "maximum": 50000,
-            "description": "Approximate maximum hydrated context characters"
+            "description": "Accepted for compatibility; does not limit canonical context packs. Set hydrate_context=false to omit hydrated context."
           },
           "session_id": {
             "type": "string",
