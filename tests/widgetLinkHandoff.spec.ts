@@ -19,6 +19,20 @@ describe('widget link handoff failures', () => {
     vi.useRealTimers();
   });
 
+  it('uses the documented ChatGPT openExternal href argument', () => {
+    // The real host accepts href. A permissive spy used to hide the adapter's
+    // incorrect { url } shape while every fixture click appeared successful.
+    const opened: string[] = [];
+    host.openai = { openExternal: (request: { href?: string; url?: string }) => {
+      if (typeof request.href !== 'string' || request.url !== undefined) throw new Error('openExternal requires href');
+      opened.push(request.href);
+    } };
+    const browserOpen = vi.spyOn(window, 'open').mockReturnValue(null);
+    runtime.openWidgetLink(url, click());
+    expect(opened).toEqual([url]);
+    expect(browserOpen).not.toHaveBeenCalled();
+  });
+
   it.each([undefined, () => { throw new Error('Unavailable'); }])('preserves native anchor navigation when ChatGPT cannot open a link', (openExternal) => {
     host.openai = { openExternal };
     document.body.innerHTML = `<a ${runtime.links.attrs(url)}>Open</a>`;
@@ -49,7 +63,7 @@ describe('widget link handoff failures', () => {
     runtime.initWidget({ bridge: 'mcp-apps-sdk', render: vi.fn() });
     const event = click();
     expect(runtime.openWidgetLink(url, event)).toBe(false);
-    expect(openExternal).toHaveBeenCalledExactlyOnceWith({ url });
+    expect(openExternal).toHaveBeenCalledExactlyOnceWith({ href: url });
     expect(sdkOpen).not.toHaveBeenCalled();
   });
 

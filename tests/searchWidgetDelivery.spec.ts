@@ -37,7 +37,7 @@ describe('search delivery through the real ChatGPT widget', () => {
       const anchor = dom.window.document.querySelector(`a[href="https://useorgx.com${path}"]`) as HTMLAnchorElement;
       expect(anchor, path).not.toBeNull();
       anchor.click();
-      expect(openExternal).toHaveBeenLastCalledWith({ url: `https://useorgx.com${path}` });
+      expect(openExternal).toHaveBeenLastCalledWith({ href: `https://useorgx.com${path}` });
     }
     expect(openExternal).toHaveBeenCalledTimes(3);
   });
