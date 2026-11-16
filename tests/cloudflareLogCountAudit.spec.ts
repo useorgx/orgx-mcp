@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { auditCloudflare } from '../scripts/cloudflare-read-only-audit.mjs';
 import {
-  COUNTS_ENDPOINT, KEYS_ENDPOINT, LEVEL_LIMIT, CREDENTIAL_NEEDLE,
+  COUNTS_ENDPOINT, KEYS_ENDPOINT, LEVEL_LIMIT, CREDENTIAL_NEEDLE, WARNING_CATEGORIES, RETAINED_DEADLINE_MS,
   auditCloudflareLogCounts, formatLogCountSummary, logAuditRequests,
 } from '../scripts/cloudflare-log-count-audit.mjs';
 
@@ -10,6 +10,7 @@ const TOKEN = 'private-token-fixture';
 const keys = () => ({ success: true, result: [
   { key: '$metadata.service', type: 'string', lastSeenAt: NOW },
   { key: '$metadata.level', type: 'string', lastSeenAt: NOW },
+  { key: '$metadata.message', type: 'string', lastSeenAt: NOW },
 ] });
 const aggregate = (alias: string, rows: unknown[]) => ({ success: true, result: {
   run: { status: 'COMPLETED', dry: true, userId: 'private-user-fixture', query: { name: 'private-query-fixture' } },
@@ -22,10 +23,13 @@ const levels = () => aggregate('stored_events', [
 ]);
 const credentials = () => aggregate('credential_indicators', [{ value: 0, count: 0, sampleInterval: 1, groups: [] }]);
 function sequence(payloads: unknown[] = [keys(), levels(), credentials()]) {
+  const replies = [...payloads, ...WARNING_CATEGORIES.map(({ id }) => aggregate(`warning_${id}`, [
+    { value: 0, sampleInterval: 1, groups: [] },
+  ]))];
   let next = 0;
   const fetchImpl = vi.fn(async () => {
-    if (next >= payloads.length) throw new Error('Unexpected extra request');
-    const item = payloads[next++];
+    if (next >= replies.length) throw new Error('Unexpected extra request');
+    const item = replies[next++];
     return item instanceof Response ? item : Response.json(item);
   });
   return { fetchImpl, run: () => auditCloudflareLogCounts({ token: TOKEN, now: NOW, fetchImpl }) };
@@ -36,13 +40,13 @@ describe('bounded retained-log aggregate audit', () => {
     const { fetchImpl, run } = sequence();
     const report = await run();
     expect(report.status).toBe('observed');
-    expect(report.keysVerified).toEqual({ worker: true, level: true });
+    expect(report.keysVerified).toEqual({ worker: true, level: true, message: true });
     expect(report.levels).toEqual([
       { level: 'info', matchingEvents: 10, sampleInterval: 1, queryAbrLevel: 1 },
       { level: 'error', matchingEvents: 2, sampleInterval: 2, queryAbrLevel: 1 },
     ]);
     expect(report.credentialIndicators).toEqual({ matchingEvents: 0, sampleInterval: 1, queryAbrLevel: 1 });
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(11);
     const requests = logAuditRequests(NOW);
     for (const [i, endpoint] of [KEYS_ENDPOINT, COUNTS_ENDPOINT, COUNTS_ENDPOINT].entries()) {
       const [url, init] = fetchImpl.mock.calls[i] as unknown as [string, RequestInit];
@@ -186,7 +190,7 @@ describe('bounded retained-log aggregate audit', () => {
       const pending = auditCloudflareLogCounts({ token: TOKEN, now: NOW, fetchImpl });
       await vi.advanceTimersByTimeAsync(7_000);
       expect(fetchImpl).toHaveBeenCalledTimes(2);
-      await vi.advanceTimersByTimeAsync(3_000);
+      await vi.advanceTimersByTimeAsync(RETAINED_DEADLINE_MS - 7_000);
       expect((await pending).reason).toBe('audit_deadline');
       expect(cancel).toHaveBeenCalledOnce();
     } finally { vi.useRealTimers(); }
@@ -199,7 +203,7 @@ describe('bounded retained-log aggregate audit', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     try {
       const pending = auditCloudflareLogCounts({ token: TOKEN, now: NOW, fetchImpl });
-      await vi.advanceTimersByTimeAsync(10_000);
+      await vi.advanceTimersByTimeAsync(RETAINED_DEADLINE_MS);
       expect((await pending).reason).toBe('audit_deadline');
       deliver(new Response(new ReadableStream({ cancel })));
       await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce());
