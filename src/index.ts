@@ -6321,6 +6321,33 @@ export class OrgXMcp extends McpAgent<
             delete body.workstream_id;
             delete body.milestone_id;
           }
+          // The contract says workspace_id defaults to the session's workspace
+          // when unambiguous. Children named under an initiative take its
+          // workspace on the server; everything else gets the same ladder that
+          // decisions and tasks use, so a fresh session can create an initiative.
+          if (
+            body.type !== 'blocker' &&
+            !body.workspace_id &&
+            !body.command_center_id &&
+            !body.initiative_id
+          ) {
+            const resolvedWorkspace = await resolveWriteWorkspace({
+              args: body,
+              sessionWorkspaceId: this.sessionContext?.workspaceId,
+              infer: () => this.inferSessionWorkspace(resolvedUserId),
+            });
+            if (resolvedWorkspace.workspaceId) {
+              body.workspace_id = resolvedWorkspace.workspaceId;
+              if (resolvedWorkspace.source === 'inferred' && this.sessionContext?.workspaceId !== resolvedWorkspace.workspaceId) {
+                this.sessionContext = {
+                  ...this.sessionContext,
+                  workspaceId: resolvedWorkspace.workspaceId,
+                  ...(resolvedWorkspace.name ? { workspaceName: resolvedWorkspace.name } : {}),
+                };
+                await this.saveSessionContext();
+              }
+            }
+          }
           if (body.type === 'initiative') {
             const metadata =
               body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
