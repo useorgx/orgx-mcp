@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SESSION_TOOL_CONTRACT_KEY } from '../src/sessionToolContract';
+import { MAX_MCP_REQUEST_BODY_BYTES } from '../src/mcpInputLimits';
 
 const transport = vi.hoisted(() => ({ http: vi.fn(), sse: vi.fn(), oauth: vi.fn(), getAgentByName: vi.fn() }));
 
@@ -66,6 +67,21 @@ async function setup() {
 afterEach(() => vi.clearAllMocks());
 
 describe('signed-run authentication on actual native SSE paths', () => {
+  it.each(['/mcp', '/sse/message', '/'])('rejects oversized %s bodies before auth or transport dispatch', async (path) => {
+    const { worker, env, ctx } = await setup();
+    const request = new Request(`http://localhost:8787${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': String(MAX_MCP_REQUEST_BODY_BYTES + 1) },
+      body: '{}',
+    });
+    const response = await worker.fetch(request, env as any, ctx());
+    expect(response.status).toBe(413);
+    expect(transport.sse).not.toHaveBeenCalled();
+    expect(transport.http).not.toHaveBeenCalled();
+    expect(transport.oauth).not.toHaveBeenCalled();
+    expect(transport.getAgentByName).not.toHaveBeenCalled();
+  });
+
   it('authenticates both the initial GET and advertised message POST through the observed SSE handler', async () => {
     const { worker, env, request, ctx } = await setup();
     const initial = await worker.fetch(new Request('http://localhost:8787/sse?profile=chatgpt', {

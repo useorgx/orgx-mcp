@@ -25,6 +25,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { JSDOM } from 'jsdom';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import serverManifest from '../server.json';
 import submission from '../chatgpt-app-submission.json';
@@ -61,6 +62,7 @@ import {
   widgetCspNeedsForUri,
 } from '../src/widgetConfig';
 import { createEmptyMcpSessionReentryState } from '../src/welcomeBackContext';
+import { MAX_TOOL_INPUT_ELEMENTS } from '../src/mcpInputLimits';
 
 const apiMocks = vi.hoisted(() => ({
   callOrgxApiJson: vi.fn(),
@@ -584,7 +586,78 @@ describe('widget source, runtime and contract agree', () => {
   });
 });
 
+describe('tool validation complexity budget', () => {
+  it('rejects oversized nested input before schema validation or handler execution', async () => {
+    const { client, worker } = await connectProfile('v2');
+    const validate = vi.fn(() => true);
+    const handler = vi.fn(async () => ({ content: [{ type: 'text', text: 'accepted' }] }));
+    worker.server.registerTool('input-budget-probe', {
+      inputSchema: { payload: z.unknown().refine(validate) },
+    }, handler);
+    try {
+      const oversized = Array.from({ length: MAX_TOOL_INPUT_ELEMENTS / 2 }, () => ({ value: 1 }));
+      const result = await client.callTool({ name: 'input-budget-probe', arguments: { payload: oversized } });
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result.content)).toContain(`maximum of ${MAX_TOOL_INPUT_ELEMENTS} elements`);
+      expect(validate).not.toHaveBeenCalled();
+      expect(handler).not.toHaveBeenCalled();
+
+      const normal = await client.callTool({ name: 'input-budget-probe', arguments: { payload: [{ value: 1 }] } });
+      expect(normal.isError).not.toBe(true);
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(validate).toHaveBeenCalledTimes(1);
+    } finally {
+      await client.close();
+    }
+  });
+});
+
 describe('widget resources declare CSP and domain (A6)', () => {
+  it('serves a self-contained panel through the local asset binding without a public fetch', async () => {
+    const { client, worker } = await connectProfile('v2', 'openai-mcp');
+    const publicFetch = vi.mocked(fetch);
+    publicFetch.mockClear();
+    const binding = vi.fn(async (request: Request) => {
+      const pathname = new URL(request.url).pathname;
+      return new Response(readFileSync(resolve(root, 'public', pathname.slice(1)), 'utf8'));
+    });
+    worker.env.ASSETS = { fetch: binding };
+    try {
+      const panel = WIDGET_RESOURCES.find((resource) => resource.name === 'orgx-panel-widget')!;
+      const response = await client.readResource({ uri: panel.uri });
+      const content = response.contents[0] as { text: string; _meta?: Record<string, any> };
+      expect(content.text).toContain('data-inline-asset="shared/widget-runtime.js"');
+      expect(content.text).toContain('data-inline-asset="shared/mcp-apps-sdk.umd.js"');
+      expect(content.text).not.toMatch(/<script[^>]+src="[^"]*\/shared\//);
+      expect(content._meta?.ui?.domain).toBe('https://mcp.useorgx.test');
+      expect(binding.mock.calls.length).toBeGreaterThan(10);
+      expect(publicFetch).not.toHaveBeenCalled();
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('returns the existing widget error document when an asset binding stalls', async () => {
+    const { client, worker } = await connectProfile('v2', 'openai-mcp');
+    worker.env.ASSETS = { fetch: vi.fn(() => new Promise(() => {})) };
+    vi.useFakeTimers();
+    try {
+      const result = worker.buildWidgetResourceResponse(
+        WIDGET_RESOURCES[0].uri,
+        'OrgX widget',
+        'text/html;profile=mcp-app',
+        { 'openai/widgetDomain': 'https://mcp.useorgx.test' }
+      );
+      await vi.advanceTimersByTimeAsync(5_000);
+      const response = await result;
+      expect(response.contents[0].text).toContain('id="fallback-alert"');
+      expect(response.contents[0]._meta['openai/widgetDomain']).toBe('https://mcp.useorgx.test');
+    } finally {
+      vi.useRealTimers();
+      await client.close();
+    }
+  });
+
   async function readAll(profile: string, clientName: string) {
     const { client } = await connectProfile(profile, clientName);
     const resources = (await client.listResources()).resources.filter((r) =>

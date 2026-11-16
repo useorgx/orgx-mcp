@@ -111,9 +111,11 @@ import {
   buildMcpTransportExceptionResponse,
   handleMcpRequest,
   isOrgxApiTelemetryConfigured,
+  withCors,
   withCorsAndHeaders,
   withSseKeepAlive,
 } from './mcpTransport';
+import { boundMcpRequestBody, MAX_TOOL_INPUT_ELEMENTS } from './mcpInputLimits';
 import { withPathScopedResourceChallenge } from './oauthResourceChallenge';
 import { withSecurityHeaders } from './securityHeaders';
 import { probeOrgxHealth, readUptimeSummary, recordProbe } from './uptimeProbe';
@@ -405,13 +407,12 @@ import {
   expandConsolidatedTool,
 } from './toolDefinitions';
 import { buildToolExecuteBody } from './toolExecuteBody';
+import { createWidgetAssetReader } from './widgetAssetReader';
 import { VERIFIABLE_COMPLETION_ENTITY_TYPES } from './shared/entity';
 import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 import {
   buildMcpAppsMeta,
   widgetCspNeedsForUri,
-  MCP_APPS_SHARED_COMPONENT_PATHS,
-  mcpAppsInlineAssetPath,
   buildWidgetMeta,
   parseWidgetResourceUri,
   rewriteWidgetHtmlAssetUrls,
@@ -548,7 +549,10 @@ function createInstrumentedMcpServer(): McpServer {
           sizes: ['64x64', '128x128', 'any'],
         },
       ],
-    }, { instructions: ORGX_SERVER_INSTRUCTIONS }),
+    }, {
+      instructions: ORGX_SERVER_INSTRUCTIONS,
+      maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS,
+    }),
     {
       // MCP arguments and results can contain customer strategy, credentials,
       // or generated artifacts. Keep spans useful without recording payloads.
@@ -15111,6 +15115,7 @@ export class OrgXMcp extends McpAgent<
     const { widgetFile, query } = parseWidgetResourceUri(widgetUri);
     const widgetPath = `/${widgetFile}${query}`;
     const assetUrl = new URL(`${widgetFile}${query}`, widgetBaseUrl).toString();
+    const assets = createWidgetAssetReader(this.env.ASSETS, widgetBaseUrl);
 
     let assetStatus: number | null = null;
     let apiStatus: number | null = null;
@@ -15130,12 +15135,13 @@ export class OrgXMcp extends McpAgent<
     try {
       let html: string | null = null;
       try {
-        const assetResponse = await fetch(assetUrl, {
-          headers: { accept: 'text/html,application/xhtml+xml,*/*' },
-        });
+        const assetResponse = await assets.readAsset(
+          `${widgetFile}${query}`,
+          'text/html,application/xhtml+xml,*/*'
+        );
         assetStatus = assetResponse.status;
         if (assetResponse.ok) {
-          html = await assetResponse.text();
+          html = assetResponse.text;
           source = 'assets';
         }
       } catch (error) {
@@ -15143,16 +15149,16 @@ export class OrgXMcp extends McpAgent<
       }
 
       if (!html) {
-        const response = await callOrgxApiRaw(
-          this.env,
-          `/api/chatgpt/widgets${widgetPath}`,
-          undefined,
-          {
-            accept: 'text/html,application/xhtml+xml,*/*',
-          }
+        const response = await assets.readResponse((signal) =>
+          callOrgxApiRaw(
+            this.env,
+            `/api/chatgpt/widgets${widgetPath}`,
+            { signal },
+            { accept: 'text/html,application/xhtml+xml,*/*' }
+          )
         );
         apiStatus = response.status;
-        html = await response.text();
+        html = response.text;
         source = 'api';
       }
 
@@ -15166,55 +15172,10 @@ export class OrgXMcp extends McpAgent<
       let faviconStripped = false;
 
       if (mimeType === RESOURCE_MIME_TYPE) {
-        let interactionKitCss: string | null = null;
-        let interactionKitJs: string | null = null;
-        // Inline the minified copy (public/widgets/inline/<path>, written by
-        // widget:build); fall back to the readable source if it is missing.
-        const fetchInlineAsset = async (path: string, accept: string): Promise<string | null> => {
-          for (const candidate of [mcpAppsInlineAssetPath(path), path]) {
-            const response = await fetch(new URL(candidate, widgetBaseUrl).toString(), { headers: { accept } });
-            if (response.ok) return response.text();
-          }
-          return null;
-        };
-
-        if (responseHtml.includes('interaction-kit.css')) {
-          try {
-            interactionKitCss = await fetchInlineAsset('shared/interaction-kit.css', 'text/css,*/*');
-          } catch {
-            interactionKitCss = null;
-          }
-        }
-
-        if (responseHtml.includes('interaction-kit.js')) {
-          try {
-            interactionKitJs = await fetchInlineAsset('shared/interaction-kit.js', 'text/javascript,application/javascript,*/*');
-          } catch {
-            interactionKitJs = null;
-          }
-        }
-
-        // Inline any shared-component module the widget references. Claude's
-        // widget sandbox treats the resource document as self-contained, so
-        // external fetches of our own shared modules may not resolve. These
-        // paths are the enforceable shared-layer contract — add new shared
-        // modules to MCP_APPS_SHARED_COMPONENT_PATHS in widgetConfig.ts.
-        const sharedComponents: Record<string, string | null> = {};
-        for (const path of MCP_APPS_SHARED_COMPONENT_PATHS) {
-          if (!responseHtml.includes(path)) continue;
-          try {
-            const accept = path.endsWith('.css')
-              ? 'text/css,*/*'
-              : 'text/javascript,application/javascript,*/*';
-            sharedComponents[path] = await fetchInlineAsset(path, accept);
-          } catch {
-            sharedComponents[path] = null;
-          }
-        }
-
+        const sharedComponents = await assets.readInlineAssets(responseHtml);
         const sanitizedHtml = sanitizeMcpAppsHtml(responseHtml, {
-          interactionKitCss,
-          interactionKitJs,
+          interactionKitCss: sharedComponents['shared/interaction-kit.css'],
+          interactionKitJs: sharedComponents['shared/interaction-kit.js'],
           sharedComponents,
         });
         faviconStripped = sanitizedHtml !== responseHtml && !sanitizedHtml.includes('rel="icon"');
@@ -15382,6 +15343,8 @@ export class OrgXMcp extends McpAgent<
           },
         ],
       };
+    } finally {
+      assets.dispose();
     }
   }
 
@@ -15907,6 +15870,9 @@ const worker = {
     if (isMcpTransportRoute) {
       const invalidOrigin = validateMcpRequestOrigin(request, env);
       if (invalidOrigin) return withSecurityHeaders(invalidOrigin);
+      const bounded = await boundMcpRequestBody(request);
+      if (bounded.response) return withSecurityHeaders(withCors(bounded.response, request));
+      request = bounded.request;
     }
 
     const runTokenResponse = (await handleBrokerRequest(request, env)) ?? (await tryRunTokenAuth(request, env, ctx));
