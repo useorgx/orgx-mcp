@@ -861,6 +861,68 @@ describe('argument aliases reach the real handler (A5)', () => {
   }, 30000);
 });
 
+describe('next-action capability assessment opt-in', () => {
+  const calls = [
+    { profile: 'legacy', name: 'recommend_next_action' },
+    { profile: 'legacy', name: 'orgx_recommend' },
+    { profile: 'v2', name: 'orgx_get_next_actions' },
+    { profile: 'chatgpt', name: 'orgx_get_next_actions' },
+  ];
+  it.each(calls.flatMap((call) => [undefined, false, true].map((optIn) => ({ ...call, optIn }))))(
+    '$profile $name forwards capability suggestions=$optIn without changing identity or caller input',
+    async ({ profile, name, optIn }) => {
+      const priorImplementation = apiMocks.callOrgxApiJson.getMockImplementation()!;
+      const provenance = optIn === true
+        ? { enabled: true, plan: 'pro', reason: null, assessment_status: 'assessed', suggestions: [] }
+        : { enabled: null, plan: null, reason: 'not_requested', assessment_status: 'not_requested', suggestions: [] };
+      apiMocks.callOrgxApiJson.mockImplementation(async (...args) => {
+        const [, path, init] = args;
+        const body = JSON.parse(String((init as RequestInit | undefined)?.body ?? '{}'));
+        if (path === '/api/tools/execute' && body.tool_id === 'recommend_next_action') {
+          return Response.json({ ok: true, data: {
+            entity_type: 'workspace', entity_id: WORKSPACE_ID, canonical_only: false,
+            recommendations: [], next_action: null, capability_gap_detector: provenance,
+          } });
+        }
+        return priorImplementation(...args);
+      });
+      const { client } = await connectProfile(profile);
+      try {
+        apiMocks.callOrgxApiJson.mockClear();
+        const input = Object.freeze({ workspace_id: WORKSPACE_ID,
+          ...(optIn !== undefined ? { include_capability_suggestions: optIn } : {}) });
+        const result = await client.callTool({ name, arguments: input });
+        expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+        const upstream = apiMocks.callOrgxApiJson.mock.calls.find(([, path, init]) =>
+          path === '/api/tools/execute' && JSON.parse(String((init as RequestInit | undefined)?.body ?? '{}')).tool_id === 'recommend_next_action')!;
+        const body = JSON.parse(String((upstream[2] as RequestInit).body));
+        expect(body.args).toMatchObject({ workspace_id: WORKSPACE_ID, include_capability_suggestions: optIn === true });
+        expect(body.args).not.toHaveProperty('mode');
+        expect(body.user_id).toBe('33333333-3333-4333-8333-333333333333');
+        expect(upstream[3]).toMatchObject({ userId: 'surface-contract-user' });
+        expect(result.structuredContent).toMatchObject({ capability_gap_detector: provenance });
+        expect(input).toEqual({ workspace_id: WORKSPACE_ID,
+          ...(optIn !== undefined ? { include_capability_suggestions: optIn } : {}) });
+      } finally {
+        await client.close();
+        apiMocks.callOrgxApiJson.mockImplementation(priorImplementation);
+      }
+    }, 30000
+  );
+
+  it('preserves the direct canonical task projection option', async () => {
+    const { client } = await connectProfile('legacy');
+    try {
+      apiMocks.callOrgxApiJson.mockClear();
+      await client.callTool({ name: 'recommend_next_action', arguments: { canonical_only: true, include_capability_suggestions: true } });
+      const calls = apiMocks.callOrgxApiJson.mock.calls.map(([, , init]) => JSON.parse(String((init as RequestInit | undefined)?.body ?? '{}')));
+      expect(calls).toContainEqual(expect.objectContaining({ tool_id: 'recommend_next_action', args: expect.objectContaining({
+        canonical_only: true, include_capability_suggestions: true,
+      }) }));
+    } finally { await client.close(); }
+  }, 30000);
+});
+
 describe('explicit operations through the live MCP registry', () => {
   function portableReceipt() {
     const { body } = buildAgentWorkReceiptImportRequest({ receipt_type: 'proof', summary: 'Login test passed', evidence: { links: ['https://example.com/test'] }, verification_status: 'passed' }, { workspaceId: WORKSPACE_ID, receiptId: 'portable-receipt', issuedAt: '2026-10-08T12:00:00.000Z' });
