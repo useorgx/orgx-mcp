@@ -180,7 +180,7 @@ describe('widget link builder', () => {
     expect(anchor.getAttribute('rel')).toBe('noopener noreferrer');
     const click = new MouseEvent('click', { bubbles: true, cancelable: true });
     anchor.dispatchEvent(click);
-    expect(openExternal).toHaveBeenCalledWith({ url: links.decision(ID) });
+    expect(openExternal).toHaveBeenCalledWith({ href: links.decision(ID) });
     expect(click.defaultPrevented).toBe(true);
   });
 
@@ -189,7 +189,7 @@ describe('widget link builder', () => {
     (window as unknown as { openai: unknown }).openai = { openExternal, setWidgetHeight: vi.fn() };
     const event = new CustomEvent('ox-open', { detail: { href: links.agent('eli') }, bubbles: true, composed: true, cancelable: true });
     document.body.dispatchEvent(event);
-    expect(openExternal).toHaveBeenCalledWith({ url: 'https://useorgx.com/command/agents/eli' });
+    expect(openExternal).toHaveBeenCalledWith({ href: 'https://useorgx.com/command/agents/eli' });
     expect(event.defaultPrevented).toBe(true);
   });
 
@@ -200,7 +200,7 @@ describe('widget link builder', () => {
     const shadow = document.getElementById('component')!.attachShadow({ mode: 'open' });
     shadow.innerHTML = `<a ${links.attrs(links.project(ID))}>Open</a>`;
     shadow.querySelector('a')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, cancelable: true }));
-    expect(openExternal).toHaveBeenCalledExactlyOnceWith({ url: links.project(ID) });
+    expect(openExternal).toHaveBeenCalledExactlyOnceWith({ href: links.project(ID) });
   });
 
   it('opens a rewritten receipt URL when its native anchor still has the legacy URL', () => {

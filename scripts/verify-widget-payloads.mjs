@@ -69,7 +69,7 @@ try {
     await page.locator('#dispatchFooter').evaluate(footer => footer.setAttribute('state', 'caught-up'));
     await page.evaluate(async () => { try { await window.openai.callTool('orgx_spawn', {}); } catch {} });
     await assert.rejects(() => assertPreflight(page), /preflight host effects/); checks++;
-    await page.evaluate(() => { window.__payloadEffects = []; window.openai.openExternal('https://useorgx.com/runs/contract-negative'); });
+    await page.evaluate(() => { window.__payloadEffects = []; window.openai.openExternal({ href: 'https://useorgx.com/runs/contract-negative' }); });
     await assert.rejects(() => assertPreflight(page), /preflight host effects/); checks++;
     await page.evaluate(() => { window.__payloadEffects = []; });
     await assertPreflight(page);

@@ -1213,7 +1213,9 @@
     // handshake finishes. Do not queue its clicks behind that handshake.
     if (activeProtocol === 'chatgpt' || !bridge || !bridge.connected) {
       if (global.openai && typeof global.openai.openExternal === 'function') {
-        hostOpen = function () { return global.openai.openExternal({ url: url }); };
+        // ChatGPT's compatibility bridge takes href; MCP Apps app.openLink
+        // takes url. Keep those host contracts separate.
+        hostOpen = function () { return global.openai.openExternal({ href: url }); };
       } else if (activeProtocol === 'mcp-apps-sdk') {
         return browserFallback();
       }

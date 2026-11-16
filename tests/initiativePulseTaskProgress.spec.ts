@@ -22,7 +22,7 @@ type PulseModel = {
 type PulseWindow = Window & {
   OrgXPulseWidgetModel: PulseModel;
   OrgXWidgetRuntime: { openWidgetLink(url: string, event?: Event): boolean };
-  openai: { openExternal?: (value: { url: string }) => void };
+  openai: { openExternal?: (value: { href: string }) => void };
   togglePulsePanel(panel: string, trigger?: HTMLElement): void;
 };
 
@@ -394,7 +394,7 @@ describe('initiative pulse: task progress preserves review and host interactions
       const event = new MouseEvent('click', { cancelable: true });
       expect(scope.OrgXWidgetRuntime.openWidgetLink(reviewLink!.href, event)).toBe(false);
       expect(event.defaultPrevented).toBe(true);
-      expect(openExternal).toHaveBeenCalledWith({ url: 'https://useorgx.com/artifacts/proof-review' });
+      expect(openExternal).toHaveBeenCalledWith({ href: 'https://useorgx.com/artifacts/proof-review' });
       expect(progressText()).toContain('5 of 34 tasks done');
       expectPercent(15);
     }
