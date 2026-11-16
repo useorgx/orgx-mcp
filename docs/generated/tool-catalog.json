@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-16T07:24:01.709Z",
-  "sourceHash": "0a7bd599d3853f70",
+  "generatedAt": "2026-11-16T09:38:06.995Z",
+  "sourceHash": "a8afb9990a0de719",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -16906,7 +16906,7 @@
             "type": "integer",
             "minimum": 1000,
             "maximum": 50000,
-            "description": "Approximate maximum hydrated context characters"
+            "description": "Accepted for compatibility; does not limit canonical context packs. Set hydrate_context=false to omit hydrated context."
           },
           "relations": {
             "type": "integer",

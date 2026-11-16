@@ -598,3 +598,222 @@ describe('sse line endings', () => {
     expect(out).toBe('data: {"id":1,"seen":true}\n\ndata: {"id":2,"seen":true}\n\ndata: {"id":3,"seen":true}\n\n');
   });
 });
+
+describe('broker I/O bounds', () => {
+  const sentMethods = (v: ReturnType<typeof setup>) => v.seen.map((entry) => JSON.parse(entry.body ?? '{}').method);
+  it('rejects a multibyte body above the byte limit without forwarding it', async () => {
+    const v = setup();
+    const raw = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { padding: '界'.repeat(1_500_000) } });
+    expect(raw.length).toBeLessThan(4 * 1024 * 1024);
+    expect(new TextEncoder().encode(raw).byteLength).toBeGreaterThan(4 * 1024 * 1024);
+    const res = (await handleBrokerRequest(call(mint(), undefined, { raw }), env, deps))!;
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ error: 'payload_too_large' });
+    expect(v.fetchFn).not.toHaveBeenCalled();
+  });
+
+  it('cancels an oversized streamed body before waiting for EOF', async () => {
+    const v = setup();
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) { controller.enqueue(new Uint8Array(4 * 1024 * 1024 + 1)); },
+      cancel,
+    });
+    const req = new Request(`https://mcp.useorgx.com/c/${CONN}`, {
+      method: 'POST', headers: { authorization: `Bearer ${mint()}` }, body: stream,
+      duplex: 'half',
+    } as RequestInit);
+    const res = (await handleBrokerRequest(req, env, deps))!;
+    expect(res.status).toBe(413);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(v.fetchFn).not.toHaveBeenCalled();
+  });
+
+  it.each(['\n\n', '\r\r', '\r\n\r\n'])(
+    'uses the matching catalog event and cancels persistent SSE with %j delimiters',
+    async (delimiter) => {
+      const cancel = vi.fn();
+      const v = setup({ respond: (m) => m.method === 'tools/list' ? new Response(new ReadableStream({
+        start(controller) {
+          const tools = [{ name: 'list_issues', annotations: { readOnlyHint: true } }];
+          // A different request's result cannot seed this catalog.
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ id: 'wrong-id', result: { tools: [] } })}${delimiter}`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ id: m.id, result: { tools } })}${delimiter}`));
+        },
+        cancel,
+      }), { headers: { 'content-type': 'text/event-stream' } }) : undefined });
+      const res = (await handleBrokerRequest(call(mint(), {
+        jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_issues' },
+      }), env, deps))!;
+      expect(res.status).toBe(200);
+      expect((await res.json()).result.isError).not.toBe(true);
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(sentMethods(v)).toEqual(['tools/list', 'tools/call']);
+    }
+  );
+
+  it('fails closed when a catalog body never yields its reply', async () => {
+    const cancel = vi.fn();
+    const v = setup({ respond: (m) => m.method === 'tools/list' ? new Response(new ReadableStream({
+      start(controller) { controller.enqueue(new TextEncoder().encode(': keep-alive\n\n')); },
+      cancel,
+    }), { headers: { 'content-type': 'text/event-stream' } }) : undefined });
+    const token = mint();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const pending = handleBrokerRequest(call(token, {
+        jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_issues' },
+      }), env, deps);
+      await vi.waitFor(() => expect(v.fetchFn).toHaveBeenCalled());
+      await vi.advanceTimersByTimeAsync(8_000);
+      const res = (await pending)!;
+      expect((await res.json()).result._meta['orgx/broker'].code).toBe('not_allowed');
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(sentMethods(v)).toEqual(['tools/list']);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('parses a catalog over tiny chunks without treating split CRLF as blank lines', async () => {
+    const cancel = vi.fn();
+    const v = setup({ respond: (m) => m.method === 'tools/list' ? new Response(new ReadableStream({
+      start(controller) {
+        const event = `: heartbeat\r\ndata: ${JSON.stringify({
+          id: m.id, result: { tools: [{ name: 'list_issues', annotations: { readOnlyHint: true } }] },
+        })}\r\n\r\n`;
+        for (const byte of new TextEncoder().encode(event)) controller.enqueue(new Uint8Array([byte]));
+      },
+      cancel,
+    }), { headers: { 'content-type': 'text/event-stream' } }) : undefined });
+    const res = (await handleBrokerRequest(call(mint(), {
+      jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_issues' },
+    }), env, deps))!;
+    expect((await res.json()).result.isError).not.toBe(true);
+    expect(sentMethods(v)).toEqual(['tools/list', 'tools/call']);
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it('fails closed on a catalog header timeout and cancels a late response', async () => {
+    setup();
+    let deliver!: (response: Response) => void;
+    const catalogFetch = vi.fn(() => new Promise<Response>((resolve) => { deliver = resolve; }));
+    deps!.fetch = catalogFetch as typeof fetch;
+    const cancel = vi.fn();
+    const token = mint();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const pending = handleBrokerRequest(call(token, {
+        jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_issues' },
+      }), env, deps);
+      await vi.waitFor(() => expect(catalogFetch).toHaveBeenCalledOnce());
+      await vi.advanceTimersByTimeAsync(8_000);
+      expect((await (await pending)!.json()).result._meta['orgx/broker'].code).toBe('not_allowed');
+      deliver(new Response(new ReadableStream({ cancel })));
+      await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce());
+      expect(catalogFetch).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('refuses an oversized forwarded JSON catalog before exposing its body', async () => {
+    const cancel = vi.fn();
+    const bytes = new TextEncoder().encode(JSON.stringify({
+      jsonrpc: '2.0', id: 1, result: { tools: [{ name: 'list_issues', description: '界'.repeat(1_500_000) }] },
+    }));
+    setup({ respond: (m) => m.method === 'tools/list' ? new Response(new ReadableStream({
+      start(controller) { controller.enqueue(bytes); }, cancel,
+    }), { headers: { 'content-type': 'application/json' } }) : undefined });
+    const res = (await handleBrokerRequest(call(mint(), { jsonrpc: '2.0', id: 1, method: 'tools/list' }), env, deps))!;
+    expect(res.status).toBe(502);
+    expect((await res.json()).error.code).toBe(-32603);
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it('bounds forwarded JSON catalog bodies that never end', async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) { controller.enqueue(new TextEncoder().encode('{"jsonrpc":"2.0",')); }, cancel,
+    });
+    setup({ respond: (m) => m.method === 'tools/list'
+      ? new Response(body, { headers: { 'content-type': 'application/json' } }) : undefined });
+    const token = mint();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const pending = handleBrokerRequest(call(token, { jsonrpc: '2.0', id: 1, method: 'tools/list' }), env, deps);
+      await vi.waitFor(() => expect(body.locked).toBe(true));
+      await vi.advanceTimersByTimeAsync(8_000);
+      expect((await pending)!.status).toBe(502);
+      expect(cancel).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('cancels a partial SSE catalog event at the byte cap without waiting for its delimiter', async () => {
+    const cancel = vi.fn();
+    setup({ respond: (m) => m.method === 'tools/list' ? new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {"id":1,"result":{"tools":['));
+        controller.enqueue(new Uint8Array(4 * 1024 * 1024).fill(120));
+      }, cancel,
+    }), { headers: { 'content-type': 'text/event-stream' } }) : undefined });
+    const res = (await handleBrokerRequest(call(mint(), { jsonrpc: '2.0', id: 1, method: 'tools/list' }), env, deps))!;
+    await expect(res.text()).rejects.toThrow('payload_too_large');
+    await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce());
+  });
+
+  it.each(['application/json', 'text/event-stream'])('filters array replies for a mixed catalog/tool-call batch (%s)', async (contentType) => {
+    const content = [{ type: 'text', text: 'unaltered tool output' }];
+    const replies = [
+      { jsonrpc: '2.0', id: 2, result: { content } },
+      { jsonrpc: '2.0', id: 1, result: { tools: TOOLS } },
+    ];
+    setup({ respond: (m) => Array.isArray(m) ? new Response(
+      contentType === 'application/json' ? JSON.stringify(replies) : `data: ${JSON.stringify(replies)}\r\n\r\n`,
+      { headers: { 'content-type': contentType } }
+    ) : undefined });
+    const res = (await handleBrokerRequest(call(mint({ conns: { [CONN]: { ro: true } } }), [
+      { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+      { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'list_issues' } },
+    ]), env, deps))!;
+    const filtered = contentType === 'application/json' ? await res.json() : JSON.parse((await res.text()).split('data: ')[1]);
+    expect(filtered[0].result.content).toEqual(content);
+    expect(filtered[1].result.tools.map((tool: { name: string }) => tool.name)).toEqual(['list_issues']);
+  });
+
+  it('bounds oversized mixed-batch events while a catalog is still pending', async () => {
+    setup({ respond: (m) => Array.isArray(m) ? new Response(`data: ${JSON.stringify({
+      jsonrpc: '2.0', id: 2, result: { content: [{ type: 'text', text: 'x'.repeat(4 * 1024 * 1024) }] },
+    })}\n\n`, { headers: { 'content-type': 'text/event-stream' } }) : undefined });
+    const res = (await handleBrokerRequest(call(mint(), [
+      { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+      { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'list_issues' } },
+    ]), env, deps))!;
+    await expect(res.text()).rejects.toThrow('payload_too_large');
+  });
+
+  it.each([{ id: 1 }, { id: 1, result: {} }, { id: 1, error: {} }])('does not release the catalog cap for a malformed reply %j', async (malformed) => {
+    setup({ respond: (m) => m.method === 'tools/list' ? new Response(
+      `data: ${JSON.stringify(malformed)}\n\ndata: ${JSON.stringify({
+        jsonrpc: '2.0', id: 1, result: { tools: [{ name: 'list_issues', description: 'x'.repeat(4 * 1024 * 1024) }] },
+      })}\n\n`, { headers: { 'content-type': 'text/event-stream' } }
+    ) : undefined });
+    const res = (await handleBrokerRequest(call(mint(), { jsonrpc: '2.0', id: 1, method: 'tools/list' }), env, deps))!;
+    await expect(res.text()).rejects.toThrow('payload_too_large');
+  });
+
+  it.each([true, false])('preserves large tool-result SSE after catalog completion or without a catalog (mixed: %s)', async (mixed) => {
+    const output = 'x'.repeat(4 * 1024 * 1024 + 128);
+    setup({ respond: (m) => {
+      if (Array.isArray(m) || m.method === 'tools/call') {
+        const catalog = mixed ? `data: ${JSON.stringify({ jsonrpc: '2.0', id: 1, result: { tools: TOOLS } })}\n\n` : '';
+        return new Response(`${catalog}data: ${JSON.stringify({ jsonrpc: '2.0', id: 2, result: { content: [{ type: 'text', text: output }] } })}\n\n`, {
+          headers: { 'content-type': 'text/event-stream' },
+        });
+      }
+      return undefined;
+    } });
+    const toolCall = { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'list_issues' } };
+    const requestBody = mixed ? [{ jsonrpc: '2.0', id: 1, method: 'tools/list' }, toolCall] : toolCall;
+    const res = (await handleBrokerRequest(call(mint(), requestBody), env, deps))!;
+    const events = (await res.text()).trim().split('\n\n');
+    const result = JSON.parse(events.at(-1)!.slice(6));
+    expect(result.result.content[0].text).toBe(output);
+  });
+});

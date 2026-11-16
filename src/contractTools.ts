@@ -101,7 +101,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .describe('Entity type to inspect'),
       id: z.string().min(1).describe('Entity UUID or accepted short ID prefix'),
       hydrate_context: z.boolean().optional().describe('Include linked context where available; default true'),
-      max_chars: z.number().int().min(1000).max(50000).optional().describe('Approximate maximum hydrated context characters'),
+      max_chars: z.number().int().min(1000).max(50000).optional().describe('Accepted for compatibility; does not limit canonical context packs. Set hydrate_context=false to omit hydrated context.'),
       relations: z.number().int().min(0).max(1).optional().describe('Work-graph depth around the initiative in the brief: 0 skips it, 1 (default) adds edges that touch it'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
