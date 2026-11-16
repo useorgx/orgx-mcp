@@ -14,7 +14,7 @@ const fixture = () => ({ data: { viewer: { accounts: [{
   totals: [{ sum: { requests: metrics.requests, errors: metrics.errors, subrequests: metrics.subrequests },
     quantiles: { cpuTimeP50: metrics.cpuTimeP50, cpuTimeP99: metrics.cpuTimeP99 } }],
   outcomes: [{ dimensions: { status: 'success' }, sum: { requests: 121, errors: 0 } },
-    { dimensions: { status: 'exception' }, sum: { requests: 2, errors: 2 } }],
+    { dimensions: { status: 'scriptThrewException' }, sum: { requests: 2, errors: 2 } }],
 }] } } });
 const call = (body: unknown, status = 200) => auditCloudflareMetrics({ token: TOKEN, now: NOW,
   fetchImpl: vi.fn(async () => Response.json(body, { status })) });
@@ -56,6 +56,21 @@ describe('fixed Cloudflare numeric aggregate read', () => {
       expect(saved).not.toContain(secret);
     }
     expect(report.outcomes).toContainEqual({ label: 'Other status', requests: 1, errors: 0 });
+  });
+
+  it('uses the GraphQL invocation vocabulary rather than Trace Event outcomes', async () => {
+    const payload = fixture();
+    payload.data.viewer.accounts[0].outcomes = [
+      { dimensions: { status: 'clientDisconnected' }, sum: { requests: 3, errors: 0 } },
+      { dimensions: { status: 'scriptThrewException' }, sum: { requests: 2, errors: 2 } },
+      { dimensions: { status: 'canceled' }, sum: { requests: 1, errors: 0 } },
+    ];
+    const report = await call(payload);
+    expect(report.outcomes).toEqual([
+      { label: 'Client disconnected', requests: 3, errors: 0 },
+      { label: 'Unhandled exception', requests: 2, errors: 2 },
+      { label: 'Other status', requests: 1, errors: 0 },
+    ]);
   });
 
   it.each([401, 403])('reports HTTP %s access refusal without retaining the API body', async (status) => {

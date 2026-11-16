@@ -28,8 +28,8 @@ export const QUERY = `query OrgXMcpAggregateAudit($accountTag: string, $scriptNa
 }`;
 
 const OUTCOME_LABELS = Object.freeze({
-  success: 'Worker completed', canceled: 'Client disconnected',
-  exception: 'Unhandled exception', exceededResources: 'Resources exceeded',
+  success: 'Worker completed', clientDisconnected: 'Client disconnected',
+  scriptThrewException: 'Unhandled exception', exceededResources: 'Resources exceeded',
   internalError: 'Internal error',
 });
 const emptyMetrics = () => ({ requests: null, errors: null, subrequests: null, cpuTimeP50: null, cpuTimeP99: null });
@@ -162,14 +162,22 @@ export function formatAuditSummary(report) {
     `${report.dataBoundary}\n\n${report.performanceBoundary}\n`;
 }
 
+export async function auditCloudflare({ token, fetchImpl = fetch, now = Date.now() } = {}) {
+  const metrics = await auditCloudflareMetrics({ token, fetchImpl, now });
+  const { auditCloudflareLogCounts } = await import('./cloudflare-log-count-audit.mjs');
+  const retainedLogs = await auditCloudflareLogCounts({ token, fetchImpl, now });
+  return { ...metrics, auditComplete: metrics.status === 'observed' && retainedLogs.status === 'observed', retainedLogs };
+}
+
 async function main() {
-  const report = await auditCloudflareMetrics({ token: process.env.CLOUDFLARE_API_TOKEN });
+  const report = await auditCloudflare({ token: process.env.CLOUDFLARE_API_TOKEN });
   await mkdir(dirname(OUTPUT_PATH), { recursive: true });
   await writeFile(OUTPUT_PATH, JSON.stringify(report, null, 2) + '\n');
-  const summary = formatAuditSummary(report);
+  const { formatLogCountSummary } = await import('./cloudflare-log-count-audit.mjs');
+  const summary = formatAuditSummary(report) + '\n' + formatLogCountSummary(report.retainedLogs);
   if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
-  console.log(`Cloudflare aggregate metrics audit: ${report.status} (${report.reason}).`);
-  if (report.status !== 'observed') process.exitCode = 1;
+  console.log(`Cloudflare aggregate metrics audit: ${report.status} (${report.reason}); retained counts: ${report.retainedLogs.status} (${report.retainedLogs.reason}).`);
+  if (!report.auditComplete) process.exitCode = 1;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
