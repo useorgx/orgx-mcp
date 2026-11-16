@@ -3754,8 +3754,13 @@ export class OrgXMcp extends McpAgent<
 
     // Expand consolidated tools (scoring_config, queue_action, stats)
     // into their legacy backend tool_id before dispatching
-    const { resolvedToolId, resolvedArgs: expandedArgs } =
+    const { resolvedToolId, resolvedArgs } =
       expandConsolidatedTool(toolId, effectiveArgs);
+    // Ordinary MCP reads should not wait on model-generated suggestions.
+    // Keep an explicit opt-in intact; the backend owns plan and model policy.
+    const expandedArgs = resolvedToolId === 'recommend_next_action'
+      ? { ...resolvedArgs, include_capability_suggestions: resolvedArgs.include_capability_suggestions ?? false }
+      : resolvedArgs;
 
     return this.withOrgx(async () => {
       try {
@@ -6139,6 +6144,7 @@ export class OrgXMcp extends McpAgent<
               entity_id: args.entity_id,
               workspace_id: args.workspace_id,
               limit: args.limit,
+              include_capability_suggestions: args.include_capability_suggestions,
             },
             SECURITY_SCHEMES.entityReadRequiresAuth
           );

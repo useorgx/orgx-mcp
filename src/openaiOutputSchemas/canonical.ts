@@ -249,7 +249,10 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       active_streams: z.array(resourceSchema).optional(),
       capability_gap_detector: z
         .object({
+          enabled: z.boolean().nullable().optional(),
+          plan: nullableString.optional(),
           reason: nullableString.optional(),
+          assessment_status: z.string().optional(),
           suggestions: z.array(capabilityGapSchema),
         })
         .optional(),
