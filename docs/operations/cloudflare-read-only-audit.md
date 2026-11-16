@@ -28,8 +28,8 @@ fixed `$metadata.service = orgx-mcp-production` filter.
 Two `/telemetry/query` requests use `view: calculations`, `dry: true`,
 `chartType: aggregate`, and `ignoreSeries: true`. One counts by log level,
 limited to 16 groups. The other counts matches for a fixed RE2 credential-shape
-pattern without returning matching events. Neither request saves a query or
-requests event contents. Unknown level values become a fixed `other` label;
+pattern without returning matching events. Neither request persists calculation
+results or requests event contents. Unknown level values become a fixed `other` label;
 query ownership metadata, messages, arbitrary fields and provider errors are
 discarded. All three REST reads share one ten-second deadline and retain the
 64 KiB per-response byte cap. There are no retries or configurable queries.
