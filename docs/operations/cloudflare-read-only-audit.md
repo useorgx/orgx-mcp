@@ -18,10 +18,13 @@ counts cannot be assigned a cause after the fact.
 
 ## Retained log counts
 
-The same secured step also makes at most three fixed Workers Observability
+The same secured step also makes at most eleven fixed Workers Observability
 REST reads for that Worker and hour. The `/telemetry/keys` request verifies
-only the exact string keys `$metadata.service` and `$metadata.level`. Arbitrary
-key names are discarded. If either key cannot be verified, no count query runs.
+only the exact string keys `$metadata.service`, `$metadata.level`, and
+`$metadata.message`. Arbitrary key names are discarded. If either service or
+level cannot be verified, no count query runs. If only the message key is absent,
+the existing level and credential counts remain available but warning categories
+stay Unknown, the result is partial, and no warning query runs.
 The documented dataset is `cloudflare-workers`; every request retains the
 fixed `$metadata.service = orgx-mcp-production` filter.
 
@@ -31,8 +34,36 @@ limited to 16 groups. The other counts matches for a fixed RE2 credential-shape
 pattern without returning matching events. Neither request persists calculation
 results or requests event contents. Unknown level values become a fixed `other` label;
 query ownership metadata, messages, arbitrary fields and provider errors are
-discarded. All three REST reads share one ten-second deadline and retain the
-64 KiB per-response byte cap. There are no retries or configurable queries.
+discarded. All REST reads, including the warning counts below, share one
+thirty-second deadline and retain the 64 KiB per-response byte cap. The longer
+retained-phase budget accommodates eight additional sequential fixed counts;
+the separate ten-second metrics budget plus this phase stays below the existing
+sixty-second secured step. There are no retries or configurable queries.
+
+Eight more fixed aggregate queries count warning message patterns only after
+the exact message key is verified. Each retains the same Worker and rolling-hour
+filters plus `$metadata.level = warn`, has no group-by, and limits its result to
+one row. The patterns use public fixed source prefixes and documented RE2 filters:
+
+| Fixed category | Source message family |
+| --- | --- |
+| API fallback attempted | `[orgx-api] trying fallback` |
+| API fallback recovered | `[orgx-api] fallback succeeded` |
+| Distributed admission unavailable | `[rate-limit] Distributed admission unavailable` |
+| Authentication or scope rejected | `[auth] Bearer token invalid or expired`; `Tool blocked due to missing_authentication` or `insufficient_scope` |
+| Tool profile restricted | `[mcp:profiles] Unknown tool profile` or `External full profile request`, followed by the fixed failing-closed message |
+| Session or client storage warning | `[mcp:session]`, `[mcp:client-info]` |
+| Telemetry warning | `[mcp:session-summary]`, `[mcp:telemetry]`, `[mcp:activation]`, `[telemetry]` |
+| Degraded reads, widgets or transport | `[mcp:orgx]`, `[mcp:workspace]`, `[mcp:bootstrap]`, `[panel]`, `[live-grant]`; fixed related-context/transport recovery messages; five fixed `live-feed-do` warning events |
+
+The last category's structured events are `client_rejected_at_capacity`,
+`backfill_failed`, `alarm_schedule_failed`, `poll_failed`, and `client_write_failed`.
+The audit never groups by or exports raw message text, identifiers, or exception
+details. Categories can overlap and do not cover every warning. Counts represent
+events rather than failed requests; fallback attempts and successful recoveries
+can both appear for one operation. Denied authentication/profile requests are
+not evidence of a successful bypass. This rolling-hour cohort must not be
+reconciled with older reports or used to assign their warnings a cause.
 
 Only numeric counts, sampling metadata, fixed labels, key-verification booleans
 and coverage status are added under `retainedLogs` in the existing artifact.
