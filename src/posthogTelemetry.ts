@@ -11,6 +11,8 @@ export type PosthogTelemetryEnv = {
   ORGX_TELEMETRY_ENVIRONMENT?: string;
   MCP_SERVER_URL?: string;
   SENTRY_RELEASE?: string;
+  /** Full source SHA injected by deployment, never inferred from a version label. */
+  ORGX_SOURCE_REVISION?: string;
   CF_VERSION_METADATA?: { id?: string };
 };
 
@@ -80,11 +82,18 @@ export function captureWorkerPosthogEvent(params: {
     };
 
     const release = params.env.SENTRY_RELEASE;
+    const sourceRevision = params.env.ORGX_SOURCE_REVISION;
     const workerVersion = params.env.CF_VERSION_METADATA?.id;
-    if (release && /^[0-9a-f]{7,40}$/i.test(release)) {
+    const validWorkerVersion = workerVersion && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(workerVersion);
+    if (validWorkerVersion) eventProperties.cloudflare_version = workerVersion;
+    if (sourceRevision && /^[0-9a-f]{40}$/i.test(sourceRevision)) {
+      eventProperties.source_revision = sourceRevision;
+      eventProperties.release = sourceRevision;
+      eventProperties.release_source = 'source_revision';
+    } else if (release && /^[0-9a-f]{7,40}$/i.test(release)) {
       eventProperties.release = release;
       eventProperties.release_source = 'sentry_release';
-    } else if (workerVersion && /^[0-9a-f-]{36}$/i.test(workerVersion)) {
+    } else if (validWorkerVersion) {
       eventProperties.release = workerVersion;
       eventProperties.release_source = 'cloudflare_version';
     } else {

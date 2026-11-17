@@ -40,6 +40,8 @@ describe('worker analytics privacy boundary', () => {
       activation_stage: 'A1', activation_label: 'Workflow structure created',
       activation_track: 'mcp-skills',
       edge_rate_limit_source: 'memory', edge_rate_limit_degraded: 'upstash_unavailable',
+      session_contract_ms: 2, worker_pre_transport_ms: 30, worker_full_response_ms: 120,
+      origin_identity_ms: 22, origin_identity_count: 1, origin_total_ms: 90, origin_total_count: 1,
     };
     expect(sanitizeWorkerTelemetryProperties(props)).toEqual(props);
   });
@@ -97,6 +99,37 @@ describe('worker analytics privacy boundary', () => {
     const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(body.batch[0].properties).toMatchObject({
       release: '33333333-3333-4333-8333-333333333333', release_source: 'cloudflare_version',
+      cloudflare_version: '33333333-3333-4333-8333-333333333333',
     });
+  });
+
+  it.each(['abcdef1234567', '0.0.0-abcdef1', 'https://private.test', 'g'.repeat(40)])
+  ('never treats a non-full source revision %s as an exact source cohort', async (revision) => {
+    const fetchMock = vi.fn(async () => new Response(null));
+    vi.stubGlobal('fetch', fetchMock);
+    let delivery: Promise<unknown> | undefined;
+    captureWorkerPosthogEvent({ env: { POSTHOG_KEY: 'test', ORGX_SOURCE_REVISION: revision,
+      SENTRY_RELEASE: '0.0.0-abcdef1', CF_VERSION_METADATA: { id: '33333333-3333-4333-8333-333333333333' } },
+      event: 'mcp_tool_invocation', distinctId: 'user', ctx: { waitUntil: (promise) => { delivery = promise; } } });
+    await delivery;
+    const props = JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).batch[0].properties;
+    expect(props).toMatchObject({ release_source: 'cloudflare_version' });
+    expect(props).not.toHaveProperty('source_revision');
+  });
+
+  it('binds an exact full source SHA independently of the deployment version and client properties', async () => {
+    const fetchMock = vi.fn(async () => new Response(null));
+    vi.stubGlobal('fetch', fetchMock);
+    let delivery: Promise<unknown> | undefined;
+    const revision = 'a'.repeat(40);
+    captureWorkerPosthogEvent({ env: { POSTHOG_KEY: 'test', ORGX_SOURCE_REVISION: revision,
+      SENTRY_RELEASE: '0.0.0-aaaaaaa', CF_VERSION_METADATA: { id: '33333333-3333-4333-8333-333333333333' } },
+      event: 'mcp_tool_invocation', distinctId: 'user', properties: { source_revision: 'client-spoof', cloudflare_version: 'client-spoof' },
+      ctx: { waitUntil: (promise) => { delivery = promise; } } });
+    await delivery;
+    const props = JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).batch[0].properties;
+    expect(props).toMatchObject({ source_revision: revision, release: revision, release_source: 'source_revision',
+      cloudflare_version: '33333333-3333-4333-8333-333333333333' });
+    expect(JSON.stringify(props)).not.toContain('client-spoof');
   });
 });

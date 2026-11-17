@@ -200,9 +200,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           DEPLOY_ENV: ${{ env.DEPLOY_ENV }}
           SENTRY_RELEASE: ${{ steps.version.outputs.version }}
+          ORGX_SOURCE_REVISION: ${{ github.sha }}
         run: >-
           pnpm wrangler deploy --env "$DEPLOY_ENV" --outdir dist
           --upload-source-maps --var "SENTRY_RELEASE:$SENTRY_RELEASE"
+          --var "ORGX_SOURCE_REVISION:$ORGX_SOURCE_REVISION"
 
       # Run-token and broker secrets sync AFTER the code deploy, never before:
       # the Worker that verifies run tokens with the dedicated secret OR the

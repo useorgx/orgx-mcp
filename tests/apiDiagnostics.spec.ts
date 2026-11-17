@@ -4,7 +4,7 @@ import {
   installSessionToolObservationWrapper,
   type SessionToolCompletion,
 } from '../src/sessionSummary';
-import { validTraceparent } from '../src/apiDiagnostics';
+import { invocationDiagnostics, validTraceparent } from '../src/apiDiagnostics';
 
 const env = {
   ORGX_API_URL: 'https://primary.example.test',
@@ -148,6 +148,57 @@ describe('MCP API diagnostics', () => {
     expect(one.calls).toBe(2);
     expect(two.calls).toBe(2);
     expect(one.last_request_id).not.toBe(two.last_request_id);
+  });
+
+  it('sums fixed origin phase samples across concurrent calls and fallback attempts without changing tool wall time', async () => {
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(Response.json({}, { status: 503, headers: { 'server-timing': 'orgx_mcp_total;dur=100,private_name;dur=999' } }))
+      .mockResolvedValueOnce(Response.json({}, { headers: { 'server-timing': 'orgx_mcp_total;dur=200,orgx_mcp_identity;dur=20' } }))
+      .mockResolvedValueOnce(Response.json({}, { headers: { 'server-timing': 'orgx_mcp_total;dur=300,orgx_mcp_identity;dur=30' } })));
+    const tool = wrapped(async () => {
+      await Promise.all([callOrgxApiJson(env, '/api/entities'), callOrgxApiJson(env, '/api/context')]);
+      return { content: [], _meta: { 'orgx/performance': { tool_execution_ms: 999999 } } };
+    });
+    const result = await tool.run({}, { requestId: 'origin-samples' }) as any;
+    const diagnostics = tool.completions[0].apiDiagnostics!;
+    expect(diagnostics).toMatchObject({ calls: 2, attempts: 3, fallbacks: 1,
+      origin_timings: { total: { sum_ms: 600, count: 3 }, identity: { sum_ms: 50, count: 2 } } });
+    expect(result._meta['orgx/performance']).toMatchObject({
+      origin_total_ms: 600, origin_total_count: 3, origin_identity_ms: 50, origin_identity_count: 2,
+      tool_execution_ms: expect.any(Number),
+    });
+    expect(result._meta['orgx/performance']).not.toHaveProperty('private_name');
+    expect(result._meta['orgx/performance']).not.toHaveProperty('origin_metering_ms');
+    expect(result._meta['orgx/performance'].tool_execution_ms).not.toBe(999999);
+    expect(result._meta['orgx/performance'].tool_execution_ms).toBeGreaterThanOrEqual(0);
+    expect(JSON.stringify(diagnostics)).not.toContain('private_name');
+  });
+
+  it('isolates timing sums between invocations and freezes snapshots before later API telemetry', async () => {
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    let release!: () => void;
+    const pause = new Promise<void>((resolve) => { release = resolve; });
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      await pause;
+      return Response.json({}, { headers: { 'server-timing': `orgx_mcp_total;dur=${url.includes('/one') ? 11 : 22}` } });
+    }));
+    let snapshot: ReturnType<typeof invocationDiagnostics>;
+    const one = wrapped(async () => {
+      await callOrgxApiJson(env, '/one');
+      snapshot = invocationDiagnostics();
+      await callOrgxApiJson(env, '/one');
+      return { content: [] };
+    });
+    const two = wrapped(async () => { await callOrgxApiJson(env, '/two'); return { content: [] }; });
+    const first = one.run({}, { requestId: 'one' });
+    const second = two.run({}, { requestId: 'two' });
+    release();
+    const [a, b] = await Promise.all([first, second]) as any[];
+    expect(a._meta['orgx/performance']).toMatchObject({ origin_total_ms: 22, origin_total_count: 2 });
+    expect(b._meta['orgx/performance']).toMatchObject({ origin_total_ms: 22, origin_total_count: 1 });
+    expect(snapshot!.origin_timings).toEqual({ total: { sum_ms: 11, count: 1 } });
   });
 
   it('identifies body timeouts separately from response headers and redacts error bodies', async () => {

@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { addOriginTimings, originTimingPerformance, type OriginTimings } from './originTimings';
 
 /** Correlation is diagnostic only: it never grants actor or workspace authority. */
 export interface ApiDiagnostics {
@@ -13,6 +14,8 @@ export interface ApiDiagnostics {
   body_ms: number;
   last_status: number;
   last_error: string;
+  /** Per-stage sums/counts over API attempts; concurrent stages are not wall time. */
+  origin_timings?: OriginTimings;
 }
 
 type ApiBodyOutcome = 'completed' | 'body_timeout' | 'body_error' | 'cancelled';
@@ -65,7 +68,9 @@ export function withInvocationDiagnostics<T>(extra: unknown, fn: () => T): T {
 
 export function invocationDiagnostics(): ApiDiagnostics | undefined {
   const current = invocations.getStore();
-  return current ? { ...current.diagnostics } : undefined;
+  if (!current) return undefined;
+  const { origin_timings, ...diagnostics } = current.diagnostics;
+  return { ...diagnostics, ...(origin_timings ? { origin_timings: structuredClone(origin_timings) } : {}) };
 }
 
 export class ApiRequestObservation {
@@ -125,6 +130,11 @@ export class ApiRequestObservation {
     }
     try {
       const response = await fetch(url, init);
+      if (this.diagnostics) {
+        const timings = this.diagnostics.origin_timings ?? {};
+        addOriginTimings(timings, response.headers.get('server-timing'));
+        if (Object.keys(timings).length) this.diagnostics.origin_timings = timings;
+      }
       status = response.status;
       outcome = response.ok ? 'succeeded' : 'http_error';
       responses.set(response, this);
@@ -248,6 +258,7 @@ export function attachDiagnosticReferences(value: unknown, executionMs?: number)
         api_timeouts: diagnostics.timeouts,
         api_headers_ms: diagnostics.headers_ms,
         api_body_ms: diagnostics.body_ms,
+        ...originTimingPerformance(diagnostics.origin_timings),
       },
     },
   };

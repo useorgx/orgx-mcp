@@ -99,6 +99,7 @@ import {
   type McpOriginValidationEnv,
 } from './mcpOriginValidation';
 import { installToolResultGuidanceWrapper } from './toolResultRegistration';
+import { withWorkerRequestTiming } from './workerRequestTiming';
 import {
   CLAUDE_DIRECTORY_TOOL_ADAPTERS,
   getClaudeDirectoryToolContract,
@@ -577,6 +578,7 @@ interface Env
   // PostHog telemetry (optional). In production, set via `wrangler secret put`.
   POSTHOG_KEY?: string;
   POSTHOG_HOST?: string;
+  ORGX_SOURCE_REVISION?: string;
   OAUTH_STATE: DurableObjectNamespace;
   // OAuth provider KV storage for tokens, grants, and client registrations
   OAUTH_KV: KVNamespace;
@@ -15908,7 +15910,15 @@ const worker = {
   },
 };
 
-export default Sentry.withSentry<Env>(
+const sentryWorker = Sentry.withSentry<Env>(
   (env) => createSentryOptions(env),
   worker
 );
+
+export default {
+  ...sentryWorker,
+  fetch(...args: Parameters<NonNullable<typeof sentryWorker.fetch>>) {
+    // withSentry preserves the concrete fetch handler supplied above.
+    return withWorkerRequestTiming(() => sentryWorker.fetch!(...args));
+  },
+};

@@ -6,10 +6,12 @@ describe('tool performance response projection', () => {
     expect(readToolPerformance([{ result: { _meta: { 'orgx/performance': {
       tool_execution_ms: 1200, api_calls: 2, api_attempts: 3,
       api_fallbacks: 1, api_headers_ms: 900, api_body_ms: 20,
+      origin_total_ms: 700, origin_total_count: 2, origin_identity_ms: 22,
       api_failures: -1, api_timeouts: 'secret', raw_url: 'private',
     } } } }])).toEqual({
       tool_execution_ms: 1200, api_calls: 2, api_attempts: 3,
       api_fallbacks: 1, api_headers_ms: 900, api_body_ms: 20,
+      origin_total_ms: 700, origin_total_count: 2, origin_identity_ms: 22,
     });
     expect(readToolPerformance([null])).toEqual({});
     expect(readToolPerformance([{ _meta: { 'orgx/performance': {

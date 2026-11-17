@@ -14,8 +14,14 @@ export async function resolveRequestSessionToolContract(
   env: { MCP_OBJECT?: unknown },
   props: SessionAuthenticatedGrant & { profile?: string; toolProfileExplicit?: boolean },
   resolveStub: StubResolver = async (namespace, name) => {
-    const { getAgentByName } = await import('agents');
-    return await getAgentByName(namespace as never, name) as unknown as SessionContractStub;
+    // This preflight reads persisted identity/grant/contract only. The agents
+    // helper first awaits a set-name fetch (and full onStart on a cold object),
+    // then the SDK repeats that setup on actual transport dispatch. A direct
+    // RPC preserves the fresh authorization check without that extra hop or
+    // initializing a registry before the authenticated grant has been checked.
+    // Leave naming, props persistence, and transport initialization to the SDK.
+    const objects = namespace as Pick<DurableObjectNamespace, 'idFromName' | 'get'>;
+    return objects.get(objects.idFromName(name)) as unknown as SessionContractStub;
   }
 ): Promise<SessionToolContract | null> {
   const url = new URL(request.url);
