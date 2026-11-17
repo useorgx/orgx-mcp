@@ -75,6 +75,9 @@ export function createSentryOptions(
     tracesSampleRate: parseSampleRate(env.SENTRY_TRACES_SAMPLE_RATE),
     enableLogs: true,
     sendDefaultPii: false,
+    // httpBodies controls collection, but the SDK otherwise clones and reads
+    // the entire request before our streamed MCP byte/deadline guard runs.
+    integrations: [Sentry.httpServerIntegration({ maxRequestBodySize: 'none' })],
     dataCollection: {
       userInfo: false,
       cookies: false,
