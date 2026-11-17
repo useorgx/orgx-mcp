@@ -67,6 +67,27 @@ describe('worker analytics privacy boundary', () => {
     expect(body.batch[0].uuid).not.toBe('client-spoof');
   });
 
+  it.each([
+    [{ ORGX_TELEMETRY_ENVIRONMENT: 'production' }, 'production'],
+    [{ ORGX_TELEMETRY_ENVIRONMENT: 'preview' }, 'preview'],
+    [{ SENTRY_ENVIRONMENT: 'production' }, 'unknown'],
+    [{ ORGX_TELEMETRY_ENVIRONMENT: 'invalid', SENTRY_ENVIRONMENT: 'production' }, 'unknown'],
+  ])('binds environment to explicit deployment telemetry configuration %#', async (bindings, environment) => {
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(null));
+    vi.stubGlobal('fetch', fetchMock);
+    let delivery: Promise<unknown> | undefined;
+    captureWorkerPosthogEvent({
+      env: { POSTHOG_KEY: 'test', ...bindings },
+      ctx: { waitUntil: (promise) => { delivery = promise; } },
+      event: 'mcp_tool_invocation', distinctId: 'user',
+      properties: { environment: 'client-spoof' },
+    });
+    await delivery;
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(body.batch[0].properties.environment).toBe(environment);
+    expect(JSON.stringify(body)).not.toContain('client-spoof');
+  });
+
   it('finishes failed capture within its deadline without leaking the failure payload', async () => {
     vi.useFakeTimers();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
