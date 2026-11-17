@@ -63,6 +63,41 @@ describe('MCP session contract binding', () => {
     )).toBeNull();
     expect(resolver).toHaveBeenCalledWith({}, 'sse:s');
   });
+  it('reads a current session directly without a lifecycle fetch or stale grant cache', async () => {
+    const stored = { profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' };
+    const stub = {
+      fetch: vi.fn(() => { throw new Error('Session preflight must not start the transport'); }),
+      getSessionToolContract: vi.fn(async (grant) => {
+        assertMcpSessionIdentity('owner', grant.userId);
+        assertMcpSessionGrant({ scope: 'initiatives:read' }, grant);
+        return stored;
+      }),
+    };
+    const id = {};
+    const namespace = { idFromName: vi.fn(() => id), get: vi.fn(() => stub) };
+    const request = new Request('https://mcp.test/mcp', { headers: { 'mcp-session-id': 'session' } });
+    const grant = { userId: 'owner', scope: 'initiatives:read', profile: 'chatgpt' };
+    expect(await resolveRequestSessionToolContract(request, { MCP_OBJECT: namespace }, grant)).toEqual(stored);
+    expect(namespace.idFromName).toHaveBeenCalledWith('streamable-http:session');
+    expect(namespace.get).toHaveBeenCalledWith(id);
+    await expect(resolveRequestSessionToolContract(request, { MCP_OBJECT: namespace }, { ...grant, userId: 'other' }))
+      .rejects.toThrow('another authenticated identity');
+    await expect(resolveRequestSessionToolContract(request, { MCP_OBJECT: namespace }, { ...grant, scope: 'initiatives:write' }))
+      .rejects.toThrow('different authenticated grant');
+    expect(stub.getSessionToolContract).toHaveBeenCalledTimes(3);
+    expect(stub.fetch).not.toHaveBeenCalled();
+  });
+  it('leaves unknown session transport initialization to the SDK', async () => {
+    const stub = { fetch: vi.fn(), getSessionToolContract: vi.fn(async () => null) };
+    const namespace = { idFromName: vi.fn((name) => name), get: vi.fn(() => stub) };
+    expect(await resolveRequestSessionToolContract(
+      new Request('https://mcp.test/sse/message?sessionId=unknown', { method: 'POST' }),
+      { MCP_OBJECT: namespace }, { userId: 'owner' },
+    )).toBeNull();
+    expect(namespace.idFromName).toHaveBeenCalledWith('sse:unknown');
+    expect(stub.getSessionToolContract).toHaveBeenCalledOnce();
+    expect(stub.fetch).not.toHaveBeenCalled();
+  });
   it('accepts equivalent refreshed OAuth grants while rejecting changes in permissions', () => {
     expect(() => assertMcpSessionGrant({ scope: 'agents:read initiatives:read' }, { scope: 'initiatives:read agents:read agents:read', authSource: 'oauth' })).not.toThrow();
     expect(() => assertMcpSessionGrant({ scope: 'initiatives:write' }, { scope: 'initiatives:read' })).toThrow('different authenticated grant');
