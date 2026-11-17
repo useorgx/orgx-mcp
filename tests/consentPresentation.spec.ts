@@ -158,6 +158,33 @@ describe('OAuth consent presentation', () => {
     await browser.close();
   });
 
+  it('offers a first read in the granted resource without submitting consent', async () => {
+    const page = await openConsent(browser, {
+      ...defaultPayload,
+      requested_scopes: ['decisions:read'],
+    }, { width: 390, height: 844 });
+    try {
+      await page.getByRole('button', { name: 'Review access' }).click();
+      const prompt = page.locator('#first-request-text');
+      const request = await prompt.textContent();
+      expect(request).toContain('decisions in my workspace and its source');
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+          writeText: async (text: string) => { document.body.dataset.copied = text; },
+        } });
+      });
+      await page.getByRole('button', { name: 'Copy request' }).click();
+      await page.waitForFunction(() => Boolean(document.body.dataset.copied));
+      expect(await page.locator('body').getAttribute('data-copied')).toBe(request);
+      await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { value: undefined }));
+      await page.getByRole('button', { name: 'Copy request' }).click();
+      expect(await page.evaluate(() => window.getSelection()?.toString())).toBe(request);
+      expect(await page.getByRole('button', { name: 'Authorize' }).isVisible()).toBe(true);
+    } finally {
+      await page.close();
+    }
+  });
+
   it('shows Claude identity, the closed-registry ambient theme, and disclosed read defaults', async () => {
     const page = await openConsent(browser, defaultPayload, {
       width: 1440,

@@ -307,6 +307,13 @@ function renderReview() {
   if (state.requested.has('offline_access') && document.getElementById('offline-toggle').checked) {
     review.insertAdjacentHTML('beforeend', '<div class="review-permission"><span><strong>Connection</strong><br /><span>offline_access</span></span><span class="access-pill">Refresh</span></div>');
   }
+  const scopes = buildScopeList();
+  const readable = selected.find((resource) => resource.read && scopes.includes(resource.read));
+  document.getElementById('first-request').hidden = !readable;
+  document.getElementById('first-request-text').textContent = readable
+    ? `Use OrgX to show me one recent item from ${readable.label.toLowerCase()} in my workspace and its source. If there are none, tell me what to provide first.`
+    : '';
+  document.getElementById('first-request-status').textContent = '';
   const writes = selected.filter((resource) => state.selected[resource.id] === 'write');
   const risk = document.getElementById('risk-note');
   risk.hidden = writes.length === 0;
@@ -379,6 +386,22 @@ function bindEvents() {
     }
     configureError.textContent = '';
     showStage('review');
+  });
+  document.getElementById('copy-first-request').addEventListener('click', async () => {
+    const prompt = document.getElementById('first-request-text');
+    const status = document.getElementById('first-request-status');
+    try {
+      await navigator.clipboard.writeText(prompt.textContent);
+      status.textContent = 'Copied. Paste it in your client after connecting.';
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(prompt);
+      prompt.focus();
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      status.textContent = 'Select and copy the request to use it in your client.';
+    }
   });
   document.getElementById('edit-button').addEventListener('click', () => showStage('configure'));
   document.getElementById('authorize-button').addEventListener('click', () => submitConsent('approve'));
