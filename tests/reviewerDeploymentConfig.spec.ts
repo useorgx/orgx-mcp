@@ -33,4 +33,15 @@ describe('reviewer deployment configuration', () => {
     expect(deploy).toContain('--var "SENTRY_RELEASE:$SENTRY_RELEASE"');
     expect(deploy).not.toContain('secrets.ORGX_SOURCE_REVISION');
   });
+
+  it('sets telemetry environment only during the selected canonical deployment', () => {
+    const workflow = readFileSync(resolve(root, '.github/workflows/deploy.yml'), 'utf8');
+    const deploy = workflow.slice(workflow.indexOf('      - name: Deploy to Cloudflare'),
+      workflow.indexOf('      # Run-token and broker secrets sync AFTER'));
+    expect(deploy).toContain('DEPLOY_ENV: ${{ env.DEPLOY_ENV }}');
+    expect(deploy).toContain('--var "ORGX_TELEMETRY_ENVIRONMENT:$DEPLOY_ENV"');
+    expect(workflow).toContain("DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'production' }}");
+    expect(workflow).toContain('          - production\n          - preview');
+    expect(wranglerConfig).not.toMatch(/^ORGX_TELEMETRY_ENVIRONMENT\s*=/m);
+  });
 });
