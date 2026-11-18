@@ -61,6 +61,7 @@ const responsibilityInput = z.object({
   trigger: z.object({
     kind: z.enum(['cadence', 'event', 'manual']),
     agent: z.enum(['product', 'engineering', 'marketing', 'sales', 'operations', 'design', 'orchestrator']).optional().describe('Agent responsible for a scheduled run. Defaults to operations.'),
+    budgetCents: z.number().int().min(0).max(1000).optional().describe('Per scheduled run in US cents. Zero pauses paid starts. Defaults to 100 cents.'),
     cadence: z.string().trim().min(1).max(200).optional(),
     event: z.string().trim().min(1).max(200).optional(),
     description: z.string().trim().min(1).max(500).optional(),
