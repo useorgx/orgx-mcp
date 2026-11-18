@@ -157,6 +157,14 @@ describe('orgx_spawn runtime choice', () => {
     expect(runtimeRoutingFields('nonsense')).toEqual({});
   });
 
+  it.each(['cloud_openai', 'cloud_claude', 'managed_openai', 'managed_anthropic', 'local', 'auto'])(
+    'preserves the selected %s runtime and spending controls on handoff', runtime => {
+      const controls = { model: 'chosen-model', max_cost_usd: 0.1, budget_mode: 'cheapest_valid' };
+      expect(buildOrgxSpawnForwardArgs('handoff_task', { runtime, task_id: 't', agent_type: 'ops', ...controls }))
+        .toEqual({ task_id: 't', agent: 'operations-agent', ...runtimeRoutingFields(runtime), ...controls });
+    }
+  );
+
   it('forwards the mapped fields, drops runtime itself, and never overrides explicit routing', () => {
     const out = buildOrgxSpawnForwardArgs('spawn_agent_task', { title: 'x', instructions: 'y', agent_type: 'engineering', runtime: 'managed_openai' });
     expect(out).toMatchObject({ execution_target: 'cloud', managed_runtime: 'openai' });

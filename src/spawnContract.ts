@@ -100,16 +100,14 @@ export function buildOrgxSpawnForwardArgs(
     normalizeAgentAlias(args.agent_type) ??
     normalizeAgentAlias(args.domain);
 
-  if (targetTool === 'handoff_task') {
-    if (agent && !readString(out.agent)) out.agent = agent;
-    const note = readString(out.note) ?? readString(args.instructions);
-    if (note) out.note = note;
-    return out;
-  }
-
   if (agent && !readString(out.agent)) out.agent = agent;
   for (const [key, value] of Object.entries(runtimeRoutingFields(args.runtime))) {
     if (!readString(out[key])) out[key] = value;
+  }
+  if (targetTool === 'handoff_task') {
+    const note = readString(out.note) ?? readString(args.instructions);
+    if (note) out.note = note;
+    return out;
   }
 
   const title = readString(args.title);
