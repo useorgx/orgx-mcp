@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-18T05:44:09.157Z",
-  "sourceHash": "4582977709d35793",
+  "generatedAt": "2026-11-18T12:21:29.997Z",
+  "sourceHash": "642344fb32064268",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -13993,6 +13993,12 @@
                     ],
                     "description": "Agent responsible for a scheduled run. Defaults to operations."
                   },
+                  "budgetCents": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000,
+                    "description": "Per scheduled run in US cents. Zero pauses paid starts. Defaults to 100 cents."
+                  },
                   "cadence": {
                     "type": "string",
                     "minLength": 1,
@@ -18136,6 +18142,12 @@
                       "orchestrator"
                     ],
                     "description": "Agent responsible for a scheduled run. Defaults to operations."
+                  },
+                  "budgetCents": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000,
+                    "description": "Per scheduled run in US cents. Zero pauses paid starts. Defaults to 100 cents."
                   },
                   "cadence": {
                     "type": "string",
