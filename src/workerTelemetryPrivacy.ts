@@ -1,4 +1,5 @@
 import { VALIDATION_ISSUE_CODES } from './mcpValidationTelemetry';
+import { ORIGIN_PERFORMANCE_KEYS } from './originTimings';
 import { safeCorrelation, TELEMETRY_LIMITS } from './telemetryContract';
 import {
   CHATGPT_TOOL_DEFINITIONS, PLAN_SESSION_TOOLS,
@@ -110,10 +111,12 @@ const numericProperties = new Set([
   'elapsed_ms',
   'tool_execution_ms', 'api_calls', 'api_attempts', 'api_fallbacks',
   'api_failures', 'api_timeouts', 'api_headers_ms', 'api_body_ms',
+  ...ORIGIN_PERFORMANCE_KEYS,
   'latency_ms', 'http_status', 'argument_count', 'estimated_argument_bytes',
-  'step_index', 'auth_ms', 'session_ms', 'request_normalization_ms', 'handler_ms',
+  'step_index', 'auth_ms', 'session_ms', 'session_contract_ms', 'request_normalization_ms', 'handler_ms',
   'response_headers_ms', 'response_shaping_ms', 'first_response_byte_ms',
   'full_response_ms', 'response_size_bytes', 'response_size_header_bytes',
+  'worker_pre_transport_ms', 'worker_response_headers_ms', 'worker_full_response_ms', 'worker_first_response_byte_ms',
   'edge_rate_limit_ms', 'edge_rate_limit_backend_ms', 'edge_rate_limit_identity_ms',
   'edge_rate_limit_billing_ms', 'tokens_used', 'cost_usd', 'estimated_cost_usd',
   'search_result_count', 'search_missing_title_count', 'task_count', 'deprecation_window_days',

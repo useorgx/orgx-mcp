@@ -191,6 +191,14 @@ describe('Outputs', () => {
     expect(built.outputs.items[0]!.has_preview).toBe(true);
     expect(JSON.stringify(built.outputs)).not.toContain('Ready for review.');
   });
+  it('leaves blocker reports out of outputs', () => {
+    const { outputs } = buildPanelOutputs([
+      artifact(ART, { artifact_type: 'eng.structured_blocker', title: 'Engineering run blocked — ship it' }),
+    ], { viewerIds: [] });
+    expect(outputs.items).toEqual([]);
+    expect(outputs.total).toBe(0);
+  });
+
   it('places each output on its chain from what the record says, newest first', () => {
     const { outputs } = buildPanelOutputs([
       artifact(ART, { artifact_type: 'pull_request', status: 'in_review', created_at: '2026-10-03T00:00:00.000Z', primary_url: 'https://github.com/acme/repo/pull/7' }),

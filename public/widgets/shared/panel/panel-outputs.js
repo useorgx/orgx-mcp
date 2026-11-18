@@ -70,6 +70,7 @@
     });
   }
 
+  var OUT_PAGE = 12;
   /** Made → Accepted → Landed → Moved, each as OrgX recorded it. */
   function chainOf(o) {
     var a = o.accepted || { state: 'unknown' };
@@ -82,20 +83,25 @@
     return [
       { name: 'Made', s: 'on', line: o.made_at ? ago(o.made_at) : 'Time not recorded' },
       { name: 'Accepted', s: accepted.s, line: accepted.line + (a.at && accepted.s === 'on' ? ' · ' + ago(a.at) : '') },
-      o.landed ? { name: 'Landed', s: 'on', line: o.landed.label + (o.landed.at ? ' · ' + ago(o.landed.at) : '') } : { name: 'Landed', s: 'off', line: 'Not recorded' },
-      o.moved ? { name: 'Moved', s: 'on', line: o.moved.label } : { name: 'Moved', s: 'off', line: 'Not recorded' },
+      o.landed ? { name: 'Shipped', s: 'on', line: o.landed.label + (o.landed.at ? ' · ' + ago(o.landed.at) : '') } : { name: 'Shipped', s: 'off', line: 'Not recorded' },
+      o.moved ? { name: 'Moved a goal', s: 'on', line: o.moved.label } : { name: 'Moved a goal', s: 'off', line: 'Not recorded' },
     ];
   }
   function stageWord(chain) {
     var at = 0;
     chain.forEach(function last(c, k) { if (c.s === 'on') at = k; });
-    var waiting = chain[1].s === 'wait' ? ', waiting on review' : chain[1].s === 'back' ? ', sent back' : '';
-    return chain[at].name + waiting;
+    // The row says the one thing that matters now, in words; the dots only repeat it.
+    if (chain[1].s === 'wait') return 'To review';
+    if (chain[1].s === 'back') return 'Sent back';
+    return chain[at].name;
   }
   function dotsHtml(o) {
     var chain = chainOf(o);
-    return '<span class="oc-dots" role="img" aria-label="' + esc(stageWord(chain)) + '" title="' + esc(stageWord(chain)) + '">' +
-      chain.map(function d(c) { return '<i data-s="' + c.s + '"></i>'; }).join('') + '</span>';
+    var tip = chain.map(function t(c) { return c.name + ': ' + c.line; }).join(' · ');
+    // One word, with a mark whose shape says the same thing: the four-step trail lives in the detail.
+    var word = stageWord(chain);
+    var kind = chain[1].s === 'wait' ? 'wait' : chain[1].s === 'back' ? 'back' : word === 'Made' ? 'made' : 'on';
+    return '<span class="oc-stage" title="' + esc(tip) + '"><span class="oc-stage-w" data-s="' + chain[1].s + '" data-k="' + kind + '"><i class="oc-stage-i" aria-hidden="true"></i>' + esc(word) + '</span></span>';
   }
 
   function rowHtml(o, on, idx) {
@@ -211,6 +217,8 @@
     var goal = idx ? opts.goal || 'all' : 'all';
     var list = filtered(data, { range: range, family: family, goal: goal, now: opts.now }, idx);
     var toReview = list.filter(function w(o) { return o.accepted && o.accepted.state === 'waiting'; });
+    // The tab counts everything that waits; say so when these filters hide some of it.
+    var hidden = (toReviewCount(data) || 0) - toReview.length;
     var goalItems = idx ? [{ label: 'All goals', action: 'out-goal', id: 'all', on: goal === 'all' }].concat(opts.goals.items.map(function g(x) {
       return { label: x.title, action: 'out-goal', id: x.id, on: goal === x.id, lead: levelIcon('goal') };
     })).concat(opts.goals.unlinked_total ? [{ label: 'No goal', action: 'out-goal', id: 'none', on: goal === 'none', lead: levelIcon('initiative') }] : []) : null;
@@ -226,14 +234,19 @@
     list.forEach(function n(o) { if (o.initiative_id) inits[o.initiative_id] = true; });
     var nInits = Object.keys(inits).length;
     var sum = '<p class="pn-done-sum"><b>' + count(list.length, 'output', 'outputs') + '</b>' + (nInits ? ' · ' + count(nInits, 'initiative', 'initiatives') : '') +
-      (toReview.length ? ' · <b>' + toReview.length + '</b> to review' : ' · nothing to review') + (data.total > data.items.length ? ' · newest ' + data.items.length + ' of ' + data.total + ' read' : '') + '</p>';
+      (toReview.length ? ' · <b>' + toReview.length + '</b> to review' : ' · nothing to review') + (data.total > data.items.length ? ' · newest ' + data.items.length + ' of ' + data.total + ' read' : '') +
+      (hidden > 0 ? ' · <button type="button" class="text-btn" data-action="out-clear">' + hidden + ' more to review outside this view</button>' : '') + '</p>';
     if (!list.length) {
       // The filters stay so they can be changed; the empty count line does not repeat the message.
       return open(scope + '<div class="pn-empty is-small"><h3 class="pn-empty-h">No outputs match these filters.</h3>' +
         '<button type="button" class="text-btn" data-action="out-clear">Clear filters</button></div>');
     }
-    var ordered = toReview.concat(list.filter(function rest(o) { return toReview.indexOf(o) === -1; }));
-    var sel = ordered.filter(function f(o) { return o.id === opts.sel; })[0] || null;
+    var every = toReview.concat(list.filter(function rest(o) { return toReview.indexOf(o) === -1; }));
+    var sel = every.filter(function f(o) { return o.id === opts.sel; })[0] || null;
+    // Everything to review always shows; the rest comes a page at a time.
+    var cap = Math.max(toReview.length, Math.max(1, opts.page || 1) * OUT_PAGE);
+    var ordered = every.slice(0, cap);
+    if (sel && ordered.indexOf(sel) === -1) ordered.push(sel);
     var group = null;
     var rows = '';
     ordered.forEach(function each(o) {
@@ -243,12 +256,16 @@
       rows += rowHtml(o, Boolean(sel && sel.id === o.id), idx);
     });
     rows += '</ul>';
+    if (every.length > ordered.length) rows += '<div class="gl-more-row"><button type="button" class="text-btn" data-action="out-more">Show ' + Math.min(OUT_PAGE, every.length - ordered.length) + ' more</button><span class="gl-more-n">' + ordered.length + ' of ' + every.length + ' shown</span></div>';
+    var tally = ['Made', 'Accepted', 'Shipped', 'Moved a goal'].map(function k(n, i) { return [n, list.filter(function on(o) { return chainOf(o)[i].s === 'on'; }).length]; });
+    var after = tally.slice(1).filter(function some(t) { return t[1] > 0; });
     var overview = '<div class="md-card md-overview oc-overview" role="region" aria-label="Outputs overview"><p class="md-kicker">' + esc(RANGE_SHORT[range]) + '</p>' +
       '<h3 class="md-title">' + count(list.length, 'output', 'outputs') + '</h3>' +
-      '<ul class="oc-key" role="list">' + ['Made', 'Accepted', 'Landed', 'Moved'].map(function k(n, i) {
-        var c = list.filter(function on(o) { return chainOf(o)[i].s === 'on'; }).length;
-        return '<li><i data-s="on" aria-hidden="true"></i><b>' + c + '</b> ' + n.toLowerCase() + '</li>';
-      }).join('') + '</ul>' +
+      // Only what happened is counted; a row of zeros says less than one sentence.
+      (after.length
+        ? '<ul class="oc-key" role="list">' + after.map(function k(t) { return '<li><b>' + t[1] + '</b> ' + t[0].toLowerCase() + '</li>'; }).join('') + '</ul>'
+        : '<p class="md-text oc-none">None accepted, shipped or tied to a goal yet.</p>') +
+      (toReview.length ? '<p class="md-text"><b>' + toReview.length + '</b> ' + (toReview.length === 1 ? 'waits' : 'wait') + ' on your review, at the top of the list.</p>' : '') +
       '<p class="md-text">Select an output to see what it is, how it checked out, and what it moved.</p></div>';
     return open(scope + sum + '<div class="pn-md is-push' + (sel ? ' has-sel' : '') + '"><div class="pn-md-list">' + rows + '</div>' +
       '<aside class="pn-md-detail">' + (sel ? detailHtml(sel, opts, idx) : overview) + '</aside></div>', phase === 'loading');

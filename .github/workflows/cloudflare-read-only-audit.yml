@@ -1,0 +1,50 @@
+name: Audit Cloudflare aggregate metrics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-read-only-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.repository == 'useorgx/orgx-mcp' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: production
+    steps:
+      - name: Verify trusted audit source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$GITHUB_REPOSITORY" = 'useorgx/orgx-mcp'
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Read fixed Cloudflare aggregates
+        timeout-minutes: 1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: node scripts/cloudflare-read-only-audit.mjs
+
+      - name: Preserve numeric audit report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cloudflare-aggregate-metrics
+          path: artifacts/qa/cloudflare-metrics-audit/report.json
+          if-no-files-found: ignore
+          retention-days: 1

@@ -22,7 +22,27 @@
   function liveUrl() { var l = links(); return l && l.live ? l.live() : 'https://useorgx.com/live'; }
 
   /** Avatar for an agent or person; OrgX's mark when nobody is named. */
+  /**
+   * Work that came in from a coding client rather than an OrgX agent or a
+   * person. A client is a tool, so it wears a square tile with its short
+   * code; agents keep their round portraits. No third-party logo is drawn.
+   */
+  var CLIENTS = [
+    [/^(openai[\s_-]*)?codex([\s_-]*cli)?$/i, 'Cx', 'Codex'],
+    [/^chat[\s_-]*gpt$/i, 'GP', 'ChatGPT'],
+    [/^claude[\s_-]*code$/i, 'CC', 'Claude Code'],
+    [/^claude$/i, 'Cl', 'Claude'],
+    [/^cursor$/i, 'Cu', 'Cursor'],
+    [/^(github[\s_-]*)?copilot$/i, 'Co', 'Copilot'],
+  ];
+  function clientOf(name) {
+    var n = String(name || '').trim();
+    for (var i = 0; i < CLIENTS.length; i += 1) if (CLIENTS[i][0].test(n)) return { code: CLIENTS[i][1], name: CLIENTS[i][2] };
+    return null;
+  }
   function avatar(name, size) {
+    var client = clientOf(name);
+    if (client) return '<span class="cl-av" data-size="' + esc(size || 'row') + '" role="img" aria-label="' + esc(client.name + ', a connected client') + '" title="' + esc(client.name + ', a connected client') + '">' + client.code + '</span>';
     var identity = global.OrgXAgentIdentity;
     if (identity && typeof identity.avatar === 'function') return identity.avatar({ agent: name || '', name: name || '', size: size || 'row' });
     return '';
@@ -198,7 +218,8 @@
       ? 'Marked in progress, but nothing has been reported for ' + (ago(item.updated_at) || 'a while') + '. It may be stalled.'
       : item.state === 'blocked' ? 'Waiting on something before it can continue.'
       : item.state === 'running' ? 'An agent is working on this now.'
-      : item.state === 'held' ? 'This task is held by its initiative or a prerequisite.'
+      // OrgX says what holds it and what releases it; the generic line only when it does not.
+      : item.state === 'held' ? (item.blocker || 'This task is held by its initiative or a prerequisite. Open it in OrgX to see which.')
       : item.state === 'planned' ? 'Saved work. Execution has not been queued.'
       : 'Execution has been queued.';
     var ask = 'In OrgX, what is ' + (item.state === 'blocked' || item.stale ? 'holding up' : 'the status of') + ' “' + item.title.slice(0, 120) + '”?';
@@ -384,10 +405,20 @@
     return { id: h.id, title: h.title, action: h.outcome === 'approved' ? 'approve' : 'reject', verb: o.verb, phase: 'confirmed', detail: '', at: h.settled_at ? ago(h.settled_at) : '', url: h.url, inOrgx: true };
   }
 
+  /** What was decided, as a word with its own shape: a tick, a turn-back arrow, or a cross when OrgX did not record it. */
+  var TURN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4L3.5 7l3 3M3.5 7h6a3 3 0 0 1 0 6H8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function rulingChip(e) {
+    var failed = e.phase === 'failed';
+    var pending = !failed && !e.inOrgx && e.phase !== 'confirmed' && e.phase !== 'rejected' && e.phase !== 'elsewhere' && e.phase !== 'recorded';
+    var kind = failed ? 'fail' : e.action === 'approve' ? 'pass' : 'back';
+    var word = failed ? 'Not recorded' : pending ? 'Saving' : (e.verb || 'Decided');
+    return '<span class="dn-chip" data-s="' + kind + '">' + (kind === 'pass' ? MARK.pass : kind === 'fail' ? MARK.fail : TURN) + esc(word) + '</span>';
+  }
+
   function receiptRow(e, on) {
     return '<li><button type="button" class="dn-row" data-action="receipt" data-id="' + esc(e.id) + '" aria-pressed="' + on + '">' +
-      '<span class="dn-t">' + esc(e.title) + '</span><span class="dn-m">' + esc((e.inOrgx ? e.verb : (trailOf(e)[0].line)) + (e.at ? ' · ' + e.at : '')) + '</span>' +
-      trailMarks(e) + '</button></li>';
+      '<span class="dn-t">' + esc(e.title) + '</span><span class="dn-m">' + esc([e.inOrgx ? '' : 'By you', e.at || ''].filter(Boolean).join(' · ')) + '</span>' +
+      rulingChip(e) + '</button></li>';
   }
 
   function receiptDetailHtml(e) {
@@ -480,7 +511,10 @@
       var w = workReceiptsBody(Object.assign({}, opts, { range: wrange }));
       if (w.empty) {
         return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
-          '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + wseg + '</div></div>' + w.body + '</section>';
+          '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + wseg + '</div></div>' + w.body +
+          // The tab counts what was decided here; with no finished work to show, point at those decisions.
+          ((opts.session || []).length ? '<p class="pn-done-sum dn-also"><b>' + count(opts.session.length, 'decision', 'decisions') + '</b> settled since you opened the panel · ' +
+            '<button type="button" class="text-btn" data-action="done-lens" data-id="decisions">Show them</button></p>' : '') + '</section>';
       }
       return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
         '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + wseg + '</div></div>' + (w.summary || '') +
@@ -542,13 +576,13 @@
     return '<section class="pn-done" id="pn-view" role="tabpanel" aria-labelledby="pn-tab-done">' +
       '<div class="pn-view-head"><h2 class="pn-view-h">Done</h2><div class="dn-ctl">' + lensSeg + seg + '</div></div>' + summary +
       '<div class="pn-md' + (selected ? ' has-sel' : '') + '"><div class="pn-md-list">' + (body || '') + '</div>' +
-      '<aside class="pn-md-detail">' + (selected ? receiptDetailHtml(selected) : '<div class="md-card md-overview" role="region" aria-label="Acceptance"><p class="md-kicker">Accepted work</p>' + overview + '</div>') + '</aside></div>' +
+      '<aside class="pn-md-detail">' + (selected ? receiptDetailHtml(selected) : '<div class="md-card md-overview" role="region" aria-label="Acceptance"><p class="md-kicker">Acceptance</p>' + overview + '</div>') + '</aside></div>' +
       (opts.launch || '') + '</section>';
   }
 
   global.OrgXPanelViews = {
     tabsHtml: tabsHtml, tabOrder: tabOrder, workHtml: workHtml, doneHtml: doneHtml, receiptHtml: receiptHtml, trailMarks: trailMarks, trailOf: trailOf,
-    avatar: avatar, groupByAgent: groupByAgent, groupByInitiative: groupByInitiative, tokHtml: tokHtml, popHtml: popHtml, backHtml: backHtml,
+    avatar: avatar, clientOf: clientOf, groupByAgent: groupByAgent, groupByInitiative: groupByInitiative, tokHtml: tokHtml, popHtml: popHtml, backHtml: backHtml,
     skeletonRows: skeletonRows, stepsHtml: stepsHtml,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

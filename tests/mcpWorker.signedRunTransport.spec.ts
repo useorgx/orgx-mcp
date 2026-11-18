@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SESSION_TOOL_CONTRACT_KEY } from '../src/sessionToolContract';
+import { MAX_MCP_REQUEST_BODY_BYTES } from '../src/mcpInputLimits';
 
 const transport = vi.hoisted(() => ({ http: vi.fn(), sse: vi.fn(), oauth: vi.fn(), getAgentByName: vi.fn() }));
 
@@ -49,12 +50,13 @@ async function setup() {
     ['props', GRANT], [SESSION_TOOL_CONTRACT_KEY, { profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' }],
   ]);
   cached.ctx = { storage: { get: vi.fn(async (key: string) => stored.get(key)) } };
-  transport.getAgentByName.mockResolvedValue(cached);
   transport.sse.mockImplementation(async (request: Request) => request.method === 'GET'
     ? new Response('event: endpoint\ndata: /sse/message?sessionId=signed-session&profile=chatgpt\n\n', { headers: { 'content-type': 'text/event-stream' } })
     : new Response('Accepted', { status: 202 }));
   transport.oauth.mockResolvedValue(null);
-  const env = { ORGX_RUN_MCP_TOKEN_SECRET: SECRET, MCP_OBJECT: {}, MCP_SERVER_URL: 'http://localhost:8787',
+  const env = { ORGX_RUN_MCP_TOKEN_SECRET: SECRET,
+    MCP_OBJECT: { idFromName: vi.fn((name: string) => name), get: vi.fn(() => cached) },
+    MCP_SERVER_URL: 'http://localhost:8787',
     // The real worker binding exists even when this fixture mocks OAuth.fetch.
     OAUTH_KV: {},
   };
@@ -69,6 +71,21 @@ async function setup() {
 afterEach(() => vi.clearAllMocks());
 
 describe('signed-run authentication on actual native SSE paths', () => {
+  it.each(['/mcp', '/sse/message', '/'])('rejects oversized %s bodies before auth or transport dispatch', async (path) => {
+    const { worker, env, ctx } = await setup();
+    const request = new Request(`http://localhost:8787${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': String(MAX_MCP_REQUEST_BODY_BYTES + 1) },
+      body: '{}',
+    });
+    const response = await worker.fetch(request, env as any, ctx());
+    expect(response.status).toBe(413);
+    expect(transport.sse).not.toHaveBeenCalled();
+    expect(transport.http).not.toHaveBeenCalled();
+    expect(transport.oauth).not.toHaveBeenCalled();
+    expect(transport.getAgentByName).not.toHaveBeenCalled();
+  });
+
   it('authenticates both the initial GET and advertised message POST through the observed SSE handler', async () => {
     const { worker, env, request, ctx } = await setup();
     const initial = await worker.fetch(new Request('http://localhost:8787/sse?profile=chatgpt', {
@@ -83,7 +100,9 @@ describe('signed-run authentication on actual native SSE paths', () => {
     expect(transport.sse).toHaveBeenCalledTimes(2);
     expect(new URL(transport.sse.mock.calls[1]![0].url).pathname).toBe('/sse/message');
     expect(transport.sse.mock.calls[1]![2].props).toMatchObject({ ...GRANT, operationContractVersion: 'orgx-mcp-operations/1' });
-    expect(transport.getAgentByName).toHaveBeenCalledWith(env.MCP_OBJECT, 'sse:signed-session');
+    expect(env.MCP_OBJECT.idFromName).toHaveBeenCalledWith('sse:signed-session');
+    expect(env.MCP_OBJECT.get).toHaveBeenCalledWith('sse:signed-session');
+    expect(transport.getAgentByName).not.toHaveBeenCalled();
   });
 
   it.each([

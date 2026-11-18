@@ -100,7 +100,8 @@ describe('panel v2 tabs', () => {
     await m.flush();
     const done = doc(m).querySelector('.pn-done')!;
     expect(done.textContent).toContain('Ship release 4.2?');
-    expect(done.textContent).toContain('Approved by you');
+    expect(done.querySelector('.dn-chip')!.textContent).toBe('Approved');
+    expect(done.textContent).toContain('By you');
     click(m, `[data-action="receipt"][data-id="${D1}"]`);
     await m.flush();
     // The receipt opens in the detail pane beside the list.
@@ -110,7 +111,7 @@ describe('panel v2 tabs', () => {
     expect(lines.map((l) => l[0])).toEqual(['pass', 'pass', 'none']);
     expect(lines[1]![1]).toContain('Recorded in OrgX');
     expect(lines[2]![1]).toContain('not on this receipt yet');
-    expect(doc(m).querySelector(`[data-action="receipt"][data-id="${D1}"] .rt`)!.getAttribute('aria-label')).toBe('Decided: proven. Recorded: proven. Outcome: no proof');
+    expect(doc(m).querySelector(`[data-action="receipt"][data-id="${D1}"] .dn-chip`)!.getAttribute('data-s')).toBe('pass');
     expect(done.textContent).toContain('Decision history');
   });
 });

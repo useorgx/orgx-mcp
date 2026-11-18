@@ -1851,7 +1851,9 @@
         var tileTone = lineTone === "blocking" ? "red" : waiting ? "amber" : "teal";
 
         var footerState = isStale ? "stale" : "fresh";
-        var footerHeading = isStale ? "Out of date" : "Synced " + syncLabel;
+        // "Synced" only when the pulse itself carries a time; an artifact's time
+        // is when work last changed, not when this view was read.
+        var footerHeading = isStale ? "Out of date" : (pulse.updated_at ? "Synced " : "Last change ") + syncLabel;
         var footerDetail = isStale ? "as of " + syncLabel + " · refresh before deciding" : economics || "up to date";
         var footerAction = "Open live view ↗";
 

@@ -1,7 +1,10 @@
 /** Numeric, content-free measurements carried from tool execution to transport. */
+import { ORIGIN_PERFORMANCE_KEYS } from './originTimings';
+
 export const TOOL_PERFORMANCE_KEYS = [
   'tool_execution_ms', 'api_calls', 'api_attempts', 'api_fallbacks',
   'api_failures', 'api_timeouts', 'api_headers_ms', 'api_body_ms',
+  ...ORIGIN_PERFORMANCE_KEYS,
 ] as const;
 
 export function readToolPerformance(records: unknown[]): Record<string, number> {

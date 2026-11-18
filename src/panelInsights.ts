@@ -169,6 +169,16 @@ function checksOf(verification: Record<string, unknown> | null): PanelOutput['ch
  * joins a pending decision to the output it is about, so the output can be
  * reviewed with the same decision (and the same single-use token).
  */
+/**
+ * A run that stopped files a "structured blocker" artifact so the stop is on
+ * record. It is a report of work that did not happen, not work to accept:
+ * the stop itself reaches the person as a blocker or a decision.
+ */
+export function isBlockerReport(artifactType: unknown, metadata: unknown): boolean {
+  if (asRecord(metadata)?.structured_blocker === true) return true;
+  return typeof artifactType === 'string' && /(^|\.)structured_blocker$/i.test(artifactType.trim());
+}
+
 export function buildPanelOutputs(
   records: unknown[] | null,
   options: { viewerIds: ReadonlyArray<string | null | undefined>; decisionByArtifact?: ReadonlyMap<string, string> }
@@ -183,6 +193,7 @@ export function buildPanelOutputs(
     if (!record || !n?.id || !UUID_RE.test(n.id)) continue;
     if (typeof record.superseded_by === 'string' && record.superseded_by) continue;
     const metadata = asRecord(n.metadata) ?? {};
+    if (isBlockerReport(n.artifact_type, metadata)) continue;
     const verification = asRecord(n.verification ?? null);
     const type = clip(n.artifact_type, 40);
     const landedKey = LANDED_KEYS.find(([key]) => iso(metadata[key]) || iso(record[key]));

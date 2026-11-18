@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-11T18:28:30.925Z",
-  "sourceHash": "54fa6f8935e2c3c0",
+  "generatedAt": "2026-11-16T14:53:24.963Z",
+  "sourceHash": "fb0fccf6af9760ef",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -261,7 +261,7 @@
     {
       "id": "recommend_next_action",
       "title": "Recommend Next Action",
-      "description": "Use this tool to recommend what should happen next after time away or when priority is unclear. It ranks progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Also known as: next best action, prioritize work, unblock project. USE WHEN: the user asks what to do next or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when the user already knows what they want to do. Read-only.",
+      "description": "Use this tool to recommend what should happen next after time away or when priority is unclear. It ranks progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Model-generated capability suggestions are skipped by default; set include_capability_suggestions=true for the deeper assessment, which may take longer. Also known as: next best action, prioritize work, unblock project. USE WHEN: the user asks what to do next or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when the user already knows what they want to do. Read-only.",
       "category": "Agents",
       "inputSchema": {
         "type": "object",
@@ -312,6 +312,11 @@
           "canonical_only": {
             "type": "boolean",
             "description": "When true, return only the canonical next task linked to the active goal."
+          },
+          "include_capability_suggestions": {
+            "type": "boolean",
+            "default": false,
+            "description": "Opt in to the slower model-generated capability assessment. Default false returns current priorities with capability assessment marked not_requested. canonical_only retains its direct task projection."
           },
           "limit": {
             "type": "number",
@@ -4393,7 +4398,7 @@
     {
       "id": "orgx_recommend",
       "title": "Recommend Next OrgX Action",
-      "description": "Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. The default next_action mode records metered MCP allowance usage; it does not change business records. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.",
+      "description": "Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. The default next_action mode records metered MCP allowance usage; it does not change business records. Model-generated capability suggestions are skipped by default; set include_capability_suggestions=true for the deeper assessment, which may take longer. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -4443,6 +4448,11 @@
             "minimum": 1,
             "maximum": 20,
             "description": "Maximum recommendations"
+          },
+          "include_capability_suggestions": {
+            "type": "boolean",
+            "default": false,
+            "description": "Opt in to the slower model-generated capability assessment for next_action mode. Default false returns current priorities with capability assessment marked not_requested."
           },
           "session_id": {
             "type": "string",
@@ -16364,7 +16374,7 @@
     {
       "id": "orgx_get_next_actions",
       "title": "Get OrgX Next Actions",
-      "description": "Read actionable priorities and blockers for the selected work scope. The compatibility implementation records metered MCP allowance usage without changing work records.",
+      "description": "Read actionable priorities and blockers for the selected work scope. Model-generated capability suggestions are skipped by default; set include_capability_suggestions=true for the deeper assessment, which may take longer. The compatibility implementation records metered MCP allowance usage without changing work records.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -16397,6 +16407,11 @@
             "minimum": 1,
             "maximum": 20,
             "description": "Maximum recommendations"
+          },
+          "include_capability_suggestions": {
+            "type": "boolean",
+            "default": false,
+            "description": "Opt in to the slower model-generated capability assessment for next_action mode. Default false returns current priorities with capability assessment marked not_requested."
           },
           "session_id": {
             "type": "string",
@@ -16906,7 +16921,7 @@
             "type": "integer",
             "minimum": 1000,
             "maximum": 50000,
-            "description": "Approximate maximum hydrated context characters"
+            "description": "Accepted for compatibility; does not limit canonical context packs. Set hydrate_context=false to omit hydrated context."
           },
           "relations": {
             "type": "integer",
@@ -18948,7 +18963,7 @@
     {
       "id": "orgx_update_work",
       "title": "Update OrgX Work Content",
-      "description": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. type workspace edits only name and description (owner only). type quality_bar takes the kind of work as id and fields.patches; edits save an open draft, and a person publishes from the returned review_path. Read current bars in orgx_get_workspace_context.",
+      "description": "Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. type workspace edits only name, description and facts (owner only). fields.facts records what every agent should know (keys offer, buyer, proof, voice, or your own): each is saved as derived, never as confirmed, and never replaces a fact a person confirmed. type quality_bar takes the kind of work as id and fields.patches; edits save an open draft, and a person publishes from the returned review_path. Read current bars in orgx_get_workspace_context.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -19308,6 +19323,40 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "facts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9_]{1,47}$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 320
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "source": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 12
                   }
                 },
                 "additionalProperties": false

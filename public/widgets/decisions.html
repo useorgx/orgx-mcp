@@ -1473,6 +1473,11 @@
       );
       const ownTitle = firstString(decision.title, decision.name);
       const head = splitHeadline(ownTitle !== summary ? ownTitle : '', summary);
+      // Keep the asker's own summary when the question is just the title.
+      const ownSummary = firstString(decision.summary, decision.description);
+      if (ownSummary && ownSummary !== summary && !summary.includes(ownSummary) && !String(head.body || '').includes(ownSummary)) {
+        head.body = [head.body, ownSummary].filter(Boolean).join(' ');
+      }
       const impact =
         (packet && packet.consequences) ??
         decision.impact ?? decision.impact_if_ignored ?? decision.risk_if_ignored ?? decision.consequence ?? null;

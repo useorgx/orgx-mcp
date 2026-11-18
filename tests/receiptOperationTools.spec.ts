@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildAgentWorkReceiptImportRequest } from '../src/agentWorkReceiptV1';
 import { executeReceiptOperation, projectWorkReceiptDetail, RECEIPT_OPERATION_OUTPUT_SCHEMAS, RECEIPT_OPERATION_TOOLS } from '../src/receiptOperationTools';
 import { buildPortableReceiptProof } from '../src/portableReceiptProof';
+import { withConformanceIssues } from '../src/receiptOperationTools';
+import { getOpenAiOutputSchema } from '../src/openaiOutputSchemas';
 
 const workspaceId = '7af01a51-49b1-47d8-98b9-91a198debca8';
 function receipt() {
@@ -29,6 +31,21 @@ describe('explicit receipt operations', () => {
     expect(result.receipt_assessment).toMatchObject({ verification_status: 'producer_reported', acceptance_status: 'awaiting_human_review', outcome_status: null });
     expect(result.effects).toEqual({ receipt_stored: true, work_status_changed: false, authoritative_verification_changed: false, human_acceptance_changed: false });
     expect(RECEIPT_OPERATION_OUTPUT_SCHEMAS.orgx_submit_work_receipt.safeParse(result).success).toBe(true);
+  });
+
+  it('advertises the admission fields the API adds, so strict clients accept a stored receipt', async () => {
+    const document = receipt();
+    const request = vi.fn().mockResolvedValue({ ok: true, receipt_id: 'ledger-id', external_receipt_id: 'portable-fixture', schema_version: document.schema_version, idempotent: false, imported_at: '2026-11-16T06:43:00Z', pilot: null, verification: { status: 'ingested', signature: { key_id: 'k' } }, responsibility: { status: 'bound' } });
+    const result = await executeReceiptOperation('orgx_submit_work_receipt', { receipt: document, idempotency_key: 'stable-1' }, { workspaceId, request });
+    const advertised = getOpenAiOutputSchema('orgx_submit_work_receipt') as unknown as { safeParse: (v: unknown) => { success: boolean } };
+    expect(advertised.safeParse(result).success).toBe(true);
+  });
+
+  it('names the first conformance issues in a rejected receipt message', () => {
+    const rejected = withConformanceIssues({ ok: false, error: { code: 'invalid_agent_work_receipt', message: 'The receipt does not conform', issues: [{ path: '/actions/0/completed_at', message: 'A terminal action must record completed_at.' }], issue_count: 1 } });
+    expect((rejected.error as { message: string }).message).toBe('The receipt does not conform. Fix: /actions/0/completed_at: A terminal action must record completed_at.');
+    const plain = { ok: false, error: { message: 'quota' } };
+    expect(withConformanceIssues(plain)).toBe(plain);
   });
 
   it('validates without a workspace and forwards the portable document, not an import envelope', async () => {

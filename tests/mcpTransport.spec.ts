@@ -9,6 +9,8 @@ import {
 import {
   MCP_COMPATIBILITY_RETIREMENT_POLICY,
 } from '../src/deprecatedTools';
+import { assertMcpSessionGrant, assertMcpSessionIdentity } from '../src/sessionToolContract';
+import { withWorkerRequestTiming } from '../src/workerRequestTiming';
 
 const env = {} as unknown as Record<string, unknown>;
 
@@ -33,6 +35,63 @@ function createTrackedCtx() {
 }
 
 describe('mcpTransport', () => {
+  it('waits for a fresh read-only session preflight before dispatch and preserves response timings', async () => {
+    let entered!: () => void;
+    const reading = new Promise<void>((resolve) => { entered = resolve; });
+    let release!: () => void;
+    const stored = new Promise<void>((resolve) => { release = resolve; });
+    const getSessionToolContract = vi.fn(async (grant) => {
+      entered();
+      await stored;
+      assertMcpSessionIdentity('owner', grant.userId);
+      assertMcpSessionGrant({ scope: 'initiatives:read' }, grant);
+      return { profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' };
+    });
+    const stub = { fetch: vi.fn(), getSessionToolContract };
+    const namespace = { idFromName: vi.fn((name) => name), get: vi.fn(() => stub) };
+    const handler = { fetch: vi.fn(async () => Response.json({ ok: true }, {
+      headers: { 'server-timing': 'origin;dur=12' },
+    })) };
+    const ctx = createCtx();
+    const pending = handleMcpRequest(new Request('http://localhost/mcp', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'mcp-session-id': 'session' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+    }), { MCP_OBJECT: namespace }, ctx, handler, async () => ({ userId: 'owner', scope: 'initiatives:read' }));
+    await reading;
+    expect(handler.fetch).not.toHaveBeenCalled();
+    release();
+    const response = await pending;
+    expect(getSessionToolContract).toHaveBeenCalledOnce();
+    expect(stub.fetch).not.toHaveBeenCalled();
+    expect(handler.fetch).toHaveBeenCalledOnce();
+    expect(ctx.props).toMatchObject({ userId: 'owner', profile: 'chatgpt', operationContractVersion: 'orgx-mcp-operations/1' });
+    expect(response.headers.get('server-timing')).toMatch(/origin;dur=12, mcp_session_contract;dur=\d+/);
+    expect(await response.json()).toEqual({ ok: true });
+  });
+
+  it.each([
+    ['other', 'initiatives:read', 403],
+    ['owner', 'initiatives:write', 409],
+  ])('denies a direct session preflight for identity %s and scope %s before dispatch', async (userId, scope, status) => {
+    const stub = {
+      fetch: vi.fn(),
+      getSessionToolContract: vi.fn(async (grant) => {
+        assertMcpSessionIdentity('owner', grant.userId);
+        assertMcpSessionGrant({ scope: 'initiatives:read' }, grant);
+        return { profile: 'chatgpt', contract_version: 'orgx-mcp-operations/1' };
+      }),
+    };
+    const handler = { fetch: vi.fn(async () => Response.json({ ok: true })) };
+    const response = await handleMcpRequest(new Request('http://localhost/mcp', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'mcp-session-id': 'session' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'orgx_save_plan', arguments: {} } }),
+    }), { MCP_OBJECT: { idFromName: (name: string) => name, get: () => stub } }, createCtx(), handler,
+    async () => ({ userId, scope }));
+    expect(response.status).toBe(status);
+    expect(handler.fetch).not.toHaveBeenCalled();
+    expect(stub.fetch).not.toHaveBeenCalled();
+  });
+
   it('rejects an untrusted browser Origin before a mutating tool reaches auth or dispatch', async () => {
     const handler = { fetch: vi.fn(async () => Response.json({ ok: true })) };
     const authenticateRequest = vi.fn(async () => ({ userId: 'user-123' }));
@@ -671,6 +730,7 @@ describe('mcpTransport', () => {
         has_conversation_id: true,
         has_working_directory: true,
         request_uuid: expect.any(String),
+        session_contract_ms: expect.any(Number),
         edge_rate_limit_ms: 1.25,
         edge_rate_limit_backend_ms: 0.2,
         edge_rate_limit_identity_ms: 0,
@@ -717,6 +777,30 @@ describe('mcpTransport', () => {
       vi.stubGlobal('fetch', originalFetch);
       vi.unstubAllGlobals();
     }
+  });
+
+  it('exports full Worker ingress timing through asynchronous complete-response telemetry', async () => {
+    const tracked = createTrackedCtx();
+    const telemetryFetch = vi.fn(async () => new Response(null));
+    vi.stubGlobal('fetch', telemetryFetch);
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1000);
+    try {
+      await withWorkerRequestTiming(async () => {
+        now.mockReturnValue(1250); // Body/OAuth work completed before transport entry.
+        await handleMcpRequest(new Request('http://localhost/mcp', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'orgx_search' } }),
+        }), { POSTHOG_KEY: 'test', POSTHOG_HOST: 'https://app.posthog.com' }, tracked.ctx,
+        { fetch: async () => Response.json({ jsonrpc: '2.0', id: 1, result: { content: [] } }) },
+        async () => ({ userId: 'owner', scope: 'initiatives:read' }));
+      });
+      await tracked.drain();
+      const event = JSON.parse(String(telemetryFetch.mock.calls[0]?.[1]?.body)).batch[0];
+      expect(event.properties).toMatchObject({
+        full_response_ms: 0, response_headers_ms: 0,
+        worker_pre_transport_ms: 250, worker_full_response_ms: 250, worker_response_headers_ms: 250,
+      });
+    } finally { vi.restoreAllMocks(); vi.unstubAllGlobals(); }
   });
 
   it('classifies HTTP-200 structured tool errors and records response journey telemetry', async () => {

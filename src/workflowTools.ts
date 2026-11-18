@@ -328,8 +328,8 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       executionKind: 'client', annotations: readOnly,
     }),
   operation('orgx_get_next_actions', 'orgx_recommend', 'Get OrgX Next Actions',
-    'Read actionable priorities and blockers for the selected work scope. The compatibility implementation records metered MCP allowance usage without changing work records.',
-    project('orgx_recommend', ['entity_type', 'entity_id', 'initiative_id', 'workspace_id', 'limit', 'session_id']), { fixedArgs: { mode: 'next_action' } }),
+    'Read actionable priorities and blockers for the selected work scope. Model-generated capability suggestions are skipped by default; set include_capability_suggestions=true for the deeper assessment, which may take longer. The compatibility implementation records metered MCP allowance usage without changing work records.',
+    project('orgx_recommend', ['entity_type', 'entity_id', 'initiative_id', 'workspace_id', 'limit', 'include_capability_suggestions', 'session_id']), { fixedArgs: { mode: 'next_action' } }),
   operation('orgx_get_agent_status', 'get_agent_status', 'Read OrgX Agent Status',
     'Read active and optionally idle agents in the workspace or initiative. Successful calls record metered MCP allowance usage without changing work records.',
     project('get_agent_status', ['agent_id', 'workspace_id', 'initiative_id', 'include_idle', 'view'], {
@@ -417,7 +417,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       fixedArgs: { operation: 'create', type: 'task' }, annotations: appendOnly, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
     }),
   operation('orgx_update_work', 'orgx_write', 'Update OrgX Work Content',
-    'Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. type workspace edits only name and description (owner only). type quality_bar takes the kind of work as id and fields.patches; edits save an open draft, and a person publishes from the returned review_path. Read current bars in orgx_get_workspace_context.',
+    'Apply a typed content patch OR attach one reviewable output to an existing work target. Supply exactly one of fields or artifact with a stable retry key. Artifact attachment may trigger evaluation using model providers and incur costs. Neither path approves or completes work; context, cost and acceptance are server records. type workspace edits only name, description and facts (owner only). fields.facts records what every agent should know (keys offer, buyer, proof, voice, or your own): each is saved as derived, never as confirmed, and never replaces a fact a person confirmed. type quality_bar takes the kind of work as id and fields.patches; edits save an open draft, and a person publishes from the returned review_path. Read current bars in orgx_get_workspace_context.',
     { type: z.enum([...workType.options, 'workspace', 'quality_bar']), id, fields: z.union([WORK_CONTENT_PATCH_SCHEMA, qualityBarPatchFields, workspaceProfileFields]).optional(), artifact: workOutputArtifactSchema.optional(), workspace_id: workspaceId, idempotency_key: retryKey, session_id: id.optional() }, {
       fixedArgs: { operation: 'update' }, annotations: { ...modifiesRecords, openWorldHint: true }, securitySchemes: SECURITY_SCHEMES.entityWriteRequiresAuth,
       transformArgs: (args) => {

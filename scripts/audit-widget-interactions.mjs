@@ -94,7 +94,7 @@ function initHost({ mode, theme, surface, panelFixture }) {
     return { isError: true, structuredContent: { ok: false, error: { code: 'qa_fixture_unavailable', message: 'This action needs a dedicated tool fixture.' } } };
   };
   window.open = url => { qa.links.push({ channel: 'browser', url }); return null; };
-  if (mode === 'chatgpt') window.openai = { theme, toolOutput: panelFixture?.snapshot || null, toolResponseMetadata: { 'orgx/toolSurface': surface, ...panelFixture?.meta }, setWidgetHeight() {}, openExternal({ url }) { qa.links.push({ channel: 'chatgpt', url }); }, callTool: async (name, args) => reply(name, args), sendFollowUpMessage: async args => { qa.messages.push(args); }, requestDisplayMode: async args => { qa.messages.push(args); return args; }, updateModelContext: async args => { qa.messages.push(args); return { updateId: 'qa-context' }; } };
+  if (mode === 'chatgpt') window.openai = { theme, toolOutput: panelFixture?.snapshot || null, toolResponseMetadata: { 'orgx/toolSurface': surface, ...panelFixture?.meta }, setWidgetHeight() {}, openExternal({ href, url }) { if (typeof href !== 'string' || url !== undefined) throw new Error('ChatGPT openExternal requires href'); qa.links.push({ channel: 'chatgpt', url: href }); }, callTool: async (name, args) => reply(name, args), sendFollowUpMessage: async args => { qa.messages.push(args); }, requestDisplayMode: async args => { qa.messages.push(args); return args; }, updateModelContext: async args => { qa.messages.push(args); return { updateId: 'qa-context' }; } };
   window.addEventListener('message', async event => {
     if (window !== window.top || !event.data || event.data.jsonrpc !== '2.0') return;
     const m = event.data;

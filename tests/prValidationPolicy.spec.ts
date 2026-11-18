@@ -79,12 +79,13 @@ const exactCommands: Record<string, string> = {
   'Refresh widget build version': 'node scripts/generate-widget-build-info.mjs',
   'Type-check': 'pnpm exec tsc --noEmit',
   'Run Vitest suite': 'pnpm exec vitest run --testTimeout=30000 --hookTimeout=30000',
+  'Verify Work Ledger widget navigation': 'node scripts/verify-work-ledger-links.mjs',
   'Verify Wrangler build (dry-run)': 'pnpm exec wrangler deploy --env "${{ inputs.wrangler-environment }}" --dry-run --outdir .wrangler/dist',
 };
 const checkNames = [
   'Set up pnpm', 'Set up Node.js', 'Validate server.json', 'Validate portable ChatGPT package',
   'Install dependencies', 'Refresh widget build version', 'Type-check',
-  'Install Chromium for browser-backed tests', 'Run Vitest suite',
+  'Install Chromium for browser-backed tests', 'Run Vitest suite', 'Verify Work Ledger widget navigation',
   'Verify upstream API is reachable without redirects', 'Verify Wrangler build (dry-run)',
 ];
 

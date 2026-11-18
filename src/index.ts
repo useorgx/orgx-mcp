@@ -6,6 +6,7 @@ import { McpAgent } from 'agents/mcp';
 import { applyRunTokenScopes } from './runTokenScopes';
 import { conformSpawnPayload } from './spawnOutput';
 import { fetchRunOutputs } from './runOutputs';
+import { withOptionalReadDeadline } from './optionalRead';
 import {
   McpServer,
   ResourceTemplate,
@@ -98,6 +99,7 @@ import {
   type McpOriginValidationEnv,
 } from './mcpOriginValidation';
 import { installToolResultGuidanceWrapper } from './toolResultRegistration';
+import { withWorkerRequestTiming } from './workerRequestTiming';
 import {
   CLAUDE_DIRECTORY_TOOL_ADAPTERS,
   getClaudeDirectoryToolContract,
@@ -110,9 +112,11 @@ import {
   buildMcpTransportExceptionResponse,
   handleMcpRequest,
   isOrgxApiTelemetryConfigured,
+  withCors,
   withCorsAndHeaders,
   withSseKeepAlive,
 } from './mcpTransport';
+import { boundMcpRequestBody, MAX_TOOL_INPUT_ELEMENTS } from './mcpInputLimits';
 import { withPathScopedResourceChallenge } from './oauthResourceChallenge';
 import { withSecurityHeaders } from './securityHeaders';
 import { probeOrgxHealth, readUptimeSummary, recordProbe } from './uptimeProbe';
@@ -404,13 +408,12 @@ import {
   expandConsolidatedTool,
 } from './toolDefinitions';
 import { buildToolExecuteBody } from './toolExecuteBody';
+import { createWidgetAssetReader } from './widgetAssetReader';
 import { VERIFIABLE_COMPLETION_ENTITY_TYPES } from './shared/entity';
 import { FLYWHEEL_TOOL_DEFINITIONS } from './flywheelTools';
 import {
   buildMcpAppsMeta,
   widgetCspNeedsForUri,
-  MCP_APPS_SHARED_COMPONENT_PATHS,
-  mcpAppsInlineAssetPath,
   buildWidgetMeta,
   parseWidgetResourceUri,
   rewriteWidgetHtmlAssetUrls,
@@ -547,7 +550,10 @@ function createInstrumentedMcpServer(): McpServer {
           sizes: ['64x64', '128x128', 'any'],
         },
       ],
-    }, { instructions: ORGX_SERVER_INSTRUCTIONS }),
+    }, {
+      instructions: ORGX_SERVER_INSTRUCTIONS,
+      maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS,
+    }),
     {
       // MCP arguments and results can contain customer strategy, credentials,
       // or generated artifacts. Keep spans useful without recording payloads.
@@ -572,6 +578,7 @@ interface Env
   // PostHog telemetry (optional). In production, set via `wrangler secret put`.
   POSTHOG_KEY?: string;
   POSTHOG_HOST?: string;
+  ORGX_SOURCE_REVISION?: string;
   OAUTH_STATE: DurableObjectNamespace;
   // OAuth provider KV storage for tokens, grants, and client registrations
   OAUTH_KV: KVNamespace;
@@ -2221,13 +2228,14 @@ export class OrgXMcp extends McpAgent<
 
   private async fetchOrgxJsonOrNull<T extends Record<string, unknown>>(
     path: string,
-    userId?: string | null
+    userId?: string | null,
+    signal?: AbortSignal
   ): Promise<T | null> {
     try {
       const response = await callOrgxApiJson(
         this.env,
         path,
-        undefined,
+        signal ? { signal } : undefined,
         { userId: userId ?? undefined, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(userId ?? undefined) }
       );
       if (!response.ok) return null;
@@ -2382,7 +2390,7 @@ export class OrgXMcp extends McpAgent<
     }> = [];
 
     if (workspaceId) {
-      const pulse = await this.fetchOrgxJsonOrNull<{
+      const pulse = await withOptionalReadDeadline((signal) => this.fetchOrgxJsonOrNull<{
         stats?: {
           activeInitiatives?: number;
           pendingDecisions?: number;
@@ -2398,7 +2406,7 @@ export class OrgXMcp extends McpAgent<
           waitingFor?: string;
           priority?: string | null;
         }>;
-      }>(`/api/v1/workspaces/${workspaceId}/dashboard/pulse`, userId);
+      }>(`/api/v1/workspaces/${workspaceId}/dashboard/pulse`, userId, signal));
 
       if (pulse) {
         stats = {
@@ -2785,6 +2793,7 @@ export class OrgXMcp extends McpAgent<
     orderDirection?: 'asc' | 'desc';
     /** Extra projections the entities read adds (artifact: quality_bar). */
     include?: string[];
+    signal?: AbortSignal;
   }): Promise<Array<Record<string, unknown>>> {
     const page = await this.fetchEntityCollectionPage(params);
     return page.records;
@@ -2807,13 +2816,14 @@ export class OrgXMcp extends McpAgent<
     orderDirection?: 'asc' | 'desc';
     /** Extra projections the entities read adds (artifact: quality_bar). */
     include?: string[];
+    signal?: AbortSignal;
   }): Promise<EntitySearchPage> {
     const search = buildEntityCollectionSearchParams(params);
 
     const response = await callOrgxApiJson(
       this.env,
       `/api/entities?${search.toString()}`,
-      undefined,
+      params.signal ? { signal: params.signal } : undefined,
       params.userId ? { userId: params.userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(), orgxUserId: this.resolveOrgxUserId(params.userId) } : undefined
     );
     const payload = await response.json().catch(() => null);
@@ -3032,7 +3042,7 @@ export class OrgXMcp extends McpAgent<
       return params.data;
     }
 
-    try {
+    return (await withOptionalReadDeadline(async (signal) => {
       const scope = artifactProofScope({
         ...params,
         sessionWorkspaceId: this.sessionContext?.workspaceId,
@@ -3047,10 +3057,11 @@ export class OrgXMcp extends McpAgent<
           if (initiativeIds.size > 0) {
             const initiativeIdList = Array.from(initiativeIds);
             for (let offset = 0; offset < initiativeIdList.length; offset += 8) {
+              if (signal.aborted) return records;
               const groups = await Promise.all(
                 initiativeIdList.slice(offset, offset + 8).map((initiativeId) =>
                   this.fetchEntityCollection({
-                    type: 'artifact', userId: params.userId, initiativeId,
+                    type: 'artifact', userId: params.userId, initiativeId, signal,
                     limit: params.toolId === 'get_agent_status' ? 24 : 8,
                     ...(params.toolId === 'get_initiative_pulse'
                       ? { orderBy: 'updated_at', orderDirection: 'desc' as const } : {}),
@@ -3068,18 +3079,18 @@ export class OrgXMcp extends McpAgent<
             // authenticated bounded head and exact visible-scope filter.
             return filterAgentStatusArtifactsByVisibleScope(params.data,
               await this.fetchEntityCollection({
-                type: 'artifact', userId: params.userId, limit: 100,
+                type: 'artifact', userId: params.userId, limit: 100, signal,
               })
             );
           } else if (workspaceId && params.toolId === 'get_morning_brief' && initiativeIds.size === 0) {
             return this.fetchEntityCollection({
-              type: 'artifact', userId: params.userId, workspaceId, limit: 8,
+              type: 'artifact', userId: params.userId, workspaceId, limit: 8, signal,
             });
           }
           return [];
         })(),
         workspaceId && params.toolId === 'get_agent_status'
-          ? this.fetchEntityCollection({ type: 'task', userId: params.userId, workspaceId, limit: 100 })
+          ? this.fetchEntityCollection({ type: 'task', userId: params.userId, workspaceId, limit: 100, signal })
           : Promise.resolve([]),
       ]);
       // Preserve deterministic precedence regardless of completion order:
@@ -3116,13 +3127,7 @@ export class OrgXMcp extends McpAgent<
         return enrichMorningBriefWithArtifacts(evidenceData, artifacts);
       }
       return evidenceData;
-    } catch (error) {
-      console.warn('[mcp:artifact-proof] enrichment skipped', {
-        toolId: params.toolId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return params.data;
-    }
+    })) ?? params.data;
   }
 
   private async maybeNormalizeAgentDispatchData(params: {
@@ -3256,7 +3261,8 @@ export class OrgXMcp extends McpAgent<
           this.env,
           userId(),
           { type: 'initiative', id: initiativeId },
-          { briefSources: true, relations: 0 }
+          { briefSources: true, relations: 0 },
+          actor(userId())
         ),
       inferWorkspace: () => this.inferSessionWorkspace(userId()),
       fetchPendingDecisions: async ({ workspaceId, limit }) => {
@@ -3750,8 +3756,13 @@ export class OrgXMcp extends McpAgent<
 
     // Expand consolidated tools (scoring_config, queue_action, stats)
     // into their legacy backend tool_id before dispatching
-    const { resolvedToolId, resolvedArgs: expandedArgs } =
+    const { resolvedToolId, resolvedArgs } =
       expandConsolidatedTool(toolId, effectiveArgs);
+    // Ordinary MCP reads should not wait on model-generated suggestions.
+    // Keep an explicit opt-in intact; the backend owns plan and model policy.
+    const expandedArgs = resolvedToolId === 'recommend_next_action'
+      ? { ...resolvedArgs, include_capability_suggestions: resolvedArgs.include_capability_suggestions ?? false }
+      : resolvedArgs;
 
     return this.withOrgx(async () => {
       try {
@@ -5214,7 +5225,8 @@ export class OrgXMcp extends McpAgent<
     const kv = (this.env as unknown as { OAUTH_KV?: KVNamespace }).OAUTH_KV;
     if (!kv) return { ...links, availability_7d: null };
     try {
-      const summary = await readUptimeSummary(kv, 7);
+      const summary = await withOptionalReadDeadline(() => readUptimeSummary(kv, 7));
+      if (!summary) return { ...links, availability_7d: null };
       return {
         ...links,
         availability_7d: {
@@ -5764,19 +5776,21 @@ export class OrgXMcp extends McpAgent<
             };
             await this.saveSessionContext();
           }
-          const preparation = this.sessionContext.workspaceId
-            ? await fetchContextPreparation(
+          const [preparation, serviceLevels] = await Promise.all([
+            this.sessionContext.workspaceId ? fetchContextPreparation(
                 this.env,
                 resolvedUserId,
                 this.sessionContext.workspaceId,
-                this.sessionContext.initiativeId ?? undefined
-              )
-            : null;
+                this.sessionContext.initiativeId ?? undefined,
+                { userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId), ...this.delegationClaims() }
+              ) : null,
+            this.bootstrapServiceLevels(),
+          ]);
           this.getLegacyBatchCapabilities().observe({ data: { workspace: { id: this.sessionContext.workspaceId }, workflow_contracts: preparation?.workflow_contracts } }, resolvedUserId);
           const context_pack = preparation?.context_pack ?? null;
           const payload = {
             ...this.buildBootstrapPayload(allowedTools ?? null),
-            service_levels: await this.bootstrapServiceLevels(),
+            service_levels: serviceLevels,
             context_pack,
             context_capsule: preparation?.context_capsule ?? null,
             context_delivery: preparation?.context_delivery ?? null,
@@ -5821,7 +5835,8 @@ export class OrgXMcp extends McpAgent<
                   this.env,
                   resolvedUserId,
                   { type: String(args.type), id: String(args.id) },
-                  { briefSources: true, relations: args.relations === 0 ? 0 : 1 }
+                  { briefSources: true, relations: args.relations === 0 ? 0 : 1 },
+                  { userEmail: this.resolveUserEmail(), orgxUserId: this.resolveOrgxUserId(resolvedUserId), ...this.delegationClaims() }
                 ),
             // A run's answer lives in its outputs, not its row.
             args.type === 'run'
@@ -6131,6 +6146,7 @@ export class OrgXMcp extends McpAgent<
               entity_id: args.entity_id,
               workspace_id: args.workspace_id,
               limit: args.limit,
+              include_capability_suggestions: args.include_capability_suggestions,
             },
             SECURITY_SCHEMES.entityReadRequiresAuth
           );
@@ -6316,6 +6332,33 @@ export class OrgXMcp extends McpAgent<
             delete body.initiative_id;
             delete body.workstream_id;
             delete body.milestone_id;
+          }
+          // The contract says workspace_id defaults to the session's workspace
+          // when unambiguous. Children named under an initiative take its
+          // workspace on the server; everything else gets the same ladder that
+          // decisions and tasks use, so a fresh session can create an initiative.
+          if (
+            body.type !== 'blocker' &&
+            !body.workspace_id &&
+            !body.command_center_id &&
+            !body.initiative_id
+          ) {
+            const resolvedWorkspace = await resolveWriteWorkspace({
+              args: body,
+              sessionWorkspaceId: this.sessionContext?.workspaceId,
+              infer: () => this.inferSessionWorkspace(resolvedUserId),
+            });
+            if (resolvedWorkspace.workspaceId) {
+              body.workspace_id = resolvedWorkspace.workspaceId;
+              if (resolvedWorkspace.source === 'inferred' && this.sessionContext?.workspaceId !== resolvedWorkspace.workspaceId) {
+                this.sessionContext = {
+                  ...this.sessionContext,
+                  workspaceId: resolvedWorkspace.workspaceId,
+                  ...(resolvedWorkspace.name ? { workspaceName: resolvedWorkspace.name } : {}),
+                };
+                await this.saveSessionContext();
+              }
+            }
           }
           if (body.type === 'initiative') {
             const metadata =
@@ -14394,16 +14437,16 @@ export class OrgXMcp extends McpAgent<
               throw error;
             }
             const result = (await response.json()) as Record<string, unknown>;
-            const [outcomeAttribution, workspacePulse] = await Promise.all([
+            const [outcomeAttribution, workspacePulse] = (await withOptionalReadDeadline((signal) => Promise.all([
               this.fetchOrgxJsonOrNull<Record<string, unknown>>(
                 `/api/flywheel/attribution?workspace_id=${wsId}&period=30d`,
-                resolvedUserId
+                resolvedUserId, signal
               ),
               this.fetchOrgxJsonOrNull<Record<string, unknown>>(
                 `/api/v1/workspaces/${wsId}/dashboard/pulse`,
-                resolvedUserId
+                resolvedUserId, signal
               ),
-            ]);
+            ]))) ?? [null, null];
             const valueDashboard = buildMorningBriefValueDashboard({
               brief: result,
               outcomeAttribution,
@@ -15080,6 +15123,7 @@ export class OrgXMcp extends McpAgent<
     const { widgetFile, query } = parseWidgetResourceUri(widgetUri);
     const widgetPath = `/${widgetFile}${query}`;
     const assetUrl = new URL(`${widgetFile}${query}`, widgetBaseUrl).toString();
+    const assets = createWidgetAssetReader(this.env.ASSETS, widgetBaseUrl);
 
     let assetStatus: number | null = null;
     let apiStatus: number | null = null;
@@ -15099,12 +15143,13 @@ export class OrgXMcp extends McpAgent<
     try {
       let html: string | null = null;
       try {
-        const assetResponse = await fetch(assetUrl, {
-          headers: { accept: 'text/html,application/xhtml+xml,*/*' },
-        });
+        const assetResponse = await assets.readAsset(
+          `${widgetFile}${query}`,
+          'text/html,application/xhtml+xml,*/*'
+        );
         assetStatus = assetResponse.status;
         if (assetResponse.ok) {
-          html = await assetResponse.text();
+          html = assetResponse.text;
           source = 'assets';
         }
       } catch (error) {
@@ -15112,16 +15157,16 @@ export class OrgXMcp extends McpAgent<
       }
 
       if (!html) {
-        const response = await callOrgxApiRaw(
-          this.env,
-          `/api/chatgpt/widgets${widgetPath}`,
-          undefined,
-          {
-            accept: 'text/html,application/xhtml+xml,*/*',
-          }
+        const response = await assets.readResponse((signal) =>
+          callOrgxApiRaw(
+            this.env,
+            `/api/chatgpt/widgets${widgetPath}`,
+            { signal },
+            { accept: 'text/html,application/xhtml+xml,*/*' }
+          )
         );
         apiStatus = response.status;
-        html = await response.text();
+        html = response.text;
         source = 'api';
       }
 
@@ -15135,55 +15180,10 @@ export class OrgXMcp extends McpAgent<
       let faviconStripped = false;
 
       if (mimeType === RESOURCE_MIME_TYPE) {
-        let interactionKitCss: string | null = null;
-        let interactionKitJs: string | null = null;
-        // Inline the minified copy (public/widgets/inline/<path>, written by
-        // widget:build); fall back to the readable source if it is missing.
-        const fetchInlineAsset = async (path: string, accept: string): Promise<string | null> => {
-          for (const candidate of [mcpAppsInlineAssetPath(path), path]) {
-            const response = await fetch(new URL(candidate, widgetBaseUrl).toString(), { headers: { accept } });
-            if (response.ok) return response.text();
-          }
-          return null;
-        };
-
-        if (responseHtml.includes('interaction-kit.css')) {
-          try {
-            interactionKitCss = await fetchInlineAsset('shared/interaction-kit.css', 'text/css,*/*');
-          } catch {
-            interactionKitCss = null;
-          }
-        }
-
-        if (responseHtml.includes('interaction-kit.js')) {
-          try {
-            interactionKitJs = await fetchInlineAsset('shared/interaction-kit.js', 'text/javascript,application/javascript,*/*');
-          } catch {
-            interactionKitJs = null;
-          }
-        }
-
-        // Inline any shared-component module the widget references. Claude's
-        // widget sandbox treats the resource document as self-contained, so
-        // external fetches of our own shared modules may not resolve. These
-        // paths are the enforceable shared-layer contract — add new shared
-        // modules to MCP_APPS_SHARED_COMPONENT_PATHS in widgetConfig.ts.
-        const sharedComponents: Record<string, string | null> = {};
-        for (const path of MCP_APPS_SHARED_COMPONENT_PATHS) {
-          if (!responseHtml.includes(path)) continue;
-          try {
-            const accept = path.endsWith('.css')
-              ? 'text/css,*/*'
-              : 'text/javascript,application/javascript,*/*';
-            sharedComponents[path] = await fetchInlineAsset(path, accept);
-          } catch {
-            sharedComponents[path] = null;
-          }
-        }
-
+        const sharedComponents = await assets.readInlineAssets(responseHtml);
         const sanitizedHtml = sanitizeMcpAppsHtml(responseHtml, {
-          interactionKitCss,
-          interactionKitJs,
+          interactionKitCss: sharedComponents['shared/interaction-kit.css'],
+          interactionKitJs: sharedComponents['shared/interaction-kit.js'],
           sharedComponents,
         });
         faviconStripped = sanitizedHtml !== responseHtml && !sanitizedHtml.includes('rel="icon"');
@@ -15351,6 +15351,8 @@ export class OrgXMcp extends McpAgent<
           },
         ],
       };
+    } finally {
+      assets.dispose();
     }
   }
 
@@ -15876,6 +15878,9 @@ const worker = {
     if (isMcpTransportRoute) {
       const invalidOrigin = validateMcpRequestOrigin(request, env);
       if (invalidOrigin) return withSecurityHeaders(invalidOrigin);
+      const bounded = await boundMcpRequestBody(request);
+      if (bounded.response) return withSecurityHeaders(withCors(bounded.response, request));
+      request = bounded.request;
     }
 
     const runTokenResponse = (await handleBrokerRequest(request, env)) ?? (await tryRunTokenAuth(request, env, ctx));
@@ -15905,7 +15910,15 @@ const worker = {
   },
 };
 
-export default Sentry.withSentry<Env>(
+const sentryWorker = Sentry.withSentry<Env>(
   (env) => createSentryOptions(env),
   worker
 );
+
+export default {
+  ...sentryWorker,
+  fetch(...args: Parameters<NonNullable<typeof sentryWorker.fetch>>) {
+    // withSentry preserves the concrete fetch handler supplied above.
+    return withWorkerRequestTiming(() => sentryWorker.fetch!(...args));
+  },
+};

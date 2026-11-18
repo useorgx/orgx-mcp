@@ -68,6 +68,9 @@ export const RECEIPT_OPERATION_OUTPUT_SCHEMAS = {
     idempotent: z.boolean(), producer_claims: claimsSchema, effects: effectsSchema,
     receipt_assessment: RECEIPT_ASSESSMENT_SCHEMA, summary: z.string(), proof: proofSchema,
     imported_at: z.string().optional(), pilot: z.object({ cohort_id: z.string(), partner_ref: z.string().optional() }).nullable().optional(),
+    // The API adds these on admission; advertised so strict clients accept a stored receipt.
+    verification: z.object({}).passthrough().nullable().optional(),
+    responsibility: z.object({}).passthrough().nullable().optional(),
   }).passthrough(),
   orgx_validate_work_receipt: z.object({
     ok: z.boolean(), valid: z.boolean(), schema_version: z.string().optional(),
@@ -226,6 +229,21 @@ export function projectWorkReceiptDetail(raw: Record<string, unknown>): Record<s
   };
 }
 
+/**
+ * A rejected receipt names its first conformance issues in the message, so a
+ * client that shows only the message still learns what to fix.
+ */
+export function withConformanceIssues(result: Record<string, unknown>): Record<string, unknown> {
+  const error = record(result.error);
+  const issues = array(error.issues).map(record).filter((issue) => str(issue.message));
+  const message = str(error.message);
+  if (!message || issues.length === 0) return result;
+  const shown = issues.slice(0, 3).map((issue) => `${str(issue.path) ?? '/'}: ${str(issue.message)}`).join('; ');
+  const total = typeof error.issue_count === 'number' ? error.issue_count : issues.length;
+  const more = total > 3 ? ` (+${total - 3} more)` : '';
+  return { ...result, error: { ...error, message: `${message}. Fix: ${shown}${more}` } };
+}
+
 export async function executeReceiptOperation(id: ReceiptOperationId, raw: Record<string, unknown>, context: ReceiptOperationContext): Promise<Record<string, unknown>> {
   const tool = RECEIPT_OPERATION_TOOLS.find((item) => item.id === id);
   if (!tool) throw new Error(`Unknown receipt operation: ${id}`);
@@ -236,7 +254,7 @@ export async function executeReceiptOperation(id: ReceiptOperationId, raw: Recor
   if (!workspaceId) throw new Error('Select an authenticated workspace before using the receipt ledger.');
   if (id === 'orgx_submit_work_receipt') {
     const result = await context.request('/api/v1/agent-work-receipts', { method: 'POST', body: JSON.stringify({ workspace_id: workspaceId, receipt: args.receipt, idempotency_key: args.idempotency_key }) });
-    if (result.ok === false || result.error) return result;
+    if (result.ok === false || result.error) return withConformanceIssues(result);
     if (result.ok !== true || !str(result.receipt_id)) throw new Error('OrgX did not confirm receipt admission.');
     const receipt = record(args.receipt);
     return { ...result, summary: str(record(receipt.intent).summary) ?? '', proof: buildPortableReceiptProof(receipt), producer_claims: receiptProducerClaims(receipt), receipt_assessment: { evidence_status: array(receipt.evidence).length ? 'recorded' : 'none', verification_status: 'producer_reported', acceptance_status: 'awaiting_human_review', outcome_status: null }, effects: { receipt_stored: true, work_status_changed: false, authoritative_verification_changed: false, human_acceptance_changed: false } };
