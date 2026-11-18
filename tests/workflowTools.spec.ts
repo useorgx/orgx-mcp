@@ -158,7 +158,7 @@ describe('fixed workflow operation contracts', () => {
   it('carries a responsibility through save (preview) and complete (apply)', () => {
     const responsibility = {
       name: 'Qualified sales conversations', kind: 'maintain', outcome: 'Five qualified conversations a week',
-      measure: 'Completed qualified calls per week', trigger: { kind: 'cadence', cadence: 'weekly' },
+      measure: 'Completed qualified calls per week', trigger: { kind: 'cadence', cadence: 'weekly', agent: 'orchestrator' },
       stages: [{ name: 'Prepare follow-ups', authority: 'prepare' }, { name: 'Send', authority: 'gated' }],
     };
     const save = adapter('orgx_save_plan');

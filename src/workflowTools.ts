@@ -60,6 +60,7 @@ const responsibilityInput = z.object({
   measure: z.string().trim().min(1).max(1000).optional().describe('What result counts as success and where it is read from. Required before it can be applied.'),
   trigger: z.object({
     kind: z.enum(['cadence', 'event', 'manual']),
+    agent: z.enum(['product', 'engineering', 'marketing', 'sales', 'operations', 'design', 'orchestrator']).optional().describe('Agent responsible for a scheduled run. Defaults to operations.'),
     cadence: z.string().trim().min(1).max(200).optional(),
     event: z.string().trim().min(1).max(200).optional(),
     description: z.string().trim().min(1).max(500).optional(),

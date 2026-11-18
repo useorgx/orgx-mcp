@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-18T05:34:45.895Z",
-  "sourceHash": "5954bded20a99906",
+  "generatedAt": "2026-11-18T05:44:09.157Z",
+  "sourceHash": "4582977709d35793",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -13980,6 +13980,19 @@
                       "manual"
                     ]
                   },
+                  "agent": {
+                    "type": "string",
+                    "enum": [
+                      "product",
+                      "engineering",
+                      "marketing",
+                      "sales",
+                      "operations",
+                      "design",
+                      "orchestrator"
+                    ],
+                    "description": "Agent responsible for a scheduled run. Defaults to operations."
+                  },
                   "cadence": {
                     "type": "string",
                     "minLength": 1,
@@ -18110,6 +18123,19 @@
                       "event",
                       "manual"
                     ]
+                  },
+                  "agent": {
+                    "type": "string",
+                    "enum": [
+                      "product",
+                      "engineering",
+                      "marketing",
+                      "sales",
+                      "operations",
+                      "design",
+                      "orchestrator"
+                    ],
+                    "description": "Agent responsible for a scheduled run. Defaults to operations."
                   },
                   "cadence": {
                     "type": "string",
