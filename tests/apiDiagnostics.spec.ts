@@ -33,6 +33,7 @@ function wrapped(handler: (...args: unknown[]) => unknown, onComplete?: () => vo
 
 describe('MCP API diagnostics', () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -202,6 +203,8 @@ describe('MCP API diagnostics', () => {
   });
 
   it('identifies body timeouts separately from response headers and redacts error bodies', async () => {
+    // Advance both the timers and the shared monotonic deadline together.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
     const logs = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.stubGlobal(
       'fetch',
@@ -220,9 +223,11 @@ describe('MCP API diagnostics', () => {
     const tool = wrapped(() =>
       callOrgxApiJson(env, '/api/entities?token=secret')
     );
-    await expect(tool.run({}, { requestId: 'slow-body' })).rejects.toThrow(
+    const rejection = expect(tool.run({}, { requestId: 'slow-body' })).rejects.toThrow(
       'took too long'
     );
+    await vi.advanceTimersByTimeAsync(30);
+    await rejection;
     expect(tool.completions[0].apiDiagnostics).toMatchObject({
       attempts: 2,
       fallbacks: 1,
@@ -235,12 +240,15 @@ describe('MCP API diagnostics', () => {
   });
 
   it('counts a recovered body timeout without reporting the successful call as failed', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(new Response(new ReadableStream(), { headers: { 'content-type': 'application/json' } }))
       .mockResolvedValueOnce(Response.json({ ok: true })));
     const tool = wrapped(() => callOrgxApiJson(env, '/api/entities'));
 
-    await tool.run({}, { requestId: 'recovered-body' });
+    const result = tool.run({}, { requestId: 'recovered-body' });
+    await vi.advanceTimersByTimeAsync(10);
+    await result;
 
     expect(tool.completions[0].apiDiagnostics).toMatchObject({
       calls: 1,
