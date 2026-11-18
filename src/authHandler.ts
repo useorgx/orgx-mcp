@@ -1865,29 +1865,24 @@ async function handleAuthorize(
   const requestedCodeChallengeMethod =
     url.searchParams.get('code_challenge_method');
 
-  console.info('[auth] Received authorization request', {
-    clientId: requestedClientId,
-    redirectUri: requestedRedirectUri,
-    responseType: requestedResponseType,
-    scope: requestedScope,
-    codeChallengeMethod: requestedCodeChallengeMethod,
-    userAgent: request.headers.get('user-agent')?.substring(0, 120),
-    cfWorker: request.headers.get('cf-worker') ?? null,
-  });
+  // Native Worker console logs are independent of Sentry's redaction hooks.
+  // Callback URLs, client values, headers and provider errors can carry secrets.
+  const requestDiagnostics = {
+    hasClientId: Boolean(requestedClientId),
+    hasRedirectUri: Boolean(requestedRedirectUri),
+    isAuthorizationCode: requestedResponseType === 'code',
+    hasScope: requestedScope !== null,
+    usesS256: requestedCodeChallengeMethod === 'S256',
+    hasUserAgent: request.headers.has('user-agent'),
+    hasWorkerHeader: request.headers.has('cf-worker'),
+  };
+  console.info('[auth] Received authorization request', requestDiagnostics);
 
   let oauthReqInfo: AuthRequest;
   try {
     oauthReqInfo = await env.OAUTH_PROVIDER.parseAuthRequest(request);
-  } catch (error) {
-    console.error('[auth] Failed to parse auth request:', error, {
-      clientId: requestedClientId,
-      redirectUri: requestedRedirectUri,
-      responseType: requestedResponseType,
-      scope: requestedScope,
-      codeChallengeMethod: requestedCodeChallengeMethod,
-      userAgent: request.headers.get('user-agent')?.substring(0, 120),
-      cfWorker: request.headers.get('cf-worker') ?? null,
-    });
+  } catch {
+    console.error('[auth] Failed to parse auth request', requestDiagnostics);
     return errorRedirect(
       'invalid_request',
       'The application made an invalid request. Please contact the app developer.',
@@ -1913,10 +1908,9 @@ async function handleAuthorize(
   let clientInfo: ClientInfo | null = null;
   try {
     clientInfo = await env.OAUTH_PROVIDER.lookupClient(oauthReqInfo.clientId);
-  } catch (error) {
+  } catch {
     console.warn('[auth] Registered client metadata could not be loaded', {
-      clientId: oauthReqInfo.clientId,
-      error: error instanceof Error ? error.message : String(error),
+      hasClientId: Boolean(oauthReqInfo.clientId),
     });
   }
   const shouldApplyReadDefault =
@@ -1952,8 +1946,8 @@ async function handleAuthorize(
       JSON.stringify(storedAuthRequest),
       { expirationTtl: OAUTH_STATE_TTL_SECONDS }
     );
-  } catch (error) {
-    console.error('[auth] Failed to store OAuth state in KV:', error);
+  } catch {
+    console.error('[auth] Failed to store OAuth state in KV');
     return errorRedirect(
       'server_error',
       'Failed to initialize authorization. Please try again.',
@@ -1969,8 +1963,7 @@ async function handleAuthorize(
   signInUrl.searchParams.set('redirect_url', clerkRedirectUrl);
 
   console.info('[auth] Redirecting to Clerk sign-in', {
-    clientId: storedAuthRequest.clientId,
-    scope: storedAuthRequest.scope,
+    scopeCount: storedAuthRequest.scope?.length ?? 0,
     scopeSource: storedAuthRequest.scopeSource,
   });
 
@@ -2076,9 +2069,8 @@ async function handleOAuthCallback(
     consentUrl.searchParams.set('state_key', stateKey);
 
     console.info('[auth] Redirecting to OAuth consent', {
-      userId: identity.userId,
-      scope: scopeListToParam(oauthReqInfo.scope),
-      clientId: oauthReqInfo.clientId,
+      identityResolved: true,
+      scopeCount: oauthReqInfo.scope?.length ?? 0,
     });
 
     captureOAuthJourney({ env, ctx, request, journey: oauthReqInfo, identity,
@@ -2412,8 +2404,8 @@ async function handleConsentCallback(
     });
 
     console.info('[auth] Authorization completed', {
-      userId: identity.userId,
-      scope: scope.join(' '),
+      identityResolved: true,
+      scopeCount: scope.length,
       redirectTo: safeRedirectDestination(redirectTo),
     });
 

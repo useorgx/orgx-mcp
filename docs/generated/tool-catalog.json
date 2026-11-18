@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-13T18:23:22.457Z",
-  "sourceHash": "f3025afdf97edc02",
+  "generatedAt": "2026-11-18T05:34:45.895Z",
+  "sourceHash": "5954bded20a99906",
   "version": "1.0.0",
   "totalTools": 164,
   "categories": [
@@ -261,7 +261,7 @@
     {
       "id": "recommend_next_action",
       "title": "Recommend Next Action",
-      "description": "Use this tool to recommend what should happen next after time away or when priority is unclear. It ranks progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Also known as: next best action, prioritize work, unblock project. USE WHEN: the user asks what to do next or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when the user already knows what they want to do. Read-only.",
+      "description": "Use this tool to recommend what should happen next after time away or when priority is unclear. It ranks progress gaps, blockers, and execution templates. Pass agent_id or domain for an agent-owned runnable queue instead of the workspace-wide operator queue. Model-generated capability suggestions are skipped by default; set include_capability_suggestions=true for the deeper assessment, which may take longer. Also known as: next best action, prioritize work, unblock project. USE WHEN: the user asks what to do next or needs help prioritizing. NEXT: Execute the recommended action (entity_action, spawn_agent_task, etc.). DO NOT USE: when the user already knows what they want to do. Read-only.",
       "category": "Agents",
       "inputSchema": {
         "type": "object",
@@ -312,6 +312,11 @@
           "canonical_only": {
             "type": "boolean",
             "description": "When true, return only the canonical next task linked to the active goal."
+          },
+          "include_capability_suggestions": {
+            "type": "boolean",
+            "default": false,
+            "description": "Opt in to the slower model-generated capability assessment. Default false returns current priorities with capability assessment marked not_requested. canonical_only retains its direct task projection."
           },
           "limit": {
             "type": "number",
@@ -4393,7 +4398,7 @@
     {
       "id": "orgx_recommend",
       "title": "Recommend Next OrgX Action",
-      "description": "Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. The default next_action mode records metered MCP allowance usage; it does not change business records. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.",
+      "description": "Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. The default next_action mode records metered MCP allowance usage; it does not change business records. Model-generated capability suggestions are skipped by default; set include_capability_suggestions=true for the deeper assessment, which may take longer. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.",
       "category": "MCP v2 Public Surface",
       "inputSchema": {
         "type": "object",
@@ -4443,6 +4448,11 @@
             "minimum": 1,
             "maximum": 20,
             "description": "Maximum recommendations"
+          },
+          "include_capability_suggestions": {
+            "type": "boolean",
+            "default": false,
+            "description": "Opt in to the slower model-generated capability assessment for next_action mode. Default false returns current priorities with capability assessment marked not_requested."
           },
           "session_id": {
             "type": "string",
@@ -16364,7 +16374,7 @@
     {
       "id": "orgx_get_next_actions",
       "title": "Get OrgX Next Actions",
-      "description": "Read actionable priorities and blockers for the selected work scope. The compatibility implementation records metered MCP allowance usage without changing work records.",
+      "description": "Read actionable priorities and blockers for the selected work scope. Model-generated capability suggestions are skipped by default; set include_capability_suggestions=true for the deeper assessment, which may take longer. The compatibility implementation records metered MCP allowance usage without changing work records.",
       "category": "Workflow Operations",
       "inputSchema": {
         "type": "object",
@@ -16397,6 +16407,11 @@
             "minimum": 1,
             "maximum": 20,
             "description": "Maximum recommendations"
+          },
+          "include_capability_suggestions": {
+            "type": "boolean",
+            "default": false,
+            "description": "Opt in to the slower model-generated capability assessment for next_action mode. Default false returns current priorities with capability assessment marked not_requested."
           },
           "session_id": {
             "type": "string",
@@ -16906,7 +16921,7 @@
             "type": "integer",
             "minimum": 1000,
             "maximum": 50000,
-            "description": "Approximate maximum hydrated context characters"
+            "description": "Accepted for compatibility; does not limit canonical context packs. Set hydrate_context=false to omit hydrated context."
           },
           "relations": {
             "type": "integer",

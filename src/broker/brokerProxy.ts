@@ -37,7 +37,8 @@ import {
 } from './brokerAppClient';
 import { decideTool, filterToolList, refusedCallResult, ToolCatalogCache, type McpTool } from './brokerPolicy';
 import { brokerTokenSecret, verifyBrokerToken, type BrokerTokenPayload } from './brokerToken';
-import { parseSseMessages, rewriteJsonRpc, rewriteSseStream } from './sseRewrite';
+import { createSseMessageMatcher, parseSseMessages, rewriteCatalogSseStream, rewriteJsonRpc, rewriteSseStream } from './sseRewrite';
+import { BrokerIoError, createBrokerIoBudget, readBrokerBody } from './brokerIoBudget';
 
 export type BrokerEnv = BrokerAppEnv &
   McpOriginValidationEnv & {
@@ -59,13 +60,14 @@ export interface BrokerDeps {
 
 const ROUTE = /^\/c\/([A-Za-z0-9_-]{1,80})(?:\/([a-z0-9_,/-]{1,120}))?\/?$/;
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
+const CONTROL_READ_TIMEOUT_MS = 8_000;
 const FORWARD_REQUEST_HEADERS = ['accept', 'content-type', 'mcp-session-id', 'mcp-protocol-version', 'last-event-id'];
 const RETURN_RESPONSE_HEADERS = ['content-type', 'mcp-session-id', 'mcp-protocol-version', 'cache-control'];
 const isolateToolCache = new ToolCatalogCache();
 /** Requests the gateway forwards; plus `notifications/*` and replies (no `method`). */
 const FORWARDED_METHODS = new Set(['initialize', 'ping', 'tools/list', 'tools/call']);
 
-type JsonRpcMessage = { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, unknown>; result?: unknown };
+type JsonRpcMessage = { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, unknown>; result?: unknown; error?: unknown };
 type Refusal = {
   message: JsonRpcMessage;
   answer: { result: Record<string, unknown> } | { error: { code: number; message: string } };
@@ -224,8 +226,18 @@ export async function handleBrokerRequest(
     return refused.length ? refuse(refused) : null;
   };
   if (request.method === 'POST') {
-    const raw = await request.text();
-    if (raw.length > MAX_BODY_BYTES) return json(413, { error: 'payload_too_large' });
+    const budget = createBrokerIoBudget(CONTROL_READ_TIMEOUT_MS);
+    let raw: string;
+    try {
+      raw = await readBrokerBody(request.body, MAX_BODY_BYTES, budget);
+    } catch (error) {
+      if (error instanceof BrokerIoError && error.code === 'payload_too_large') {
+        return json(413, { error: error.code });
+      }
+      return json(408, { error: 'request_body_unavailable' });
+    } finally {
+      budget.close();
+    }
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
@@ -292,9 +304,17 @@ export async function handleBrokerRequest(
   // 6b. Filter tools/list results, in JSON and in SSE. Annotations are
   // learned only from the reply to a tools/list this request forwarded.
   const listIds = messages.filter((m) => m.method === 'tools/list' && m.id !== undefined && m.id !== null).map((m) => m.id);
+  const pendingListIds = new Set(listIds);
   const filterTools = (message: unknown) => {
     const m = message as JsonRpcMessage;
     const result = m?.result as { tools?: unknown } | undefined;
+    const error = m?.error as { code?: unknown; message?: unknown } | undefined;
+    const isErrorReply = error !== null && typeof error === 'object' &&
+      Number.isInteger(error.code) && typeof error.message === 'string';
+    if (m && typeof m === 'object' && !Object.hasOwn(m, 'method') &&
+        (Array.isArray(result?.tools) || isErrorReply)) {
+      pendingListIds.delete(m.id);
+    }
     if (!result || !Array.isArray(result.tools)) return message;
     if (!Object.hasOwn(m, 'method') && listIds.includes(m.id)) {
       toolCache.remember(catalogKey, result.tools, now(), true);
@@ -319,16 +339,23 @@ export async function handleBrokerRequest(
   const contentType = mediaType(response.headers);
   let outBody: BodyInit | null = response.body;
   if (response.body && contentType === 'text/event-stream') {
-    outBody = rewriteSseStream(response.body, filterTools);
+    outBody = mustFilter
+      ? rewriteCatalogSseStream(response.body, filterTools, () => pendingListIds.size > 0, MAX_BODY_BYTES)
+      : rewriteSseStream(response.body, filterTools);
   } else if (response.body && contentType === 'application/json') {
-    const text = await response.text();
+    const budget = mustFilter ? createBrokerIoBudget(CONTROL_READ_TIMEOUT_MS) : null;
+    let text = budget ? '' : await response.text();
     try {
+      if (budget) text = await readBrokerBody(response.body, MAX_BODY_BYTES, budget);
       outBody = JSON.stringify(rewriteJsonRpc(JSON.parse(text), filterTools));
     } catch {
       if (mustFilter) return unfilterable();
       outBody = text;
+    } finally {
+      budget?.close();
     }
   } else if (response.body && mustFilter) {
+    void response.body.cancel().catch(() => undefined);
     return unfilterable();
   }
 
@@ -355,39 +382,62 @@ export async function handleBrokerRequest(
     headers.delete('last-event-id');
     let cursor: string | undefined;
     const tools: unknown[] = [];
-    for (let page = 0; page < 5; page += 1) {
-      let res: Response;
-      try {
-        res = await upstreamFetch(up.url, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ jsonrpc: '2.0', id: `orgx-broker-tools-${page}`, method: 'tools/list', params: cursor ? { cursor } : {} }),
-        });
-      } catch {
-        return null;
-      }
-      if (!res.ok) return null;
-      const text = await res.text();
-      const found = mediaType(res.headers) === 'text/event-stream'
-        ? parseSseMessages(text)
-        : (() => {
-            try {
-              const parsed = JSON.parse(text) as unknown;
-              return Array.isArray(parsed) ? parsed : [parsed];
-            } catch {
-              return [];
+    // One budget covers every discovery page, headers and body. A vendor may
+    // leave SSE open after its reply; consume the matching result, not EOF.
+    const budget = createBrokerIoBudget(CONTROL_READ_TIMEOUT_MS);
+    try {
+      for (let page = 0; page < 5; page += 1) {
+        let res: Response;
+        try {
+          res = await budget.run(async () => {
+            const response = await upstreamFetch(up.url, {
+              method: 'POST',
+              headers,
+              signal: budget.signal,
+              body: JSON.stringify({ jsonrpc: '2.0', id: `orgx-broker-tools-${page}`, method: 'tools/list', params: cursor ? { cursor } : {} }),
+            });
+            // A mock or transport may ignore abort. Do not retain a late body.
+            if (budget.signal.aborted) {
+              void response.body?.cancel().catch(() => undefined);
+              throw new BrokerIoError('body_timeout');
             }
-          })();
-      const result = (found as JsonRpcMessage[]).find((m) => m?.id === `orgx-broker-tools-${page}`)?.result as
-        | { tools?: unknown[]; nextCursor?: string }
-        | undefined;
-      if (!result?.tools) return null;
-      tools.push(...result.tools);
-      cursor = result.nextCursor;
-      if (!cursor) break;
+            return response;
+          });
+        } catch {
+          return null;
+        }
+        if (!res.ok) {
+          void res.body?.cancel().catch(() => undefined);
+          return null;
+        }
+        const isSse = mediaType(res.headers) === 'text/event-stream';
+        const text = await readBrokerBody(res.body, MAX_BODY_BYTES, budget,
+          isSse ? createSseMessageMatcher(`orgx-broker-tools-${page}`) : undefined);
+        const found = isSse
+          ? parseSseMessages(text)
+          : (() => {
+              try {
+                const parsed = JSON.parse(text) as unknown;
+                return Array.isArray(parsed) ? parsed : [parsed];
+              } catch {
+                return [];
+              }
+            })();
+        const result = (found as JsonRpcMessage[]).find((m) => m?.id === `orgx-broker-tools-${page}`)?.result as
+          | { tools?: unknown[]; nextCursor?: string }
+          | undefined;
+        if (!result?.tools) return null;
+        tools.push(...result.tools);
+        cursor = result.nextCursor;
+        if (!cursor) break;
+      }
+      toolCache.remember(catalogKey, tools, now());
+      return toolCache.get(catalogKey, now());
+    } catch {
+      return null;
+    } finally {
+      budget.close();
     }
-    toolCache.remember(catalogKey, tools, now());
-    return toolCache.get(catalogKey, now());
   }
 }
 

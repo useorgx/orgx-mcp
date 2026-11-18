@@ -82,7 +82,10 @@ try {
       }, applyDocumentTheme() {}, applyHostStyleVariables() {}, applyHostFonts() {} };
       if (mode === 'chatgpt' || mode === 'pending-sdk-chatgpt') window.openai = {
         toolOutput: delivered,
-        openExternal({ url }) { window.__linkAudit.push({ channel: 'chatgpt', url }); },
+        openExternal({ href, url }) {
+          if (typeof href !== 'string' || url !== undefined) throw new Error('ChatGPT openExternal requires href');
+          window.__linkAudit.push({ channel: 'chatgpt', url: href });
+        },
         setWidgetHeight() {}, async callTool() { return { structuredContent: snapshot }; },
       };
       window.addEventListener('click', event => {

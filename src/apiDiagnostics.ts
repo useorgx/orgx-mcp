@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { addOriginTimings, originTimingPerformance, type OriginTimings } from './originTimings';
 
 /** Correlation is diagnostic only: it never grants actor or workspace authority. */
 export interface ApiDiagnostics {
@@ -13,7 +14,11 @@ export interface ApiDiagnostics {
   body_ms: number;
   last_status: number;
   last_error: string;
+  /** Per-stage sums/counts over API attempts; concurrent stages are not wall time. */
+  origin_timings?: OriginTimings;
 }
+
+type ApiBodyOutcome = 'completed' | 'body_timeout' | 'body_error' | 'cancelled';
 
 type Invocation = { traceparent: string; diagnostics: ApiDiagnostics };
 const invocations = new AsyncLocalStorage<Invocation>();
@@ -63,7 +68,9 @@ export function withInvocationDiagnostics<T>(extra: unknown, fn: () => T): T {
 
 export function invocationDiagnostics(): ApiDiagnostics | undefined {
   const current = invocations.getStore();
-  return current ? { ...current.diagnostics } : undefined;
+  if (!current) return undefined;
+  const { origin_timings, ...diagnostics } = current.diagnostics;
+  return { ...diagnostics, ...(origin_timings ? { origin_timings: structuredClone(origin_timings) } : {}) };
 }
 
 export class ApiRequestObservation {
@@ -123,6 +130,11 @@ export class ApiRequestObservation {
     }
     try {
       const response = await fetch(url, init);
+      if (this.diagnostics) {
+        const timings = this.diagnostics.origin_timings ?? {};
+        addOriginTimings(timings, response.headers.get('server-timing'));
+        if (Object.keys(timings).length) this.diagnostics.origin_timings = timings;
+      }
       status = response.status;
       outcome = response.ok ? 'succeeded' : 'http_error';
       responses.set(response, this);
@@ -158,17 +170,20 @@ export class ApiRequestObservation {
       });
     }
   }
-  body(duration: number, timedOut: boolean): void {
-    if (timedOut) this.failure('body_timeout');
+  body(duration: number, outcome: ApiBodyOutcome, terminalFailure = true): void {
+    if (outcome !== 'completed') {
+      this.lastError = outcome;
+      if (terminalFailure) this.failure(outcome);
+    }
     if (this.diagnostics) {
       this.diagnostics.body_ms += duration;
-      if (timedOut) {
+      if (outcome === 'body_timeout') {
         this.diagnostics.timeouts++;
       }
     }
     this.log('orgx_api_body', {
       body_ms: duration,
-      outcome: timedOut ? 'body_timeout' : 'completed',
+      outcome,
     });
   }
 }
@@ -187,9 +202,10 @@ export function observedApiFetch(
 export function recordApiBody(
   response: Response,
   duration: number,
-  timedOut: boolean
+  outcome: ApiBodyOutcome,
+  terminalFailure = true
 ): void {
-  (responses.get(response) ?? requests.getStore())?.body(duration, timedOut);
+  (responses.get(response) ?? requests.getStore())?.body(duration, outcome, terminalFailure);
 }
 
 export function currentApiReferences(): Record<string, string> {
@@ -242,6 +258,7 @@ export function attachDiagnosticReferences(value: unknown, executionMs?: number)
         api_timeouts: diagnostics.timeouts,
         api_headers_ms: diagnostics.headers_ms,
         api_body_ms: diagnostics.body_ms,
+        ...originTimingPerformance(diagnostics.origin_timings),
       },
     },
   };

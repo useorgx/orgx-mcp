@@ -1,5 +1,5 @@
-import { ApiRequestObservation, currentApiReferences, observedApiFetch, recordApiBody, withResponseDiagnostics } from './apiDiagnostics';
-import { markTransportFailure } from './remedyErrors';
+import { ApiRequestObservation, currentApiReferences, observedApiFetch, recordApiBody } from './apiDiagnostics';
+import { markTransportFailure, transportFailureKind } from './remedyErrors';
 
 export interface OrgxApiEnv {
   ORGX_API_URL: string;
@@ -21,7 +21,6 @@ const ACTOR_TOKEN_AUD = 'orgx-api';
 
 const hmacKeyCache = new Map<string, Promise<CryptoKey>>();
 const actorTokenCache = new Map<string, { token: string; expiresAt: number }>();
-const responseOrigin = new WeakMap<Response, string>();
 
 async function importHmacKey(secret: string): Promise<CryptoKey> {
   const cached = hmacKeyCache.get(secret);
@@ -169,19 +168,18 @@ function getRequestTimeoutMs(
   env: OrgxApiEnv,
   hasFallbackRemaining: boolean
 ): number {
-  if (hasFallbackRemaining) {
-    return parseTimeoutMs(
-      env.ORGX_API_PRIMARY_TIMEOUT_MS,
-      DEFAULT_ORGX_API_PRIMARY_TIMEOUT_MS
-    );
-  }
-  return parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS);
+  const timeout = parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS);
+  return hasFallbackRemaining
+    ? Math.min(timeout, parseTimeoutMs(env.ORGX_API_PRIMARY_TIMEOUT_MS, DEFAULT_ORGX_API_PRIMARY_TIMEOUT_MS))
+    : timeout;
 }
 
 async function readResponseTextWithTimeout(
   response: Response,
   timeoutMs: number,
-  upstreamUrl: string
+  upstreamUrl: string,
+  signal?: AbortSignal | null,
+  terminalFailure = true
 ): Promise<string> {
   if (!response.body) return '';
 
@@ -190,9 +188,21 @@ async function readResponseTextWithTimeout(
   const decoder = new TextDecoder();
   let body = '';
   let timedOut = false;
+  let cancelled = false;
+  let bodyFailed = false;
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    if (!signal) return;
+    onAbort = () => {
+      cancelled = true;
+      reject(createApiError('The request was cancelled.', `Response body aborted for ${upstreamUrl}`));
+    };
+    if (signal.aborted) onAbort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+  });
   const timeout = new Promise<never>((_resolve, reject) => {
-    timeoutId = setTimeout(() => {
+    const expire = () => {
       timedOut = true;
       reject(
         markTransportFailure(createApiError(
@@ -200,26 +210,37 @@ async function readResponseTextWithTimeout(
           `Response body timed out after ${timeoutMs}ms for ${upstreamUrl}`
         ), 'timeout')
       );
-    }, timeoutMs);
+    };
+    if (timeoutMs <= 0) expire();
+    else timeoutId = setTimeout(expire, timeoutMs);
   });
 
   try {
     while (true) {
-      const { done, value } = await Promise.race([reader.read(), timeout]);
+      const { done, value } = await Promise.race([timeout, aborted, reader.read()]);
       if (done) break;
       if (value) body += decoder.decode(value, { stream: true });
     }
     body += decoder.decode();
     return body;
+  } catch (error) {
+    bodyFailed = !timedOut && !cancelled;
+    throw bodyFailed ? markTransportFailure(error, 'network') : error;
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
-    if (timedOut) {
+    if (onAbort) signal?.removeEventListener('abort', onAbort);
+    if (timedOut || cancelled) {
       void reader
-        .cancel('OrgX API response body timed out')
+        .cancel(cancelled ? 'OrgX API request cancelled' : 'OrgX API response body timed out')
         .catch(() => undefined);
     }
     reader.releaseLock();
-    recordApiBody(response, Math.max(0, Math.round(performance.now() - bodyStarted)), timedOut);
+    recordApiBody(
+      response,
+      Math.max(0, Math.round(performance.now() - bodyStarted)),
+      timedOut ? 'body_timeout' : cancelled ? 'cancelled' : bodyFailed ? 'body_error' : 'completed',
+      terminalFailure
+    );
   }
 }
 
@@ -359,12 +380,22 @@ export async function callOrgxApiRaw(
      */
     allowFallback?: boolean;
   }
-) {
+): Promise<Response> {
+  return callObservedOrgxApi(env, path, init, opts);
+}
+
+async function callObservedOrgxApi(
+  env: OrgxApiEnv,
+  path: string,
+  init: RequestInit | undefined,
+  opts: Parameters<typeof callOrgxApiRaw>[3],
+  bufferJson = false
+): Promise<Response> {
   const headers = new Headers(init?.headers);
   const observation = new ApiRequestObservation(headers);
   return observation.run(async () => {
     try {
-      return await callOrgxApiRawImplementation(env, path, { ...init, headers }, opts);
+      return await callOrgxApiRawImplementation(env, path, { ...init, headers }, opts, bufferJson);
     } catch (error) {
       observation.failure(undefined, error instanceof OrgXApiError ? error.statusCode : undefined);
       throw error;
@@ -374,8 +405,9 @@ export async function callOrgxApiRaw(
 
 async function callOrgxApiRawImplementation(
   env: OrgxApiEnv, path: string, init: RequestInit,
-  opts: Parameters<typeof callOrgxApiRaw>[3]
-) {
+  opts: Parameters<typeof callOrgxApiRaw>[3],
+  bufferJson: boolean
+): Promise<Response> {
   if (
     looksLikeDefaultPlaceholder(env.ORGX_SERVICE_KEY) ||
     !env.ORGX_SERVICE_KEY.startsWith('oxk-')
@@ -433,6 +465,8 @@ async function callOrgxApiRawImplementation(
       : configuredBaseUrls;
   let lastRetryableFailure: string | null = null;
   let lastRetryableStatus: number | undefined;
+  // One budget covers headers, body and fallback rather than restarting at each phase.
+  const deadline = performance.now() + parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS);
 
   for (const [index, baseUrl] of baseUrls.entries()) {
     const isFallbackAttempt = index > 0;
@@ -442,7 +476,14 @@ async function callOrgxApiRawImplementation(
     // IMPORTANT: do not auto-follow redirects; a common prod misconfig is redirecting /api/* to a different host.
     const controller = new AbortController();
     let timedOut = false;
-    const requestTimeoutMs = getRequestTimeoutMs(env, hasFallbackRemaining);
+    const attemptStarted = performance.now();
+    const requestTimeoutMs = Math.min(getRequestTimeoutMs(env, hasFallbackRemaining), deadline - attemptStarted);
+    if (requestTimeoutMs <= 0) {
+      throw markTransportFailure(createApiError(
+        'The request took too long. Please try again.',
+        `Request deadline exhausted before contacting ${url.toString()}`
+      ), 'timeout');
+    }
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort(`timeout after ${requestTimeoutMs}ms`);
@@ -505,6 +546,7 @@ async function callOrgxApiRawImplementation(
       hasFallbackRemaining &&
       shouldTryFallbackForStatus(response.status)
     ) {
+      void response.body?.cancel('OrgX API retrying fallback').catch(() => undefined);
       lastRetryableFailure = `API ${response.status} from ${url.toString()}`;
       lastRetryableStatus = response.status;
       console.warn('[orgx-api] trying fallback', currentApiReferences());
@@ -527,8 +569,9 @@ async function callOrgxApiRawImplementation(
       const text = truncateForErrorBody(
         await readResponseTextWithTimeout(
           response,
-          requestTimeoutMs,
-          url.toString()
+          requestTimeoutMs - (performance.now() - attemptStarted),
+          url.toString(),
+          upstreamSignal
         ).catch((error) => {
           if (error instanceof OrgXApiError) throw error;
           return 'Unable to read error body';
@@ -608,12 +651,31 @@ async function callOrgxApiRawImplementation(
       );
     }
 
+    if (bufferJson) {
+      try {
+        response = await bufferJsonResponse(
+          response,
+          url,
+          requestTimeoutMs - (performance.now() - attemptStarted),
+          upstreamSignal,
+          !hasFallbackRemaining
+        );
+      } catch (error) {
+        // Successful headers do not make a stalled body successful. Retry only
+        // requests already proven safe to repeat, and never retry a cancellation.
+        if (hasFallbackRemaining && !upstreamSignal?.aborted && transportFailureKind(error)) {
+          lastRetryableFailure = error instanceof OrgXApiError ? error.internalDetails : 'Response body failed';
+          console.warn('[orgx-api] trying fallback', currentApiReferences());
+          continue;
+        }
+        throw error;
+      }
+    }
     if (isFallbackAttempt && lastRetryableFailure) {
       console.warn(
         '[orgx-api] fallback succeeded', currentApiReferences()
       );
     }
-    responseOrigin.set(response, url.origin);
     return response;
   }
 
@@ -643,7 +705,7 @@ export async function callOrgxApiJson(
     allowFallback?: boolean;
   } & GatewayDelegationClaims
 ) {
-  const response = await callOrgxApiRaw(env, path, init, {
+  return callObservedOrgxApi(env, path, init, {
     accept: 'application/json',
     userId: opts?.userId ?? undefined,
     userEmail: opts?.userEmail ?? undefined,
@@ -652,17 +714,18 @@ export async function callOrgxApiJson(
     workspaceId: opts?.workspaceId,
     scopes: opts?.scopes,
     allowFallback: opts?.allowFallback,
-  });
-  const resolvedOrigin =
-    responseOrigin.get(response) ??
-    new URL(response.url || env.ORGX_API_URL).origin;
-  const resolvedUrl = response.url || new URL(path, resolvedOrigin).toString();
+  }, true);
+}
+
+async function bufferJsonResponse(
+  response: Response,
+  url: URL,
+  timeoutMs: number,
+  signal: AbortSignal | null,
+  terminalFailure: boolean
+): Promise<Response> {
   const contentType = response.headers.get('content-type') ?? '';
-  const responseBody = await withResponseDiagnostics(response, () => readResponseTextWithTimeout(
-    response,
-    parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS),
-    resolvedUrl
-  ));
+  const responseBody = await readResponseTextWithTimeout(response, timeoutMs, url.toString(), signal, terminalFailure);
   if (!contentType.includes('application/json')) {
     const text = truncateForErrorBody(responseBody);
     throw createApiError(
@@ -673,7 +736,7 @@ export async function callOrgxApiJson(
     );
   }
   const responseHeaders = new Headers(response.headers);
-  responseHeaders.set('X-Orgx-Upstream-Origin', resolvedOrigin);
+  responseHeaders.set('X-Orgx-Upstream-Origin', url.origin);
   return new Response(responseBody, {
     status: response.status,
     statusText: response.statusText,

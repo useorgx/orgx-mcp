@@ -1,4 +1,5 @@
 import { callOrgxApiJson, type GatewayDelegationClaims, type OrgxApiEnv } from './orgxApi';
+import { withOptionalReadDeadline } from './optionalRead';
 
 /**
  * What a run produced, for orgx_inspect(type: run). Inspecting a run used to
@@ -29,19 +30,17 @@ export async function fetchRunOutputs(
   runId: string,
   identity: Identity
 ): Promise<RunOutput[] | null> {
-  try {
+  return withOptionalReadDeadline(async (signal) => {
     const response = await callOrgxApiJson(
       env,
       `/api/runs/${encodeURIComponent(runId)}/output`,
-      undefined,
+      { signal },
       identity
     );
     const payload = (await response.json()) as { data?: { outputs?: unknown } };
     const outputs = payload?.data?.outputs;
     return Array.isArray(outputs) ? (outputs as RunOutput[]) : null;
-  } catch {
-    return null;
-  }
+  });
 }
 
 /** A few lines an LLM reads first: each output's title and the start of its text. */

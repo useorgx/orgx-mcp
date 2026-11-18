@@ -96,7 +96,7 @@ function canonicalizeLegacyAlias(
         tool: 'orgx_recommend',
         args: {
           mode: 'next_action',
-          ...copyDefined(args, ['entity_type', 'limit', 'workspace_id', 'session_id']),
+          ...copyDefined(args, ['entity_type', 'limit', 'workspace_id', 'include_capability_suggestions', 'session_id']),
           ...(args.entity_id !== undefined ? { entity_id: args.entity_id } : {}),
         },
       };
@@ -189,9 +189,9 @@ function canonicalizeOperationAlias(tool: string, args: JsonRecord): { tool: str
       if (args.mode !== undefined && !['morning_brief', 'next_action'].includes(String(args.mode))) return null;
       return args.mode === 'morning_brief'
         ? { tool: 'orgx_get_operator_brief', args: copyDefined(args, ['workspace_id', 'period']) }
-        : { tool: 'orgx_get_next_actions', args: copyDefined(args, ['entity_type', 'entity_id', 'initiative_id', 'workspace_id', 'limit', 'session_id']) };
+        : { tool: 'orgx_get_next_actions', args: copyDefined(args, ['entity_type', 'entity_id', 'initiative_id', 'workspace_id', 'limit', 'include_capability_suggestions', 'session_id']) };
     case 'recommend_next_action':
-      return { tool: 'orgx_get_next_actions', args: copyDefined(args, ['entity_type', 'entity_id', 'initiative_id', 'workspace_id', 'limit', 'session_id']) };
+      return { tool: 'orgx_get_next_actions', args: copyDefined(args, ['entity_type', 'entity_id', 'initiative_id', 'workspace_id', 'limit', 'include_capability_suggestions', 'session_id']) };
     case 'get_morning_brief':
     case 'get_operator_chronicle':
       return { tool: 'orgx_get_operator_brief', args: { period: args.period ?? '30d', ...copyDefined(args, ['workspace_id']) } };

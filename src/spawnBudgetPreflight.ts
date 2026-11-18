@@ -264,7 +264,12 @@ function spawnGateRemedyFacts(decision: Record<string, unknown>): Record<string,
   };
 }
 
-const APP_SPAWN_BLOCK_CODES = new Set(['budget_cap_exceeded', 'cost_estimate_unavailable', 'budget_gate_blocked']);
+const APP_SPAWN_BLOCK_CODES = new Set([
+  'budget_cap_exceeded',
+  'budget_approval_required',
+  'cost_estimate_unavailable',
+  'budget_gate_blocked',
+]);
 
 /**
  * OrgX prices and gates spawn_agent_task itself (fail-closed cap, cheaper-tier
@@ -282,6 +287,6 @@ export function appSpawnBlock(
   if (!code || !APP_SPAWN_BLOCK_CODES.has(code)) return null;
   return {
     message: typeof result.error === 'string' ? result.error : 'OrgX blocked this dispatch on budget.',
-    options: { code, status: code === 'budget_cap_exceeded' ? 402 : 424, details: data! },
+    options: { code, status: code === 'budget_cap_exceeded' || code === 'budget_approval_required' ? 402 : 424, details: data! },
   };
 }

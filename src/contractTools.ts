@@ -101,7 +101,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         .describe('Entity type to inspect'),
       id: z.string().min(1).describe('Entity UUID or accepted short ID prefix'),
       hydrate_context: z.boolean().optional().describe('Include linked context where available; default true'),
-      max_chars: z.number().int().min(1000).max(50000).optional().describe('Approximate maximum hydrated context characters'),
+      max_chars: z.number().int().min(1000).max(50000).optional().describe('Accepted for compatibility; does not limit canonical context packs. Set hydrate_context=false to omit hydrated context.'),
       relations: z.number().int().min(0).max(1).optional().describe('Work-graph depth around the initiative in the brief: 0 skips it, 1 (default) adds edges that touch it'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
@@ -177,7 +177,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
     id: 'orgx_recommend',
     title: 'Recommend Next OrgX Action',
     description:
-      'Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. The default next_action mode records metered MCP allowance usage; it does not change business records. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.',
+      'Use when the user asks what to do next, wants a brief, or returns after time away and needs priorities. Recommends next work, summarizes operator-chronicle/morning-brief signals, and reads prioritization context. The default next_action mode records metered MCP allowance usage; it does not change business records. Model-generated capability suggestions are skipped by default; set include_capability_suggestions=true for the deeper assessment, which may take longer. USE WHEN: user asks what to do next, wants a brief, asks what changed yesterday/week/30 days, or needs priority guidance. mode=morning_brief returns the operator chronicle when available. NEXT: present the recommendation and ask for explicit confirmation before any separate action. DO NOT USE WHEN: the user already specified a concrete action.',
     inputSchema: {
       mode: z.enum(['next_action', 'morning_brief']).optional().describe('Recommendation mode; default next_action'),
       period: z.enum(['day', 'week', '30d']).optional().describe('Reporting period for mode=morning_brief; default 30d'),
@@ -186,6 +186,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       initiative_id: z.string().optional().describe('Shortcut for entity_type="initiative" with entity_id=<this id>. Ignored when entity_type or entity_id is set.'),
       workspace_id: z.string().optional().describe('Workspace UUID'),
       limit: z.number().int().min(1).max(20).optional().describe('Maximum recommendations'),
+      include_capability_suggestions: z.boolean().default(false).describe('Opt in to the slower model-generated capability assessment for next_action mode. Default false returns current priorities with capability assessment marked not_requested.'),
       session_id: z.string().optional().describe('Optional bootstrap/session identifier'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },

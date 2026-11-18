@@ -25,6 +25,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { JSDOM } from 'jsdom';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import serverManifest from '../server.json';
 import submission from '../chatgpt-app-submission.json';
@@ -61,6 +62,7 @@ import {
   widgetCspNeedsForUri,
 } from '../src/widgetConfig';
 import { createEmptyMcpSessionReentryState } from '../src/welcomeBackContext';
+import { MAX_TOOL_INPUT_ELEMENTS } from '../src/mcpInputLimits';
 
 const apiMocks = vi.hoisted(() => ({
   callOrgxApiJson: vi.fn(),
@@ -584,7 +586,78 @@ describe('widget source, runtime and contract agree', () => {
   });
 });
 
+describe('tool validation complexity budget', () => {
+  it('rejects oversized nested input before schema validation or handler execution', async () => {
+    const { client, worker } = await connectProfile('v2');
+    const validate = vi.fn(() => true);
+    const handler = vi.fn(async () => ({ content: [{ type: 'text', text: 'accepted' }] }));
+    worker.server.registerTool('input-budget-probe', {
+      inputSchema: { payload: z.unknown().refine(validate) },
+    }, handler);
+    try {
+      const oversized = Array.from({ length: MAX_TOOL_INPUT_ELEMENTS / 2 }, () => ({ value: 1 }));
+      const result = await client.callTool({ name: 'input-budget-probe', arguments: { payload: oversized } });
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result.content)).toContain(`maximum of ${MAX_TOOL_INPUT_ELEMENTS} elements`);
+      expect(validate).not.toHaveBeenCalled();
+      expect(handler).not.toHaveBeenCalled();
+
+      const normal = await client.callTool({ name: 'input-budget-probe', arguments: { payload: [{ value: 1 }] } });
+      expect(normal.isError).not.toBe(true);
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(validate).toHaveBeenCalledTimes(1);
+    } finally {
+      await client.close();
+    }
+  });
+});
+
 describe('widget resources declare CSP and domain (A6)', () => {
+  it('serves a self-contained panel through the local asset binding without a public fetch', async () => {
+    const { client, worker } = await connectProfile('v2', 'openai-mcp');
+    const publicFetch = vi.mocked(fetch);
+    publicFetch.mockClear();
+    const binding = vi.fn(async (request: Request) => {
+      const pathname = new URL(request.url).pathname;
+      return new Response(readFileSync(resolve(root, 'public', pathname.slice(1)), 'utf8'));
+    });
+    worker.env.ASSETS = { fetch: binding };
+    try {
+      const panel = WIDGET_RESOURCES.find((resource) => resource.name === 'orgx-panel-widget')!;
+      const response = await client.readResource({ uri: panel.uri });
+      const content = response.contents[0] as { text: string; _meta?: Record<string, any> };
+      expect(content.text).toContain('data-inline-asset="shared/widget-runtime.js"');
+      expect(content.text).toContain('data-inline-asset="shared/mcp-apps-sdk.umd.js"');
+      expect(content.text).not.toMatch(/<script[^>]+src="[^"]*\/shared\//);
+      expect(content._meta?.ui?.domain).toBe('https://mcp.useorgx.test');
+      expect(binding.mock.calls.length).toBeGreaterThan(10);
+      expect(publicFetch).not.toHaveBeenCalled();
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('returns the existing widget error document when an asset binding stalls', async () => {
+    const { client, worker } = await connectProfile('v2', 'openai-mcp');
+    worker.env.ASSETS = { fetch: vi.fn(() => new Promise(() => {})) };
+    vi.useFakeTimers();
+    try {
+      const result = worker.buildWidgetResourceResponse(
+        WIDGET_RESOURCES[0].uri,
+        'OrgX widget',
+        'text/html;profile=mcp-app',
+        { 'openai/widgetDomain': 'https://mcp.useorgx.test' }
+      );
+      await vi.advanceTimersByTimeAsync(5_000);
+      const response = await result;
+      expect(response.contents[0].text).toContain('id="fallback-alert"');
+      expect(response.contents[0]._meta['openai/widgetDomain']).toBe('https://mcp.useorgx.test');
+    } finally {
+      vi.useRealTimers();
+      await client.close();
+    }
+  });
+
   async function readAll(profile: string, clientName: string) {
     const { client } = await connectProfile(profile, clientName);
     const resources = (await client.listResources()).resources.filter((r) =>
@@ -785,6 +858,68 @@ describe('argument aliases reach the real handler (A5)', () => {
     });
     expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
     expect(result.structuredContent).toMatchObject({ initiative: { id: INITIATIVE_ID } });
+  }, 30000);
+});
+
+describe('next-action capability assessment opt-in', () => {
+  const calls = [
+    { profile: 'legacy', name: 'recommend_next_action' },
+    { profile: 'legacy', name: 'orgx_recommend' },
+    { profile: 'v2', name: 'orgx_get_next_actions' },
+    { profile: 'chatgpt', name: 'orgx_get_next_actions' },
+  ];
+  it.each(calls.flatMap((call) => [undefined, false, true].map((optIn) => ({ ...call, optIn }))))(
+    '$profile $name forwards capability suggestions=$optIn without changing identity or caller input',
+    async ({ profile, name, optIn }) => {
+      const priorImplementation = apiMocks.callOrgxApiJson.getMockImplementation()!;
+      const provenance = optIn === true
+        ? { enabled: true, plan: 'pro', reason: null, assessment_status: 'assessed', suggestions: [] }
+        : { enabled: null, plan: null, reason: 'not_requested', assessment_status: 'not_requested', suggestions: [] };
+      apiMocks.callOrgxApiJson.mockImplementation(async (...args) => {
+        const [, path, init] = args;
+        const body = JSON.parse(String((init as RequestInit | undefined)?.body ?? '{}'));
+        if (path === '/api/tools/execute' && body.tool_id === 'recommend_next_action') {
+          return Response.json({ ok: true, data: {
+            entity_type: 'workspace', entity_id: WORKSPACE_ID, canonical_only: false,
+            recommendations: [], next_action: null, capability_gap_detector: provenance,
+          } });
+        }
+        return priorImplementation(...args);
+      });
+      const { client } = await connectProfile(profile);
+      try {
+        apiMocks.callOrgxApiJson.mockClear();
+        const input = Object.freeze({ workspace_id: WORKSPACE_ID,
+          ...(optIn !== undefined ? { include_capability_suggestions: optIn } : {}) });
+        const result = await client.callTool({ name, arguments: input });
+        expect(result.isError, JSON.stringify(result.content)).not.toBe(true);
+        const upstream = apiMocks.callOrgxApiJson.mock.calls.find(([, path, init]) =>
+          path === '/api/tools/execute' && JSON.parse(String((init as RequestInit | undefined)?.body ?? '{}')).tool_id === 'recommend_next_action')!;
+        const body = JSON.parse(String((upstream[2] as RequestInit).body));
+        expect(body.args).toMatchObject({ workspace_id: WORKSPACE_ID, include_capability_suggestions: optIn === true });
+        expect(body.args).not.toHaveProperty('mode');
+        expect(body.user_id).toBe('33333333-3333-4333-8333-333333333333');
+        expect(upstream[3]).toMatchObject({ userId: 'surface-contract-user' });
+        expect(result.structuredContent).toMatchObject({ capability_gap_detector: provenance });
+        expect(input).toEqual({ workspace_id: WORKSPACE_ID,
+          ...(optIn !== undefined ? { include_capability_suggestions: optIn } : {}) });
+      } finally {
+        await client.close();
+        apiMocks.callOrgxApiJson.mockImplementation(priorImplementation);
+      }
+    }, 30000
+  );
+
+  it('preserves the direct canonical task projection option', async () => {
+    const { client } = await connectProfile('legacy');
+    try {
+      apiMocks.callOrgxApiJson.mockClear();
+      await client.callTool({ name: 'recommend_next_action', arguments: { canonical_only: true, include_capability_suggestions: true } });
+      const calls = apiMocks.callOrgxApiJson.mock.calls.map(([, , init]) => JSON.parse(String((init as RequestInit | undefined)?.body ?? '{}')));
+      expect(calls).toContainEqual(expect.objectContaining({ tool_id: 'recommend_next_action', args: expect.objectContaining({
+        canonical_only: true, include_capability_suggestions: true,
+      }) }));
+    } finally { await client.close(); }
   }, 30000);
 });
 

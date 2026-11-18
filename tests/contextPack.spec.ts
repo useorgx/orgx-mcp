@@ -5,6 +5,7 @@ import {
   CONTEXT_CAPSULE_FETCH_TIMEOUT_MS,
   CONTEXT_PACK_API_PATH,
   fetchContextCapsule,
+  fetchContextPack,
   fetchContextPreparation,
   isPackableAnchor,
 } from '../src/contextPack';
@@ -103,6 +104,44 @@ describe('context pack helpers', () => {
     const pending = fetchContextCapsule({} as never, 'user-1', 'workspace-1');
     await vi.advanceTimersByTimeAsync(CONTEXT_CAPSULE_FETCH_TIMEOUT_MS);
     await expect(pending).resolves.toBeNull();
+  });
+
+  it.each(['pack', 'capsule'] as const)('bounds a stalled %s response body as well as its headers', async (kind) => {
+    vi.useFakeTimers();
+    apiMocks.callOrgxApiJson.mockResolvedValue({ json: () => new Promise(() => {}) });
+    const pending = kind === 'pack'
+      ? fetchContextPack({} as never, 'user-1', { type: 'task', id: 'task-1' })
+      : fetchContextCapsule({} as never, 'user-1', 'workspace-1');
+    await vi.advanceTimersByTimeAsync(CONTEXT_CAPSULE_FETCH_TIMEOUT_MS);
+    await expect(pending).resolves.toBeNull();
+    expect(apiMocks.callOrgxApiJson.mock.calls[0][2].signal.aborted).toBe(true);
+    expect(apiMocks.callOrgxApiJson).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps prepared fallback inside the original deadline', async () => {
+    vi.useFakeTimers();
+    apiMocks.callOrgxApiJson.mockImplementationOnce(() => new Promise((_resolve, reject) => {
+      setTimeout(() => reject(new Error('prepared byte budget')), 3_000);
+    }));
+    apiMocks.callOrgxApiJson.mockImplementationOnce(() => new Promise(() => {}));
+    const pending = fetchContextPreparation({} as never, 'user-1', 'workspace-1');
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(apiMocks.callOrgxApiJson).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await expect(pending).resolves.toBeNull();
+    const [first, second] = apiMocks.callOrgxApiJson.mock.calls;
+    expect(second[2].signal).toBe(first[2].signal);
+    expect(second[2].signal.aborted).toBe(true);
+  });
+
+  it('forwards the authenticated identity and run restrictions on both context reads', async () => {
+    apiMocks.callOrgxApiJson.mockImplementation(async () => Response.json({ data: {} }));
+    const identity = { userEmail: 'caller@example.test', orgxUserId: 'internal-user', runId: 'run-1', workspaceId: 'workspace-1', scopes: ['orgx_inspect'] };
+    await fetchContextPack({} as never, 'user-1', { type: 'task', id: 'task-1' }, {}, identity);
+    await fetchContextPreparation({} as never, 'user-1', 'workspace-1', undefined, identity);
+    for (const call of apiMocks.callOrgxApiJson.mock.calls) {
+      expect(call[3]).toEqual({ ...identity, userId: 'user-1' });
+    }
   });
 });
 

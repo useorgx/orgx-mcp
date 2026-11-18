@@ -772,10 +772,24 @@
      * https on an origin the widget may open (the resource's declared
      * redirect domains); anything else stays a plain row.
      */
-    var entryHref = function (event) {
+    var entryHref = function (event, chronicle) {
       // Relative OrgX paths resolve on useorgx.com; legacy shapes are rewritten
       // to real app routes; other origins stay plain rows.
-      return window.OrgXLinks.normalize(event && event.url);
+      var target = window.OrgXLinks.normalize(event && event.url);
+      if (!target || !chronicle || !chronicle.workspaceId) return target;
+      var url = new URL(target);
+      // Receipt IDs are workspace-scoped. A browser may have another workspace
+      // active; retain the card's scope without rewriting a supplied ID or scope.
+      var ledger = url.pathname === '/work-ledger';
+      var receipt = /^\/work-ledger\/receipts(?:\/[^/]+)?$/.test(url.pathname);
+      if (url.origin === 'https://useorgx.com' && (ledger || receipt)) {
+        if (!url.searchParams.has('center')) url.searchParams.set('center', chronicle.workspaceId);
+        if (ledger && !url.searchParams.has('range')) {
+          url.searchParams.set('range', chronicle.period === '30d' ? '30d' : '7d');
+        }
+        return url.toString();
+      }
+      return target;
     };
 
     var KIND_LABEL = {
@@ -795,13 +809,13 @@
       return text && !/^(recorded|verified|unknown)$/i.test(text) ? text : '';
     };
 
-    var entryRow = function (event, className) {
+    var entryRow = function (event, className, chronicle) {
       return row({
         class: className,
         status: entryStatus(event),
         label: String(event.title || '') + (event.repeats > 1 ? ' ×' + event.repeats : ''),
         detail: [event.sourceLabel, humanStatus(event.status), shortDate(event.occurredAt)].filter(Boolean).join(' · '),
-        href: entryHref(event)
+        href: entryHref(event, chronicle)
       });
     };
 
@@ -940,7 +954,7 @@
         return '<section class="kx-grp" aria-label="' + escapeHtml(group.name) + '">' +
           '<div class="kx-grp-h"><b>' + escapeHtml(group.name) + '</b><span>' + group.tally.met + ' of ' + group.items.length + ' verified</span>' +
           (group.tally.fail ? '<span class="kx-note">' + plural(group.tally.fail, 'failure', 'failures') + ' here</span>' : '') + '</div>' +
-          '<div class="wl-rows" role="list">' + rows.map(function (entry, i) { return entryRow(entry.event, i >= visible.length ? 'kx-entry ox-enter' : 'kx-entry'); }).join('') + '</div>' +
+          '<div class="wl-rows" role="list">' + rows.map(function (entry, i) { return entryRow(entry.event, i >= visible.length ? 'kx-entry ox-enter' : 'kx-entry', chronicle); }).join('') + '</div>' +
           (folded.length
             ? '<button type="button" class="kx-more" data-fold="' + escapeHtml(group.name) + '" aria-expanded="' + open + '">' +
               (open ? 'Hide ' + folded.length + ' verified' : folded.length + ' verified · show') + '</button>'
@@ -1092,7 +1106,8 @@
       }).map(function (line) {
         return line.replace(/^Ledger coverage:\s*/i, 'Clients reporting: ').replace(/^Decision-model spend:\s*/i, 'Spent deciding: ');
       });
-      var nextUrl = /decision/i.test(nextAction) ? window.OrgXLinks.decisions() : '';
+      var decisionsUrl = window.OrgXLinks.decisions({ center: chronicle.workspaceId });
+      var nextUrl = /decision/i.test(nextAction) ? decisionsUrl : '';
       var edge = refreshFailed ? 'mute' : needsYou ? 'amber' : 'teal';
 
       content.innerHTML =
@@ -1104,7 +1119,7 @@
         '<div class="wl-bd">' +
         '<h1 class="wl-headline">' + escapeHtml(chronicle.headline || payload.headline || 'The record of agent work') + '</h1>' +
         (pending > 0
-          ? '<button type="button" class="ox-open wl-attn" data-url="' + escapeHtml(window.OrgXLinks.decisions()) + '">' +
+          ? '<button type="button" class="ox-open wl-attn" data-url="' + escapeHtml(decisionsUrl) + '">' +
             (pending === 1 ? '1 decision waits on you' : pending + ' decisions wait on you') + '</button>'
           : '') +
         // The headline is a standing backlog; these numbers are the window.
@@ -1133,7 +1148,7 @@
           : '') +
         (events.length
           ? '<div class="wl-section"><p class="wl-lbl">Latest entries</p><div class="wl-rows" role="list">' +
-            events.slice(0, INLINE_ROWS).map(function (event) { return entryRow(event, 'wl-entry'); }).join('') +
+            events.slice(0, INLINE_ROWS).map(function (event) { return entryRow(event, 'wl-entry', chronicle); }).join('') +
             '</div>' + (events.length > INLINE_ROWS ? exploreButton(events) : '') + '</div>'
           : '') +
         (flywheel.length

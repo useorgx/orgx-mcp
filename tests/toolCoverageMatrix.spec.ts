@@ -1,6 +1,6 @@
 import { PANEL_TOOL_ID } from '../src/panelSurface';
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,9 +14,16 @@ import { CONTRACT_TOOL_DEFINITIONS } from '../src/contractTools';
 import { FLYWHEEL_TOOL_DEFINITIONS } from '../src/flywheelTools';
 import { FOUNDER_TEAM_ARTIFACT_TYPES } from '../src/artifactContracts';
 import { V2_PUBLIC_TOOL_IDS } from '../src/bootstrapPayload';
+import { CLAUDE_DIRECTORY_TOOL_ADAPTERS } from '../src/claudeDirectoryTools';
+import { WORKFLOW_TOOL_ADAPTERS, EXTENDED_WORKFLOW_TOOL_ADAPTERS } from '../src/workflowTools';
+import { RECEIPT_OPERATION_TOOLS } from '../src/receiptOperationTools';
+import { WIDGET_OPERATION_TOOLS } from '../src/widgetOperations';
+import { WIDGET_ONLY_TOOL_IDS } from '../src/widgetToolContract';
+import { TOOL_PROFILES } from '../src/toolProfiles';
+import { handlePublicMcpDiscoveryRequest } from '../src/publicMcpDiscovery';
 
 type CoverageTier =
-  | 'live_read_verified'
+  | 'historical_live_verified'
   | 'contract_and_unit'
   | 'transport_and_compat'
   | 'schema_only_needs_live_auth'
@@ -89,7 +96,9 @@ const POST_DEPLOY_RECHECKS: PostDeployRecheck[] = [
   },
 ];
 
-const TOOL_COVERAGE: Record<string, CoverageEntry> = {
+// These receipts describe the older router surface. Their dated live evidence
+// must not imply current deployed operation coverage.
+const LEGACY_TOOL_COVERAGE: Record<string, CoverageEntry> = {
   account_status: {
     tier: 'contract_and_unit',
     evidence: ['tests/mcpWorker.accountTools.spec.ts'],
@@ -108,7 +117,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Re-run action=list against the deployed current profile and verify approve/reject return the human-session review URL without mutating decision state.',
   },
   approve_decision: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live approve_decision approved disposable decision b26df9ab-f444-4e2b-ad8e-365b88cf4deb, 2026-05-28', 'tests/decisionToolsContract.spec.ts'],
     remaining: 'Prefer orgx_decide for new clients; keep alias callable.',
   },
@@ -142,7 +151,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Not visible in installed v2 plugin surface on server 0.3.0-7fc0bdc0; exercise dry-run delete/validation path with authenticated MCP.',
   },
   check_spawn_guard: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live orgx_spawn action=guard routed to check_spawn_guard and blocked without task, 2026-05-27', 'tests/agentSpawnBudgetControls.spec.ts'],
   },
   classify_task_model: {
@@ -189,7 +198,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     evidence: ['tests/contractTools.spec.ts'],
   },
   delegate_agent_task: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live delegate_agent_task rejected unknown agent without dispatching work, 2026-05-28', 'tests/toolDiscoverySnapshot.spec.ts'],
   },
   entity_action: {
@@ -205,7 +214,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Not visible in installed v2 plugin surface on server 0.3.0-7fc0bdc0; exercise authenticated read against current workspace sessions.',
   },
   get_agent_status: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live get_agent_status returned no active agents, 2026-05-28', 'tests/agentStatusPayload.spec.ts', 'tests/agentStatusWidget.spec.ts'],
   },
   get_decision_history: {
@@ -213,7 +222,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     evidence: ['tests/mcpTransport.spec.ts'],
   },
   get_initiative_pulse: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live get_initiative_pulse e617b132-78dd-4bea-a213-5a841b484ee2, 2026-05-27', 'tests/initiativeWidgetPayload.spec.ts'],
   },
   get_initiative_stream_state: {
@@ -222,7 +231,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Not visible in installed v2 plugin surface on server 0.3.0-7fc0bdc0; exercise against a scaffolded draft initiative.',
   },
   get_morning_brief: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live get_morning_brief workspace read, 2026-05-27', 'tests/morningBriefValue.spec.ts'],
   },
   get_operator_chronicle: {
@@ -296,16 +305,16 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Re-run orgx_act update dry_run against live MCP after deployment to prove no mutation.',
   },
   orgx_apply_changeset: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live orgx_apply_changeset task.update run a28c5217..., 2026-05-27', 'tests/toolDiscoverySnapshot.spec.ts', 'tests/reporting.mcp-tools.spec.ts'],
   },
   orgx_attach: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live artifact 785cb123-9168-46c2-8262-95e8d007f66a attached to initiative, 2026-05-27', 'tests/artifactContracts.spec.ts', 'tests/mcpWorker.entityActionAttach.spec.ts'],
     remaining: 'Re-run live orgx_attach schema/discovery after deployment to verify founder/team artifact examples include the new GTM artifact types.',
   },
   orgx_bootstrap: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live orgx_bootstrap exposed workspace:null despite workspace_id on server 0.3.0-7fc0bdc0, patched locally 2026-05-27 and rechecked 2026-05-28', 'live orgx_bootstrap still returned workspace:null on server 0.3.0-7fc0bdc0 with workspace_id=7af01a51-49b1-47d8-98b9-91a198debca8, 2026-05-28', 'tests/bootstrapPayload.spec.ts'],
     remaining: 'Re-run live orgx_bootstrap with workspace_id after deployment to verify workspace is bound in the payload.',
   },
@@ -340,7 +349,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     evidence: ['tests/toolDiscoverySnapshot.spec.ts', 'tests/contractTools.spec.ts'],
   },
   orgx_emit_activity: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live events evt_1779925592864_dc7a83cc and evt_1779925941304_8dd45ad4, 2026-05-27', 'tests/toolDiscoverySnapshot.spec.ts'],
   },
   orgx_lease: {
@@ -403,28 +412,28 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     evidence: ['tests/freeAudit.spec.ts'],
   },
   orgx_inspect: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live initiative inspect, 2026-05-27'],
   },
   orgx_plan: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live orgx_plan resume b8abfae8-e5d8-4592-8855-adbb816a8204 succeeded but showed workspace_id:null, patched start locally 2026-05-27 and rechecked 2026-05-28', 'tests/planSessionContract.spec.ts', 'tests/contractTools.spec.ts'],
     remaining: 'Re-run live orgx_plan action=start with workspace_id after deployment to verify workspace-scoped plan sessions.',
   },
   orgx_recommend: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live orgx_recommend initiative read, 2026-05-27'],
   },
   orgx_search: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live orgx_search scoped task read, 2026-05-27'],
   },
   orgx_spawn: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live orgx_spawn estimate without dispatch, 2026-05-27', 'live orgx_spawn guard blocked no-task dispatch, 2026-05-27', 'tests/agentSpawnBudgetControls.spec.ts'],
   },
   orgx_submit_receipt: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live receipts ff98c6e1-96ba-4bd2-83ad-eda79b6204d3 and dbd94570-f8fc-4a61-8abb-cd5660661430', 'tests/agentWorkReceiptV1.spec.ts (v1 agent-work-receipts adapter + legacy fallback)'],
   },
   orgx_create_work: {
@@ -445,7 +454,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Exercise through an authenticated installed client after the app after_sequence endpoint and this worker are deployed.',
   },
   orgx_write: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live orgx_write restored initiative after dry_run mutation, 2026-05-27', 'live orgx_write created disposable pending decision a25acdb6-cb60-4400-a11c-63fadd14d0a3 with workspace_id on initiative e617b132-78dd-4bea-a213-5a841b484ee2, 2026-05-28', 'tests/descriptionQuality.spec.ts', 'tests/toolDiscoverySnapshot.spec.ts', 'tests/contractTools.spec.ts'],
     remaining: 'Exercise draft-only create path after deployment with workspace_id/goal_ids/milestone rules.',
   },
@@ -455,7 +464,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Not visible in installed v2 plugin surface on server 0.3.0-7fc0bdc0; exercise against a draft workstream.',
   },
   query_org_memory: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live query_org_memory, 2026-05-27'],
   },
   queue_action: {
@@ -464,7 +473,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Not visible in installed v2 plugin surface on server 0.3.0-7fc0bdc0; exercise dry-run queue action if available.',
   },
   recall_memory: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live recall_memory query, 2026-05-27', 'tests/mcpTransport.spec.ts'],
   },
   recommend_next_action: {
@@ -491,7 +500,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Exercise after the core independent-review endpoint and evaluator worker are deployed.',
   },
   reject_decision: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live reject_decision declined disposable decision 180707dd-448f-47ac-b331-65e7934d27b2, 2026-05-28', 'tests/decisionToolsContract.spec.ts'],
   },
   remember_decision: {
@@ -508,7 +517,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     evidence: ['tests/planSessionContract.spec.ts'],
   },
   review_artifact: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live review_artifact 785cb123-9168-46c2-8262-95e8d007f66a, 2026-05-27', 'tests/toolDiscoverySnapshot.spec.ts', 'tests/contractTools.spec.ts'],
     remaining: 'Exercise approve/reject mutation flow against a disposable draft artifact only when explicitly safe.',
   },
@@ -518,7 +527,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Not visible in installed v2 plugin surface on server 0.3.0-7fc0bdc0; orgx_attach covers the public v2 artifact path, but this deprecated compatibility wrapper still needs a profile-exposed live call.',
   },
   scaffold_initiative: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live scaffold e617b132-78dd-4bea-a213-5a841b484ee2', 'live scaffold_initiative mode=draft 7-entity plan, 2026-05-27', 'tests/scaffoldInitiative.spec.ts'],
   },
   score_next_up_queue: {
@@ -532,7 +541,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Not visible in installed v2 plugin surface on server 0.3.0-7fc0bdc0; exercise read and write-safe scoring config path.',
   },
   spawn_agent_task: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live spawn_agent_task rejected unknown agent without dispatching work, 2026-05-28', 'tests/agentSpawnBudgetControls.spec.ts'],
   },
   start_autonomous_session: {
@@ -559,7 +568,7 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
     remaining: 'Not visible in installed v2 plugin surface on server 0.3.0-7fc0bdc0; exercise with a harmless client-state payload.',
   },
   track_project_progress: {
-    tier: 'live_read_verified',
+    tier: 'historical_live_verified',
     evidence: ['live track_project_progress e617b132-78dd-4bea-a213-5a841b484ee2, 2026-05-27', 'tests/toolDiscoverySnapshot.spec.ts'],
   },
   update_entity: {
@@ -586,6 +595,110 @@ const TOOL_COVERAGE: Record<string, CoverageEntry> = {
   },
 };
 
+function localCoverage(evidence: string[], remaining: string): CoverageEntry {
+  return { tier: 'contract_and_unit', evidence, remaining };
+}
+
+const WORKFLOW_CONTRACT_EVIDENCE = [
+  'tests/workflowTools.spec.ts',
+  'tests/mcpWorker.toolRegistration.spec.ts',
+  'tests/toolCatalogContractParity.spec.ts',
+];
+const LIVE_READ_GAP = 'Authenticated deployed read, response semantics and end-to-end latency are not established by these local tests.';
+const LIVE_WRITE_GAP = 'Only local contracts are covered; verify a disposable authorized write, replay identity and durable readback before claiming live mutation coverage.';
+const LIVE_EXECUTION_GAP = 'Local contracts do not establish live dispatch, provider execution, spend accounting or terminal proof; use a separately authorized bounded execution fixture.';
+const LIVE_REVIEW_GAP = 'Local tests do not establish a real host click; verify the authorized person, exact reviewed version and durable result in an installed host.';
+
+// Keep this inventory explicit: deriving coverage entries from the operation
+// arrays would silently mark a newly added, untested operation as covered.
+// Every entry declares the remaining live boundary, even where shared tests
+// exercise its schema, projection, scope and registration.
+const CURRENT_TOOL_COVERAGE: Record<string, CoverageEntry> = {
+  orgx_public_capabilities: { tier: 'public_discovery', evidence: ['tests/publicMcpDiscovery.spec.ts'], remaining: 'Public discovery describes capabilities; it does not verify authenticated tool execution.' },
+  orgx_public_tool_examples: { tier: 'public_discovery', evidence: ['tests/publicMcpDiscovery.spec.ts'], remaining: 'Synthetic examples are not evidence of real work or authorization.' },
+  orgx_public_connection_help: { tier: 'public_discovery', evidence: ['tests/publicMcpDiscovery.spec.ts'], remaining: 'Local discovery tests do not establish a real installed-client connection.' },
+
+  orgx_get_workspace_context: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/mcpWorker.bootstrapWorkspaceAccess.spec.ts'], LIVE_READ_GAP),
+  orgx_search: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/orgxSearch.spec.ts'], LIVE_READ_GAP),
+  orgx_inspect: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/contractTools.spec.ts'], LIVE_READ_GAP),
+  orgx_get_operator_brief: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/reporting.mcp-tools.spec.ts'], LIVE_READ_GAP),
+  orgx_get_next_actions: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_READ_GAP),
+  orgx_get_agent_status: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/agentStatusPayload.spec.ts'], LIVE_READ_GAP),
+  orgx_get_initiative_progress: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/initiativeWidgetPayload.spec.ts'], LIVE_READ_GAP),
+  orgx_get_operation_status: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/decisionToolsContract.spec.ts'], LIVE_READ_GAP),
+  orgx_check_execution_readiness: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/liveToolAudit.spec.ts'], LIVE_READ_GAP),
+  orgx_start_plan: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/planSessionContract.spec.ts'], LIVE_WRITE_GAP),
+  orgx_read_plan: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/planSessionContract.spec.ts'], LIVE_READ_GAP),
+  orgx_save_plan: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/planSessionOutputCompatibility.spec.ts'], LIVE_WRITE_GAP),
+  orgx_complete_plan: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_validate_initiative_plan: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_READ_GAP),
+  orgx_create_initiative_hierarchy: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/scaffoldWorkflowParity.spec.ts'], LIVE_WRITE_GAP),
+  orgx_create_initiative: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_create_workstream: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_create_milestone: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_create_task: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/operationRegistration.spec.ts'], LIVE_WRITE_GAP),
+  orgx_update_work: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_estimate_agent_task: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/agentSpawnBudgetControls.spec.ts'], LIVE_READ_GAP),
+  orgx_start_agent_task: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_EXECUTION_GAP),
+  orgx_handoff_task: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_EXECUTION_GAP),
+  orgx_launch_initiative: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_EXECUTION_GAP),
+  orgx_pause_work: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/mcpLifecycleActionAliases.spec.ts'], LIVE_WRITE_GAP),
+  orgx_resume_work: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/mcpLifecycleActionAliases.spec.ts'], LIVE_EXECUTION_GAP),
+  orgx_retry_work: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/mcpLifecycleActionAliases.spec.ts'], LIVE_EXECUTION_GAP),
+  orgx_cancel_work: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/mcpLifecycleActionAliases.spec.ts'], LIVE_WRITE_GAP),
+  orgx_capture_decision: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/decisionToolsContract.spec.ts'], LIVE_WRITE_GAP),
+  orgx_list_pending_decisions: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/decisionToolsContract.spec.ts'], LIVE_READ_GAP),
+  orgx_open_decision_review: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_REVIEW_GAP),
+  orgx_attach_artifact: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/artifactContracts.spec.ts'], LIVE_WRITE_GAP),
+  orgx_open_artifact_review: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/artifactReviewActions.spec.ts'], LIVE_REVIEW_GAP),
+  orgx_request_independent_artifact_review: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_EXECUTION_GAP),
+  orgx_complete_work_with_proof: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/operationRegistration.spec.ts'], LIVE_WRITE_GAP),
+
+  orgx_create_and_launch_initiative_hierarchy: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_EXECUTION_GAP),
+  orgx_request_plan_critique: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_EXECUTION_GAP),
+  orgx_record_plan_edit: localCoverage([...WORKFLOW_CONTRACT_EVIDENCE, 'tests/planSessionContract.spec.ts'], LIVE_WRITE_GAP),
+  orgx_check_agent_delegation: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_READ_GAP),
+  orgx_classify_agent_task: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_READ_GAP),
+  orgx_create_and_start_agent_task: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_EXECUTION_GAP),
+  orgx_create_decision: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_open_decision_approval_review: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_REVIEW_GAP),
+  orgx_open_decision_rejection_review: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_REVIEW_GAP),
+  orgx_start_work: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_complete_entity: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_archive_work: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_block_work: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_unblock_work: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_reopen_work: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_flag_risk_work: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_activate_work: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_reassign_streams_work: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_ship_batch_work: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_delete_work: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_WRITE_GAP),
+  orgx_validate_studio_content: localCoverage(WORKFLOW_CONTRACT_EVIDENCE, LIVE_READ_GAP),
+
+  orgx_change_entity_state: localCoverage(['tests/claudeDirectoryWorkflow.spec.ts'], LIVE_WRITE_GAP),
+  orgx_check_delegation: localCoverage(['tests/claudeDirectoryWorkflow.spec.ts'], LIVE_READ_GAP),
+  orgx_complete_with_proof: localCoverage(['tests/claudeDirectoryWorkflow.spec.ts'], LIVE_WRITE_GAP),
+  orgx_create_entity: localCoverage(['tests/claudeDirectoryWorkflow.spec.ts'], LIVE_WRITE_GAP),
+  orgx_delegate_work: localCoverage(['tests/claudeDirectoryWorkflow.spec.ts'], LIVE_EXECUTION_GAP),
+  orgx_improve_plan: localCoverage(['tests/claudeDirectoryWorkflow.spec.ts'], LIVE_EXECUTION_GAP),
+  orgx_record_decision: localCoverage(['tests/claudeDirectoryWorkflow.spec.ts'], LIVE_WRITE_GAP),
+  orgx_update_entity: localCoverage(['tests/claudeDirectoryWorkflow.spec.ts'], LIVE_WRITE_GAP),
+
+  orgx_submit_work_receipt: localCoverage(['tests/receiptOperationTools.spec.ts'], LIVE_WRITE_GAP),
+  orgx_validate_work_receipt: localCoverage(['tests/receiptOperationTools.spec.ts'], LIVE_READ_GAP),
+  orgx_get_work_receipt: localCoverage(['tests/receiptOperationTools.spec.ts'], LIVE_READ_GAP),
+  orgx_list_work_receipts: localCoverage(['tests/receiptOperationTools.spec.ts'], LIVE_READ_GAP),
+  orgx_get_receipt_review_queue: localCoverage(['tests/receiptOperationTools.spec.ts'], LIVE_READ_GAP),
+
+  orgx_widget_receipt_call: localCoverage(['tests/panelReceipts.spec.ts'], LIVE_REVIEW_GAP),
+  orgx_widget_select_workspace: localCoverage(['tests/widgetToolNegotiation.spec.ts', 'tests/panelExtensionCompatibility.spec.ts'], LIVE_REVIEW_GAP),
+  orgx_widget_approve_artifact: localCoverage(['tests/artifactReviewActions.spec.ts', 'tests/widgetApprovalMeta.spec.ts'], LIVE_REVIEW_GAP),
+  orgx_widget_request_artifact_changes: localCoverage(['tests/artifactReviewActions.spec.ts', 'tests/widgetApprovalMeta.spec.ts'], LIVE_REVIEW_GAP),
+};
+
+const TOOL_COVERAGE = { ...LEGACY_TOOL_COVERAGE, ...CURRENT_TOOL_COVERAGE };
+
 const REQUIRED_GTM_ARTIFACT_TYPES = [
   'sales.strategy',
   'sales.icp_offer_sequence',
@@ -611,7 +724,7 @@ function collectInlineRegisteredToolIds(): Set<string> {
   return ids;
 }
 
-function collectAllToolIds(): string[] {
+async function collectAllToolIds(): Promise<string[]> {
   const ids = new Set<string>();
   const sources = [
     CHATGPT_TOOL_DEFINITIONS,
@@ -620,6 +733,11 @@ function collectAllToolIds(): string[] {
     CLIENT_INTEGRATION_TOOL_DEFINITIONS,
     CONTRACT_TOOL_DEFINITIONS,
     FLYWHEEL_TOOL_DEFINITIONS,
+    CLAUDE_DIRECTORY_TOOL_ADAPTERS,
+    WORKFLOW_TOOL_ADAPTERS,
+    EXTENDED_WORKFLOW_TOOL_ADAPTERS,
+    RECEIPT_OPERATION_TOOLS,
+    WIDGET_OPERATION_TOOLS,
   ] as ReadonlyArray<ReadonlyArray<{ id?: string }>>;
   for (const source of sources) {
     for (const tool of source) {
@@ -627,23 +745,51 @@ function collectAllToolIds(): string[] {
     }
   }
   for (const id of collectInlineRegisteredToolIds()) ids.add(id);
+  for (const id of WIDGET_ONLY_TOOL_IDS) ids.add(id);
+  for (const profile of Object.values(TOOL_PROFILES)) {
+    for (const id of profile.tools ?? []) ids.add(id);
+  }
+  const publicResponse = await handlePublicMcpDiscoveryRequest(new Request('https://mcp.useorgx.com/public'));
+  const publicDiscovery = await publicResponse.json() as { public_tools: Array<{ name: string }> };
+  for (const tool of publicDiscovery.public_tools) ids.add(tool.name);
   // Registered from src/panelSurface.ts (one call in index.ts).
   ids.add(PANEL_TOOL_ID);
   return [...ids].sort();
 }
 
-describe('MCP tool coverage matrix', () => {
-  it('classifies every registered tool with evidence and explicit remaining work', () => {
-    const allToolIds = collectAllToolIds();
+describe('current MCP inventory with local and historical verification evidence', () => {
+  it('classifies every operation, compatibility registration, widget callback and public discovery tool', async () => {
+    const allToolIds = await collectAllToolIds();
     const matrixIds = Object.keys(TOOL_COVERAGE).sort();
 
     expect(matrixIds).toEqual(allToolIds);
 
     for (const [toolId, coverage] of Object.entries(TOOL_COVERAGE)) {
       expect(coverage.evidence, `${toolId} must cite test/live evidence`).not.toEqual([]);
+      for (const evidence of coverage.evidence.filter((entry) => entry.startsWith('tests/'))) {
+        const testFile = evidence.split(/[\s#]/, 1)[0]!;
+        const testPath = resolvePath(dirname(fileURLToPath(import.meta.url)), '..', testFile);
+        expect(existsSync(testPath), `${toolId} cites missing evidence ${evidence}`).toBe(true);
+      }
       if (coverage.tier === 'schema_only_needs_live_auth') {
         expect(coverage.remaining, `${toolId} needs an explicit live-auth gap`).toBeTruthy();
       }
+    }
+  });
+
+  it('keeps the current operation surface explicit and never promotes local tests into live verification', () => {
+    const currentIds = [
+      ...WORKFLOW_TOOL_ADAPTERS,
+      ...EXTENDED_WORKFLOW_TOOL_ADAPTERS,
+      ...CLAUDE_DIRECTORY_TOOL_ADAPTERS,
+      ...RECEIPT_OPERATION_TOOLS,
+      ...WIDGET_OPERATION_TOOLS,
+    ].map((tool) => tool.id);
+    for (const toolId of currentIds) {
+      const coverage = CURRENT_TOOL_COVERAGE[toolId];
+      expect(coverage, `${toolId} needs an explicit current coverage entry`).toBeDefined();
+      expect(coverage?.tier, `${toolId} has no current live receipt here`).toBe('contract_and_unit');
+      expect(coverage?.remaining, `${toolId} must disclose its live boundary`).toBeTruthy();
     }
   });
 

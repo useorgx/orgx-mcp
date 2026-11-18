@@ -1,5 +1,6 @@
 import { summarizeValidationIssues, type ValidationTelemetrySummary } from './mcpValidationTelemetry';
 import { readToolPerformance } from './toolPerformance';
+import { workerTimingPerformance } from './workerRequestTiming';
 import {
   MCP_COMPATIBILITY_RETIREMENT_POLICY,
   resolveDeprecatedToolCall,
@@ -83,6 +84,7 @@ type McpToolCallTelemetry = {
 type McpJourneyTimings = {
   requestStartedAt: number;
   authMs: number;
+  sessionContractMs: number;
   normalizationMs: number;
   handlerMs: number;
   responseHeadersMs: number;
@@ -584,7 +586,8 @@ async function observeMcpResponse(
       const remainingMs = responseReadDeadline - Date.now();
       if (remainingMs <= 0) {
         responseReadError = true;
-        await reader.cancel('telemetry response observation timed out');
+        // Cancelling a tee waits for the client's branch; telemetry must finish independently.
+        void reader.cancel('telemetry response observation timed out').catch(() => undefined);
         break;
       }
       let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
@@ -598,7 +601,7 @@ async function observeMcpResponse(
       });
       if (read === null) {
         responseReadError = true;
-        await reader.cancel('telemetry response observation timed out');
+        void reader.cancel('telemetry response observation timed out').catch(() => undefined);
         break;
       }
       const { done, value } = read;
@@ -786,6 +789,7 @@ async function captureMcpToolCallVisibility<Env>(
     http_status: response.status,
     journey_phase: 'complete',
     auth_ms: journey.authMs,
+    session_contract_ms: journey.sessionContractMs,
     session_ms: knownServerTimings.get('session'),
     request_normalization_ms: journey.normalizationMs,
     handler_ms: journey.handlerMs,
@@ -796,6 +800,8 @@ async function captureMcpToolCallVisibility<Env>(
       knownServerTimings.get('response_build'),
     first_response_byte_ms: observation.firstByteMs,
     full_response_ms: observation.fullResponseMs,
+    ...workerTimingPerformance(journey.requestStartedAt, journey.responseHeadersMs,
+      observation.fullResponseMs, observation.firstByteMs),
     response_size_bytes: observation.responseBytes,
     response_size_source: observation.responseSizeSource,
     response_read_error: observation.responseReadError,
@@ -1037,7 +1043,7 @@ export async function handleMcpRequest<Env, Props>(
       const rejected = await normalizeRequestBody(request, connectionProfile, undefined, false);
       const rejectedCtx = { ...ctx, props: { ...asRecord(ctx.props), userId: auth.userId, ...(request.headers.get('dnt') === '1' || auth.telemetryOptOut ? { telemetryOptOut: true } : {}), operationContractVersion: 'unknown' } };
       ctx.waitUntil?.(captureMcpToolCallsVisibility(env, rejectedCtx as ExecutionContextWithProps<unknown>, auth,
-        rejected.toolCalls ?? [], auth.response, { requestStartedAt, authMs, normalizationMs: 0, handlerMs: 0,
+        rejected.toolCalls ?? [], auth.response, { requestStartedAt, authMs, sessionContractMs: 0, normalizationMs: 0, handlerMs: 0,
           responseHeadersMs: Math.max(0, Date.now() - requestStartedAt), profile: connectionProfile,
           sessionPresent: Boolean(request.headers.get('mcp-session-id') || new URL(request.url).searchParams.get('sessionId')) },
         rejected.isBatch ?? false, 'authentication_required',
@@ -1059,6 +1065,7 @@ export async function handleMcpRequest<Env, Props>(
   if (orgxUserId) nextProps.orgxUserId = orgxUserId;
   else delete nextProps.orgxUserId;
   // Reject stale sessions before dispatch; fresh sessions import the current catalog.
+  const sessionContractStartedAt = Date.now();
   try {
     const binding = await resolveRequestSessionToolContract(request, env as { MCP_OBJECT?: unknown }, nextProps);
     if (binding) {
@@ -1067,6 +1074,7 @@ export async function handleMcpRequest<Env, Props>(
       nextProps.operationContractVersion = binding.contract_version;
     }
   } catch (error) {
+    const sessionContractMs = Math.max(0, Date.now() - sessionContractStartedAt);
     const identityConflict = error instanceof Error && error.name === 'McpSessionIdentityConflictError';
     const response = Response.json({
       jsonrpc: '2.0', id: null,
@@ -1077,12 +1085,14 @@ export async function handleMcpRequest<Env, Props>(
     const rejected = await normalizeRequestBody(request, connectionProfile, undefined, false);
     const rejectedCtx = { ...ctx, props: { ...nextProps, operationContractVersion: 'unknown' } };
     ctx.waitUntil?.(captureMcpToolCallsVisibility(env, rejectedCtx as ExecutionContextWithProps<unknown>, auth,
-      rejected.toolCalls ?? [], response, { requestStartedAt, authMs, normalizationMs: 0, handlerMs: 0,
+      rejected.toolCalls ?? [], response, { requestStartedAt, authMs,
+        sessionContractMs, normalizationMs: 0, handlerMs: 0,
         responseHeadersMs: Math.max(0, Date.now() - requestStartedAt), profile: connectionProfile,
         sessionPresent: true }, rejected.isBatch ?? false, identityConflict ? 'permission_denied' : 'invalid_request',
       request.headers.get('mcp-session-id') || new URL(request.url).searchParams.get('sessionId')));
     return withCors(response, request);
   }
+  const sessionContractMs = Math.max(0, Date.now() - sessionContractStartedAt);
   (ctx as ExecutionContextWithProps<Props>).props = nextProps as unknown as Props;
 
   // Normalize tool names in the request body (strips server prefixes like "Orgx:")
@@ -1096,7 +1106,9 @@ export async function handleMcpRequest<Env, Props>(
   const startedAt = Date.now();
   let response: Response;
   try {
-    response = await handler.fetch(normalizedRequest, env, ctx);
+    response = withCorsAndHeaders(await handler.fetch(normalizedRequest, env, ctx), {
+      'Server-Timing': `mcp_session_contract;dur=${sessionContractMs}`,
+    }, normalizedRequest);
   } catch (error) {
     const handlerMs = Math.max(0, Date.now() - startedAt);
     ctx.waitUntil?.(captureMcpToolCallsVisibility(
@@ -1108,6 +1120,7 @@ export async function handleMcpRequest<Env, Props>(
       {
         requestStartedAt,
         authMs,
+        sessionContractMs,
         normalizationMs,
         handlerMs,
         responseHeadersMs: Math.max(0, Date.now() - requestStartedAt),
@@ -1144,6 +1157,7 @@ export async function handleMcpRequest<Env, Props>(
     {
       requestStartedAt,
       authMs,
+      sessionContractMs,
       normalizationMs,
       handlerMs,
       responseHeadersMs: Math.max(0, Date.now() - requestStartedAt),

@@ -9,6 +9,15 @@ import { CLAUDE_DIRECTORY_SURFACE } from '../src/toolProfiles';
 import { installToolResultGuidanceWrapper } from '../src/toolResultRegistration';
 
 describe('tool result guidance', () => {
+  it.each(['orgx_recommend', 'recommend_next_action'])('preserves capability opt-in when %s guidance reaches the named operation', (tool) => {
+    expect(canonicalizeToolCallGuidance({ tool, args: {
+      workspace_id: '11111111-1111-4111-8111-111111111111', include_capability_suggestions: true,
+    } }, new Set(['orgx_get_next_actions']))).toEqual({
+      tool: 'orgx_get_next_actions', args: {
+        workspace_id: '11111111-1111-4111-8111-111111111111', include_capability_suggestions: true,
+      },
+    });
+  });
   it('keeps template breadcrumbs that declare required_inputs and still validates the args they carry', () => {
     const template = { tool: 'orgx_create_task', args: { idempotency_key: 'mcp:create_task:1' }, required_inputs: ['title', 'workstream_id'] };
     expect(canonicalizeToolCallGuidance(template, null, 'v2')).toEqual(template);

@@ -81,6 +81,10 @@ runs:
       shell: bash
       run: pnpm exec vitest run --testTimeout=30000 --hookTimeout=30000
 
+    - name: Verify Work Ledger widget navigation
+      shell: bash
+      run: node scripts/verify-work-ledger-links.mjs
+
     - name: Verify upstream API is reachable without redirects
       shell: bash
       run: |

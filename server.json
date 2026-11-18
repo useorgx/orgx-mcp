@@ -320,7 +320,7 @@
             "type": "integer",
             "minimum": 1000,
             "maximum": 50000,
-            "description": "Approximate maximum hydrated context characters"
+            "description": "Accepted for compatibility; does not limit canonical context packs. Set hydrate_context=false to omit hydrated context."
           },
           "session_id": {
             "type": "string",
@@ -471,7 +471,7 @@
     {
       "name": "orgx_get_next_actions",
       "title": "Get OrgX Next Actions",
-      "description": "Read actionable priorities and blockers for the selected work scope. The compatibility implementation records metered MCP allowance usage without changing work records.",
+      "description": "Read actionable priorities and blockers for the selected work scope. Model-generated capability suggestions are skipped by default; set include_capability_suggestions=true for the deeper assessment, which may take longer. The compatibility implementation records metered MCP allowance usage without changing work records.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -503,6 +503,11 @@
             "minimum": 1,
             "maximum": 20,
             "description": "Maximum recommendations"
+          },
+          "include_capability_suggestions": {
+            "type": "boolean",
+            "default": false,
+            "description": "Opt in to the slower model-generated capability assessment for next_action mode. Default false returns current priorities with capability assessment marked not_requested."
           },
           "session_id": {
             "type": "string",

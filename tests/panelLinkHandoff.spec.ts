@@ -23,7 +23,7 @@ describe('panel links while the SDK handshake is pending', () => {
     const button = document.querySelector('button[data-action="open"]') as HTMLButtonElement;
     expect(button).not.toBeNull();
     button.click();
-    expect(openExternal).toHaveBeenCalledExactlyOnceWith({ url: snapshot().focus.url });
+    expect(openExternal).toHaveBeenCalledExactlyOnceWith({ href: snapshot().focus.url });
     expect(mounted.calls.openLink).not.toHaveBeenCalled();
   });
 });

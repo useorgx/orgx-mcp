@@ -209,18 +209,18 @@ describe('proof receipt widget', () => {
     expect(footer.getAttribute('detail')).toBe('On the task');
     footer.dispatchEvent(new CustomEvent('ox-action', { bubbles: true, composed: true }));
     expect(openExternal).toHaveBeenCalledWith({
-      url: `https://useorgx.com/tasks/${TASK_ID}`,
+      href: `https://useorgx.com/tasks/${TASK_ID}`,
     });
     const pr = document.querySelector('ox-receipt-row[href]')!;
     pr.dispatchEvent(new CustomEvent('ox-open', { bubbles: true, composed: true, cancelable: true, detail: { href: pr.getAttribute('href') } }));
-    expect(openExternal).toHaveBeenLastCalledWith({ url: 'https://github.com/acme/checkout/pull/2291' });
+    expect(openExternal).toHaveBeenLastCalledWith({ href: 'https://github.com/acme/checkout/pull/2291' });
   });
 
   it('opens an unanchored receipt on its own page, not the ledger overview', async () => {
     const { openExternal } = await mount(payload({ external_receipt_id: 'awr_01JABCDEF', workspace_id: '11111111-1111-4111-8111-111111111111' }, { anchor: {} }));
     document.querySelector('ox-footer')!.dispatchEvent(new CustomEvent('ox-action', { bubbles: true, composed: true }));
     expect(openExternal).toHaveBeenCalledWith({
-      url: 'https://useorgx.com/work-ledger/receipts/awr_01JABCDEF?center=11111111-1111-4111-8111-111111111111',
+      href: 'https://useorgx.com/work-ledger/receipts/awr_01JABCDEF?center=11111111-1111-4111-8111-111111111111',
     });
   });
 

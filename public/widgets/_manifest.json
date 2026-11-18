@@ -560,8 +560,8 @@
     },
     "work-ledger": {
       "file": "public/widgets/work-ledger.html",
-      "bytes": 50182,
-      "hash": "d6172312799c",
+      "bytes": 51084,
+      "hash": "10882cef62b5",
       "primaryRgb": "0,201,167",
       "sharedRefs": [
         "shared/interaction-kit.css",
