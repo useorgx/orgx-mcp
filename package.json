@@ -81,7 +81,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260702.1",
-    "@sentry/cli": "3.6.0",
+    "@sentry/cli": "3.8.2",
     "@types/node": "22.18.6",
     "js-yaml": "4.3.2",
     "jsdom": "^31.0.0",
