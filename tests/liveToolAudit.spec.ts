@@ -5,6 +5,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { normalizeAgentStatusPayload } from '../src/agentStatusPayload';
 import { buildMorningBriefValueDashboard } from '../src/morningBriefValue';
 import { installToolResultGuidanceWrapper } from '../src/toolResultRegistration';
+import { projectExecutionReadiness } from '../src/executionReadinessOutput';
 
 describe('2026-09-21 live tool regressions', () => {
   it('accepts backend morning brief fields through SDK output validation', async () => {
@@ -53,43 +54,48 @@ describe('2026-09-21 live tool regressions', () => {
     }
   });
 
-  it('accepts a healthy subscription account with a null readiness reason', async () => {
-    const provider = { configured: false, available: false, source: null, key_hint: null, updated_at: null };
-    const payload = {
-      has_credentials: false, has_execution_credentials: true,
-      has_subscription_accounts: true, can_execute: true,
-      providers: { openai: provider, anthropic: provider, gemini: provider, cursor: provider },
-      subscription_execution: {
-        has_subscription_accounts: true, has_executable_subscription: true,
-        has_interactive_route: true, has_cloud_route: false,
-        accounts: [{ provider: 'openai', status: 'connected', reason: null }],
-      },
-      capabilities: {
-        api_sdk: false, e2b_container: false, subscription_runner: true,
-        codex_cloud: false, claude_max_runner: false, image_generation: false,
-        cursor_background_agents: false,
-      },
-      setup_url: 'https://useorgx.com/settings',
-    };
-    const server = new McpServer({ name: 'readiness-audit', version: '1' });
-    installToolResultGuidanceWrapper(server, null);
-    server.registerTool('check_execution_readiness', { inputSchema: {} }, async () => ({
-      content: [{ type: 'text' as const, text: 'Execution ready' }],
-      structuredContent: payload,
-    }));
-    const client = new Client({ name: 'audit', version: '1' });
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-    await server.connect(serverTransport);
-    await client.connect(clientTransport);
-    try {
-      const result = await client.callTool({ name: 'check_execution_readiness', arguments: {} });
-      expect(result.isError).not.toBe(true);
-      expect(result.structuredContent).toEqual(payload);
-    } finally {
-      await client.close();
-      await server.close();
+  it.each(['orgx_check_execution_readiness', 'check_execution_readiness'])(
+    'returns configuration-only E2B evidence through the advertised %s contract', async (name) => {
+      const provider = { configured: false, available: false, source: null, key_hint: null, updated_at: null };
+      const payload = {
+        has_credentials: false, has_execution_credentials: true,
+        has_subscription_accounts: true, can_execute: true,
+        e2b_configuration: { configured: false, reason: 'e2b_key_missing', scope: 'service_configuration', execution_verified: false },
+        providers: { openai: provider, anthropic: provider, gemini: provider, cursor: provider },
+        subscription_execution: {
+          has_subscription_accounts: true, has_executable_subscription: true,
+          has_interactive_route: true, has_cloud_route: false,
+          accounts: [{ provider: 'openai', status: 'connected', reason: null }],
+        },
+        capabilities: {
+          api_sdk: false, e2b_container: false, subscription_runner: true,
+          codex_cloud: false, claude_max_runner: false, image_generation: false,
+          cursor_background_agents: false,
+        },
+        setup_url: 'https://useorgx.com/settings',
+      };
+      const server = new McpServer({ name: 'readiness-audit', version: '1' });
+      installToolResultGuidanceWrapper(server, null);
+      server.registerTool(name, { inputSchema: {} }, async () => ({
+        content: [{ type: 'text' as const, text: 'Execution configuration' }],
+        structuredContent: projectExecutionReadiness({ ...payload, future_internal_diagnostic: 'private' }),
+      }));
+      const client = new Client({ name: 'audit', version: '1' });
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+      await server.connect(serverTransport);
+      await client.connect(clientTransport);
+      try {
+        const listing = await client.listTools();
+        expect(listing.tools[0].outputSchema?.properties).toHaveProperty('e2b_configuration');
+        const result = await client.callTool({ name, arguments: {} });
+        expect(result.isError).not.toBe(true);
+        expect(result.structuredContent).toEqual(payload);
+      } finally {
+        await client.close();
+        await server.close();
+      }
     }
-  });
+  );
 
   it('reconciles narrative, stalled list, workload, and bounded evidence', () => {
     const result = normalizeAgentStatusPayload({

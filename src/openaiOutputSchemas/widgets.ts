@@ -976,6 +976,12 @@ export const WIDGET_OUTPUT_SCHEMAS = {
       missing: z.array(z.string()).optional(),
       unverified: z.array(z.string()).optional(),
       readiness_scope: z.literal('configuration_only').optional(),
+      e2b_configuration: z.object({
+        configured: z.boolean(),
+        reason: nullableString,
+        scope: z.literal('service_configuration'),
+        execution_verified: z.literal(false),
+      }).optional(),
       execution_readiness: z.object({
         schema: z.literal('orgx.execution-readiness.v1'),
         scope: z.object({ ownerId: z.string(), workspaceId: z.string().nullable() }),

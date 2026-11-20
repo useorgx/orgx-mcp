@@ -50,6 +50,14 @@ describe('orgx_check_execution_readiness execution targets', () => {
     expect(schema.safeParse(readiness).success).toBe(true);
   });
 
+  it('keeps a configured sandbox distinct from verified execution', () => {
+    const configured = { configured: true, scope: 'service_configuration', execution_verified: false, reason: null };
+    expect(schema.parse({ ...readiness, e2b_configuration: configured }).e2b_configuration).toEqual(configured);
+    expect(schema.safeParse({
+      ...readiness, e2b_configuration: { ...configured, execution_verified: true },
+    }).success).toBe(false);
+  });
+
   it('passes through targets and fields OrgX adds later, without an MCP change', () => {
     const parsed = schema.safeParse({
       ...readiness,

@@ -1,4 +1,5 @@
 import { projectChronicleOverview } from './reportOverview';
+import { projectExecutionReadiness } from './executionReadinessOutput';
 import { LegacyBatchCapabilityCache, runCompatibleLegacyBatch } from './legacyBatchCutover';
 import { artifactProofScope } from './artifactProofScope';
 import { parseSearchDateRange, type SearchDateRange } from './searchDateRange';
@@ -4981,9 +4982,12 @@ export class OrgXMcp extends McpAgent<
                 latencyMs,
               });
 
-              const data =
+              const apiData =
                 (result.data as Record<string, unknown> | undefined) ??
                 (result as unknown as Record<string, unknown>);
+              const data = tool.id === 'check_execution_readiness'
+                ? projectExecutionReadiness(apiData)
+                : apiData;
               const enrichedData =
                 tool.id === 'classify_task_model'
                   ? {
