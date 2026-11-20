@@ -35,12 +35,139 @@ describe('entity card for orgx_inspect', () => {
     );
   });
 
-  it('maps status to the same four verdicts as the app ProofRecord', () => {
-    expect(proofVerdictForStatus('completed')).toBe('accepted');
+  it('uses lifecycle to signal review and attention while leaving acceptance unverified', () => {
+    expect(proofVerdictForStatus('completed')).toBe('open');
     expect(proofVerdictForStatus('in_review')).toBe('verifying');
     expect(proofVerdictForStatus('blocked')).toBe('needs-you');
     expect(proofVerdictForStatus('active')).toBe('open');
     expect(proofVerdictForStatus(null)).toBe('open');
+  });
+
+  it.each(['complete', 'completed', 'done', 'shipped', 'published', 'approved', 'accepted'])(
+    'keeps lifecycle %s and four defined checks separate from accepted proof',
+    (status) => {
+      const card = buildEntityCard({
+        type: 'task',
+        id: 'task-1',
+        entity: { title: 'Release', status },
+        contextPack: { frame: { definitionOfDone: { checks: ['lint', 'types', 'tests', 'review'] } } },
+      });
+      expect(card.status).toBe(status);
+      expect(card.proof).toMatchObject({
+        verdict: 'open',
+        rows: expect.arrayContaining([{ label: 'Checklist items', value: '4', kind: 'check' }]),
+      });
+    }
+  );
+
+  it('records a human review without turning an unversioned artifact approval into accepted proof', () => {
+    const card = buildEntityCard({
+      type: 'artifact',
+      id: 'art-1',
+      entity: {
+        title: 'Release report',
+        status: 'approved',
+        version: 2,
+        verification: {
+          human_review: {
+            status: 'approved',
+            reviewed_at: '2026-05-13T10:00:00Z',
+            reviewed_by: 'founder',
+            reviewer_kind: 'human',
+            auto_approved: false,
+          },
+        },
+      },
+    });
+    expect(card.status).toBe('approved');
+    expect(card.proof?.verdict).toBe('open');
+    expect(card.proof?.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: expect.stringMatching(/review/i),
+          value: expect.stringMatching(/approved/i),
+        }),
+      ])
+    );
+  });
+
+  it('does not call an automated approval a recorded human review', () => {
+    const card = buildEntityCard({
+      type: 'artifact',
+      id: 'art-1',
+      entity: {
+        status: 'approved',
+        verification: {
+          human_review: {
+            status: 'approved',
+            reviewed_at: '2026-05-13T10:00:00Z',
+            reviewed_by: 'worker',
+            reviewer_kind: 'agent',
+            auto_approved: true,
+          },
+        },
+      },
+    });
+    expect(card.proof?.verdict).toBe('open');
+    expect(card.proof?.rows.some((row) => row.label === 'Recorded review')).toBe(false);
+  });
+
+  it('treats a passing evaluation and producer acceptance claims as unverified', () => {
+    const card = buildEntityCard({
+      type: 'artifact',
+      id: 'art-1',
+      entity: {
+        status: 'approved',
+        version: 2,
+        verification: { eval: { status: 'passed', score: 1, threshold: 0.8 } },
+        metadata: { reviewContract: { ruling: { state: 'accepted' } }, acceptance_status: 'accepted' },
+      },
+      contextPack: { decisions: [{ disposition: 'accepted', title: 'Sibling decision' }] },
+    });
+    expect(card.proof?.verdict).toBe('open');
+    expect(card.proof?.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'Evaluation', value: expect.stringMatching(/passed/i) }),
+      ])
+    );
+  });
+
+  it.each(['active', 'in_review', 'done'])('keeps open blockers visible at lifecycle %s', (status) => {
+    const card = buildEntityCard({
+      type: 'task',
+      id: 'task-1',
+      entity: { status },
+      contextPack: { blockers: [{ title: 'Scope decision needed' }] },
+    });
+    expect(card.proof).toMatchObject({
+      verdict: 'needs-you',
+      rows: expect.arrayContaining([{ label: 'Open blockers', value: '1', kind: 'neutral' }]),
+    });
+  });
+
+  it('marks a subthreshold evaluation as failed and retains the separate open blocker', () => {
+    const card = buildEntityCard({
+      type: 'task',
+      id: 'task-1',
+      entity: {
+        status: 'active',
+        verification: { eval: { status: 'passed', score: 0.4, threshold: 0.8 } },
+      },
+      contextPack: { blockers: [{ title: 'Waiting on QA' }] },
+    });
+    expect(card.proof).toMatchObject({
+      verdict: 'needs-you',
+      rows: expect.arrayContaining([
+        { label: 'Open blockers', value: '1', kind: 'neutral' },
+        { label: 'Evaluation', value: 'Failed', kind: 'check' },
+      ]),
+    });
+  });
+
+  it.each(['task', 'objective', 'run'])('reports unverified acceptance for a completed %s with no attached ruling', (type) => {
+    const card = buildEntityCard({ type, id: 'entity-1', entity: { status: 'completed' } });
+    expect(card.status).toBe('completed');
+    expect(card.proof?.verdict).toBe('open');
   });
 
   it('builds facts, a proof record, and linked items from the context pack', () => {
@@ -74,8 +201,9 @@ describe('entity card for orgx_inspect', () => {
       rows: [
         { label: 'Decisions', value: '2', kind: 'decision' },
         { label: 'Artifacts', value: '1', kind: 'artifact' },
-        { label: 'Checks', value: '3', kind: 'check' },
+        { label: 'Checklist items', value: '3', kind: 'check' },
         { label: 'Open blockers', value: '1', kind: 'neutral' },
+        { label: 'Acceptance', value: 'Unverified', kind: 'neutral' },
       ],
     });
     expect(card.related.map((item) => item.title)).toEqual([
@@ -247,6 +375,91 @@ describe('entity card widget', () => {
     expect(text).toContain('Launch plan');
     expect(text).not.toContain('Nothing to show here');
     dom.window.close();
+  });
+
+  it.each([
+    { status: 'completed', blockers: [], proofLabel: 'Unverified', lifecycleState: 'succeeded' },
+    {
+      status: 'active',
+      blockers: [{ title: 'Waiting on QA' }],
+      proofLabel: 'Needs attention',
+      lifecycleState: 'running',
+    },
+  ])(
+    'renders lifecycle $status and a separate $proofLabel proof chip',
+    async ({ status, blockers, proofLabel, lifecycleState }) => {
+      const card = buildEntityCard({
+        type: 'task',
+        id: 'task-1',
+        entity: { title: 'Cut release', status },
+        contextPack: { blockers },
+      });
+      const dom = await bootEntityCard({ _v2_tool: 'orgx_inspect', type: 'task', id: 'task-1', card });
+      try {
+        const document = dom.window.document;
+        expect(document.querySelector('.ec-status')?.getAttribute('state')).toBe(lifecycleState);
+        const verdict = document.querySelector('.ec-verdict');
+        expect(verdict?.hasAttribute('hidden')).toBe(false);
+        expect(verdict?.getAttribute('label')).toBe(proofLabel);
+      } finally {
+        dom.window.close();
+      }
+    }
+  );
+
+  it('renders four defined checks as a count alongside unverified acceptance', async () => {
+    const card = buildEntityCard({
+      type: 'task',
+      id: 'task-1',
+      entity: { title: 'Release', status: 'done' },
+      contextPack: { frame: { definitionOfDone: { checks: ['lint', 'types', 'unit', 'smoke'] } } },
+    });
+    const dom = await bootEntityCard({ _v2_tool: 'orgx_inspect', type: 'task', id: 'task-1', card });
+    try {
+      const section = dom.window.document.querySelector('.ec-proof');
+      expect(section?.querySelector('.ec-counts [data-kind="check"]')?.textContent).toMatch(/4\s+checklist items/i);
+      expect(section?.querySelector('.ec-verdict')?.getAttribute('label')).toBe('Unverified');
+      expect(section?.querySelector('ox-receipt-row[status="met"]')).toBeNull();
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('shows an unverified chip for a persisted legacy card that inferred acceptance from completed work', async () => {
+    const card = {
+      type: 'task',
+      id: 'task-1',
+      title: 'Cut release',
+      status: 'done',
+      facts: [],
+      related: [],
+      proof: { verdict: 'accepted', rows: [{ label: 'Checks', value: '4', kind: 'check' }] },
+    };
+    const dom = await bootEntityCard({ _v2_tool: 'orgx_inspect', type: 'task', id: 'task-1', card });
+    try {
+      const section = dom.window.document.querySelector('.ec-proof');
+      const verdict = section?.querySelector('.ec-verdict');
+      expect(verdict?.getAttribute('label')).toBe('Unverified');
+      expect(verdict?.hasAttribute('hidden')).toBe(false);
+      expect(section?.querySelector('.ec-counts [data-kind="check"]')?.textContent).toMatch(/4\s+checklist items/i);
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('keeps a completed evaluation awaiting a result', async () => {
+    const card = buildEntityCard({
+      type: 'artifact', id: 'art-1', entity: { title: 'Release evidence', status: 'approved',
+        verification: { eval: { status: 'completed' } } },
+    });
+    const dom = await bootEntityCard({ _v2_tool: 'orgx_inspect', type: 'artifact', id: 'art-1', card });
+    try {
+      const row = dom.window.document.querySelector('ox-receipt-row[label="Evaluation"]');
+      expect(row?.getAttribute('value')?.toLowerCase()).toBe('completed');
+      expect(row?.getAttribute('status')).toMatch(/^(pending|unverified)$/);
+    } finally {
+      dom.window.close();
+    }
   });
 
   it('formats the Updated timestamp in the viewer zone and keeps due dates as calendar days', async () => {
