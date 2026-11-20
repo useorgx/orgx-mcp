@@ -4,6 +4,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ReportingSourceClient } from './cross-pollination';
 import { readSearchDelivery } from './searchResultDelivery';
 import type { SearchTelemetry } from './searchTelemetry';
+import { withReadInvocationBudget, ReadInvocationDeadlineError } from './readInvocationBudget';
+import { toolError } from './authHelpers';
 
 /**
  * Session Summary — best-effort session-end flush.
@@ -389,7 +391,7 @@ export function installSessionToolObservationWrapper(
       const startedAt = Date.now();
       let result: unknown;
       try {
-        result = handler(...args);
+        result = withReadInvocationBudget(name, config, args[args.length - 1], () => handler(...args));
       } catch (error) {
         report(name, args, startedAt, 'error', 'handler_threw');
         throw error;
@@ -417,6 +419,11 @@ export function installSessionToolObservationWrapper(
         },
         (error) => {
           report(name, args, startedAt, 'error', 'handler_threw');
+          if (error instanceof ReadInvocationDeadlineError) return attachDiagnosticReferences(toolError(error.message, {
+            code: error.kind === 'timeout' ? 'upstream_timeout' : 'request_cancelled',
+            status: error.kind === 'timeout' ? 504 : 499,
+            details: { retryable: error.kind === 'timeout' },
+          }), Math.max(0, Date.now() - startedAt));
           throw error;
         }
       );
