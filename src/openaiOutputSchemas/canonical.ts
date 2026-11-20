@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { recommendationContextCall } from '../recommendationContext';
 
 import {
   approvalListProofSchema,
@@ -246,6 +247,7 @@ export const CANONICAL_OUTPUT_SCHEMAS = {
       canonical_projection: z.boolean().optional(),
       recommendations: z.array(recommendationSchema).optional(),
       next_action: recommendationSchema.nullable().optional(),
+      next_call: recommendationContextCall.nullable().optional(),
       active_streams: z.array(resourceSchema).optional(),
       capability_gap_detector: z
         .object({

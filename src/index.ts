@@ -1,5 +1,6 @@
 import { projectChronicleOverview } from './reportOverview';
 import { projectExecutionReadiness } from './executionReadinessOutput';
+import { inspectRecommendedWork } from './recommendationContext';
 import { LegacyBatchCapabilityCache, runCompatibleLegacyBatch } from './legacyBatchCutover';
 import { artifactProofScope } from './artifactProofScope';
 import { parseSearchDateRange, type SearchDateRange } from './searchDateRange';
@@ -3933,6 +3934,9 @@ export class OrgXMcp extends McpAgent<
         // Extract message if present, otherwise use imported summarizer
         const widgetApproval = splitWidgetApprovalMeta(result.data ?? {});
         let data: Record<string, unknown> = widgetApproval.data;
+        if (resolvedToolId === 'recommend_next_action') {
+          data = { ...data, next_call: inspectRecommendedWork(data.next_action) };
+        }
         if (budgetPreflight) {
           data = {
             ...data,
