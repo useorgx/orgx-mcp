@@ -1,9 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import OAuthProvider, {
-  OAuthError,
-  type OAuthProviderOptions,
-  type TokenExchangeCallbackOptions,
-} from '@cloudflare/workers-oauth-provider';
+import { OAuthError, type TokenExchangeCallbackOptions } from '@cloudflare/workers-oauth-provider';
+import { MultiResourceOAuthProvider, type MultiResourceProviderOptions } from './oauthMultiResource';
 
 export const SMOKE_REGISTRATION_HEADER = 'x-orgx-smoke-registration';
 export const SMOKE_REGISTRATION_VERSION = '1';
@@ -111,9 +108,9 @@ async function cleanup(kv: KVNamespace, keys: Set<string>): Promise<boolean> {
 }
 
 export function createSmokeRegistrationProvider<Env extends { OAUTH_KV: KVNamespace }>(
-  options: OAuthProviderOptions<Env>
+  options: MultiResourceProviderOptions<Env>
 ) {
-  const exchange = async (input: TokenExchangeCallbackOptions) => {
+  const exchange = async (input: TokenExchangeCallbackOptions<Env>) => {
     // This canary checks registration only, using the CI's existing bearer for
     // other probes. Its fresh client must never mint user access/refresh tokens.
     if (scopes.getStore()?.clients.has(input.clientId)) throw new OAuthError('unauthorized_client', {
@@ -121,8 +118,8 @@ export function createSmokeRegistrationProvider<Env extends { OAUTH_KV: KVNamesp
     });
     return options.tokenExchangeCallback?.(input);
   };
-  const ordinary = new OAuthProvider<Env>({ ...options, tokenExchangeCallback: exchange });
-  const smoke = new OAuthProvider<Env>({
+  const ordinary = new MultiResourceOAuthProvider<Env>({ ...options, tokenExchangeCallback: exchange });
+  const smoke = new MultiResourceOAuthProvider<Env>({
     ...options, tokenExchangeCallback: exchange,
     clientRegistrationTTL: SMOKE_REGISTRATION_TTL_SECONDS,
     async clientRegistrationCallback(input) {

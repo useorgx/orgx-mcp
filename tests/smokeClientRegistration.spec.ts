@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getOAuthApi, type OAuthHelpers, type OAuthProviderOptions } from '@cloudflare/workers-oauth-provider';
+import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
+import { MultiResourceOAuthProvider, type MultiResourceProviderOptions } from '../src/oauthMultiResource';
 import {
   createSmokeRegistrationProvider,
   SMOKE_REGISTRATION_HEADER,
@@ -17,7 +18,7 @@ type Env = { OAUTH_KV: KVNamespace; OAUTH_PROVIDER?: OAuthHelpers };
 
 // Deliberately does NOT evict expired records. This models a stale KV cache,
 // making the worker's authentication deadline independently observable.
-function harness(overrides: Partial<OAuthProviderOptions<Env>> = {}) {
+function harness(overrides: Partial<MultiResourceProviderOptions<Env>> = {}) {
   const values = new Map<string, string>();
   const pending: Promise<unknown>[] = [];
   const get = vi.fn(async (key: string, options?: string | { type?: string }) => {
@@ -39,8 +40,8 @@ function harness(overrides: Partial<OAuthProviderOptions<Env>> = {}) {
   } as unknown as KVNamespace;
   const env: Env = { OAUTH_KV: raw };
   const ctx = { waitUntil: (promise: Promise<unknown>) => { pending.push(promise); } } as ExecutionContext;
-  const options: OAuthProviderOptions<Env> = {
-    apiRoute: '/mcp', apiHandler: { fetch: () => Response.json({ ok: true }) },
+  const options: MultiResourceProviderOptions<Env> = {
+    apiHandlers: { '/mcp': { fetch: () => Response.json({ ok: true }) } },
     authorizeEndpoint: '/authorize', tokenEndpoint: '/token', clientRegistrationEndpoint: '/register',
     accessTokenTTL: 3600, refreshTokenTTL: 30 * 24 * 3600,
     defaultHandler: { async fetch(request, scopedEnv) {
@@ -101,7 +102,7 @@ function harness(overrides: Partial<OAuthProviderOptions<Env>> = {}) {
     body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT, code_verifier: verifier }),
   });
   const installRawHelper = () => {
-    const helper = getOAuthApi(options, env);
+    const helper = new MultiResourceOAuthProvider<Env>(options).helpers(env, ORIGIN);
     env.OAUTH_PROVIDER = helper;
     return helper;
   };
