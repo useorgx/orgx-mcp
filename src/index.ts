@@ -8015,10 +8015,13 @@ export class OrgXMcp extends McpAgent<
     }, () => this.isDirectoryReviewProfile() ? Promise.resolve(null) : buildSearchDiagnosticsContext(this.env), this.isDirectoryReviewProfile(), this.props?.profile, this.usesLegacyDirectoryContracts());
   }
 
-  private async requestPublicOperation(path: string, init: { method?: string; body?: string; headers?: Record<string, string> } = {}, options: { allowFallback?: boolean } = {}): Promise<Record<string, unknown>> {
+  private async requestPublicOperation(path: string, init: RequestInit = {}, options: { allowFallback?: boolean } = {}): Promise<Record<string, unknown>> {
     const userId = this.resolveUserId();
     const response = await callOrgxApiJson(this.env, path, init, {
       userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(),
+      // Return a result or a typed failure before the host abandons the call.
+      // Writes retain their existing execution budget and retry policy.
+      ...(['GET', 'HEAD'].includes((init.method ?? 'GET').toUpperCase()) ? { timeoutMs: 10_000 } : {}),
       orgxUserId: this.resolveOrgxUserId(userId), ...options,
     });
     return await response.json() as Record<string, unknown>;
@@ -8060,6 +8063,7 @@ export class OrgXMcp extends McpAgent<
           const request = tool.backendRequest!(effective);
           return directResult(await this.requestPublicOperation(request.path, {
             method: request.method, ...(request.body ? { body: JSON.stringify(request.body) } : {}), ...(request.headers ? { headers: request.headers } : {}),
+            signal: (extra as { signal?: AbortSignal } | undefined)?.signal,
           }));
         }, tool.id, effective);
         const canonicalArgs = tool.toCanonicalArgs(effective);

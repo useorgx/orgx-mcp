@@ -373,6 +373,8 @@ export async function callOrgxApiRaw(
     runId?: string | null;
     workspaceId?: string | null;
     scopes?: readonly string[] | null;
+    /** Cap the shared headers/body/fallback budget for this operation. */
+    timeoutMs?: number;
     /**
      * Retry a configured secondary API origin when the primary is unavailable.
      * Disable this for non-idempotent operations that must fail closed rather
@@ -466,7 +468,11 @@ async function callOrgxApiRawImplementation(
   let lastRetryableFailure: string | null = null;
   let lastRetryableStatus: number | undefined;
   // One budget covers headers, body and fallback rather than restarting at each phase.
-  const deadline = performance.now() + parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS);
+  const configuredTimeoutMs = parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS);
+  const timeoutMs = typeof opts?.timeoutMs === 'number' && Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0
+    ? Math.min(configuredTimeoutMs, Math.max(1, Math.floor(opts.timeoutMs)))
+    : configuredTimeoutMs;
+  const deadline = performance.now() + timeoutMs;
 
   for (const [index, baseUrl] of baseUrls.entries()) {
     const isFallbackAttempt = index > 0;
@@ -703,6 +709,7 @@ export async function callOrgxApiJson(
     userEmail?: string | null;
     orgxUserId?: string | null;
     allowFallback?: boolean;
+    timeoutMs?: number;
   } & GatewayDelegationClaims
 ) {
   return callObservedOrgxApi(env, path, init, {
@@ -714,6 +721,7 @@ export async function callOrgxApiJson(
     workspaceId: opts?.workspaceId,
     scopes: opts?.scopes,
     allowFallback: opts?.allowFallback,
+    timeoutMs: opts?.timeoutMs,
   }, true);
 }
 
