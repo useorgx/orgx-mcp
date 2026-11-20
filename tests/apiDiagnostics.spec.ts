@@ -1,3 +1,4 @@
+import { fetchContextPack } from '../src/contextPack';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { callOrgxApiJson } from '../src/orgxApi';
 import {
@@ -175,6 +176,38 @@ describe('MCP API diagnostics', () => {
     expect(result._meta['orgx/performance'].tool_execution_ms).not.toBe(999999);
     expect(result._meta['orgx/performance'].tool_execution_ms).toBeGreaterThanOrEqual(0);
     expect(JSON.stringify(diagnostics)).not.toContain('private_name');
+  });
+
+  it('logs context preparation and scope for the matching inspection attempt only', async () => {
+    const logs = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const fetch = vi.fn(async () => Response.json({ ok: true, data: { hydrated: true } }, {
+      headers: { 'server-timing': 'context_prepare;dur=40,context_scope;dur=6.125,private-stage;dur=2' },
+    }));
+    vi.stubGlobal('fetch', fetch);
+    const tool = wrapped(async () => {
+      const [pack] = await Promise.all([
+        fetchContextPack(env, 'private-user', { type: 'task', id: 'private-anchor' }),
+        callOrgxApiJson(env, '/api/entities?query=private-query'),
+      ]);
+      return { content: [], structuredContent: { pack } };
+    });
+    const result = await tool.run({}, { requestId: 'inspection' }) as any;
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.structuredContent).toEqual({ pack: { hydrated: true } });
+    const attempts = logs.mock.calls.map(([raw]) => JSON.parse(String(raw)))
+      .filter((log) => log.event === 'orgx_api_attempt');
+    expect(attempts).toHaveLength(2);
+    const trace = result._meta['orgx/diagnostics'].trace_id;
+    expect(attempts.find((log) => log.method === 'POST')).toMatchObject({
+      trace_id: trace, context_prepare_ms: 40, context_scope_ms: 6.125,
+    });
+    const entity = attempts.find((log) => log.method === 'GET');
+    expect(entity.trace_id).toBe(trace);
+    expect(entity).not.toHaveProperty('context_prepare_ms');
+    expect(entity).not.toHaveProperty('context_scope_ms');
+    expect(JSON.stringify(result)).not.toContain('context_prepare_ms');
+    expect(JSON.stringify(result)).not.toContain('context_scope_ms');
+    expect(JSON.stringify(attempts)).not.toMatch(/private-|server-timing|api\/entities/i);
   });
 
   it('isolates timing sums between invocations and freezes snapshots before later API telemetry', async () => {

@@ -399,7 +399,7 @@ async function callObservedOrgxApi(
     ? init?.signal ? AbortSignal.any([init.signal, invocation.signal]) : invocation.signal
     : init?.signal;
   const headers = new Headers(init?.headers);
-  const observation = new ApiRequestObservation(headers);
+  const observation = new ApiRequestObservation(headers, path === '/api/v1/context-pack');
   return observation.run(async () => {
     try {
       return await callOrgxApiRawImplementation(env, path, { ...init, signal, headers }, opts, bufferJson);

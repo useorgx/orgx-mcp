@@ -8,23 +8,30 @@ export type OriginTimings = Partial<Record<OriginTimingStage, { sum_ms: number; 
 
 const MAX_HEADER_CHARS = 8192;
 const MAX_STAGE_MS = 300_000;
-const stages = new Set<string>(ORIGIN_TIMING_STAGES);
+const originStageNames = new Map<string, OriginTimingStage>(
+  ORIGIN_TIMING_STAGES.map((stage) => [`orgx_mcp_${stage}`, stage])
+);
+const contextPackStageNames = new Map([
+  ['context_prepare', 'context_prepare_ms'],
+  ['context_scope', 'context_scope_ms'],
+] as const);
 
 /**
  * Parse our canonical numeric Server-Timing form, not the general header grammar.
  * Ambiguous duplicates, noncanonical durations and oversized headers contribute
  * no sample. A missing/invalid stage remains absent rather than becoming zero.
  */
-export function readOriginTimings(header: string | null): Partial<Record<OriginTimingStage, number>> {
+function readFixedTimings<Stage extends string>(
+  header: string | null,
+  stages: ReadonlyMap<string, Stage>
+): Partial<Record<Stage, number>> {
   if (!header || header.length > MAX_HEADER_CHARS || header.includes('"')) return {};
-  const values: Partial<Record<OriginTimingStage, number>> = {};
-  const seen = new Set<OriginTimingStage>();
+  const values: Partial<Record<Stage, number>> = {};
+  const seen = new Set<Stage>();
   for (const metric of header.split(',')) {
     const [rawName, ...parameters] = metric.trim().split(';');
-    const name = rawName.trim();
-    if (!name.startsWith('orgx_mcp_')) continue;
-    const stage = name.slice('orgx_mcp_'.length) as OriginTimingStage;
-    if (!stages.has(stage)) continue;
+    const stage = stages.get(rawName.trim());
+    if (stage === undefined) continue;
     if (seen.has(stage)) { delete values[stage]; continue; }
     seen.add(stage);
     if (parameters.length !== 1) continue;
@@ -34,6 +41,14 @@ export function readOriginTimings(header: string | null): Partial<Record<OriginT
     if (Number.isFinite(value) && value >= 0 && value <= MAX_STAGE_MS) values[stage] = value;
   }
   return values;
+}
+
+export function readOriginTimings(header: string | null) {
+  return readFixedTimings(header, originStageNames);
+}
+
+export function readContextPackTimings(header: string | null) {
+  return readFixedTimings(header, contextPackStageNames);
 }
 
 /** Sums include every timed API attempt, including retries and concurrent calls. */
