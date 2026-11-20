@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { addOriginTimings, originTimingPerformance, type OriginTimings } from './originTimings';
+import { addOriginTimings, originTimingPerformance, readContextPackTimings, type OriginTimings } from './originTimings';
 
 /** Correlation is diagnostic only: it never grants actor or workspace authority. */
 export interface ApiDiagnostics {
@@ -79,7 +79,7 @@ export class ApiRequestObservation {
   private failed = false;
   private lastError = 'request_failed';
   private readonly diagnostics = invocations.getStore()?.diagnostics;
-  constructor(headers: Headers) {
+  constructor(headers: Headers, private readonly observeContextPack = false) {
     this.traceparent =
       invocations.getStore()?.traceparent ??
       validTraceparent(headers.get('traceparent')) ??
@@ -124,6 +124,7 @@ export class ApiRequestObservation {
     const started = performance.now();
     let status = 0;
     let outcome = 'network_error';
+    let contextTimings: ReturnType<typeof readContextPackTimings> | undefined;
     if (this.diagnostics) {
       this.diagnostics.attempts++;
       if (fallback) this.diagnostics.fallbacks++;
@@ -131,8 +132,10 @@ export class ApiRequestObservation {
     try {
       const response = await fetch(url, init);
       if (this.diagnostics) {
+        const serverTiming = response.headers.get('server-timing');
+        if (this.observeContextPack) contextTimings = readContextPackTimings(serverTiming);
         const timings = this.diagnostics.origin_timings ?? {};
-        addOriginTimings(timings, response.headers.get('server-timing'));
+        addOriginTimings(timings, serverTiming);
         if (Object.keys(timings).length) this.diagnostics.origin_timings = timings;
       }
       status = response.status;
@@ -167,6 +170,7 @@ export class ApiRequestObservation {
         status,
         outcome,
         headers_ms: duration,
+        ...contextTimings,
       });
     }
   }

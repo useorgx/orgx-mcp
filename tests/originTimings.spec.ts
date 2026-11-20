@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addOriginTimings, originTimingPerformance, readOriginTimings } from '../src/originTimings';
+import { addOriginTimings, originTimingPerformance, readContextPackTimings, readOriginTimings } from '../src/originTimings';
 
 describe('fixed numeric origin timings', () => {
   it('projects only known canonical stages and omits missing ones', () => {
@@ -25,6 +25,18 @@ describe('fixed numeric origin timings', () => {
   it('bounds header processing and includes the canonical maximum', () => {
     expect(readOriginTimings(`orgx_mcp_total;dur=1,${'x'.repeat(8192)}`)).toEqual({});
     expect(readOriginTimings('orgx_mcp_total;dur=300000')).toEqual({ total: 300000 });
+  });
+  it('reads only the two context-pack timers and preserves a measured zero', () => {
+    expect(readContextPackTimings('context_scope;dur=0, context_prepare;dur=41.375, context_owner;dur=14, orgx_mcp_total;dur=50'))
+      .toEqual({ context_scope_ms: 0, context_prepare_ms: 41.375 });
+    expect(readOriginTimings('context_scope;dur=0,context_prepare;dur=41.375')).toEqual({});
+    expect(readContextPackTimings('context_scope;dur=4,context_scope;dur=bad,context_prepare;dur=20'))
+      .toEqual({ context_prepare_ms: 20 });
+    for (const header of [null, 'context_scope;dur=1e2', 'context_prepare;dur=300001',
+      'context_prepare;desc="hidden,context_scope;dur=5,hidden"',
+      `context_scope;dur=10,${'x'.repeat(8192)}`]) {
+      expect(readContextPackTimings(header)).toEqual({});
+    }
   });
   it('keeps sums and sample counts per phase without treating them as a wall-clock duration', () => {
     const totals = {};
