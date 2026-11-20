@@ -1,4 +1,6 @@
 import { projectChronicleOverview } from './reportOverview';
+import { projectExecutionReadiness } from './executionReadinessOutput';
+import { inspectRecommendedWork } from './recommendationContext';
 import { LegacyBatchCapabilityCache, runCompatibleLegacyBatch } from './legacyBatchCutover';
 import { artifactProofScope } from './artifactProofScope';
 import { parseSearchDateRange, type SearchDateRange } from './searchDateRange';
@@ -3936,6 +3938,9 @@ export class OrgXMcp extends McpAgent<
         // Extract message if present, otherwise use imported summarizer
         const widgetApproval = splitWidgetApprovalMeta(result.data ?? {});
         let data: Record<string, unknown> = widgetApproval.data;
+        if (resolvedToolId === 'recommend_next_action') {
+          data = { ...data, next_call: inspectRecommendedWork(data.next_action) };
+        }
         if (budgetPreflight) {
           data = {
             ...data,
@@ -4985,9 +4990,12 @@ export class OrgXMcp extends McpAgent<
                 latencyMs,
               });
 
-              const data =
+              const apiData =
                 (result.data as Record<string, unknown> | undefined) ??
                 (result as unknown as Record<string, unknown>);
+              const data = tool.id === 'check_execution_readiness'
+                ? projectExecutionReadiness(apiData)
+                : apiData;
               const enrichedData =
                 tool.id === 'classify_task_model'
                   ? {
@@ -8019,10 +8027,13 @@ export class OrgXMcp extends McpAgent<
     }, () => this.isDirectoryReviewProfile() ? Promise.resolve(null) : buildSearchDiagnosticsContext(this.env), this.isDirectoryReviewProfile(), this.props?.profile, this.usesLegacyDirectoryContracts());
   }
 
-  private async requestPublicOperation(path: string, init: { method?: string; body?: string; headers?: Record<string, string> } = {}, options: { allowFallback?: boolean } = {}): Promise<Record<string, unknown>> {
+  private async requestPublicOperation(path: string, init: RequestInit = {}, options: { allowFallback?: boolean } = {}): Promise<Record<string, unknown>> {
     const userId = this.resolveUserId();
     const response = await callOrgxApiJson(this.env, path, init, {
       userId, userEmail: this.resolveUserEmail(), ...this.delegationClaims(),
+      // Return a result or a typed failure before the host abandons the call.
+      // Writes retain their existing execution budget and retry policy.
+      ...(['GET', 'HEAD'].includes((init.method ?? 'GET').toUpperCase()) ? { timeoutMs: 10_000 } : {}),
       orgxUserId: this.resolveOrgxUserId(userId), ...options,
     });
     return await response.json() as Record<string, unknown>;
@@ -8064,6 +8075,7 @@ export class OrgXMcp extends McpAgent<
           const request = tool.backendRequest!(effective);
           return directResult(await this.requestPublicOperation(request.path, {
             method: request.method, ...(request.body ? { body: JSON.stringify(request.body) } : {}), ...(request.headers ? { headers: request.headers } : {}),
+            signal: (extra as { signal?: AbortSignal } | undefined)?.signal,
           }));
         }, tool.id, effective);
         const canonicalArgs = tool.toCanonicalArgs(effective);

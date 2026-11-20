@@ -1,5 +1,6 @@
 import { ApiRequestObservation, currentApiReferences, observedApiFetch, recordApiBody } from './apiDiagnostics';
 import { markTransportFailure, transportFailureKind } from './remedyErrors';
+import { currentReadInvocationBudget } from './readInvocationBudget';
 
 export interface OrgxApiEnv {
   ORGX_API_URL: string;
@@ -373,6 +374,8 @@ export async function callOrgxApiRaw(
     runId?: string | null;
     workspaceId?: string | null;
     scopes?: readonly string[] | null;
+    /** Cap the shared headers/body/fallback budget for this operation. */
+    timeoutMs?: number;
     /**
      * Retry a configured secondary API origin when the primary is unavailable.
      * Disable this for non-idempotent operations that must fail closed rather
@@ -391,11 +394,15 @@ async function callObservedOrgxApi(
   opts: Parameters<typeof callOrgxApiRaw>[3],
   bufferJson = false
 ): Promise<Response> {
+  const invocation = currentReadInvocationBudget();
+  const signal = invocation
+    ? init?.signal ? AbortSignal.any([init.signal, invocation.signal]) : invocation.signal
+    : init?.signal;
   const headers = new Headers(init?.headers);
   const observation = new ApiRequestObservation(headers);
   return observation.run(async () => {
     try {
-      return await callOrgxApiRawImplementation(env, path, { ...init, headers }, opts, bufferJson);
+      return await callOrgxApiRawImplementation(env, path, { ...init, signal, headers }, opts, bufferJson);
     } catch (error) {
       observation.failure(undefined, error instanceof OrgXApiError ? error.statusCode : undefined);
       throw error;
@@ -466,7 +473,11 @@ async function callOrgxApiRawImplementation(
   let lastRetryableFailure: string | null = null;
   let lastRetryableStatus: number | undefined;
   // One budget covers headers, body and fallback rather than restarting at each phase.
-  const deadline = performance.now() + parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS);
+  const configuredTimeoutMs = parseTimeoutMs(env.ORGX_API_TIMEOUT_MS, DEFAULT_ORGX_API_TIMEOUT_MS);
+  const timeoutMs = typeof opts?.timeoutMs === 'number' && Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0
+    ? Math.min(configuredTimeoutMs, Math.max(1, Math.floor(opts.timeoutMs)))
+    : configuredTimeoutMs;
+  const deadline = Math.min(performance.now() + timeoutMs, currentReadInvocationBudget()?.deadline ?? Infinity);
 
   for (const [index, baseUrl] of baseUrls.entries()) {
     const isFallbackAttempt = index > 0;
@@ -484,6 +495,10 @@ async function callOrgxApiRawImplementation(
         `Request deadline exhausted before contacting ${url.toString()}`
       ), 'timeout');
     }
+    if (init.signal?.aborted) throw createApiError(
+      'The request was cancelled.',
+      'OrgX API request cancelled before contacting an upstream'
+    );
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort(`timeout after ${requestTimeoutMs}ms`);
@@ -703,6 +718,7 @@ export async function callOrgxApiJson(
     userEmail?: string | null;
     orgxUserId?: string | null;
     allowFallback?: boolean;
+    timeoutMs?: number;
   } & GatewayDelegationClaims
 ) {
   return callObservedOrgxApi(env, path, init, {
@@ -714,6 +730,7 @@ export async function callOrgxApiJson(
     workspaceId: opts?.workspaceId,
     scopes: opts?.scopes,
     allowFallback: opts?.allowFallback,
+    timeoutMs: opts?.timeoutMs,
   }, true);
 }
 

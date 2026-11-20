@@ -330,7 +330,7 @@ export const WORKFLOW_TOOL_ADAPTERS: readonly WorkflowToolAdapter[] = [
       executionKind: 'client', annotations: readOnly,
     }),
   operation('orgx_get_next_actions', 'orgx_recommend', 'Get OrgX Next Actions',
-    'Read actionable priorities and blockers for the selected work scope. Model-generated capability suggestions are skipped by default; set include_capability_suggestions=true for the deeper assessment, which may take longer. The compatibility implementation records metered MCP allowance usage without changing work records.',
+    'Read actionable priorities and blockers for the selected work scope. Follow next_call to inspect the leading recommendation’s work record and acceptance checks. Model-generated capability suggestions are skipped by default; set include_capability_suggestions=true for the deeper assessment, which may take longer. The compatibility implementation records metered MCP allowance usage without changing work records.',
     project('orgx_recommend', ['entity_type', 'entity_id', 'initiative_id', 'workspace_id', 'limit', 'include_capability_suggestions', 'session_id']), { fixedArgs: { mode: 'next_action' } }),
   operation('orgx_get_agent_status', 'get_agent_status', 'Read OrgX Agent Status',
     'Read active and optionally idle agents in the workspace or initiative. Successful calls record metered MCP allowance usage without changing work records.',

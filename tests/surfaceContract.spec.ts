@@ -879,9 +879,14 @@ describe('next-action capability assessment opt-in', () => {
         const [, path, init] = args;
         const body = JSON.parse(String((init as RequestInit | undefined)?.body ?? '{}'));
         if (path === '/api/tools/execute' && body.tool_id === 'recommend_next_action') {
+          const recommendation = {
+            id: 'scoring-recommendation', key: '77777777-7777-4777-8777-777777777777',
+            entityType: 'workstream', label: 'Review the queued task', ready: false,
+            metadata: { nextTaskId: '88888888-8888-4888-8888-888888888888', dispatchAuthorized: false },
+          };
           return Response.json({ ok: true, data: {
             entity_type: 'workspace', entity_id: WORKSPACE_ID, canonical_only: false,
-            recommendations: [], next_action: null, capability_gap_detector: provenance,
+            recommendations: [recommendation], next_action: recommendation, capability_gap_detector: provenance,
           } });
         }
         return priorImplementation(...args);
@@ -901,6 +906,10 @@ describe('next-action capability assessment opt-in', () => {
         expect(body.user_id).toBe('33333333-3333-4333-8333-333333333333');
         expect(upstream[3]).toMatchObject({ userId: 'surface-contract-user' });
         expect(result.structuredContent).toMatchObject({ capability_gap_detector: provenance });
+        expect(result.structuredContent).toMatchObject({
+          next_action: { ready: false, metadata: { dispatchAuthorized: false } },
+          next_call: { tool: 'orgx_inspect', args: { type: 'task', id: '88888888-8888-4888-8888-888888888888' } },
+        });
         expect(input).toEqual({ workspace_id: WORKSPACE_ID,
           ...(optIn !== undefined ? { include_capability_suggestions: optIn } : {}) });
       } finally {

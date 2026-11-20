@@ -14,6 +14,20 @@ let checks = 0;
 try {
   for (const width of [1440, 375]) {
     for (const theme of ['dark', 'light']) {
+      const planning = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
+      const firstStep = 'Define the first workstream and its task, including the acceptance check.';
+      await setup(planning, {
+        initiative_id: 'weekly-launch', name: 'Weekly launch review', status: 'planning',
+        lifecycle_stage: 'planning', progress_pct: 0, health_score: 0,
+        workstreams: [], milestones: [], tasks: [], next_steps: [firstStep],
+      }, theme);
+      await planning.goto(`${origin}/widgets/initiative-pulse.html?resource=true&theme=${theme}`);
+      await planning.getByText('No workstreams, milestones, or tasks recorded.', { exact: true }).waitFor();
+      await planning.getByText(firstStep, { exact: true }).first().waitFor();
+      assert.equal(await planning.locator('.pulse-health, .pulse-progress-value').count(), 0);
+      assert.ok(await planning.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      await planning.screenshot({ path: `${output}/initiative-planning-${theme}-${width}.png`, fullPage: true });
+      await planning.close(); checks++;
       for (const { action, allowed } of [{ action: 'estimate' }, { action: 'guard', allowed: false }, { action: 'guard', allowed: true }, { action: 'route' }]) {
         const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
         await setup(page, { _action: action, allowed, initiative_name: 'Launch', estimate: { recommended_model: 'standard', estimated_cost_usd: 0.02 } }, theme);

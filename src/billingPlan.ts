@@ -1,5 +1,6 @@
 import { mapPlanToAccountTier, type AccountTier } from './accountTools';
 import { callOrgxApiJson, type OrgxApiEnv } from './orgxApi';
+import { transportFailureKind } from './remedyErrors';
 
 export type BillingPlanContext = {
   plan: string;
@@ -107,6 +108,7 @@ function classifyBillingPlanError(
 ): BillingPlanUnavailableReason {
   if (
     signal.aborted ||
+    transportFailureKind(error) === 'timeout' ||
     (error instanceof DOMException && error.name === 'AbortError')
   ) {
     return 'timeout';
@@ -123,21 +125,44 @@ async function fetchBillingPlanContext(
   const configuredTimeoutMs = Number(env.ORGX_BILLING_PLAN_TIMEOUT_MS);
   const timeoutMs =
     Number.isFinite(configuredTimeoutMs) && configuredTimeoutMs > 0
-      ? Math.floor(configuredTimeoutMs)
+      ? Math.max(1, Math.floor(configuredTimeoutMs))
       : DEFAULT_BILLING_PLAN_TIMEOUT_MS;
+  // The lookup deadline includes fallback. Giving the primary the entire
+  // deadline made a slow primary cancel the lookup before fallback could run.
+  const configuredApiTimeoutMs = Number(env.ORGX_API_TIMEOUT_MS);
+  const budgetMs = Math.min(
+    timeoutMs,
+    Number.isFinite(configuredApiTimeoutMs) && configuredApiTimeoutMs > 0
+      ? Math.max(1, Math.floor(configuredApiTimeoutMs))
+      : timeoutMs
+  );
+  const configuredPrimaryTimeoutMs = Number(env.ORGX_API_PRIMARY_TIMEOUT_MS);
+  const primaryBudgetMs = Math.max(1, Math.floor(budgetMs / 2));
+  const lookupEnv = {
+    ...env,
+    ORGX_API_TIMEOUT_MS: String(budgetMs),
+    ORGX_API_PRIMARY_TIMEOUT_MS: String(
+      Math.min(
+        primaryBudgetMs,
+        Number.isFinite(configuredPrimaryTimeoutMs) && configuredPrimaryTimeoutMs > 0
+          ? Math.max(1, Math.floor(configuredPrimaryTimeoutMs))
+          : primaryBudgetMs
+      )
+    ),
+  };
   const controller = new AbortController();
   const timeout = setTimeout(
     () => controller.abort('billing plan lookup deadline exceeded'),
-    timeoutMs
+    budgetMs
   );
 
   try {
     const workspaceId = scope.workspaceId?.trim();
     const path = workspaceId
-      ? `/api/billing/usage?workspace_id=${encodeURIComponent(workspaceId)}`
-      : '/api/billing/usage';
+      ? `/api/billing/usage?workspace_id=${encodeURIComponent(workspaceId)}&view=plan`
+      : '/api/billing/usage?view=plan';
     const response = await callOrgxApiJson(
-      env,
+      lookupEnv,
       path,
       { method: 'GET', signal: controller.signal },
       {

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { ControllerStatusEnvelopeSchema } from '../controllerStatusContract';
 import { taskPredictionOutputSchema } from '../taskPredictionContract';
+import { recommendationContextCall } from '../recommendationContext';
 import {
   jsonValueSchema,
   makeErrorCompatibleSchema,
@@ -171,6 +172,7 @@ const recommendNextAction = makeOpenErrorCompatibleSchema({
   entity_type: z.string().nullable(),
   entity_id: z.string().nullable(),
   canonical_only: z.boolean(),
+  next_call: recommendationContextCall.nullable().optional(),
 });
 
 export const V2_OUTPUT_SCHEMAS: Readonly<Record<string, SourceOutputSchema>> =
