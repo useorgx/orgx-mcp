@@ -1,8 +1,7 @@
 /**
  * One entity, drawn as one card: the shape `orgx_inspect` returns as `card`
  * and the entity-card widget renders. Work that can carry proof
- * (initiatives, milestones, workstreams, tasks, artifacts) also gets a proof
- * record with the same rows, markers and verdicts as the web app's
+ * also gets a proof record with the same rows, markers and verdicts as the web app's
  * ProofRecord (components/proof/ProofRecord.tsx in hopeatina/orgx), so an
  * agent, an operator, and a homepage visitor see one object.
  */
@@ -42,6 +41,8 @@ const WEB_PATHS: Record<string, (id: string) => string> = {
 };
 
 const PROOF_TYPES = new Set([
+  'objective',
+  'run',
   'initiative',
   'milestone',
   'workstream',
@@ -81,19 +82,38 @@ export function entityWebUrl(
   return new URL(path(id), base).toString();
 }
 
-/** The verdict a status implies, on the same four values the app uses. */
+const FINISHED_STATUSES = new Set(['completed', 'complete', 'done', 'approved', 'accepted', 'shipped', 'published']);
+
+/** Generic entity inspection returns lifecycle data and context, but no independent ruling. */
 export function proofVerdictForStatus(status: string | null): ProofVerdict {
-  const value = (status ?? '').toLowerCase();
-  if (['completed', 'complete', 'done', 'approved', 'accepted', 'shipped', 'published'].includes(value)) {
-    return 'accepted';
-  }
+  const value = (status ?? '').trim().toLowerCase();
   if (['in_review', 'review', 'submitted', 'verifying', 'pending_review'].includes(value)) {
     return 'verifying';
   }
-  if (['blocked', 'needs_input', 'needs_you', 'awaiting_approval', 'pending_approval'].includes(value)) {
+  if (['blocked', 'failed', 'rejected', 'needs_input', 'needs_you', 'awaiting_approval', 'pending_approval'].includes(value)) {
     return 'needs-you';
   }
   return 'open';
+}
+
+function recordedArtifactReview(value: unknown): string | null {
+  const review = record(value);
+  if (
+    review?.reviewer_kind !== 'human' ||
+    review.auto_approved !== false ||
+    !text(review.reviewed_by) ||
+    !Number.isFinite(Date.parse(text(review.reviewed_at) ?? ''))
+  ) {
+    return null;
+  }
+  switch (review.status) {
+    case 'approved':
+      return 'Approved';
+    case 'rejected':
+      return 'Rejected';
+    default:
+      return null;
+  }
 }
 
 export function buildEntityCard(params: {
@@ -167,28 +187,28 @@ export function buildEntityCard(params: {
       : 0;
     const blockers = list(pack.blockers).length || list(frame.blockers).length;
     const rows: ProofRow[] = [];
-    const evaluation = record(record(entity.verification)?.eval);
+    const verification = record(entity.verification);
+    const evaluation = record(verification?.eval);
     const evaluationStatus = text(evaluation?.status)?.toLowerCase();
     const failedEvaluation = evaluationStatus === 'failed' || evaluationStatus === 'rejected' ||
       (typeof evaluation?.score === 'number' && typeof evaluation?.threshold === 'number' && evaluation.score < evaluation.threshold);
     if (decisions) rows.push({ label: 'Decisions', value: String(decisions), kind: 'decision' });
     if (artifacts) rows.push({ label: 'Artifacts', value: String(artifacts), kind: 'artifact' });
-    if (checks) rows.push({ label: 'Checks', value: String(checks), kind: 'check' });
+    if (checks) rows.push({ label: 'Checklist items', value: String(checks), kind: 'check' });
     if (blockers) rows.push({ label: 'Open blockers', value: String(blockers), kind: 'neutral' });
     if (evaluationStatus || failedEvaluation) rows.push({
       label: 'Evaluation',
       value: failedEvaluation ? 'Failed' : evaluationStatus!,
       kind: 'check',
     });
-    if (rows.length > 0) {
-      proof = {
-        // Open blockers keep work out of "accepted" whatever its status says.
-        verdict: failedEvaluation || (blockers && proofVerdictForStatus(status) === 'accepted')
-          ? 'needs-you'
-          : proofVerdictForStatus(status),
-        rows,
-      };
+    const review = params.type === 'artifact' ? recordedArtifactReview(verification?.human_review) : null;
+    if (review) rows.push({ label: 'Recorded review', value: review, kind: 'neutral' });
+    const verdict = failedEvaluation || blockers ? 'needs-you' : proofVerdictForStatus(status);
+    const finished = FINISHED_STATUSES.has((status ?? '').toLowerCase());
+    if (finished) {
+      rows.push({ label: 'Acceptance', value: 'Unverified', kind: 'neutral' });
     }
+    if (rows.length || verdict !== 'open') proof = { verdict, rows };
   }
 
   const related = [

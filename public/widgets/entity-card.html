@@ -390,8 +390,8 @@
     var VERDICT = {
       accepted: { state: 'succeeded', label: 'Accepted', edge: 'teal' },
       verifying: { state: 'verifying', label: '', edge: 'teal' },
-      'needs-you': { state: 'needs_you', label: '', edge: 'amber' },
-      open: { state: 'planned', label: 'Open', edge: 'mute' }
+      'needs-you': { state: 'needs_you', label: 'Needs attention', edge: 'amber' },
+      open: { state: 'planned', label: 'Unverified', edge: 'mute' }
     };
 
     var DEMO = {
@@ -415,7 +415,7 @@
           rows: [
             { label: 'Decisions', value: '2', kind: 'decision' },
             { label: 'Artifacts', value: '5', kind: 'artifact' },
-            { label: 'Checks', value: '4', kind: 'check' }
+            { label: 'Checklist items', value: '4', kind: 'check' }
           ]
         },
         related: [
@@ -572,7 +572,7 @@
       if (['in_progress', 'active', 'running', 'executing'].indexOf(s) !== -1) return { state: 'running', label: '', edge: 'teal' };
       if (['in_review', 'review', 'submitted', 'verifying', 'pending_review'].indexOf(s) !== -1) return { state: 'verifying', label: '', edge: 'teal' };
       if (['approved', 'accepted'].indexOf(s) !== -1) return { state: 'confirmed', label: titleCase(s), edge: 'teal' };
-      if (['completed', 'complete', 'done', 'shipped', 'published'].indexOf(s) !== -1) return { state: 'succeeded', label: '', edge: 'teal' };
+      if (['completed', 'complete', 'done', 'shipped', 'published'].indexOf(s) !== -1) return { state: 'succeeded', label: titleCase(s), edge: 'teal' };
       if (s === 'rejected') return { state: 'rejected', label: 'Rejected', edge: 'mute' };
       if (s === 'cancelled' || s === 'canceled') return { state: 'cancelled', label: '', edge: 'mute' };
       if (!s) return null;
@@ -591,13 +591,13 @@
      */
     var proofStatus = function (row, verdict) {
       var kind = row.kind || 'neutral';
+      if (row.label === 'Acceptance' || row.label === 'Recorded review') return 'unverified';
       if (row.label === 'Evaluation') {
         var v = String(row.value || '').toLowerCase();
         if (v === 'failed' || v === 'rejected') return 'fail';
-        if (v === 'passed' || v === 'accepted' || v === 'completed') return 'met';
-        return 'pending';
+        if (v === 'passed') return 'met';
+        return ['running', 'pending', 'in_progress', 'queued'].indexOf(v) !== -1 ? 'pending' : 'unverified';
       }
-      if (verdict === 'accepted') return 'met';
       // Verifying: the counts are not judged one by one yet, and a column of
       // spinners would move without saying anything (SM5: lists stay still).
       if (verdict === 'verifying') return 'unverified';
@@ -614,7 +614,7 @@
       if (!rows.length) return '';
       return '<ul class="ec-counts">' + rows.map(function (row) {
         var icon = window.OrgXIcons ? window.OrgXIcons.icon(COUNT_ICON[row.kind] || 'artifact', 15) : '';
-        var label = String(row.label || '');
+        var label = row.label === 'Checks' && row.kind === 'check' ? 'Checklist items' : String(row.label || '');
         if (row.value === '1') label = label.replace(/s$/, '');
         return '<li data-kind="' + escapeHtml(row.kind || 'neutral') + '">' + icon + '<b>' + escapeHtml(row.value) + '</b> ' + escapeHtml(label.toLowerCase()) + '</li>';
       }).join('') + '</ul>';
@@ -705,7 +705,23 @@
       var facts = asArray(card.facts);
       var related = asArray(card.related);
       var proof = card.proof && typeof card.proof === 'object' ? card.proof : null;
+      // Stored cards from older workers inferred acceptance from a lifecycle or count.
+      if (!proof && ['objective', 'initiative', 'milestone', 'workstream', 'task', 'run', 'artifact'].indexOf(card.type) !== -1 &&
+          ['completed', 'complete', 'done', 'approved', 'accepted', 'shipped', 'published'].indexOf(String(card.status).toLowerCase()) !== -1) {
+        proof = { verdict: 'open', rows: [] };
+      }
+      var rows = asArray(proof && proof.rows);
       var verdict = proof && VERDICT[proof.verdict] ? proof.verdict : 'open';
+      var adverseEvidence = rows.some(function (row) {
+        return (row.label === 'Open blockers' && Number(row.value) > 0) ||
+          (row.label === 'Evaluation' && ['failed', 'rejected'].indexOf(String(row.value).toLowerCase()) !== -1);
+      });
+      if (adverseEvidence) verdict = 'needs-you';
+      else if (verdict === 'accepted') verdict = 'open';
+      // The chip carries this same status for sparse records and count-only cards.
+      var proofRows = rows.filter(function (row) {
+        return !(row.label === 'Acceptance' && row.value === 'Unverified' && verdict === 'open');
+      });
       var chip = chipFor(card);
       var edge = view.strip === 'degraded' ? 'mute' : chip ? chip.edge : 'mute';
       var asOf = view.liveAsOf || view.chatAsOf;
@@ -721,15 +737,15 @@
           }).join('') + '</dl>'
         : '';
 
-      var proofHtml = proof && asArray(proof.rows).length
+      var proofHtml = proof
         ? '<section class="ec-section ec-proof" aria-label="Proof record">' +
           '<div class="ec-section__hd"><p class="ec-lbl">Proof record</p>' +
           // The verdict chip only speaks when it says something the status does not.
-          (chip && chip.state === VERDICT[verdict].state ? '<span class="ec-verdict" data-verdict="' + escapeHtml(verdict) + '" hidden></span>' : '<ox-state-chip class="ec-verdict" data-verdict="' + escapeHtml(verdict) + '"' +
+          (verdict === 'verifying' && chip && chip.state === VERDICT[verdict].state ? '<span class="ec-verdict" data-verdict="' + escapeHtml(verdict) + '" hidden></span>' : '<ox-state-chip class="ec-verdict" data-verdict="' + escapeHtml(verdict) + '"' +
           attrs({ state: VERDICT[verdict].state, label: VERDICT[verdict].label, reserve: 'verifying needs_you succeeded' }) + '></ox-state-chip>') + '</div>' +
-          countsHtml(asArray(proof.rows).filter(isCount)) +
-          (asArray(proof.rows).some(function (row) { return !isCount(row); }) ? '<div role="list">' : '<div>') +
-          asArray(proof.rows).filter(function (row) { return !isCount(row); }).map(function (row) {
+          countsHtml(proofRows.filter(isCount)) +
+          (proofRows.some(function (row) { return !isCount(row); }) ? '<div role="list">' : '<div>') +
+          proofRows.filter(function (row) { return !isCount(row); }).map(function (row) {
             return '<ox-receipt-row' + attrs({
               'data-kind': row.kind || 'neutral',
               status: proofStatus(row, verdict),
@@ -957,7 +973,7 @@
       render(data);
       if (state === 'changed') {
         view.card.status = 'completed';
-        view.card.proof.verdict = 'accepted';
+        view.card.proof.verdict = 'open';
         view.card.facts[2].value = '100%';
         view.liveAsOf = new Date('2026-09-30T14:20:00');
         view.strip = 'changed';

@@ -475,6 +475,27 @@ function formatOrgxSearch(
   return `${header}\n\n${formatEntityList(results, type, opts)}\n\n${next}`;
 }
 
+function formatInspectProof(card: unknown): string | null {
+  const proof = firstRecord(firstRecord(card)?.proof);
+  if (!proof) return null;
+  const lines = ['Acceptance unverified.'];
+  if (proof.verdict === 'needs-you') lines.push('Needs attention.');
+  if (proof.verdict === 'verifying') lines.push('Under review.');
+  for (const value of Array.isArray(proof.rows) ? proof.rows : []) {
+    const row = firstRecord(value);
+    const detail = str(row?.value);
+    if (!detail) continue;
+    if (row?.label === 'Evaluation' || row?.label === 'Recorded review') {
+      lines.push(`${row.label} ${truncateField(detail, 80)}.`);
+    } else if (row?.label === 'Checklist items' || row?.label === 'Checks') {
+      lines.push(`${detail} checklist ${detail === '1' ? 'item' : 'items'}.`);
+    } else if (row?.label === 'Open blockers') {
+      lines.push(`${detail} open ${detail === '1' ? 'blocker' : 'blockers'}.`);
+    }
+  }
+  return lines.join(' ');
+}
+
 function formatOrgxInspect(
   data: Record<string, unknown>,
   opts: Required<FormatOptions>
@@ -490,7 +511,8 @@ function formatOrgxInspect(
     : '';
   const context = formatContextPackSummary(data.context_pack, opts);
   const outputs = formatRunOutputs(Array.isArray(data.outputs) ? (data.outputs as RunOutput[]) : null);
-  return `OrgX ${type}: ${line}${details}${outputs ? `\n\n${outputs}` : ''}${
+  const proof = formatInspectProof(data.card);
+  return `OrgX ${type}: ${line}${details}${proof ? `\n${proof}` : ''}${outputs ? `\n\n${outputs}` : ''}${
     context ? `\n\n${context}` : ''
   }`;
 }

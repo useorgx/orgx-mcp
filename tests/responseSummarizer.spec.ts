@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { buildEntityCard } from '../src/entityCard';
 import { formatForLLM } from '../src/responseSummarizer';
 
 describe('response summarizer v2 OrgX workflows', () => {
@@ -42,6 +43,42 @@ describe('response summarizer v2 OrgX workflows', () => {
     expect(text).toContain('id:task-1');
     expect(text).toContain('Description: Carry reply signal forward.');
     expect(text).not.toContain('Result with');
+  });
+
+  it('tells a text-only inspect client when a completed task has no acceptance ruling', () => {
+    const entity = { title: 'Release candidate', status: 'completed' };
+    const contextPack = { frame: { definitionOfDone: { checks: ['lint', 'types', 'fixture', 'release'] } } };
+    const card = buildEntityCard({ type: 'task', id: 'task-1', entity, contextPack });
+    const text = formatForLLM('orgx_inspect', { type: 'task', id: 'task-1', entity, card });
+    expect(text).toMatch(/4 checklist items/i);
+    expect(text).toContain('completed');
+    expect(text).toContain('Acceptance unverified.');
+  });
+
+  it('preserves review, failed evaluation, and open blockers in inspect text', () => {
+    const entity = {
+      title: 'Rollout summary',
+      status: 'approved',
+      version: 2,
+      verification: {
+        human_review: {
+          status: 'approved',
+          reviewed_at: '2026-05-13T10:00:00Z',
+          reviewed_by: 'founder',
+          reviewer_kind: 'human',
+          auto_approved: false,
+        },
+        eval: { status: 'failed' },
+      },
+    };
+    const contextPack = { blockers: [{ title: 'Correct the error budget' }] };
+    const card = buildEntityCard({ type: 'artifact', id: 'art-1', entity, contextPack });
+    const text = formatForLLM('orgx_inspect', { type: 'artifact', id: 'art-1', entity, card });
+    expect(text).toContain('Acceptance unverified.');
+    expect(text).toMatch(/evaluation[^\n.]*failed/i);
+    expect(text).toMatch(/(?:1[^\n.]*blocker|blocker[^\n.]*1)/i);
+    expect(text).toMatch(/review[^\n.]*approved/i);
+    expect(text).not.toMatch(/acceptance(?:[: ]+)accepted/i);
   });
 
   it('mirrors orgx_inspect context packs into concise text for hookless clients', () => {
