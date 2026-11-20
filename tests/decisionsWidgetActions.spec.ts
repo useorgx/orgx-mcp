@@ -112,8 +112,15 @@ afterEach(() => {
 describe('decisions widget actions', () => {
   it('preserves canonical uncertainty arrays alongside the recommendation', async () => {
     mount([decision(D1, { review_packet: { question: 'Confirm the rollout?', current: { state: 'pending' }, recommendation: { status: 'ready', action: 'Wait for the client.' }, uncertainty: ['Client acceptance has not been recorded.', 'The rollout window is unconfirmed.'] } })], {});
-    await vi.waitFor(() => expect(document.body.textContent).toContain('Client acceptance has not been recorded.'));
-    expect(document.body.textContent).toContain('The rollout window is unconfirmed.');
+    // Boot includes shared-runtime initialization, 220ms minimum loading and
+    // a 200ms skeleton fade. This checks packet content, not startup latency;
+    // allow the cold first mount to finish under full-suite CPU contention.
+    await vi.waitFor(() => {
+      expect(document.querySelector('.skeleton-wrapper')).toBeNull();
+      expect(document.body.textContent).toContain('Client acceptance has not been recorded.');
+      expect(document.body.textContent).toContain('The rollout window is unconfirmed.');
+      expect(document.body.textContent).toContain('Wait for the client.');
+    }, { timeout: 5_000 });
   });
   it('renders a singular core review packet without calling an empty queue caught up', async () => {
     mountWidget('decisions', { payload: { data: { decision_id: D1, decision: decision(D1), requires_human_review: true, review_url: 'https://useorgx.com/decisions/' + D1 }, meta: { apiVersion: '1' } }, callTool: vi.fn() });

@@ -1,5 +1,6 @@
 import { ApiRequestObservation, currentApiReferences, observedApiFetch, recordApiBody } from './apiDiagnostics';
 import { markTransportFailure, transportFailureKind } from './remedyErrors';
+import { currentReadInvocationBudget } from './readInvocationBudget';
 
 export interface OrgxApiEnv {
   ORGX_API_URL: string;
@@ -393,11 +394,15 @@ async function callObservedOrgxApi(
   opts: Parameters<typeof callOrgxApiRaw>[3],
   bufferJson = false
 ): Promise<Response> {
+  const invocation = currentReadInvocationBudget();
+  const signal = invocation
+    ? init?.signal ? AbortSignal.any([init.signal, invocation.signal]) : invocation.signal
+    : init?.signal;
   const headers = new Headers(init?.headers);
   const observation = new ApiRequestObservation(headers);
   return observation.run(async () => {
     try {
-      return await callOrgxApiRawImplementation(env, path, { ...init, headers }, opts, bufferJson);
+      return await callOrgxApiRawImplementation(env, path, { ...init, signal, headers }, opts, bufferJson);
     } catch (error) {
       observation.failure(undefined, error instanceof OrgXApiError ? error.statusCode : undefined);
       throw error;
@@ -472,7 +477,7 @@ async function callOrgxApiRawImplementation(
   const timeoutMs = typeof opts?.timeoutMs === 'number' && Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0
     ? Math.min(configuredTimeoutMs, Math.max(1, Math.floor(opts.timeoutMs)))
     : configuredTimeoutMs;
-  const deadline = performance.now() + timeoutMs;
+  const deadline = Math.min(performance.now() + timeoutMs, currentReadInvocationBudget()?.deadline ?? Infinity);
 
   for (const [index, baseUrl] of baseUrls.entries()) {
     const isFallbackAttempt = index > 0;
@@ -490,6 +495,10 @@ async function callOrgxApiRawImplementation(
         `Request deadline exhausted before contacting ${url.toString()}`
       ), 'timeout');
     }
+    if (init.signal?.aborted) throw createApiError(
+      'The request was cancelled.',
+      'OrgX API request cancelled before contacting an upstream'
+    );
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort(`timeout after ${requestTimeoutMs}ms`);
