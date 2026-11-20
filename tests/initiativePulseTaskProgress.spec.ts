@@ -92,6 +92,43 @@ afterEach(() => {
 });
 
 describe('initiative pulse: literal task progress normalization', () => {
+  const planning = {
+    initiative_id: 'initiative-planning',
+    name: 'Weekly launch review',
+    status: 'planning',
+    lifecycle_stage: 'planning',
+    health_score: 0,
+    progress_pct: 0,
+    workstream_summary: { total: 0 },
+    workstreams: [], milestones: [], tasks: [],
+    next_steps: ['Define the first review task and its acceptance check.'],
+  };
+
+  it('shows the next planning step in place of unearned health and progress scores', async () => {
+    await render(planning);
+    expect(visibleText()).toContain('No workstreams, milestones, or tasks recorded');
+    expect(visibleText()).toContain('Define the first review task and its acceptance check.');
+    expect(visibleText()).not.toContain('Nothing needs you');
+    expect(document.querySelector('.pulse-health, .pulse-progress-bar, .pulse-progress-value')).toBeNull();
+    const normalized = scope.OrgXPulseWidgetModel.normalizePulse(planning);
+    expect(normalized?.health_score).toBe(0);
+    await render(normalized);
+    expect(document.querySelector('.pulse-health, .pulse-progress-bar')).toBeNull();
+  });
+
+  it.each([
+    { lifecycle_stage: undefined },
+    { tasks: undefined },
+    { milestones: [{ id: 'm1', title: 'Review' }] },
+    { workstream_summary: { total: 1 } },
+    { progress_pct: 25 },
+    { continuity: { progress: { completed: 0, total: 4, active: 0, blocked: 0 } } },
+  ])('preserves numeric signals when an empty plan is unconfirmed', async (override) => {
+    await render({ ...planning, ...override });
+    expect(document.querySelector('.pulse-health')?.textContent).toBe('Health 0');
+    expect(document.querySelector('.pulse-progress-bar')).not.toBeNull();
+  });
+
   it.each(['pulse', 'initiative', 'data', 'result'])(
     'retains literal task counts through the %s envelope',
     async (key) => {

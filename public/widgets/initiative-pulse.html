@@ -894,10 +894,17 @@
         var artifacts = normalizeArtifacts(record);
         var milestones = normalizeMilestones(record);
         var taskProgress = normalizeTaskProgress(record);
+        // A missing collection in a partial response cannot establish an empty plan.
+        // Keep the observed count across renders: the widget retains its normalized model.
+        var hierarchyRowCount = [record.workstreams, record.milestones, record.tasks].every(Array.isArray)
+          ? record.workstreams.length + record.milestones.length + record.tasks.length
+          : record.hierarchy_row_count;
         return {
           id: readString(record, ["id", "initiative_id", "initiativeId"]),
           name: readString(record, ["name", "title"]) || "Initiative",
           status: readString(record, ["status", "state"]) || "active",
+          lifecycle_stage: readString(record, ["lifecycle_stage"]),
+          hierarchy_row_count: typeof hierarchyRowCount === "number" ? hierarchyRowCount : null,
           message: plainCopy(readString(record, ["message", "summary"])),
           progress_pct: typeof record.progress_pct === "number" ? record.progress_pct : taskProgress && taskProgress.pct !== null ? taskProgress.pct : 0,
           task_progress: taskProgress,
@@ -1767,6 +1774,11 @@
         }
 
         var streamCount = pulse.total_workstreams || pulse.active_workstreams || pulse.workstreams.length;
+        var emptyPlan = pulse.status === "planning" && pulse.lifecycle_stage === "planning"
+          && pulse.hierarchy_row_count === 0 && !streamCount && !pulse.blocked_workstreams && !pulse.progress_pct
+          && !(pulse.task_progress && (pulse.task_progress.total > 0 || pulse.task_progress.completed > 0 || pulse.task_progress.active > 0 || pulse.task_progress.blocked > 0))
+          && !pulse.recent_artifacts.length && !(pulse.artifact_summary && pulse.artifact_summary.total > 0)
+          && !needsCount;
         var healthHtml = "";
         if (typeof pulse.health_score === "number") {
           var healthTone = pulse.health_score >= 85 ? "good" : pulse.health_score >= 70 ? "warning" : "danger";
@@ -1844,6 +1856,8 @@
         var lineHtml = waiting
           ? escapeHtml((approxWaiting ? "About " : "") + waiting + (waiting === 1 ? " needs" : " need") + " you") +
             (blockerTotal ? '<span class="pulse-line-extra"> · ' + escapeHtml(blockerTotal + " blocking") + "</span>" : "")
+          : emptyPlan
+          ? "Ready to plan"
           : statusKey === "completed"
           ? "Complete · nothing needs you"
           : "Nothing needs you";
@@ -1873,7 +1887,9 @@
                     '<h1 class="pulse-title">' + escapeHtml(pulse.name) + "</h1>" +
                   "</div>" +
                 "</div>" +
-                renderProgress(pulse, healthHtml) +
+                (emptyPlan
+                  ? '<p class="empty-desc">No workstreams, milestones, or tasks recorded.</p>'
+                  : renderProgress(pulse, healthHtml)) +
                 renderMetrics(sections, uiState.panel) +
                 '<div class="pulse-panel-host" id="pulse-panel-host">' +
                   (uiState.panel ? renderPanel(uiState.panel, pulse, dashboardUrl, attentionItems) : "") +
