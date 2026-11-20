@@ -26,12 +26,12 @@ function unwrapSchema(schema: z.ZodTypeAny): UnwrappedSchema {
   while (true) {
     if (current instanceof z.ZodOptional || current instanceof z.ZodDefault) {
       required = false;
-      current = current._def.innerType;
+      current = current.unwrap() as z.ZodTypeAny;
       continue;
     }
     if (current instanceof z.ZodNullable) {
       nullable = true;
-      current = current._def.innerType;
+      current = current.unwrap() as z.ZodTypeAny;
       continue;
     }
     break;
@@ -75,25 +75,25 @@ export function describeSchema(schema: z.ZodTypeAny): SchemaFieldDescriptor {
   if (base instanceof z.ZodEnum) {
     return {
       ...baseDescriptor(base, required, nullable, 'enum'),
-      enum: [...base.options],
+      enum: base.options.map((option) => String(option)),
     };
   }
   if (base instanceof z.ZodLiteral) {
     return {
       ...baseDescriptor(base, required, nullable, 'literal'),
-      literal: base._def.value as string | number | boolean,
+      literal: base.value as string | number | boolean,
     };
   }
   if (base instanceof z.ZodArray) {
     return {
       ...baseDescriptor(base, required, nullable, 'array'),
-      items: describeSchema(base._def.type),
+      items: describeSchema(base.element as z.ZodTypeAny),
     };
   }
   if (base instanceof z.ZodRecord) {
     return {
       ...baseDescriptor(base, required, nullable, 'record'),
-      items: describeSchema(base._def.valueType),
+      items: describeSchema(base.valueType as z.ZodTypeAny),
     };
   }
   if (base instanceof z.ZodObject) {
@@ -105,7 +105,7 @@ export function describeSchema(schema: z.ZodTypeAny): SchemaFieldDescriptor {
   if (base instanceof z.ZodUnion) {
     return {
       ...baseDescriptor(base, required, nullable, 'union'),
-      anyOf: base._def.options.map((option: z.ZodTypeAny) => describeSchema(option)),
+      anyOf: base.options.map((option) => describeSchema(option as z.ZodTypeAny)),
     };
   }
   if (base instanceof z.ZodUnknown) {

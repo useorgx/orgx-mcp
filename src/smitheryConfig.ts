@@ -22,14 +22,14 @@ export function buildSmitheryConfigSchema() {
       ),
     workspace_id: z
       .string()
-      .uuid()
+      .guid()
       .optional()
       .describe(
         'Optional default workspace UUID to seed MCP session context for routing and recommendations.'
       ),
     initiative_id: z
       .string()
-      .uuid()
+      .guid()
       .optional()
       .describe(
         'Optional default initiative UUID to seed MCP session context for scoped workflows.'

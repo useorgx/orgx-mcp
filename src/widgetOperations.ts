@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { SECURITY_SCHEMES } from './toolDefinitions';
 
 const artifactInputs = {
-  artifact_id: z.string().uuid(),
-  workspace_id: z.string().uuid().optional(),
+  artifact_id: z.string().guid(),
+  workspace_id: z.string().guid().optional(),
   approval_token: z.string().min(1).max(4096).describe('Capability from hidden widget metadata, supplied by a person’s click.'),
   expected_version: z.number().int().nonnegative().optional(),
 };
@@ -12,7 +12,7 @@ export const WIDGET_OPERATION_TOOLS = [
   {
     id: 'orgx_widget_select_workspace', title: 'Select Workspace in OrgX Widget',
     description: 'Widget-only: select the person’s authorized workspace for this connection. Updates private session continuity; does not create or change work.',
-    inputSchema: { workspace_id: z.string().uuid() },
+    inputSchema: { workspace_id: z.string().guid() },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     securitySchemes: SECURITY_SCHEMES.entityReadRequiresAuth,
   },

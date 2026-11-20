@@ -95,7 +95,7 @@ const contentPatch = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   due_date: z.string().optional(),
   goal_ids: z.array(z.string()).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 }).strict().refine((fields) => Object.keys(fields).length > 0, 'At least one content field is required.');
 const linkedProofArtifact = z.object({
   artifact_type: z.string().trim().min(1),

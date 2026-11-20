@@ -15,7 +15,7 @@ export const ControllerDomainSchema = z.enum([
 export type ControllerDomain = z.infer<typeof ControllerDomainSchema>;
 
 const NonEmptyStringSchema = z.string().trim().min(1);
-const UUIDSchema = z.string().uuid();
+const UUIDSchema = z.string().guid();
 const DigestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const ISODateTimeSchema = z.string().datetime({ offset: true });
 type JsonValue =

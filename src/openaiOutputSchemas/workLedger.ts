@@ -6,7 +6,7 @@ import { interpretationMetadataShape } from './interpretation';
 // The work-ledger API owns these nested documents. Keep their JSON fields
 // intact as receipts and human review projections evolve independently of MCP.
 const documentSchema = z.object({}).catchall(jsonValueSchema);
-const countsSchema = z.record(z.number());
+const countsSchema = z.record(z.string(), z.number());
 const workstreamShape = {
   id: z.string(),
   title: z.string(),
@@ -78,7 +78,7 @@ export const workLedgerOutputShape = {
 // Search returns its parsed query instead of the entity search's raw string.
 export const workLedgerQuerySchema = z.object({
   text: z.string(),
-  filters: z.record(z.string()),
+  filters: z.record(z.string(), z.string()),
 }).catchall(jsonValueSchema);
 
 export const searchResourceSchema = resourceSchema.extend({

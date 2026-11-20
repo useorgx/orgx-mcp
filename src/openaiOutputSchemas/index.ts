@@ -103,7 +103,7 @@ const rawOutputSchemas: Record<string, SourceOutputSchema> = {
   ...WIDGET_OPERATION_OUTPUT_SCHEMAS,
   orgx_complete_work_with_proof: WORKFLOW_COMPLETION_OUTPUT_SCHEMA,
   orgx_open_artifact_review: z.object({
-    artifact: z.record(jsonValueSchema).nullable(),
+    artifact: z.record(z.string(), jsonValueSchema).nullable(),
     reviewContract: reviewContractSchema.nullable().optional(),
     reviewContractSource: z.enum(['canonical', 'entity_fallback']).optional(),
     available_actions: z.array(z.object({ id: z.enum(['approve', 'request_changes']) }).catchall(jsonValueSchema)).optional(),

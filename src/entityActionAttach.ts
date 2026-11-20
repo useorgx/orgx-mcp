@@ -27,7 +27,7 @@ const entityActionAttachSchema = z
   .object({
     type: z.enum(ATTACHABLE_ENTITY_TYPES),
     id: z.string().trim().min(1),
-    artifact_id: z.string().uuid().optional(),
+    artifact_id: z.string().guid().optional(),
     initiative_id: z.string().trim().min(1).optional(),
     name: z.string().trim().min(1).max(500),
     artifact_type: z.string().trim().min(1).max(120),

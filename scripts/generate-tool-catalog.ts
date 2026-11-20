@@ -13,8 +13,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import { z } from 'zod';
+import { toListedJsonSchema } from '../src/listedToolJsonSchema';
 
 // ---------------------------------------------------------------------------
 // Source imports
@@ -818,19 +818,10 @@ function isReadOnly(meta: unknown, annotations?: unknown): boolean {
 
 function safeZodToJsonSchema(schema: unknown): Record<string, unknown> {
   try {
-    if (schema instanceof z.ZodType) {
-      if (typeof z.toJSONSchema === 'function') {
-        return z.toJSONSchema(schema) as Record<string, unknown>;
-      }
-      return zodToJsonSchema(schema) as Record<string, unknown>;
-    }
+    if (schema instanceof z.ZodType) return toListedJsonSchema(schema, 'input');
     // For object-style schemas (e.g. { param: z.string() })
     if (schema && typeof schema === 'object' && !Array.isArray(schema)) {
-      const wrapped = z.object(schema as Record<string, z.ZodType>);
-      if (typeof z.toJSONSchema === 'function') {
-        return z.toJSONSchema(wrapped) as Record<string, unknown>;
-      }
-      return zodToJsonSchema(wrapped) as Record<string, unknown>;
+      return toListedJsonSchema(z.object(schema as Record<string, z.ZodType>), 'input');
     }
     return {};
   } catch {
