@@ -309,9 +309,20 @@ function renderReview() {
   }
   const scopes = buildScopeList();
   const readable = selected.find((resource) => resource.read && scopes.includes(resource.read));
-  document.getElementById('first-request').hidden = !readable;
-  document.getElementById('first-request-text').textContent = readable
-    ? `Use OrgX to show me one recent item from ${readable.label.toLowerCase()} in my workspace and its source. If there are none, tell me what to provide first.`
+  // A new workspace has nothing to read, so the request that works first is
+  // a plan. Planning creates work, which needs Operate access to initiatives.
+  const canPlan = scopes.includes('initiatives:write');
+  const couldPlan = !canPlan && state.requested.has('initiatives:write');
+  document.getElementById('first-request').hidden = !readable && !canPlan;
+  document.getElementById('first-request-text').textContent = canPlan
+    ? 'Use OrgX to plan [the work you want done] and show me the plan before anything starts.'
+    : readable
+      ? `Use OrgX to show me one recent item from ${readable.label.toLowerCase()} in my workspace and its source. If there are none, tell me what to provide first.`
+      : '';
+  const firstRequestNote = document.getElementById('first-request-note');
+  firstRequestNote.hidden = !couldPlan;
+  firstRequestNote.textContent = couldPlan
+    ? 'With Read access this client can look at work but cannot plan or start it. To have it plan work for you, choose Edit and set Initiatives to Operate.'
     : '';
   document.getElementById('first-request-status').textContent = '';
   const writes = selected.filter((resource) => state.selected[resource.id] === 'write');
@@ -463,7 +474,9 @@ async function initialize() {
   document.getElementById('offline-row').classList.toggle('visible', state.requested.has('offline_access'));
   document.getElementById('offline-toggle').checked = state.requested.has('offline_access');
   renderScopeResolution();
-  setPreset('read');
+  // Open on the access the client asked for: Operate where it requested write
+  // scopes, Read otherwise. The preset never adds a scope that was not requested.
+  setPreset('operate');
   shell.classList.remove('loading');
   shell.setAttribute('aria-busy', 'false');
   shell.dataset.capabilityVersion = capabilityVersion;

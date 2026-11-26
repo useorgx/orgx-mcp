@@ -32,6 +32,9 @@ The current implementation establishes the first release gate:
 - when an OAuth client omits the optional `scope` parameter entirely, OrgX
   substitutes and discloses the canonical Read preset; an explicitly empty or
   unsupported scope request remains a blocked, zero-permission state;
+- the consent page opens on the access the client requested: Operate where it
+  requested write scopes, Read otherwise; the person can narrow it before
+  authorizing, and no preset adds a scope the client did not request;
 - offline access is a separate choice and is never silently added by a preset;
 - tool discovery is the intersection of the connection profile and the OAuth
   grant;

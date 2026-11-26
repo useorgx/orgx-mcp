@@ -185,6 +185,43 @@ describe('OAuth consent presentation', () => {
     }
   });
 
+  it('opens on Operate when the client requested it, and says what Read access cannot do', async () => {
+    const page = await openConsent(browser, {
+      ...defaultPayload,
+      requested_scopes: ['initiatives:read', 'initiatives:write', 'memory:read'],
+      scope_resolution: { source: 'client_request', status: 'ready' },
+    }, { width: 390, height: 844 });
+    try {
+      expect(await page.locator('[data-preset="operate"]').getAttribute('aria-pressed')).toBe('true');
+      await page.getByRole('button', { name: 'Review access' }).click();
+      const prompt = page.locator('#first-request-text');
+      const note = page.locator('#first-request-note');
+      expect(await prompt.textContent()).toBe(
+        'Use OrgX to plan [the work you want done] and show me the plan before anything starts.'
+      );
+      expect(await note.isHidden()).toBe(true);
+
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await page.locator('[data-preset="read"]').click();
+      await page.getByRole('button', { name: 'Review access' }).click();
+      expect(await prompt.textContent()).toContain('initiatives in my workspace and its source');
+      expect(await note.isVisible()).toBe(true);
+      expect(await note.textContent()).toContain('set Initiatives to Operate');
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('keeps Read as the opening access when the client requested no write scope', async () => {
+    const page = await openConsent(browser, defaultPayload, { width: 390, height: 844 });
+    try {
+      expect(await page.locator('[data-preset="read"]').getAttribute('aria-pressed')).toBe('true');
+      expect(await page.locator('.level-button[data-level="write"]').count()).toBe(0);
+    } finally {
+      await page.close();
+    }
+  });
+
   it('shows Claude identity, the closed-registry ambient theme, and disclosed read defaults', async () => {
     const page = await openConsent(browser, defaultPayload, {
       width: 1440,
