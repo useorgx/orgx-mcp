@@ -474,7 +474,9 @@ async function initialize() {
   document.getElementById('offline-row').classList.toggle('visible', state.requested.has('offline_access'));
   document.getElementById('offline-toggle').checked = state.requested.has('offline_access');
   renderScopeResolution();
-  setPreset('read');
+  // Open on the access the client asked for: Operate where it requested write
+  // scopes, Read otherwise. The preset never adds a scope that was not requested.
+  setPreset('operate');
   shell.classList.remove('loading');
   shell.setAttribute('aria-busy', 'false');
   shell.dataset.capabilityVersion = capabilityVersion;
