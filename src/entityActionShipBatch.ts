@@ -27,7 +27,7 @@ const shipBatchArtifactSchema = z
     artifact_hash: z.string().trim().max(200).optional(),
     status: z.enum(SHIP_BATCH_ARTIFACT_STATUSES).optional(),
     preview_markdown: z.string().max(25_000).optional(),
-    metadata: z.record(z.unknown()).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -45,7 +45,7 @@ const shipBatchInputSchema = z
     milestone_id: z.string().trim().min(1),
     artifact: shipBatchArtifactSchema,
     quality_score: z.number().min(0).max(5).optional(),
-    task_ids: z.array(z.string().uuid()).optional(),
+    task_ids: z.array(z.string().guid()).optional(),
     note: z.string().trim().max(4_000).optional(),
     user_id: z.string().trim().min(1).optional(),
   })

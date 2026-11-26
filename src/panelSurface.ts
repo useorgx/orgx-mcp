@@ -110,7 +110,7 @@ const UUID_RE =
 export const PANEL_FOCUS_SCHEMA = z
   .object({
     type: z.literal('decision').describe('Only decisions can be selected'),
-    id: z.string().uuid().describe('Decision UUID'),
+    id: z.string().guid().describe('Decision UUID'),
   })
   .strict();
 
@@ -216,7 +216,7 @@ export const CURRENT_PANEL_SNAPSHOT_TOOL_CONTRACT = {
     // The Outputs view reads the selected output's canonical summary by its
     // id; the handler uses it only with view "outputs" and only as a UUID, so
     // ledger filters such as "pr:3236" stay outside the current contract.
-    output_id: z.string().uuid().optional().describe('For view "outputs": the selected output id (UUID) whose canonical summary to read.'),
+    output_id: z.string().guid().optional().describe('For view "outputs": the selected output id (UUID) whose canonical summary to read.'),
   },
   _meta: PANEL_TOOL_META as unknown as Record<string, unknown>,
 } as const;

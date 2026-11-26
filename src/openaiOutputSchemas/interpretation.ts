@@ -10,7 +10,7 @@ const digestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 // treating a content hash as an independent witness or accepted work.
 export const interpretationMetadataShape = {
   interpretation: documentSchema,
-  event_id: z.string().uuid(),
+  event_id: z.string().guid(),
   event_hash: digestSchema,
   global_sequence: z.number().int().nonnegative(),
   assurance_rung: z.number().int().min(0).max(5).nullable(),

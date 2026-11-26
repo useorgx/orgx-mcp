@@ -5,7 +5,7 @@ import { idempotencyKeySchema } from './idempotencyKeySchema';
 export const outputFrontDoorInputSchema = z.object({
   answer: z.string().trim().min(1).max(2000),
   decisions: z.array(z.object({
-    decisionId: z.string().uuid(),
+    decisionId: z.string().guid(),
     question: z.string().trim().min(1).max(240),
     recommendation: z.string().trim().min(1).max(500),
     impact: z.string().trim().min(1).max(500),
@@ -31,7 +31,7 @@ export function validateWorkUpdateSelection(args: Record<string, unknown>): void
   if ((args.fields === undefined) === (args.artifact === undefined))
     throw new Error('Supply exactly one of fields or artifact. Use a separate retry key for each operation.');
   if (args.artifact !== undefined) {
-    z.string().uuid().parse(args.id);
+    z.string().guid().parse(args.id);
     workOutputArtifactSchema.parse(args.artifact);
   }
 }
@@ -40,8 +40,8 @@ export function buildWorkOutputAttachmentRequest(args: Record<string, unknown>) 
   validateWorkUpdateSelection(args);
   const input = z.object({
     type: z.enum(['initiative', 'workstream', 'milestone', 'task']),
-    id: z.string().uuid(),
-    workspace_id: z.string().uuid().optional(),
+    id: z.string().guid(),
+    workspace_id: z.string().guid().optional(),
     session_id: z.string().trim().min(1).optional(),
     artifact: workOutputArtifactSchema,
   }).strict().parse({
@@ -55,7 +55,7 @@ export function buildWorkOutputAttachmentRequest(args: Record<string, unknown>) 
 
 export function readWorkOutputAttachmentAcknowledgement(raw: unknown) {
   return z.object({ data: z.object({
-    artifact: z.object({ id: z.string().uuid() }).passthrough(),
+    artifact: z.object({ id: z.string().guid() }).passthrough(),
     duplicate: z.boolean(),
     review_url: z.string(),
     completed: z.literal(false), accepted: z.literal(false),

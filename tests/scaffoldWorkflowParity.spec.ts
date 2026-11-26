@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { toListedJsonSchema } from '../src/listedToolJsonSchema';
 import { McpScaffoldWorkflowSchema } from '../src/generated/scaffoldWorkflow';
 import { getWorkflowToolContract } from '../src/workflowTools';
 import fixtures from './fixtures/scaffold-workflow-v1.json';
 
-describe('generated Zod3 atomic scaffold contract', () => {
+describe('generated atomic scaffold contract', () => {
   it.each(fixtures)('$name', ({ body, valid, normalized }) => {
     const parsed = McpScaffoldWorkflowSchema.safeParse(body);
     expect(parsed.success).toBe(valid);
@@ -20,9 +20,9 @@ describe('generated Zod3 atomic scaffold contract', () => {
     }
   });
 
-  it('generates closed MCP discovery schemas from the portable Zod3 source', () => {
+  it('generates closed MCP discovery schemas from the portable source', () => {
     const shape = getWorkflowToolContract('orgx_validate_initiative_plan')!.inputSchema;
-    const schema = zodToJsonSchema(z.object(shape).strict(), { $refStrategy: 'none' });
+    const schema = toListedJsonSchema(z.object(shape).strict(), 'input');
     expect(schema).toMatchObject({ type: 'object', additionalProperties: false, required: ['plan'] });
     const text = JSON.stringify(schema);
     expect(text).toContain('"maxItems":20');
@@ -43,13 +43,19 @@ describe('legacy scaffold compatibility during the atomic migration', () => {
   });
 });
 
-describe('edge Zod3 compatibility boundary', () => {
-  it.each(['11111111-1111-0111-8111-111111111111', '11111111-1111-a111-8111-111111111111', '11111111-1111-4111-8111-111111111111'])('retains edge UUID preflight for %s; OrgX remains authoritative', (workspace_id) => {
-    expect(McpScaffoldWorkflowSchema.safeParse({ workspace_id, plan: fixtures[0].body.plan }).success).toBe(true);
+describe('edge boundary on zod 4', () => {
+  // The generated contract is OrgX's own source, so on zod 4 the edge applies
+  // OrgX's rules: strict RFC UUIDs, and URLs trimmed as OrgX trims them.
+  it.each([
+    ['11111111-1111-0111-8111-111111111111', false],
+    ['11111111-1111-a111-8111-111111111111', false],
+    ['11111111-1111-4111-8111-111111111111', true],
+  ])('checks workspace UUID %s as OrgX does', (workspace_id, accepted) => {
+    expect(McpScaffoldWorkflowSchema.safeParse({ workspace_id, plan: fixtures[0].body.plan }).success).toBe(accepted);
   });
-  it('retains Zod3 URL material for canonical server normalization', () => {
+  it('trims URL material the way OrgX normalizes it', () => {
     const parsed = McpScaffoldWorkflowSchema.parse({ plan: fixtures[0].body.plan,
       source_evidence: { verification_state: 'partial', target_url: ' https://example.org/proof ' } });
-    expect(parsed.source_evidence?.target_url).toBe(' https://example.org/proof ');
+    expect(parsed.source_evidence?.target_url).toBe('https://example.org/proof');
   });
 });

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { toListedJsonSchema } from '../src/listedToolJsonSchema';
 
 import {
   CONTRACT_TOOL_DEFINITIONS,
@@ -121,7 +121,7 @@ describe('generated tool catalog contract parity', () => {
       if (!WORKFLOW_TOOL_ADAPTERS.some((tool) => tool.id === source.id) && source.id !== 'orgx_record_plan_edit') continue;
       const generated = catalog.tools.find((tool) => tool.id === source.id)!;
       expect(generated.profileContracts?.['claude-directory-legacy'], source.id).toMatchObject({
-        inputSchema: zodToJsonSchema(z.object(source.inputSchema)),
+        inputSchema: toListedJsonSchema(z.object(source.inputSchema), 'input'),
         securitySchemes: source.securitySchemes,
         annotations: source.annotations,
       });

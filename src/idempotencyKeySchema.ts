@@ -12,7 +12,7 @@ export const IDEMPOTENCY_KEY_REQUIRED_MESSAGE =
 
 /** Shared required key: 1-200 characters after trimming. */
 export const idempotencyKeySchema = z
-  .string({ required_error: IDEMPOTENCY_KEY_REQUIRED_MESSAGE, invalid_type_error: IDEMPOTENCY_KEY_REQUIRED_MESSAGE })
+  .string({ error: IDEMPOTENCY_KEY_REQUIRED_MESSAGE })
   .trim()
   .min(1, IDEMPOTENCY_KEY_REQUIRED_MESSAGE)
   .max(200)
@@ -20,7 +20,7 @@ export const idempotencyKeySchema = z
 
 /** Portable receipt keys travel in the import body and keep their stricter pattern. */
 export const receiptIdempotencyKeySchema = z
-  .string({ required_error: IDEMPOTENCY_KEY_REQUIRED_MESSAGE, invalid_type_error: IDEMPOTENCY_KEY_REQUIRED_MESSAGE })
+  .string({ error: IDEMPOTENCY_KEY_REQUIRED_MESSAGE })
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/, 'idempotency_key must start with a letter or digit and use only letters, digits, and . _ : / - (max 160 characters).')
   .describe(`${IDEMPOTENCY_KEY_DESCRIPTION} Bound to this receipt document; up to 160 characters of letters, digits, and . _ : / -.`);
 

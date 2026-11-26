@@ -18,7 +18,7 @@ export const taskPredictionInputShape = {
 };
 
 const requestSchema = z.object({
-  workspace_id: z.string().uuid(),
+  workspace_id: z.string().guid(),
   ...taskPredictionInputShape,
 }).strict();
 
